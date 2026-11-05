@@ -10,6 +10,7 @@ import {
   LoaderCircle,
   SkipForward,
 } from "lucide-react";
+import { type CountKey, progressParts, type QueueCounts } from "./lib/counts";
 import type { TaskStatus } from "./lib/tasks";
 
 /** What the queue view and the all-queues dashboard share: status marks, colours, money. */
@@ -79,4 +80,46 @@ export function takeRequestedQueue(): string | undefined {
 export function onQueueRequest(listener: (projectId: string) => void): () => void {
   queueListeners.add(listener);
   return () => queueListeners.delete(listener);
+}
+
+/** A count's colour: its status's, and neutral for up next and left out. */
+export const countTone = (key: CountKey): Tone =>
+  key === "upNext" || key === "leftOut" ? "neutral" : STATUS_TONE[key];
+
+/** A count's text colour in a sentence: only what needs an eye (running, needs you, failed) is coloured. */
+export function countTextClass(key: CountKey): string {
+  if (key === "running") return "text-info";
+  if (key === "needs_you") return "text-warning";
+  if (key === "failed" || key === "error") return "text-danger";
+  return "text-muted";
+}
+
+/**
+ * How far the tasks that will run are (D-352): done, the rest that ran, then the running ones, each as
+ * its share of them; the track that's left is up next, and left-out tasks aren't drawn. The track's
+ * colour and size come from `className`.
+ */
+export function ProgressParts({
+  counts,
+  className,
+  testId,
+}: {
+  counts: QueueCounts;
+  className?: string;
+  testId?: string;
+}) {
+  return (
+    <div className={cn("flex overflow-hidden", className)} data-testid={testId}>
+      {progressParts(counts).map(({ key, share }) => {
+        const tone = countTone(key);
+        return (
+          <div
+            key={key}
+            className={tone === "neutral" ? "bg-hint" : BAR[tone]}
+            style={{ width: `${share * 100}%` }}
+          />
+        );
+      })}
+    </div>
+  );
 }

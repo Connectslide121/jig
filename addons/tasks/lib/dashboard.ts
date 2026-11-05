@@ -3,9 +3,9 @@
  * host builds a card from a project's stored queue only (no chat reads), the tab sorts and sums them.
  */
 
+import { countTasks, type QueueCounts, settledMs } from "./counts";
 import {
   chatGroups,
-  durationMs,
   isActive,
   isFinished,
   isReady,
@@ -38,19 +38,6 @@ export const WAITING_LABEL: Record<WaitingFor, string> = {
   limit: "Hit its plan's limit",
 };
 
-/** The progress bar's parts, in the order they are drawn. */
-export const SEGMENTS = ["done", "problem", "needsYou", "running", "queued", "skipped"] as const;
-export type Segment = (typeof SEGMENTS)[number];
-
-export function segmentOf(status: TaskStatus): Segment {
-  if (status === "done" || status === "partial") return "done";
-  if (status === "needs_you") return "needsYou";
-  if (status === "running") return "running";
-  if (status === "queued") return "queued";
-  if (status === "skipped") return "skipped";
-  return "problem";
-}
-
 export interface DashboardTask {
   id: string;
   title: string;
@@ -68,13 +55,11 @@ export interface QueueCard {
   running: boolean;
   /** Queued and ticked: what Start takes. */
   ready: number;
-  /** The current run's tasks per part of the bar, and how many of them finished. */
-  segments: Record<Segment, number>;
-  total: number;
-  finished: number;
-  /** Time of the run's tasks that aren't running now (the current task's runs on from its `sentAt`). */
+  /** The queue's tasks counted as the Queue tab's strip counts them (D-352), so the numbers agree. */
+  counts: QueueCounts;
+  /** Time of the tasks that aren't running now (the current task's runs on from its `sentAt`). */
   ms: number;
-  /** Cost of the run's finished tasks; undefined until one has a cost. */
+  /** Cost of the queue's tasks; undefined until one has a cost. */
   costUsd?: number;
   /** The task running or waiting for you. */
   current?: DashboardTask & { chatTitle: string; sentAt?: string; waitingFor?: WaitingFor };
@@ -83,20 +68,6 @@ export interface QueueCard {
   more: number;
   /** The task that finished last. */
   last?: DashboardTask;
-}
-
-/**
- * The tasks of the run the card is about: the open run's tasks and the ticked queued ones that it will
- * take; with no open run, the ones Start would take, or else the last run's tasks.
- */
-export function runTasks(queue: Queue): Task[] {
-  if (queue.runId) return queue.tasks.filter((t) => t.runId === queue.runId || isReady(t));
-  const ready = queue.tasks.filter(isReady);
-  if (ready.length) return ready;
-  const last = queue.tasks
-    .filter((t) => t.runId && t.sentAt)
-    .sort((a, b) => (b.sentAt ?? "").localeCompare(a.sentAt ?? ""))[0]?.runId;
-  return last ? queue.tasks.filter((t) => t.runId === last) : [];
 }
 
 export function queueState(queue: Queue): QueueState {
@@ -117,15 +88,7 @@ export function queueCard(
   projectDefault: TaskProvider = "claude",
 ): QueueCard | undefined {
   if (!queue.tasks.length) return undefined;
-  const run = runTasks(queue);
-  const segments = Object.fromEntries(SEGMENTS.map((s) => [s, 0])) as Record<Segment, number>;
-  let ms = 0;
-  let costUsd: number | undefined;
-  for (const t of run) {
-    segments[segmentOf(t.status)]++;
-    if (!isActive(t)) ms += durationMs(t);
-    if (t.costUsd !== undefined) costUsd = (costUsd ?? 0) + t.costUsd;
-  }
+  const counts = countTasks(queue.tasks);
   const active = queue.tasks.find(isActive);
   const ready = queue.tasks.filter(isReady);
   const last = queue.tasks
@@ -137,11 +100,9 @@ export function queueCard(
     provider: queue.provider ?? projectDefault,
     running: queue.running,
     ready: ready.length,
-    segments,
-    total: run.length,
-    finished: run.filter(isFinished).length,
-    ms,
-    ...(costUsd !== undefined ? { costUsd } : {}),
+    counts,
+    ms: settledMs(queue.tasks),
+    ...(counts.costUsd !== undefined ? { costUsd: counts.costUsd } : {}),
     ...(active ? { current: current(queue, active) } : {}),
     next: ready.slice(0, 2).map((t) => t.title),
     more: Math.max(0, ready.length - 2),
@@ -213,8 +174,8 @@ export function summarize(
 ): DashboardSummary {
   return {
     queuesRunning: cards.filter((c) => c.state === "running" || c.state === "needs_you").length,
-    tasksRunning: cards.reduce((n, c) => n + c.segments.running + c.segments.needsYou, 0),
-    needsYou: cards.reduce((n, c) => n + c.segments.needsYou, 0),
+    tasksRunning: cards.reduce((n, c) => n + c.counts.by.running + c.counts.by.needs_you, 0),
+    needsYou: cards.reduce((n, c) => n + c.counts.by.needs_you, 0),
     queued: cards.reduce((n, c) => n + c.ready, 0),
     finishedToday: today.reduce((n, d) => n + d.count, 0),
     costToday: today.reduce((n, d) => n + d.costUsd, 0),

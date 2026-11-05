@@ -42,7 +42,9 @@ test("Tasks: the all-queues dashboard shows every project's queue, needing you f
   await expect(dashboard.getByTestId("tasks-dashboard-state-shop")).toHaveText("Finished", {
     timeout: 45000,
   });
-  await expect(dashboard.getByTestId("tasks-dashboard-counts-shop")).toContainText("1 of 1 finished");
+  await expect(dashboard.getByTestId("tasks-dashboard-counts-shop")).toContainText(
+    "All 1 done · 1 task in 1 chat",
+  );
   await expect(dashboard.getByTestId("tasks-dashboard-last-shop")).toContainText("update the readme");
   await expect(dashboard.getByTestId("tasks-dashboard-last-shop")).toContainText("Done");
   await expect(dashboard.getByTestId("tasks-dashboard-state-contoso")).toHaveText("Paused");

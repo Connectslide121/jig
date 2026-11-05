@@ -438,6 +438,20 @@ Queue tab. A move or chat change the rules don't allow is refused with the reaso
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
 continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
+The task queue's summary strip adds up (2026-11-05, D-352): one line at the top of the Queue tab
+reads "5 of 6 done" (done of the tasks that will run, so left-out tasks never make a queue look
+unfinished; "All 6 done" when it's through), then only the counts that aren't zero (running in
+blue, failed in red, left out muted); on the right, muted, "20 tasks in 16 chats · 1h 32m · $16.40"
+over the same tasks. A 2 px progress line runs along the strip's bottom edge (done, failed,
+running; the track is up next). Hover or focus the left text for the full breakdown: Done, Running,
+Up next, Left out (and any other status there is), then Tasks, Chats and Chats up next; it adds up
+to the total. In a sidebar the line keeps "5 of 6 done · 1 running" and the cost. A chat card's
+header ("0 of 1 done", "All left out") and the All queues dashboard's cards ("5 of 6 done · 20 tasks
+in 16 chats") use the same counting (`addons/tasks/lib/counts.ts`, unit-tested). Checked with
+screenshots of a mixed queue (done, failed, up next, left out), wide and at sidebar width; the
+running colour wasn't caught on screen (the fake engine's turns are too quick). Clicking a count
+doesn't filter: the Queue tab has no filter to reuse.
+
 Scrolling while dragging in the task queue (2026-11-05, D-351): while you drag a task or a chat in
 the Queue tab, the mouse wheel and the trackpad scroll the list as usual, and the drop line follows
 to whatever is under the pointer after the scroll; a small label with the task's title follows the

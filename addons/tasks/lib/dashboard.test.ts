@@ -5,8 +5,6 @@ import {
   type QueueCard,
   queueCard,
   queueState,
-  runTasks,
-  segmentOf,
   sortCards,
   summarize,
 } from "./dashboard";
@@ -44,28 +42,6 @@ describe("queueState", () => {
   });
 });
 
-describe("runTasks", () => {
-  it("takes the open run's tasks and the ticked queued ones", () => {
-    const q = queue(
-      [
-        done("t1", "2026-11-04T10:00:00Z", { runId: "old" }),
-        done("t2", "2026-11-04T10:00:00Z", { runId: "r2" }),
-        task("t3"),
-        task("t4", { leftOut: true }),
-      ],
-      { runId: "r2" },
-    );
-    expect(runTasks(q).map((t) => t.id)).toEqual(["t2", "t3"]);
-  });
-  it("without an open run: what Start would take, or else the last run", () => {
-    const old = done("t1", "2026-11-04T08:00:00Z", { runId: "r1", sentAt: "2026-11-04T07:00:00Z" });
-    const last = done("t2", "2026-11-04T10:00:00Z", { runId: "r2", sentAt: "2026-11-04T09:00:00Z" });
-    expect(runTasks(queue([old, last, task("t3")])).map((t) => t.id)).toEqual(["t3"]);
-    expect(runTasks(queue([old, last])).map((t) => t.id)).toEqual(["t2"]);
-    expect(runTasks(queue([task("t1", { leftOut: true })]))).toEqual([]);
-  });
-});
-
 describe("queueCard", () => {
   it("is undefined for an empty queue", () => {
     expect(queueCard("p1", emptyQueue())).toBeUndefined();
@@ -98,9 +74,8 @@ describe("queueCard", () => {
     );
     const card = queueCard("p1", q)!;
     expect(card.state).toBe("needs_you");
-    expect(card.total).toBe(6);
-    expect(card.finished).toBe(2);
-    expect(card.segments).toMatchObject({ done: 1, problem: 1, needsYou: 1, queued: 3, running: 0 });
+    expect(card.counts).toMatchObject({ total: 6, willRun: 6, chats: 4 });
+    expect(card.counts.by).toMatchObject({ done: 1, failed: 1, needs_you: 1, upNext: 3, running: 0 });
     expect(card.costUsd).toBe(2);
     expect(card.ms).toBe(60 * 60_000);
     expect(card.current).toMatchObject({
@@ -124,16 +99,6 @@ describe("cardTime", () => {
     const card = { ms: 60_000, current: { sentAt: "2026-11-04T11:00:00Z" } } as QueueCard;
     expect(cardTime(card, Date.parse("2026-11-04T11:02:00Z"))).toBe(180_000);
     expect(cardTime({ ms: 5 } as QueueCard)).toBe(5);
-  });
-});
-
-describe("segmentOf", () => {
-  it("puts every status in one part of the bar", () => {
-    expect(segmentOf("partial")).toBe("done");
-    expect(segmentOf("blocked")).toBe("problem");
-    expect(segmentOf("no_report")).toBe("problem");
-    expect(segmentOf("error")).toBe("problem");
-    expect(segmentOf("skipped")).toBe("skipped");
   });
 });
 

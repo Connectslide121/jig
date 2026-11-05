@@ -222,7 +222,7 @@ test("Tasks: every run is kept in the history, with its results", async ({ page,
   await expect(view.getByTestId("tasks-start")).toBeVisible();
   await expect(view.getByTestId("task-status-t3")).toContainText("Queued");
   await expect(view.getByTestId("task-t1")).toContainText("Did it: fix the cart");
-  await expect(view.getByTestId("tasks-summary")).toContainText("1done");
+  await expect(view.getByTestId("tasks-progress")).toHaveText("1 of 3 done · 1 failed");
 
   // The details: summary, things to know, a follow-up that goes into the queue.
   await view.getByTestId("task-t1").click();

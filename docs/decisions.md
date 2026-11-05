@@ -5490,3 +5490,26 @@ choice of Telegram and everything below: Claude, on my own.
   other components. Moving Boards and `ArrangeList` to the helper is a follow-up.
 - Tests: `e2e/tasks.spec.ts` drags with the mouse, wheels mid-drag and checks the line followed.
 
+## D-352: The task queue counts tasks one way everywhere, and progress is done of what will run
+
+- Status: accepted. Replaces the queue strip's per-status icons and chat count (D-307 era) and the
+  dashboard card's run-only "N of M finished" (D-326).
+- **Who:** Jon, 2026-11-05: the strip "just looks like a bunch of random numbers" (15 chats, 5 done,
+  1 running, 13 queued for 19 tasks, 13 of them left out). He wants tasks as the unit, the chat count
+  kept beside it ("20 tasks in 16 chats"), and a minimal one-line strip (his mockup v2: "minimalism is
+  very important for a clean UI"). Details below are Claude, on my own.
+- **Rules** (`addons/tasks/lib/counts.ts`, `countTasks`): every task is in exactly one count, in a
+  fixed order (done, partly done, failed, blocked, error, no report, running, needs you, up next,
+  skipped, left out), so they add up to the total; a queued task is "Up next", or "Left out" when it's
+  unticked. **Will run** is every task except the left-out and skipped ones, and progress is
+  `done of will run` ("5 of 6 done", "All 6 done", "All left out"). Chats are counted as the queue
+  groups them (a task that continues the chat before shares it); **chats up next** have at least one
+  task up next. Time and cost are over the same tasks.
+- **Where:** the Queue tab's strip (and a past run's), a chat card's header, and the All queues
+  dashboard's cards, which now count the whole queue like the strip instead of only the current run.
+  The progress line/bar is `ProgressParts` (`parts.tsx`): done, the rest that ran, then running, as
+  shares of what will run; left-out tasks aren't drawn.
+- **Colour only where it needs an eye:** running (info), needs you (warning), failed and error
+  (danger); every other count is muted text. No icons in the strip; the breakdown is a hover/focus
+  tooltip.
+

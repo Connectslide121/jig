@@ -14,19 +14,18 @@ import {
 } from "@jig/sdk/ui";
 import { LayoutDashboard, MessageSquare, MoreHorizontal, Pause, Play, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { progressText, sizeText } from "./lib/counts";
 import {
   cardTime,
   type Dashboard,
   type DashboardSummary,
   type QueueCard,
   type QueueState,
-  SEGMENTS,
-  type Segment,
   STATE_LABEL,
   WAITING_LABEL,
 } from "./lib/dashboard";
 import { formatMs, STATUS_LABEL } from "./lib/tasks";
-import { BAR, money, requestQueue, StatusIcon, type Tone } from "./parts";
+import { money, ProgressParts, requestQueue, StatusIcon, type Tone } from "./parts";
 
 /**
  * Every project's task queue at a glance (D-326): a summary strip, then one card per project that has a
@@ -40,15 +39,6 @@ const STATE_TONE: Record<QueueState, Tone> = {
   paused: "neutral",
   finished: "success",
   idle: "neutral",
-};
-
-const SEGMENT_TONE: Record<Segment, Tone> = {
-  done: "success",
-  problem: "danger",
-  needsYou: "warning",
-  running: "info",
-  queued: "neutral",
-  skipped: "neutral",
 };
 
 /** Opens the Tasks view on a project's queue. */
@@ -260,23 +250,18 @@ function QueueCardView({
           </Badge>
         </span>
       </div>
-      <div className="flex h-1.5 overflow-hidden rounded-full bg-active">
-        {SEGMENTS.map((s) =>
-          card.segments[s] ? (
-            <div
-              key={s}
-              className={cn(BAR[SEGMENT_TONE[s]], s === "skipped" && "opacity-50")}
-              style={{ width: `${(card.segments[s] / Math.max(1, card.total)) * 100}%` }}
-            />
-          ) : null,
-        )}
-      </div>
+      <ProgressParts
+        counts={card.counts}
+        className="h-1.5 rounded-full bg-active"
+        testId={`tasks-dashboard-bar-${name}`}
+      />
       <div
         className="h-5 truncate text-xs tabular-nums text-muted"
         data-testid={`tasks-dashboard-counts-${name}`}
       >
         {[
-          `${card.finished} of ${card.total} finished`,
+          progressText(card.counts),
+          sizeText(card.counts),
           time,
           card.costUsd !== undefined && money(card.costUsd),
         ]
