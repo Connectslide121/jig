@@ -664,7 +664,7 @@ export async function skip(args: ProjectArgs & { id: string }, api: AddonHostApi
   });
 }
 
-/** Marks a task that ended in Error or without a report done by hand, with your note (D-356). */
+/** Marks a task that ended in Error, No report, Partly done, Failed or Blocked done by hand, with your note (D-356, D-391). */
 export async function markDone(
   args: ProjectArgs & { id: string; note?: string },
   api: AddonHostApi,
@@ -1044,8 +1044,8 @@ export async function toolDelete(
 }
 
 /**
- * `addon_tasks_mark_done` (D-356): marks a task done when the user asks in a chat, e.g. "mark t33 done"
- * after its own chat did the work but couldn't report. Not read-only, so the user approves each call.
+ * `addon_tasks_mark_done` (D-356, D-391): marks a task done when the user asks in a chat, e.g. "mark t33
+ * done" after its own chat did the work but couldn't report, or its rest got done in a follow-up. Not read-only, so the user approves each call.
  */
 export async function toolMarkDone(
   args: ChatArgs & { taskId?: unknown; note?: unknown; project?: string },

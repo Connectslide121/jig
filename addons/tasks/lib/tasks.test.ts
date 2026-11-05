@@ -60,6 +60,7 @@ import {
   runProviders,
   runProvidersText,
   runsOn,
+  STATUS_LABEL,
   setLeftOut,
   setParked,
   setProviderChoice,
@@ -68,6 +69,7 @@ import {
   startFailed,
   stepTasks,
   type Task,
+  type TaskReport,
   tally,
   taskContext,
   titleFor,
@@ -1280,9 +1282,50 @@ describe("marking a task done by hand (D-356)", () => {
     expect(silent.tasks[0]!.markedDone!.was).toBe("no_report");
   });
 
+  it("keeps a Partly done, Failed or Blocked task's report for its details (D-391)", () => {
+    const chats: TaskReport = {
+      outcome: "partial",
+      summary: "Did the first half",
+      notes: ["The rest runs as t2"],
+      followUps: ["Do the second half"],
+    };
+    for (const outcome of ["partial", "failed", "blocked"] as const) {
+      const report = { ...chats, outcome };
+      const q = markDone(
+        ended({ status: outcome, error: undefined, report }),
+        "t1",
+        "",
+        "2026-11-05T11:00:00Z",
+      );
+      const t = q.tasks[0]!;
+      expect(t.status).toBe("done");
+      expect(t.report).toEqual({ outcome: "done", summary: MARKED_DONE_SUMMARY, notes: [], followUps: [] });
+      expect(t.markedDone).toEqual({ at: "2026-11-05T11:00:00Z", was: outcome, report });
+      expect(listing(q)).toContain(`marked done by the user (was ${STATUS_LABEL[outcome].toLowerCase()})`);
+    }
+  });
+
+  it("a marked task's failed revision replaces it but doesn't pause the running queue (D-391)", () => {
+    const q = { ...markDone(ended({}), "t1"), running: true, stopOnFailure: true };
+    const failed: TaskReport = { outcome: "failed", summary: "It broke", notes: [], followUps: [] };
+    const r = applyReport(q, q.tasks[0]!, failed);
+    expect(r.revised).toBe(true);
+    expect(r.queue.tasks[0]!.status).toBe("failed");
+    expect(r.pause).toBe(false);
+    expect(r.queue.running).toBe(true);
+    // An unmarked task's failed revision still pauses it.
+    const plain = {
+      ...ended({ status: "done", error: undefined, report: { ...failed, outcome: "done" } }),
+      running: true,
+      stopOnFailure: true,
+    };
+    expect(applyReport(plain, plain.tasks[0]!, failed).pause).toBe(true);
+  });
+
   it("refuses other statuses and unknown tasks", () => {
-    expect(canMarkDone(ended({}).tasks[0]!)).toBe(true);
-    for (const status of ["queued", "running", "done", "failed", "blocked", "skipped"] as const) {
+    for (const status of ["error", "no_report", "partial", "failed", "blocked"] as const)
+      expect(canMarkDone(ended({ status }).tasks[0]!)).toBe(true);
+    for (const status of ["queued", "running", "needs_you", "done", "skipped"] as const) {
       expect(canMarkDone(ended({ status }).tasks[0]!)).toBe(false);
       expect(() => markDone(ended({ status }), "t1")).toThrow("only a task that ended in Error");
     }
@@ -1292,7 +1335,7 @@ describe("marking a task done by hand (D-356)", () => {
   it("a chat can still report it later, as a revision", () => {
     const q = markDone(ended({}), "t1");
     expect(canRevise(q.tasks[0]!)).toBe(true);
-    expect(listing(q)).toContain("[Done, marked done by the user]");
+    expect(listing(q)).toContain("[Done, marked done by the user (was error)]");
   });
 });
 

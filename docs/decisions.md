@@ -6680,3 +6680,22 @@ stopped for good.
   the project sets both. Now model and effort fall back independently, for both providers.
 - **Why:** one rule ("the project's, else Jig's, else the model's") for both settings and both
   providers is what the Settings descriptions promise ("unless their project sets its own").
+
+## D-391: Mark as done also for Partly done, Failed and Blocked tasks
+
+- Status: accepted. Amends D-356.
+- **Who:** Jon, 2026-11-05: he wants to close tasks a chat reported Partly done, Failed or Blocked
+  when the rest of the work got finished elsewhere (e.g. a Partly done task whose remainder runs as a
+  separate follow-up task), keeping what the chat said. Details below are Claude, on my own.
+- **Rule:** `canMarkDone` accepts finished tasks in Error, No report, Partly done, Failed and
+  Blocked; never queued, running, needs-you, skipped or already done. `markDone` keeps the chat's
+  report in `markedDone.report` beside `was` (and `error`); the new report is `{ outcome: done,
+  summary: your note or "Marked as done by you.", no notes or follow-ups }`.
+- **Shown:** the details keep "Marked done by you …, was Partly done" and add a section "Its chat's
+  report: Partly done" (its summary and notes) under the summary; the follow-ups list shows the
+  chat's follow-ups so they can still be queued. Everything is there when the dialog opens, so
+  nothing moves. The row keeps its quiet hand-set mark; Claude's list says "marked done by the user
+  (was partly done)".
+- **Late reports:** its own chat may still revise it (D-353), which replaces the mark's report, but a
+  failed or blocked revision of a task you marked done never pauses the queue (`applyReport`): you
+  already decided it's finished.

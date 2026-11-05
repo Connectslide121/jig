@@ -3,7 +3,7 @@ import { expect, it, vi } from "vitest";
 import { history, markDone, toolMarkDone } from "./host";
 import { emptyQueue, type Queue, type Run, type Task } from "./lib/tasks";
 
-it("marks an errored task done by hand, from the menu or a chat's tool, and History follows (D-356)", async () => {
+it("marks an errored or partly done task done by hand, from the menu or a chat's tool, and History follows (D-356, D-391)", async () => {
   const task = (id: string, status: Task["status"]): Task => ({
     id,
     title: `Task ${id}`,
@@ -18,7 +18,15 @@ it("marks an errored task done by hand, from the menu or a chat's tool, and Hist
   });
   const queue: Queue = {
     ...emptyQueue(),
-    tasks: [task("t1", "error"), task("t2", "no_report"), task("t3", "done")],
+    tasks: [
+      task("t1", "error"),
+      task("t2", "no_report"),
+      task("t3", "done"),
+      {
+        ...task("t4", "partial"),
+        report: { outcome: "partial", summary: "Half of it", notes: [], followUps: ["The rest"] },
+      },
+    ],
   };
   const runs: Run[] = [
     { id: "r1", startedAt: "2026-11-05T10:00:00Z", finishedAt: "2026-11-05T11:00:00Z", tasks: queue.tasks },
@@ -62,4 +70,12 @@ it("marks an errored task done by hand, from the menu or a chat's tool, and Hist
     "only a task that ended in Error",
   );
   await expect(toolMarkDone({ project: "Shop" } as never, api)).rejects.toThrow("Say which task");
+
+  // A Partly done task whose rest got done elsewhere (D-391): its chat's report stays with it.
+  await toolMarkDone({ taskId: "t4", project: "Shop", note: "The rest ran as t9" } as never, api);
+  expect(saved().tasks[3]).toMatchObject({
+    status: "done",
+    report: { outcome: "done", summary: "The rest ran as t9" },
+    markedDone: { was: "partial", report: { outcome: "partial", summary: "Half of it" } },
+  });
 });

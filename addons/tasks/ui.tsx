@@ -2282,15 +2282,18 @@ function TaskDialog({
   onRunAgain: () => Promise<void>;
   /** In the queue: ask the chat of a task that ended without a report for one (D-318). */
   onAskReport?: () => void;
-  /** In the queue: mark a task that ended in Error or without a report done by hand (D-356). */
+  /** In the queue: mark a task that ended in Error, No report, Partly done, Failed or Blocked done (D-356, D-391). */
   onMarkDone?: () => void;
 }) {
   const report = task.report;
+  // A task marked done keeps its chat's report (D-391): shown under yours, its follow-ups still queueable.
+  const chatReport = task.markedDone?.report;
+  const followUps = report?.followUps.length ? report.followUps : (chatReport?.followUps ?? []);
   const [queued, setQueued] = useState<Set<number>>(new Set());
   // Buttons stay enabled once used (a disabled button drops the focus, and Escape with it).
   const queue = async (indexes: number[]) => {
     if (!indexes.length) return;
-    const prompts = indexes.map((i) => report!.followUps[i]!);
+    const prompts = indexes.map((i) => followUps[i]!);
     await onQueue(prompts);
     setQueued(new Set([...queued, ...indexes]));
   };
@@ -2439,6 +2442,22 @@ function TaskDialog({
             </div>
           </Section>
         )}
+        {chatReport && (
+          <Section title={`Its chat's report: ${STATUS_LABEL[chatReport.outcome]}`}>
+            <div className="flex flex-col gap-2 rounded-md bg-surface p-2" data-testid="task-chat-report">
+              <div className="text-sm text-muted">
+                <Markdown text={chatReport.summary} />
+              </div>
+              {chatReport.notes.length > 0 && (
+                <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted">
+                  {chatReport.notes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Section>
+        )}
         {task.error && (
           <Section title="Error">
             <div className="text-sm text-danger">{task.error}</div>
@@ -2460,10 +2479,10 @@ function TaskDialog({
             </ul>
           </Section>
         )}
-        {report && report.followUps.length > 0 && (
+        {followUps.length > 0 && (
           <Section title="Follow-ups">
             <div className="flex flex-col gap-1">
-              {report.followUps.map((f, i) => (
+              {followUps.map((f, i) => (
                 <div key={f} className="flex items-center gap-2 rounded-md bg-surface px-2 py-1">
                   <span className="min-w-0 flex-1 text-sm text-fg">{f}</span>
                   <Button
@@ -2479,16 +2498,14 @@ function TaskDialog({
                   </Button>
                 </div>
               ))}
-              {report.followUps.length > 1 && (
+              {followUps.length > 1 && (
                 <div className="flex justify-end">
                   <Button
                     size="sm"
                     variant="ghost"
                     icon={Plus}
-                    aria-disabled={queued.size === report.followUps.length}
-                    onClick={() =>
-                      void queue(report.followUps.map((_, i) => i).filter((i) => !queued.has(i)))
-                    }
+                    aria-disabled={queued.size === followUps.length}
+                    onClick={() => void queue(followUps.map((_, i) => i).filter((i) => !queued.has(i)))}
                   >
                     Add all to the queue
                   </Button>
@@ -3537,6 +3554,11 @@ function MarkDoneDialog({
             {task.error}
           </div>
         )}
+        {task.report && (
+          <div className="line-clamp-2 text-xs text-muted" title={task.report.summary}>
+            {task.report.summary}
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <label htmlFor={noteId} className="text-xs text-muted">
             Note (optional): what was done, where it was committed
@@ -3556,7 +3578,7 @@ function MarkDoneDialog({
         </div>
         <div className="text-xs text-hint">
           It becomes Done, with your note as its summary, shown as set by you rather than reported by a chat.
-          Its times, cost and chat stay.
+          Its times, cost and chat stay{task.report ? ", and its chat's report stays in its details" : ""}.
         </div>
       </div>
     </Dialog>

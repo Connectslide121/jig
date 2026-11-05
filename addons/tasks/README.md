@@ -93,15 +93,20 @@ went, so you read the results as a table instead of scrolling one long chat.
   id and title (`pendingReportsNote`), as the running task's context does. **Ask for a report** (a No
   report row's ⋯, and its details) sends the chat the same request; it answers with a late report.
   The chat never needs `jig_set_addon_data` for the queue, and the tool says so.
-- **Marked done by you (D-356):** a task that ended in Error or without a report (`canMarkDone`),
-  e.g. its chat did the work and hit its plan's limit before reporting, gets **Mark as done…** in its
+- **Marked done by you (D-356, D-391):** a task that ended in Error or without a report (e.g. its
+  chat did the work and hit its plan's limit before reporting), or Partly done, Failed or Blocked
+  while the rest got done elsewhere (e.g. a follow-up task) (`canMarkDone`), gets **Mark as done…** in its
   ⋯ menu and its details. A dialog takes an optional one-line note; the task becomes Done with a
   report whose summary is the note ("Marked as done by you." without one), keeping its times, cost
-  and chat, and `markedDone: { at, was, error? }` (`markDone`, host `markDone`). The row shows a quiet
-  hand-set mark left of the status badge, the details "Marked done by you …, was Error", Claude's
-  list "marked done by the user"; the counts and History count it as done. Remove and Run again stay.
+  and chat, and `markedDone: { at, was, error?, report? }` (`markDone`, host `markDone`); `report` is
+  the chat's own report (Partly done, Failed, Blocked). The row shows a quiet hand-set mark left of
+  the status badge, the details "Marked done by you …, was Partly done" with the chat's report in a
+  section of its own under the summary (its follow-ups still queueable), Claude's list "marked done
+  by the user (was partly done)"; the counts and History count it as done. Its chat's later failed or
+  blocked revision replaces it but never pauses the queue (`applyReport`). Remove and Run again stay.
   From a chat, when you ask ("mark t33 done"): `addon_tasks_mark_done` (`taskId`, `note?`,
-  `project?`), not read-only, so you approve it on its card; other statuses are refused. Its own chat
+  `project?`), not read-only, so you approve it on its card; queued, running, skipped and done tasks
+  are refused. Its own chat
   may still report it later (a revision, D-353). Only tasks still in the queue; a task only in
   History can't be marked.
 - **Revised reports (D-353):** a chat may report its own ended task again, e.g. after you followed

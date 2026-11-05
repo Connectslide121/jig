@@ -700,6 +700,44 @@ test("Tasks: a task that ended without a report is marked done by hand, with a n
   await expect(view.getByTestId("tasks-run-0")).toContainText("Finished");
 });
 
+test("Tasks: a Partly done task is marked done by hand and keeps its chat's report (D-391)", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts: ["do the cart only partly, with follow-ups"], newChat: true },
+  });
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Partly done", { timeout: 30000 });
+  const row = await view.getByTestId("task-t1").boundingBox();
+  // From the details' footer this time; the dialog shows what its chat said.
+  await view.getByTestId("task-t1").click();
+  await page.getByTestId("task-details-mark-done").click();
+  const dialog = page.getByTestId("tasks-mark-done");
+  await expect(dialog).toContainText("Did it: do the cart only partly");
+  await dialog.getByTestId("tasks-mark-done-save").click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("task-details")).toHaveCount(0);
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done");
+  await expect(view.getByTestId("task-marked-done-t1")).toBeVisible();
+  expect(await view.getByTestId("task-t1").boundingBox()).toEqual(row);
+  // The details: your mark, then its chat's report under it, its follow-up still queueable.
+  await view.getByTestId("task-t1").click();
+  const details = page.getByTestId("task-details");
+  await expect(page.getByTestId("task-marked-done")).toContainText("was Partly done");
+  await expect(page.getByTestId("task-summary")).toContainText("Marked as done by you.");
+  await expect(page.getByTestId("task-chat-report")).toContainText("Did it: do the cart only partly");
+  await expect(page.getByTestId("task-chat-report")).toContainText("A fake note to know");
+  await expect(details.getByTestId("task-followup-0")).toBeVisible();
+  await expect(page.getByTestId("task-details-mark-done")).toHaveCount(0);
+  await details.screenshot({ path: test.info().outputPath("marked-partial-details.png") });
+});
+
 test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it (D-330)", async ({
   page,
   jigHome,

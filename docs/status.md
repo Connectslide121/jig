@@ -663,6 +663,13 @@ you, was Error" in the details. From any chat, "mark t33 done" uses `addon_tasks
 you approve on its card. Covered by unit tests and `e2e/tasks.spec.ts`. Gap: a task already cleared
 from the queue (only in History) can't be marked.
 
+Mark as done… also for Partly done, Failed and Blocked tasks (2026-11-05, D-391): when the rest of a
+task's work got done elsewhere (say its remainder ran as a follow-up task), close it by hand the same
+way. Its chat's own report stays: the details read "Marked done by you …, was Partly done" with the
+chat's report in its own section under your note, and its follow-ups can still be queued. If its chat
+later revises it to Failed or Blocked, that replaces your mark but never pauses the queue. Try it:
+open a Partly done task's ⋯ menu → Mark as done…. Covered by unit tests and `e2e/tasks.spec.ts`.
+
 A run report on demand (2026-11-05, D-355): in Tasks → History, a finished run's row has a report
 action (hover, left of Status) and its page a **Run report** button; it opens a tab with an AI-made
 report from the tasks' reports: a summary and one line per task (where it was committed), things to
