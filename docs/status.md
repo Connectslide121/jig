@@ -438,6 +438,16 @@ Queue tab. A move or chat change the rules don't allow is refused with the reaso
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
 continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
+Scrolling while dragging in the task queue (2026-11-05, D-351): while you drag a task or a chat in
+the Queue tab, the mouse wheel and the trackpad scroll the list as usual, and the drop line follows
+to whatever is under the pointer after the scroll; a small label with the task's title follows the
+pointer, Escape cancels. A narrow band at the list's top and bottom edge still scrolls slowly, as a
+fallback. Same in the sidebar, the bottom panel and a tab (one table). The drag now runs on pointer
+events through the shared `usePointerDrag` (`@jig/sdk/ui`) instead of HTML5 drag and drop, which on
+Windows swallows the wheel. Covered by `e2e/tasks.spec.ts` (wheel mid-drag). Needs testing on your
+machine: a long queue in a sidebar with a real mouse wheel and a trackpad. Other lists (Boards,
+arranged lists, tabs, chats into projects) still use HTML5 drag and drop.
+
 Task queue reordering (2026-11-04, D-307): drag a queued task's row, or a chat card's header for the
 whole chat, to a new place in the Queue tab; a line shows where it lands and nothing else moves until
 the drop. A task dropped inside a chat continues that chat; dropped between chats it starts its own.

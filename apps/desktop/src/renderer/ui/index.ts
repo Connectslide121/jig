@@ -21,4 +21,5 @@ export * from "./sanitizeHtml";
 export * from "./Tabs";
 export * from "./Tooltip";
 export * from "./useHighlightedLines";
+export * from "./usePointerDrag";
 export * from "./VirtualList";

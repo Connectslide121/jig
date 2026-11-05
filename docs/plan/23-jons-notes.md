@@ -45,6 +45,9 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       (project default, Claude, ChatGPT), a per-task provider and model in Add tasks and Edit, the
       mark on every row, the details and the dashboard card; `chats.create({ provider, model })` for
       add-ons; `addon_tasks_add`/`addon_tasks_edit` take `provider`, `model` and `runsOn`.
+- [x] **Scroll with the wheel while dragging a task** (added 2026-11-05, D-351): the queue drags with
+      pointer events (`usePointerDrag`), so the wheel and trackpad scroll the list mid-drag and the drop
+      line follows; Boards and `ArrangeList` can move to the same helper later.
 - [x] **Don't ask safety checks wait a minute, then decline** (added 2026-11-04, D-336): the card
       with a countdown and "Needs you", declined unanswered after `engine.dontAskWaitSeconds` (default
       60, 0 = at once); a queue chat goes on afterwards and still gets asked for its report.

@@ -337,8 +337,15 @@ test("Tasks: drag queued tasks and chats into a new order, or move them with Alt
   await expect(view.getByTestId("task-t3")).toBeVisible();
   expect(await order()).toBe("T1 t2 T3");
 
+  /** The rows' order on screen, which follows the saved order a moment later. */
+  const shown = () =>
+    view
+      .locator("[data-drop-task]")
+      .evaluateAll((rows) => rows.map((r) => (r as HTMLElement).dataset.dropTask));
   /** Drags one element onto another, `y` px below its top or (negative) above its bottom, by mouse. */
   const drag = async (from: string, to: string, at: number) => {
+    const saved = (await order()).toLowerCase().split(" ");
+    await expect.poll(shown).toEqual(saved);
     const a = (await view.getByTestId(from).boundingBox())!;
     const b = (await view.getByTestId(to).boundingBox())!;
     const y = at < 0 ? b.height + at : at;
@@ -374,6 +381,57 @@ test("Tasks: drag queued tasks and chats into a new order, or move them with Alt
   await view.getByTestId("task-t1").click({ button: "right" });
   await page.getByRole("menuitem", { name: "Move to top" }).click();
   await expect.poll(order).toBe("T1 T3 t2");
+});
+
+test("Tasks: the wheel scrolls the queue while a task is dragged, and the drop follows", async ({
+  page,
+  jigHome,
+}) => {
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  const prompts = Array.from({ length: 14 }, (_, i) => `step ${i + 1}`);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts, newChat: true },
+  });
+  await expect(view.getByTestId("task-t14")).toBeAttached();
+  const order = async () => {
+    const q = (await hostCall(page, "addons.call", {
+      id: "tasks",
+      method: "list",
+      args: { projectId: ids.shop },
+    })) as { value: { tasks: Array<{ id: string }> } };
+    return q.value.tasks.map((t) => t.id).join(" ");
+  };
+
+  // Pick up the first task and aim at the third one's top half (the second's is where it is now).
+  const a = (await view.getByTestId("task-t1").boundingBox())!;
+  const b = (await view.getByTestId("task-t3").boundingBox())!;
+  await page.mouse.move(a.x + 200, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(a.x + 200, b.y + 8, { steps: 6 });
+  await expect(view.getByTestId("tasks-drop-line")).toHaveCount(1);
+  await expect(page.getByTestId("drag-ghost")).toContainText("step 1");
+
+  // The wheel scrolls the list mid-drag; without moving, the line follows to what's under the pointer.
+  await page.mouse.wheel(0, 4000);
+  await expect(view.getByTestId("task-t14")).toBeInViewport();
+  await expect
+    .poll(async () => Math.abs((await view.getByTestId("tasks-drop-line").boundingBox())!.y - (b.y + 8)))
+    .toBeLessThan(120);
+
+  // Dropped on the top half of the last chat's row: the task lands just before that chat.
+  const last = (await view.getByTestId("task-t14").boundingBox())!;
+  await page.mouse.move(a.x + 200, last.y + 8, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(order).toBe(
+    `${prompts
+      .map((_, i) => `t${i + 1}`)
+      .slice(1, 13)
+      .join(" ")} t1 t14`,
+  );
+  await expect(page.getByTestId("drag-ghost")).toHaveCount(0);
 });
 
 test("Tasks: a turn without a report is asked once for it, and a chat reports late when asked", async ({

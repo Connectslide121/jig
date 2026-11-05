@@ -21,6 +21,7 @@ import {
   useAddon,
   useAddonEvent,
   useHostCall,
+  usePointerDrag,
   useProjectList,
 } from "@jig/sdk/ui";
 import {
@@ -810,9 +811,6 @@ function QueuePanel({
   );
 }
 
-/** What a drag in the queue carries: its own type, so the Add tasks form's file drops ignore it. */
-const DRAG_TASKS = "application/x-jig-tasks";
-
 type MoveTo = -1 | 1 | "top" | "bottom";
 
 /** The ⋯ menu's moves; up and down are also Alt+↑/↓ on a focused row (D-307). */
@@ -834,16 +832,24 @@ function canStep(queue: Queue, task: Task, to: MoveTo): boolean {
 
 const sameSlot = (a?: DropSlot, b?: DropSlot) => !!a && !!b && a.before === b.before && a.join === b.join;
 
-/** Drag and drop in the queue, handed from the table to its cards and rows. */
+/**
+ * Drag and drop in the queue, handed from the table to its cards and rows. It runs on pointer events
+ * (`usePointerDrag`, D-351), so the wheel and the trackpad scroll the list while a task is dragged.
+ * Rows and headers mark themselves with `data-drop-task` / `data-drop-group` for the table to aim at.
+ */
 interface QueueDnd {
   dragging: (id: string) => boolean;
-  start: (ids: string[], e: React.DragEvent) => void;
-  end: () => void;
-  overRow: (task: Task, group: Task[], e: React.DragEvent) => void;
-  overHeader: (group: Task[], e: React.DragEvent) => void;
+  start: (ids: string[], e: React.PointerEvent) => void;
   step: (task: Task, to: -1 | 1) => void;
   /** The row the drop line shows under (the task lands in its chat, after it). */
   lineAfter?: string;
+}
+
+/** What the pointer carries while dragging: the task's title, or its chat's and how many tasks. */
+function dragLabel(queue: Queue, ids?: string[]): string {
+  const first = queue.tasks.find((t) => t.id === ids?.[0]);
+  if (!ids || !first) return "";
+  return ids.length === 1 ? first.title : `${first.title} · ${ids.length} tasks`;
 }
 
 /** The line where a drag will land: drawn over the gap or edge, so nothing moves to make room. */
@@ -889,8 +895,24 @@ function TaskTable({
   const all = tickState(queue.tasks);
   const groups = chatGroups(queue);
   const listRef = useRef<HTMLDivElement>(null);
-  const [drag, setDrag] = useState<string[]>();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<DropSlot>();
+  // The slot a drop lands in, read on release (a state update may not have rendered yet).
+  const targetRef = useRef<DropSlot>(undefined);
+  const show = (next?: DropSlot) => {
+    if (sameSlot(next, targetRef.current) || (!next && !targetRef.current)) return;
+    targetRef.current = next;
+    setTarget(next);
+  };
+  const drag = usePointerDrag<string[]>({
+    scroller: scrollRef,
+    onMove: (at, ids) => aimAt(at.target, at.y, ids),
+    onDrop: (_, ids) => {
+      if (targetRef.current) onMove?.(ids, { slot: targetRef.current });
+    },
+    onEnd: () => show(undefined),
+  });
+  const dragged = drag.active;
   // A row moved with Alt+↑/↓ keeps the focus after the queue reloads (it may be in another card now).
   const focusAfter = useRef<string>(undefined);
   useEffect(() => {
@@ -900,37 +922,51 @@ function TaskTable({
     listRef.current?.querySelector<HTMLElement>(`[data-testid="task-${id}"]`)?.focus();
   }, [queue]);
 
-  let slots: DropSlot[] = [];
-  let here: DropSlot | undefined;
-  try {
-    if (drag) {
-      slots = dropSlots(queue, drag);
-      here = currentSlot(queue, drag);
+  const rest = dragged ? queue.tasks.filter((t) => !dragged.includes(t.id)) : queue.tasks;
+  /**
+   * The slot for where the pointer is (run on every move and after every scroll): over a row's top half
+   * it goes before that task, its bottom half after it; over a card's header above the card; below the
+   * last card the end of the queue; the preferred kind of slot, else the other kind there. Over the gaps
+   * between cards the line stays put.
+   */
+  const aimAt = (under: Element | null, y: number, ids: string[]) => {
+    let slots: DropSlot[];
+    let here: DropSlot | undefined;
+    try {
+      slots = dropSlots(queue, ids);
+      here = currentSlot(queue, ids);
+    } catch {
+      return show(undefined);
     }
-  } catch {
-    slots = [];
-  }
-  const rest = drag ? queue.tasks.filter((t) => !drag.includes(t.id)) : queue.tasks;
-  /** The slot to show for where the pointer is: the preferred one, else the other kind there. */
-  const aim = (e: React.DragEvent, prefer?: DropSlot) => {
-    if (!drag || !e.dataTransfer.types.includes(DRAG_TASKS)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (!prefer) return;
-    const found = [prefer, { ...prefer, join: !prefer.join }]
-      .map((c) => slots.find((slot) => sameSlot(slot, c)))
-      .find(Boolean);
-    const next = found && !sameSlot(found, here) ? found : undefined;
-    e.dataTransfer.dropEffect = next ? "move" : "none";
-    if (!sameSlot(next, target) && (next || target)) setTarget(next);
-  };
-  const upper = (e: React.DragEvent) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    return e.clientY < r.top + r.height / 2;
-  };
-  const end = () => {
-    setDrag(undefined);
-    setTarget(undefined);
+    const left = queue.tasks.filter((t) => !ids.includes(t.id));
+    const resolve = (prefer?: DropSlot) => {
+      if (!prefer) return undefined;
+      const found = [prefer, { ...prefer, join: !prefer.join }]
+        .map((c) => slots.find((slot) => sameSlot(slot, c)))
+        .find(Boolean);
+      return found && !sameSlot(found, here) ? found : undefined;
+    };
+    if (!under || !scrollRef.current?.contains(under)) return show(undefined);
+    const row = under.closest<HTMLElement>("[data-drop-task]");
+    if (row) {
+      const task = queue.tasks.find((t) => t.id === row.dataset.dropTask);
+      if (!task || ids.includes(task.id)) return show(undefined);
+      const box = row.getBoundingClientRect();
+      if (y < box.top + box.height / 2) {
+        const group = groups.find((g) => g.tasks.some((t) => t.task.id === task.id));
+        const first = group?.tasks.find((t) => !ids.includes(t.task.id))?.task;
+        return show(resolve({ before: task.id, join: first !== task }));
+      }
+      return show(resolve({ before: left[left.indexOf(task) + 1]?.id, join: true }));
+    }
+    const header = under.closest<HTMLElement>("[data-drop-group]");
+    if (header) {
+      const group = groups[Number(header.dataset.dropGroup)];
+      const first = group?.tasks.find((t) => !ids.includes(t.task.id))?.task;
+      return show(resolve(first && { before: first.id, join: false }));
+    }
+    const last = listRef.current?.lastElementChild;
+    if (last && y > last.getBoundingClientRect().bottom) show(resolve({ join: false }));
   };
 
   // Where the line shows: under the row a task joins after, or above a card (or below the last one).
@@ -944,25 +980,8 @@ function TaskTable({
   const lineAtEnd = !!target && !target.join && !target.before;
 
   const dnd: QueueDnd | undefined = onMove && {
-    dragging: (id) => !!drag?.includes(id),
-    start: (ids, e) => {
-      e.stopPropagation();
-      e.dataTransfer.setData(DRAG_TASKS, ids.join(","));
-      e.dataTransfer.effectAllowed = "move";
-      setDrag(ids);
-    },
-    end,
-    overRow: (task, group, e) => {
-      if (drag?.includes(task.id)) return aim(e);
-      const shown = group.filter((t) => !drag?.includes(t.id));
-      if (upper(e)) return aim(e, { before: task.id, join: shown[0] !== task });
-      const next = rest[rest.indexOf(task) + 1];
-      aim(e, { before: next?.id, join: true });
-    },
-    overHeader: (group, e) => {
-      const first = group.find((t) => !drag?.includes(t.id));
-      aim(e, first && { before: first.id, join: false });
-    },
+    dragging: (id) => !!dragged?.includes(id),
+    start: (ids, e) => drag.start(e, ids),
     step: (task, to) => {
       focusAfter.current = task.id;
       onMove([task.id], { to });
@@ -973,23 +992,8 @@ function TaskTable({
   return (
     // Narrow (a sidebar): the detail columns give way first, then time and cost, then the chats' and
     // tasks' hints beside their titles; task and status stay.
-    <div
-      className="@container min-h-0 flex-1 overflow-auto px-3 pb-3"
-      onDragOver={(e) => {
-        // Below the last card: the end of the queue. Over the gaps between cards the line stays put.
-        const last = listRef.current?.lastElementChild;
-        aim(e, last && e.clientY > last.getBoundingClientRect().bottom ? { join: false } : target);
-      }}
-      onDragLeave={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setTarget(undefined);
-      }}
-      onDrop={(e) => {
-        if (!drag || !e.dataTransfer.types.includes(DRAG_TASKS)) return;
-        e.preventDefault();
-        if (target) onMove?.(drag, { slot: target });
-        end();
-      }}
-    >
+    <div ref={scrollRef} className="@container min-h-0 flex-1 overflow-auto px-3 pb-3">
+      {drag.ghost(dragLabel(queue, dragged))}
       <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
         {onTick && (
           <Tick
@@ -1383,12 +1387,10 @@ function ChatCard({
       data-testid={`task-group-${number - 1}`}
     >
       <div
-        draggable={canDrag || undefined}
         title={canDrag ? "Drag to move this chat and its tasks" : undefined}
         data-testid={`task-group-header-${number - 1}`}
-        onDragStart={canDrag ? (e) => dnd.start(ids, e) : undefined}
-        onDragEnd={dnd?.end}
-        onDragOver={dnd && ((e) => dnd.overHeader(tasks, e))}
+        data-drop-group={dnd ? number - 1 : undefined}
+        onPointerDown={canDrag ? (e) => dnd.start(ids, e) : undefined}
         className={cn(
           "group flex h-9 items-center gap-3 border-b border-line px-3",
           canDrag && ids.every((id) => dnd.dragging(id)) && "opacity-40",
@@ -1452,7 +1454,6 @@ function ChatCard({
           onMenu={(at) => onMenu(task, at)}
           onTick={onTick && ((on) => onTick([task.id], on))}
           dnd={dnd}
-          group={tasks}
         />
       ))}
     </div>
@@ -1472,7 +1473,6 @@ function TaskRow({
   onMenu,
   onTick,
   dnd,
-  group,
 }: {
   ctx: AddonUiContext;
   task: Task;
@@ -1486,8 +1486,6 @@ function TaskRow({
   onTick?: (on: boolean) => void;
   /** In the queue: a queued task drags to a new place, or moves with Alt+↑/↓. */
   dnd?: QueueDnd;
-  /** The tasks of its chat's card. */
-  group: Task[];
 }) {
   const canDrag = !!dnd && task.status === "queued";
   const leftOut = task.status === "queued" && !!task.leftOut;
@@ -1514,10 +1512,8 @@ function TaskRow({
       data-testid={`task-${task.id}`}
       onClick={onOpen}
       aria-keyshortcuts={canDrag ? "Alt+ArrowUp Alt+ArrowDown" : undefined}
-      draggable={canDrag || undefined}
-      onDragStart={canDrag ? (e) => dnd.start([task.id], e) : undefined}
-      onDragEnd={dnd?.end}
-      onDragOver={dnd && ((e) => dnd.overRow(task, group, e))}
+      data-drop-task={dnd ? task.id : undefined}
+      onPointerDown={canDrag ? (e) => dnd.start([task.id], e) : undefined}
       onKeyDown={(e) => {
         if (e.key === "Enter") onOpen();
         else if (canDrag && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {

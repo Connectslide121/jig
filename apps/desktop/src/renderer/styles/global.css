@@ -66,7 +66,16 @@
     /* biome-ignore lint/complexity/noImportantStyles: same, for text selection. */
     user-select: none !important;
   }
+  /* While a list item is dragged (usePointerDrag): the grabbing hand everywhere, no text selection. */
+  body.jig-dragging,
+  body.jig-dragging * {
+    /* biome-ignore lint/complexity/noImportantStyles: must win over every element's own cursor while dragging. */
+    cursor: grabbing !important;
+    /* biome-ignore lint/complexity/noImportantStyles: same, for text selection. */
+    user-select: none !important;
+  }
   body.jig-resizing iframe,
+  body.jig-dragging iframe,
   body.jig-resizing-row iframe {
     pointer-events: none;
   }

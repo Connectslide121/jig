@@ -20,6 +20,7 @@ export { ChatAttachments as Attachments } from "../features/sessions/ChatAttachm
  */
 export { ProviderMark } from "../features/usage/ProviderMark";
 export { languageForPath } from "../lib/highlight";
+export type { DragPoint, PointerDrag } from "../ui";
 export {
   Badge,
   Button,
@@ -50,6 +51,7 @@ export {
   Textarea,
   Tooltip,
   useHighlightedLines,
+  usePointerDrag,
   VirtualList,
 } from "../ui";
 export { Pane, usePaneSize, useSplitRatio } from "../workbench/Pane";

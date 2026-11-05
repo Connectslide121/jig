@@ -5468,3 +5468,25 @@ choice of Telegram and everything below: Claude, on my own.
   waits for you and the phone is connected: a sleeping PC sends nothing.
 - Tests: unit tests for the messages and the service with fakes; `e2e/phone.spec.ts` runs the app
   against a fake Telegram server (`JIG_TELEGRAM_API`, honoured only with `JIG_ENGINE=fake`).
+
+## D-351: Reordering inside a view drags with pointer events, so the wheel scrolls during a drag
+
+- Status: accepted. Changes how the task queue's drag (D-307) is built; the drop rules stay.
+- **Who:** Jon, 2026-11-05: while reordering a long queue he can't scroll it with the mouse wheel or
+  the trackpad; only holding the pointer at the edge scrolls, which he doesn't like. Details below are
+  Claude, on my own.
+- **Why:** HTML5 drag and drop in Chromium on Windows runs inside the OS's modal drag loop
+  (`DoDragDrop`), which doesn't deliver wheel input to the page; no handler in the page can fix that.
+- **Rule:** a drag that reorders items inside one view uses `usePointerDrag`
+  (`renderer/ui/usePointerDrag.tsx`, in `@jig/sdk/ui` for add-ons): pointer events on the window, a
+  4 px threshold so a click stays a click, the target re-aimed on every move and after every scroll
+  (a capturing `scroll` listener, with `elementFromPoint`), a label at the pointer (`ghost`), Escape /
+  lost focus / pointercancel cancel, the click after a drop is swallowed, `body.jig-dragging` sets the
+  grabbing cursor and stops text selection. An optional `scroller` gets a narrow (24 px) edge band
+  that scrolls slowly, only as a fallback. Items mark themselves with data attributes the list reads
+  from the element under the pointer.
+- **HTML5 drag and drop stays** for drags that cross views or come from outside (files, tabs between
+  panels, chats onto projects, Boards' columns for now): those need `dataTransfer` and drop targets in
+  other components. Moving Boards and `ArrangeList` to the helper is a follow-up.
+- Tests: `e2e/tasks.spec.ts` drags with the mouse, wheels mid-drag and checks the line followed.
+
