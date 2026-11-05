@@ -5979,3 +5979,49 @@ choice of Telegram and everything below: Claude, on my own.
   Narrow (a sidebar, below `@xl`): icons and numbers on their own line above the controls, with time
   and cost left of the controls; from `@xl` one line; from `@6xl` the segments' words show, from `@7xl`
   "N tasks in M chats" too. Skipped tasks are only in the breakdown.
+
+## D-370: Jig on your phone through Teams: your own bot and a relay in your Azure
+
+- Status: accepted (planned, phase 27).
+- **Who:** Jon asked, 2026-11-05 ("can we do a similar thing with Teams? so I can communicate through
+  Teams"), and chose a real bot with a small relay over his own Graph sign-in; then: one channel at
+  a time ("one or the other"), Jig creates the Azure resources, and "a whole system … chat rooms …
+  as complete as we can do it" rather than one thread. How each is done: Claude, on my own.
+- **A bot, not Jig posting as you.** Teams only notifies you of messages someone else posts. The
+  Meetings sign-in (Graph, `ChatMessage.Send`) posts as you, so it would never buzz the phone. A bot
+  has its own identity: its messages notify like a colleague's.
+- **A relay, because a bot can't poll.** Microsoft delivers what you write to a bot by POSTing to a
+  public HTTPS endpoint; there is no `getUpdates`. The relay is a small Azure Function of the user's
+  own (`relay/teams/` in this repository, deployed from Jig's setup): it checks Microsoft's token on
+  every incoming activity, keeps the paired user's messages (24 h) until Jig fetches them, and sends
+  Jig's messages as the bot. Jig long-polls it like Telegram, so no open port on the PC, and nothing
+  is lost while the PC sleeps. A dev tunnel straight to Jig was left out: it needs a CLI running
+  and loses what you write while Jig is closed.
+- **Credentials:** the bot's client secret lives only in the Function's settings (Azure), never in
+  Jig. Jig holds one relay key, generated at setup, stored like the Telegram token (safeStorage or
+  memory only, never the renderer, logs or add-ons). The relay accepts requests only with that key.
+- **Your own tenant.** New bots are single-tenant (Microsoft stopped creating multi-tenant bots in
+  2025), so the bot's app registration lives in the tenant where you use Teams, and its Azure Bot and
+  Function in a subscription you can create resources in (normally of that same tenant; whether
+  another tenant's subscription works is checked in phase 27, not assumed). The bot asks for no Graph permissions: no admin consent. Adding it to Teams is
+  uploading a custom app for yourself; when the tenant blocks that, an admin approves it once.
+- **Pairing like Telegram:** a 6-digit code you send the bot; from then on only that account (its
+  Entra object id and tenant) is read, by the relay and again by Jig.
+- **A team of your own, like Telegram's topics and rooms.** A personal bot chat has no topics, so
+  the full experience lives in a private "Jig" team with the bot in it: **one channel per project**
+  (made by the bot on the project's first message, like a topic), and **one thread per chat** in its
+  project's channel (a room: the chat's turns mirrored live, what you write in the thread goes to
+  that chat). Jig itself and everything that waits for you (permissions, questions, plans) also
+  arrive in the **1:1 chat with the bot**, which buzzes; in channels the bot @mentions you only when
+  something needs you, so finished work stays quiet. Buttons are Adaptive Cards, edited when answered
+  on the computer. Channels are created through the bot's resource-specific consent
+  (`Channel.Create.Group`, granted by you as the team's owner when you add the app, no admin);
+  whether the tenant allows that is checked in setup, and without it the rooms are threads in the
+  team's General channel instead. Voice notes are left out (bots don't receive them).
+- **One channel at a time.** Settings → Phone picks Telegram or Teams; the phone features above the
+  channel (what is sent, routing, Jig itself, commands) are shared through a `PhoneChannel`
+  interface, so both stay the same product.
+- **Jig creates the Azure pieces with your `az`** (Jon: "you can create the azure resources"): the
+  setup window lists every resource and command first, one Create runs them in order (the active
+  tenant from the top bar), with a written guide as the fallback. It never
+  deletes them by itself; Disconnect says what to remove.
