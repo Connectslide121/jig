@@ -7,6 +7,9 @@ Every decision that shapes Jig, newest last. **Decided by** says who made it:
 - **Claude, on my own** — made by Claude while working autonomously. **These are the ones to review**;
   each says what to change if you disagree.
 
+Add a decision with `npm run decision -- "Title"`, which reserves the next number by appending its
+heading here at once; never pick the number by hand (D-361).
+
 To change a decision, don't delete its entry: add a new one that supersedes it and mark the old one
 `Superseded by D-xxx`.
 
@@ -5711,3 +5714,26 @@ choice of Telegram and everything below: Claude, on my own.
   own edit tool, instead of Edit/Write.
 - **Windows only:** run Python with `-X utf8` (it prints as cp1252 and crashes on characters like ✅;
   `-I` ignores `PYTHONIOENCODING`), and in Windows PowerShell 5.1 chain with `;` or `if ($?)`, not `&&`.
+
+## D-361: Decision numbers are reserved by npm run decision, the moment they're needed
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-05: several chats work on Jig at once and each took "the next D-xxx" by
+  reading the log; two picked D-350, and the one that committed second had to renumber its code
+  comments and docs. He asked to make that impossible or trivial, by reserving the number at once or by
+  a placeholder replaced at commit time. The choice and the details are Claude, on my own.
+- **How:** `npm run decision -- "Title"` (`scripts/decision.ts`) appends `## D-xxx: Title` with the
+  first fields to `docs/decisions.md` straight away and prints the number; the chat then fills in the
+  entry and uses that number everywhere. The next number is one above the highest heading in the log
+  of every worktree (on disk, uncommitted entries included) and every local branch (committed), read
+  and written under a lock file in the git directory (`jig-decision.lock`, stale after 30 s), so runs
+  at the same moment get different numbers. Pure parts in `scripts/decision-lib.ts`, tested.
+- **Why reserving, not a placeholder:** the chats share one checkout on `main`, so a heading written
+  to the file is seen by the next chat's run the same second, however late either commits. A
+  placeholder (`D-NEW`) would need every chat's placeholders kept apart in the same shared file, a
+  pre-commit step that rewrites staged files (and stays out of other chats' changes), and code and
+  docs that say `D-NEW` until then; a forgotten replacement would reach a commit. Reserving is one
+  command and leaves nothing to replace. Gaps (a reserved number dropped) are harmless.
+- **Guard:** `npm run verify` runs `check:decisions`, which fails when two headings share a number
+  (the old D-165 pair is let through). If you disagree with reserving at once, the placeholder route
+  can replace `scripts/decision.ts` without changing the check.

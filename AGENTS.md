@@ -31,8 +31,12 @@ A change is not finished until the code, the plan, the docs and the decision log
   `docs/plan/README.md`. Add items you discover; move dropped ones to `99-backlog.md` with a reason.
 - **Architecture/reference:** if you change a boundary, contract, slot, IPC method, state file or
   setting, update `docs/architecture.md` and the matching `docs/reference/*.md`.
-- **Decisions:** any choice future work depends on goes into `docs/decisions.md` (next `D-xxx`), saying
-  who decided and why. Choices made without the user are marked **"Claude, on my own"**.
+- **Decisions:** any choice future work depends on goes into `docs/decisions.md`, saying who decided
+  and why. Choices made without the user are marked **"Claude, on my own"**. **Never pick the number
+  yourself:** other chats add decisions at the same time. Run `npm run decision -- "Title"` the moment
+  you need one: it appends `## D-xxx: Title` to the log and prints the number, which is yours; fill in
+  the entry there and use that number in code and docs (D-361). `npm run verify` fails on a number
+  used twice.
 - **Status:** if something user-visible changed, update `docs/status.md` (what works, how to try it,
   known gaps, what needs testing on a real machine).
 - **These instructions:** new conventions or "never do X" rules go here, in the same commit.
@@ -44,7 +48,8 @@ npm install            # once
 npm run dev            # Electron + Vite dev server with hot reload
 npm run build          # production build into apps/desktop/dist
 npm start              # run the production build
-npm run verify         # typecheck + lint + design-token check (no tests) — run before every commit
+npm run verify         # typecheck + lint + design-token check + no duplicate decision numbers (no tests) — run before every commit
+npm run decision -- "Title"   # reserve the next D-xxx: appends its heading to docs/decisions.md and prints the number (D-361)
 npm run check          # verify + unit tests — when releasing
 npm run e2e:changed    # the e2e specs a change needs since the last passing e2e run (else uncommitted only) — before committing a change to the app or a spec (D-331, D-357); -- --since origin/main for the old base, -- --list to only print the choice
 npm run e2e            # the whole e2e suite in parallel (~4-5 min): only when releasing (Linux: xvfb-run); a full pass on a clean checkout is recorded, and the release skips the suite when only the version changed since
