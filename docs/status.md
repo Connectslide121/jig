@@ -438,6 +438,14 @@ Queue tab. A move or chat change the rules don't allow is refused with the reaso
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
 continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
+Don't ask for queued tasks (2026-11-05, D-363): Add tasks and Edit offer **Don't ask** (red) as the
+last Permissions choice, so a task you trust runs without stopping for approvals; the default stays
+Accept file edits. On Claude it still stops on Claude Code's own safety checks (a minute, then
+declined); on ChatGPT nothing asks. Only you can pick it: Claude's task tools take no mode and
+`jig_set_addon_data` refuses to add it; only the built-in Tasks add-on may start such a chat. Covered
+by unit tests and `e2e/tasks.spec.ts`. Needs testing on your machine: a real Don't ask task that runs
+a few commands unattended.
+
 Claude deletes queued tasks (2026-11-05, D-362): `addon_tasks_delete` removes queued tasks by id
 (several at once, all or nothing, optionally in another project), after you approve a card that
 names each task by id and title. Running, needs-you and finished tasks are refused with the reason;

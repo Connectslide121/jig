@@ -477,6 +477,39 @@ test("Tasks: Claude deletes a queued task after you approve the card that names 
   ]);
 });
 
+test("Tasks: a task you set to Don't ask runs its chat without asking (D-363)", async ({ page, jigHome }) => {
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts: ["tidy up"], newChat: true },
+  });
+  // Edit → Permissions ends with Don't ask, in red; the select keeps its size.
+  await view.getByTestId("task-t1").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Edit…" }).click();
+  const edit = page.getByTestId("tasks-edit-dialog");
+  const select = edit.locator("#tasks-edit-mode");
+  await expect(select.locator("option").last()).toHaveText("Don't ask");
+  const before = await settledBox(select);
+  const color = () => select.evaluate((el) => getComputedStyle(el).color);
+  const plain = await color();
+  await select.selectOption("bypassPermissions");
+  await expect(select).toHaveAttribute("data-tone", "danger");
+  expect(await color()).not.toBe(plain);
+  expect(await select.boundingBox()).toEqual(before);
+  await edit.getByTestId("tasks-edit-confirm").click();
+  await expect(edit).toHaveCount(0);
+  await expect(view.getByTestId("task-t1")).toContainText("don't ask");
+  // Its chat starts in Don't ask.
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 30000 });
+  const chats = (await hostCall(page, "sessions.list")) as {
+    value: Array<{ title: string; permissionMode: string }>;
+  };
+  expect(chats.value.find((c) => c.title === "tidy up")?.permissionMode).toBe("bypassPermissions");
+});
+
 test("Tasks: the wheel scrolls the queue while a task is dragged, and the drop follows", async ({
   page,
   jigHome,

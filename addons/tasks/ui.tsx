@@ -10,6 +10,7 @@ import {
   IconButton,
   Input,
   Markdown,
+  PERMISSION_MODE_LABELS,
   ProjectSwatch,
   ProviderMark,
   Select,
@@ -132,11 +133,47 @@ import {
 } from "./parts";
 import { type ProviderChoice, RunsOnButton, runsOnText, SOURCE_TEXT } from "./RunsOn";
 
+/**
+ * The permission modes a task can run in, in the add and edit dialogs. Don't ask comes last, named as in
+ * the chats and red as in their mode menu: only you pick it, per task (D-363).
+ */
 const MODES: Array<{ value: PermissionMode; label: string }> = [
   { value: "acceptEdits", label: "Accept file edits" },
   { value: "default", label: "Ask before edits" },
   { value: "plan", label: "Plan only (no changes)" },
+  { value: "bypassPermissions", label: PERMISSION_MODE_LABELS.bypassPermissions },
 ];
+
+/** A mode's tone in the select: red for Don't ask (the chats' `permissionTone`), else the field's own. */
+const modeTone = (mode: PermissionMode) => (mode === "bypassPermissions" ? "text-danger" : "text-fg");
+
+/** The Permissions select of the add and edit dialogs; the same width whatever is picked. */
+function ModeSelect({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: PermissionMode;
+  onChange: (mode: PermissionMode) => void;
+}) {
+  return (
+    // The tone goes through a variant: a plain colour utility loses to the field's own `text-fg`.
+    <Select
+      id={id}
+      className="w-44 data-[tone=danger]:text-danger"
+      data-tone={value === "bypassPermissions" ? "danger" : undefined}
+      value={value}
+      onChange={(e) => onChange(e.target.value as PermissionMode)}
+    >
+      {MODES.map((m) => (
+        <option key={m.value} value={m.value} className={modeTone(m.value)}>
+          {m.label}
+        </option>
+      ))}
+    </Select>
+  );
+}
 
 /**
  * The tick that says whether Start takes a queued task (all ticked by default). `mixed` shows a group
@@ -1658,7 +1695,9 @@ function TaskRow({
       ? "plan only"
       : task.permissionMode === "default"
         ? "asks before edits"
-        : "",
+        : task.permissionMode === "bypassPermissions"
+          ? "don't ask"
+          : "",
   ].filter(Boolean);
   return (
     <div
@@ -1888,7 +1927,12 @@ function TaskDialog({
         </span>,
       ],
       ["Chat", task.newChat || index === 0 ? "starts a new one" : "continues the one before"],
-      ["Permissions", MODES.find((m) => m.value === (task.permissionMode ?? "acceptEdits"))?.label ?? ""],
+      [
+        "Permissions",
+        <span key="mode" className={modeTone(task.permissionMode ?? "acceptEdits")}>
+          {MODES.find((m) => m.value === (task.permissionMode ?? "acceptEdits"))?.label ?? ""}
+        </span>,
+      ],
       ["Started", when(task.sentAt)],
       ["Finished", when(task.finishedAt)],
       ["Time", duration(task)],
@@ -2219,18 +2263,7 @@ function AddDialog({
           </span>
           <label htmlFor="tasks-mode" className="flex shrink-0 items-center gap-2 text-xs text-muted">
             Permissions
-            <Select
-              id="tasks-mode"
-              className="w-44"
-              value={mode}
-              onChange={(e) => setMode(e.target.value as PermissionMode)}
-            >
-              {MODES.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </Select>
+            <ModeSelect id="tasks-mode" value={mode} onChange={setMode} />
           </label>
           <Button size="sm" variant="ghost" onClick={cancel}>
             Cancel
@@ -2560,18 +2593,7 @@ function EditDialog({
           </div>
           <label htmlFor="tasks-edit-mode" className="flex shrink-0 items-center gap-2 text-xs text-muted">
             Permissions
-            <Select
-              id="tasks-edit-mode"
-              className="w-44"
-              value={mode}
-              onChange={(e) => setMode(e.target.value as PermissionMode)}
-            >
-              {MODES.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </Select>
+            <ModeSelect id="tasks-edit-mode" value={mode} onChange={setMode} />
           </label>
         </div>
       </div>

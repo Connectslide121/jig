@@ -37,6 +37,7 @@ import {
   openRun,
   type PermissionMode,
   parseNewTasks,
+  parsePermissionMode,
   parseQueueProvider,
   parseReport,
   parseTaskEdits,
@@ -554,7 +555,11 @@ export async function add(
 ): Promise<Queue> {
   const projectId = await projectArg(api, args?.projectId);
   return change(api, projectId, async (q) => {
-    const added = addTasks(q, args.prompts, { ...args, projectId });
+    const added = addTasks(q, args.prompts, {
+      ...args,
+      projectId,
+      permissionMode: parsePermissionMode(args.permissionMode),
+    });
     checkProviderChoices(
       added,
       added.tasks.slice(q.tasks.length).map((t) => t.id),
@@ -595,7 +600,7 @@ export async function update(
       attachments: attachments.length ? attachments : undefined,
       title: args.title?.trim() || (args.prompt !== undefined ? titleFor(prompt, attachments) : task.title),
       newChat: args.newChat ?? task.newChat,
-      permissionMode: args.permissionMode ?? task.permissionMode,
+      permissionMode: parsePermissionMode(args.permissionMode) ?? task.permissionMode,
     });
     checkProviderChoices(next, [task.id]);
     return [next, undefined];

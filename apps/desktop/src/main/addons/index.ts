@@ -170,6 +170,7 @@ export async function startAddons(): Promise<void> {
         ?.list()
         .find((a) => a.id === id)
         ?.manifest?.permissions.includes("chat"),
+    isBuiltin: (id) => service?.list().find((a) => a.id === id)?.source === "builtin",
     create: (input) => createChat(input),
     chatGptReady: async () =>
       (await providerStatus().catch(() => [])).some((p) => p.provider === "chatgpt" && p.ready),

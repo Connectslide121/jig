@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
 import type { ChatItem, SessionMeta } from "../../shared/engine";
-import { addonContext, addonDataTools, addonTools, paramsShape, toolText } from "./claudeTools";
+import { addonContext, addonDataTools, addonTools, addsDontAsk, paramsShape, toolText } from "./claudeTools";
 
 const meta = { id: "s1", cwd: "/repo", projectId: "p1" } as SessionMeta;
 
@@ -156,6 +156,11 @@ describe("add-on tools for Claude", () => {
     await set({ running: false, x: 1 });
     await set({ running: false, x: 2 });
     expect(store.queue).toEqual({ running: false, x: 2 });
+    // Never a new "Don't ask" (D-363): refused, nothing saved.
+    await expect(
+      set({ running: false, tasks: [{ id: "t1", permissionMode: "bypassPermissions" }] }),
+    ).rejects.toThrow(/Only the user can set "Don't ask"/);
+    expect(store.queue).toEqual({ running: false, x: 2 });
     // Another chat's read doesn't count for this one.
     await expect(set({ x: 3 }, { ...meta, id: "s2" } as SessionMeta)).rejects.toThrow(/Read "queue"/);
   });
@@ -195,5 +200,24 @@ describe("add-ons' context for each turn", () => {
     });
     // An add-on without contributes.context isn't asked.
     expect(calls.some((c) => (c as { id: string }).id === "releases")).toBe(false);
+  });
+});
+
+describe("Don't ask through add-on data (D-363)", () => {
+  const queue = (...modes: Array<string | undefined>) => ({
+    tasks: modes.map((permissionMode, i) => ({
+      id: `t${i + 1}`,
+      ...(permissionMode ? { permissionMode } : {}),
+    })),
+  });
+  it("lets a change keep the user's Don't ask tasks, never add one", () => {
+    const mine = queue("acceptEdits", "bypassPermissions");
+    expect(addsDontAsk(mine, { ...mine, running: true })).toBe(false);
+    // Reordered: still the same task that has it.
+    expect(addsDontAsk(mine, { tasks: [...mine.tasks].reverse() })).toBe(false);
+    expect(addsDontAsk(mine, queue("bypassPermissions", "acceptEdits"))).toBe(true);
+    expect(addsDontAsk(undefined, queue("bypassPermissions"))).toBe(true);
+    expect(addsDontAsk(undefined, { permissionMode: "bypassPermissions" })).toBe(true);
+    expect(addsDontAsk(mine, queue("plan"))).toBe(false);
   });
 });

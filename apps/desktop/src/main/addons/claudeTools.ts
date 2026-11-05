@@ -45,6 +45,30 @@ export function toolText(value: unknown): string {
 }
 
 /** The enabled add-ons' tools for the `jig` MCP server. */
+/**
+ * Where a value asks for "Don't ask" (`permissionMode: "bypassPermissions"`): the `id` of the object
+ * that says it (else its path), so a change can be checked for new ones.
+ */
+function dontAskPlaces(value: unknown, path = "", out: string[] = []): string[] {
+  if (Array.isArray(value)) {
+    for (const [i, v] of value.entries()) dontAskPlaces(v, `${path}[${i}]`, out);
+  } else if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    if (o.permissionMode === "bypassPermissions") out.push(typeof o.id === "string" ? `#${o.id}` : path);
+    for (const [k, v] of Object.entries(o)) dontAskPlaces(v, `${path}.${k}`, out);
+  }
+  return out;
+}
+
+/**
+ * Claude may not grant "Don't ask" through an add-on's data (D-363): only you pick it, in the add-on's
+ * own dialog. A value may keep the ones already there, never add one.
+ */
+export function addsDontAsk(before: unknown, after: unknown): boolean {
+  const had = new Set(dontAskPlaces(before));
+  return dontAskPlaces(after).some((place) => !had.has(place));
+}
+
 export function addonTools(
   addons: AddonInfo[],
   call: (id: string, method: string, args: unknown) => Promise<unknown>,
@@ -240,6 +264,10 @@ export function addonDataTools(deps: AddonDataDeps): JigTool[] {
         if (args.value === undefined) throw new Error("Give a value (use jig_delete_addon_data to delete)");
         const before = await deps.all(a.id);
         checkFresh(meta.id, a, key, before);
+        if (addsDontAsk(before[key], args.value))
+          throw new Error(
+            `Only the user can set "Don't ask" (bypassPermissions), in ${a.name}'s own dialog; leave permissionMode as it is`,
+          );
         await deps.set(a.id, key, args.value);
         remember(meta.id, a.id, key, args.value);
         deps.changed(a.id, key);

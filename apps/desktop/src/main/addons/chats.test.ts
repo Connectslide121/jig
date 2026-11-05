@@ -29,10 +29,11 @@ const snap = (over: Partial<SessionMeta> = {}): SessionSnapshot => ({
   queue: [{ id: "q", text: "later" }],
 });
 
-function setup(permitted = true, chatGptReady = true) {
+function setup(permitted = true, chatGptReady = true, builtin = true) {
   const deps = {
     chatGptReady: vi.fn(async () => chatGptReady),
     hasPermission: vi.fn(() => permitted),
+    isBuiltin: vi.fn(() => builtin),
     create: vi.fn(async (input: { title?: string }) => meta({ id: "new", title: input.title ?? "New chat" })),
     send: vi.fn(async () => {}),
     sendFrom: vi.fn(async () => {}),
@@ -147,12 +148,32 @@ describe("addonChats", () => {
     expect(deps.send).toHaveBeenCalledWith("s1", "look", [{ ...file, path: "/att/s1/a.png" }]);
   });
 
-  it("refuses empty text and bypassing permissions", async () => {
+  it("refuses empty text and unknown permission modes", async () => {
     const { chats } = setup();
     await expect(chats.send("tasks", { text: "  " })).rejects.toThrow(/Nothing/);
+    await expect(chats.send("tasks", { text: "x", permissionMode: "yolo" as never })).rejects.toThrow(
+      /Unknown permission mode/,
+    );
+  });
+
+  it("starts a Don't ask chat only for the built-in Tasks add-on (D-363)", async () => {
+    const { chats, deps } = setup();
+    await chats.send("tasks", { text: "x", permissionMode: "bypassPermissions" });
+    expect(deps.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ permissionMode: "bypassPermissions" }),
+    );
+    // Another add-on with the chat permission is refused, and nothing starts.
+    deps.create.mockClear();
+    await expect(chats.send("notes", { text: "x", permissionMode: "bypassPermissions" })).rejects.toThrow(
+      /Only the built-in Tasks add-on/,
+    );
+    // So is one of yours that takes the id "tasks".
+    const yours = setup(true, true, false);
     await expect(
-      chats.send("tasks", { text: "x", permissionMode: "bypassPermissions" as never }),
-    ).rejects.toThrow(/permission mode/);
+      yours.chats.create("tasks", { projectId: "p1", permissionMode: "bypassPermissions" }),
+    ).rejects.toThrow(/Only the built-in Tasks add-on/);
+    expect(deps.create).not.toHaveBeenCalled();
+    expect(yours.deps.create).not.toHaveBeenCalled();
   });
 
   it("starts a new chat on the provider and model asked for (D-330)", async () => {

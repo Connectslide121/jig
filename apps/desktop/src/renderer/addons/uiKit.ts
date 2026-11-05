@@ -4,6 +4,7 @@
  */
 
 export { isImagePath } from "@jig/sdk";
+export { PERMISSION_MODE_LABELS } from "../../shared/engine";
 export { useImageFile } from "../features/files/images";
 /**
  * A person as a fixed-size round avatar: their Microsoft profile picture when Jig can get it (the

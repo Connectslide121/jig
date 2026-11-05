@@ -16,6 +16,8 @@ import { JigError } from "../../shared/ipc";
  */
 export interface ChatsDeps {
   hasPermission(addonId: string): boolean;
+  /** Whether the add-on is the one Jig ships (not one of yours, nor yours overriding it). */
+  isBuiltin(addonId: string): boolean;
   create(input: {
     projectId?: string;
     cwd?: string;
@@ -40,6 +42,12 @@ export interface ChatsDeps {
 }
 
 const MODES = new Set(["default", "acceptEdits", "plan"]);
+/**
+ * The add-ons that may start a chat in "Don't ask" (bypassPermissions, D-363): only the built-in Tasks
+ * add-on, for a task you set to Don't ask yourself in its dialog. Any other add-on, and one of yours that
+ * takes the id "tasks", is refused: a chat that asks nothing runs whatever its prompt says.
+ */
+const BYPASS_ADDONS = new Set(["tasks"]);
 /** An add-on names providers as people do; Codex chats run on ChatGPT. */
 const PROVIDERS: Record<string, ChatProvider> = { claude: "claude", chatgpt: "codex" };
 /** A model alias (`opus`, `sol`) or an exact id (`claude-opus-5-5[1m]`, `gpt-6.1-sol`). */
@@ -113,7 +121,13 @@ export function addonChats(deps: ChatsDeps) {
   };
 
   const create = async (addonId: string, input: Omit<AddonChatSend, "text" | "sessionId">) => {
-    if (input?.permissionMode && !MODES.has(input.permissionMode))
+    if (input?.permissionMode === "bypassPermissions") {
+      if (!BYPASS_ADDONS.has(addonId) || !deps.isBuiltin(addonId))
+        throw new JigError(
+          "permission",
+          `Only the built-in Tasks add-on may start a chat in Don't ask (bypassPermissions) mode`,
+        );
+    } else if (input?.permissionMode && !MODES.has(input.permissionMode))
       throw new JigError("invalid_args", `Unknown permission mode ${input.permissionMode}`);
     // Who runs it (D-330): checked here, the host process isn't trusted.
     const provider = input?.provider === undefined ? undefined : PROVIDERS[String(input.provider)];

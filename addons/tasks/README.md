@@ -9,7 +9,13 @@ went, so you read the results as a table instead of scrolling one long chat.
   the batch Permissions control beside Cancel/Add in the footer (D-194). The next tasks
   ("Then, in this chat…") continue it, in order; **New chat with tasks**
   adds another chat. Each chat has its project; the permissions (Accept file edits by default, so the
-  queue doesn't stop at every edit; Ask before edits; Plan only) are for all of them. A task's ⋯:
+  queue doesn't stop at every edit; Ask before edits; Plan only; Don't ask, in red, D-363) are for all
+  of them. **Don't ask** runs the task's chat in `bypassPermissions`: nothing asks, so pick it only
+  for a task you trust to run unattended. On Claude it still stops on Claude Code's own safety checks
+  (e.g. "Dangerous rm operation on critical path"), which wait a minute for you and are then declined
+  (D-336); on ChatGPT Codex runs without its sandbox and never asks (D-334). Only you can pick it, in
+  Add tasks or Edit: Claude's `addon_tasks_add`/`addon_tasks_edit` take no mode, `jig_set_addon_data`
+  refuses to add it, and main lets only this built-in add-on start a chat in it. A task's ⋯:
   Start a new chat from here, Move up/down, Remove; a chat's ⋯: Continue the chat before, Move
   up/down, Remove. Pasting a list (`-`, `1.`, `[ ]` …) into an empty task makes one task per item.
   ⋯ → Edit on a queued task changes its prompt, files, whether it continues the chat before, and

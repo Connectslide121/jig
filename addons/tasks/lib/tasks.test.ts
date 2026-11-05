@@ -38,6 +38,7 @@ import {
   nudgeText,
   openRun,
   parseNewTasks,
+  parsePermissionMode,
   parsePrompts,
   parseQueueProvider,
   parseReport,
@@ -1185,5 +1186,18 @@ describe("marking a task done by hand (D-356)", () => {
     const q = markDone(ended({}), "t1");
     expect(canRevise(q.tasks[0]!)).toBe(true);
     expect(listing(q)).toContain("[Done, marked done by the user]");
+  });
+});
+
+describe("permission modes (D-363)", () => {
+  it("takes Don't ask from the dialogs, and nothing unknown", () => {
+    expect(parsePermissionMode("bypassPermissions")).toBe("bypassPermissions");
+    expect(parsePermissionMode("plan")).toBe("plan");
+    expect(parsePermissionMode(undefined)).toBeUndefined();
+    expect(() => parsePermissionMode("yolo")).toThrow(/Unknown permission mode/);
+  });
+  it("never lets Claude's add tool pick a mode", () => {
+    const [task] = parseNewTasks([{ prompt: "x", permissionMode: "bypassPermissions" }]);
+    expect(task).not.toHaveProperty("permissionMode");
   });
 });

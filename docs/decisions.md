@@ -1878,7 +1878,7 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   again in main): add-ons can start and follow chats. Main tells the add-on that created, sent to or
   asked about a chat when its status changes (host export `chatChanged`); this is in memory, so the
   add-on catches up with `get` (Tasks: a watcher every minute). `bypassPermissions` can't be asked
-  for. `ctx.openChat({ sessionId })` opens an existing chat.
+  for (superseded for the built-in Tasks add-on by D-363). `ctx.openChat({ sessionId })` opens an existing chat.
 - New permission modes default to "Accept file edits" in the add dialog, so an unattended queue doesn't
   stop at every edit; commands still ask, and a task that needs you shows "Needs you" and notifies.
 
@@ -5758,3 +5758,28 @@ choice of Telegram and everything below: Claude, on my own.
   tasks). It removes through `withoutTasks`, the helper moves use, so when the first task of a chat
   goes, the next task of that chat starts the chat (the tab used to drop the task alone, which left
   the next one continuing whatever chat came before).
+
+## D-363: Tasks: a queued task can run in Don't ask (bypassPermissions)
+
+- Status: accepted. **Supersedes** D-182's line "`bypassPermissions` can't be asked for" (for the
+  Tasks add-on only; every other add-on still can't).
+- **Who:** Jon, 2026-11-05: in Add tasks and Edit, the Permissions select offered only Accept file
+  edits, Ask before edits and Plan only, and he wanted Don't ask too. The reason the line can go: Jon
+  chooses it himself, per task, in the dialog, as he would for a chat in its mode menu; an unattended
+  queue that stops at every command defeats the queue. The gate and the guards below are Claude, on
+  my own.
+- **What:** the add and edit dialogs' select ends with **Don't ask** (the chats' label,
+  `PERMISSION_MODE_LABELS`, now in `@jig/sdk/ui`), red like the chats' mode menu; the select keeps its
+  width. The default stays Accept file edits. Rows and details show "don't ask". Both providers offer
+  it: Codex runs it without a sandbox and never asks (D-334); Claude Code still stops on its own
+  safety checks (D-336).
+- **The narrowest gate in main:** `api.chats` (`main/addons/chats.ts`) accepts `bypassPermissions`
+  only from the built-in Tasks add-on (`BYPASS_ADDONS` and `isBuiltin`: a user add-on that takes the
+  id "tasks" is refused too). Not a manifest permission any add-on could declare: a chat that asks
+  nothing runs whatever its prompt says, and builder-made add-ons can send prompts.
+- **Only you pick it:** Claude's `addon_tasks_add` and `addon_tasks_edit` take no permission mode;
+  `jig_set_addon_data` refuses a value that adds a `permissionMode: "bypassPermissions"` anywhere in an
+  add-on's data (`addsDontAsk`; it may keep the ones already there, matched by the object's `id`). The
+  Tasks host checks the mode the view sends (`parsePermissionMode`). Requests reviewed from other
+  add-ons (`addReviewed`) stay Plan only.
+

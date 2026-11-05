@@ -5,7 +5,8 @@
 
 export type Outcome = "done" | "partial" | "failed" | "blocked";
 export type TaskStatus = "queued" | "running" | "needs_you" | Outcome | "no_report" | "error" | "skipped";
-export type PermissionMode = "default" | "acceptEdits" | "plan";
+/** How a task's chat asks before changes; "bypassPermissions" (Don't ask) only when you pick it (D-363). */
+export type PermissionMode = "default" | "acceptEdits" | "plan" | "bypassPermissions";
 /** Who runs a task's chat (D-330): Claude Code, or ChatGPT through Codex. */
 export type TaskProvider = "claude" | "chatgpt";
 /** Why a task's chat waits for you: the kind of card pending in it. */
@@ -145,6 +146,17 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
   error: "Error",
   skipped: "Skipped",
 };
+
+/** The modes a task can run in; "bypassPermissions" comes only from your choice in a dialog (D-363). */
+export const PERMISSION_MODES: PermissionMode[] = ["acceptEdits", "default", "plan", "bypassPermissions"];
+
+/** A permission mode the view sent, checked: undefined for none, else one of `PERMISSION_MODES`. */
+export function parsePermissionMode(value: unknown): PermissionMode | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!PERMISSION_MODES.includes(value as PermissionMode))
+    throw new Error(`Unknown permission mode ${value}`);
+  return value as PermissionMode;
+}
 
 export const emptyQueue = (): Queue => ({ tasks: [], running: false, stopOnFailure: true, seq: 0 });
 

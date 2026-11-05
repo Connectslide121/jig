@@ -450,8 +450,12 @@ export interface AddonChatSend {
   projectId?: string;
   cwd?: string;
   title?: string;
-  /** For a new chat; never bypasses permissions. Default: the project's (or Jig's) default. */
-  permissionMode?: "default" | "acceptEdits" | "plan";
+  /**
+   * For a new chat. Default: the project's (or Jig's) default. "bypassPermissions" (Don't ask) is
+   * refused except for the built-in Tasks add-on, which passes it only for a task you set to Don't ask
+   * yourself (D-363).
+   */
+  permissionMode?: "default" | "acceptEdits" | "plan" | "bypassPermissions";
   /**
    * For a new chat only (D-330): who runs it. Default: the project's provider, else Jig's. Only you hand
    * a started chat over to the other provider (D-339), so with `sessionId` it is refused. "chatgpt" fails while ChatGPT isn't
