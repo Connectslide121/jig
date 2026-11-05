@@ -3060,7 +3060,8 @@ default because shell commands kept failing; he left both to Claude. **Claude, o
   language come from language servers run by the main process, as Copilot's now is (backlog).
 - **The failing commands were Claude's Bash tool**, not Jig's terminal: long heredocs with quotes and
   backslashes broke in Git Bash. Jig's terminal default is unrelated and stays. On Windows, Jig's
-  context now tells Claude to write long scripts to a file and run that instead.
+  context now tells Claude to write long scripts to a file and run that instead (replaced by D-360:
+  edit files with the Edit tool, not shell scripts).
 
 ## D-258: Tests run when releasing, not after each change
 
@@ -5691,3 +5692,22 @@ choice of Telegram and everything below: Claude, on my own.
   it shows live there, with its toast and history.
 - **Finished runs are found by id** for 20 runs while Jig runs (with their output); after a restart
   `wait` says the id is unknown and points at `list`, which shows each suite's last result.
+
+## D-360: Claude changes files with its edit tool, never through the shell
+
+- Status: accepted. Supersedes the Windows scripts line of D-257.
+- **Who:** Jon, 2026-11-05. In the last 40 chats Claude edited files about 360 times through the shell
+  (158 Python string-replace scripts in heredocs, 106 `sed -i`, 99 `cat > file <<EOF`) and only 73
+  times with the Edit tool. TypeScript inside a Python string inside a bash heredoc goes through three
+  escaping layers, and `\n`, quotes and `$` change silently: Python turned a `\n` inside a TS string
+  literal into a real newline and broke a spec. Claude Code's own "Don't ask" prompt suggests "sed,
+  heredocs, or short scripts", and D-257's Windows line fixed shell quoting but kept code inside Python
+  string literals and never mentioned Edit. The wording below is Claude, on my own.
+- **The rule, on every platform** (`fileEditGuidance` in `main/engine/jigTools.ts`, part of
+  `jigContext`): change files with the Edit tool, or Write for new ones; don't edit code through the
+  shell, even when commands run without asking; a scripted change across many files is a script file
+  that reads its replacement text from files, not string literals.
+- **Per provider:** Codex chats get the same `jigContext`, so their wording names `apply_patch`, Codex's
+  own edit tool, instead of Edit/Write.
+- **Windows only:** run Python with `-X utf8` (it prints as cp1252 and crashes on characters like ✅;
+  `-I` ignores `PYTHONIOENCODING`), and in Windows PowerShell 5.1 chain with `;` or `if ($?)`, not `&&`.

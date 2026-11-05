@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SessionMeta } from "../../shared/engine";
 import { findChatTool, isReadOnlyChatTool, toolHandlersOf } from "./chatTools";
-import { jigToolServer, setAddonTools } from "./jigTools";
+import { fileEditGuidance, jigContext, jigToolServer, setAddonTools } from "./jigTools";
 import { sdkMcpServers } from "./sdkMcp";
 
 const meta = { id: "s1", cwd: "/repo" } as SessionMeta;
@@ -50,5 +50,33 @@ describe("the jig MCP server", () => {
     expect(await toolHandlersOf(servers).addon_shop_list!({})).toBe("listed");
     expect(seen?.id).toBe("s1");
     setAddonTools([]);
+  });
+});
+
+describe("jigContext's file editing rule (D-360)", () => {
+  it("steers Claude to Edit/Write and away from shell edits, on every platform", () => {
+    const text = jigContext(meta, undefined);
+    expect(text).toContain(fileEditGuidance(true, process.platform));
+    for (const platform of ["linux", "darwin", "win32"] as const) {
+      const rule = fileEditGuidance(true, platform);
+      expect(rule).toContain("Change files with the Edit tool");
+      expect(rule).toContain("`sed -i`");
+      expect(rule).toContain("`\\n`, quotes and `$` changed silently");
+      expect(rule).toContain("read the replacement text from files");
+    }
+  });
+
+  it("names apply_patch for Codex chats", () => {
+    const text = jigContext({ ...meta, provider: "codex" } as SessionMeta, undefined);
+    expect(text).toContain(fileEditGuidance(false, process.platform));
+    expect(fileEditGuidance(false, "linux")).toContain("Change files with apply_patch");
+    expect(fileEditGuidance(false, "linux")).not.toContain("Edit tool");
+  });
+
+  it("adds the Python and PowerShell specifics only on Windows", () => {
+    expect(fileEditGuidance(true, "win32")).toContain("`-X utf8`");
+    expect(fileEditGuidance(true, "win32")).toContain("not `&&`");
+    expect(fileEditGuidance(true, "linux")).not.toContain("-X utf8");
+    expect(jigContext(meta, undefined)).not.toContain("pass long scripts inline");
   });
 });
