@@ -46,7 +46,7 @@ npm run build          # production build into apps/desktop/dist
 npm start              # run the production build
 npm run verify         # typecheck + lint + design-token check (no tests) — run before every commit
 npm run check          # verify + unit tests — when releasing
-npm run e2e:changed    # the e2e specs a change needs — before committing a change to the app or a spec (D-331)
+npm run e2e:changed    # the e2e specs a change needs since the last passing e2e run (else uncommitted only) — before committing a change to the app or a spec (D-331, D-357); -- --since origin/main for the old base, -- --list to only print the choice
 npm run e2e            # the whole e2e suite in parallel (~4-5 min): only when releasing (Linux: xvfb-run); a full pass on a clean checkout is recorded, and the release skips the suite when only the version changed since
 npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
 JIG_ENGINE=fake npm run dev   # use the scripted fake engine instead of Claude Code

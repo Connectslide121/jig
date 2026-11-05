@@ -98,3 +98,35 @@ export function selectSpecs(
   for (const spec of rules.always) pick(spec, "always");
   return { specs: Object.keys(reasons).sort(), reasons, unmapped };
 }
+
+/** A recorded e2e pass: the source it ran on (a commit or a working-tree snapshot) and when. */
+export interface E2ePass {
+  /** A commit or tree object git can diff against. */
+  ref: string;
+  /** ISO time of the pass. */
+  at: string;
+  /** Which command passed: the whole suite or e2e:changed. */
+  by: "e2e" | "e2e:changed";
+}
+
+/** What e2e:changed compares the working tree against. */
+export type E2eBase =
+  | { kind: "since"; ref: string }
+  | ({ kind: "passed" } & E2ePass)
+  | { kind: "head"; ref: "HEAD" };
+
+/**
+ * The base e2e:changed diffs against (D-357): `--since <ref>` when given; otherwise the newest
+ * recorded pass whose source git still has (`exists`); otherwise HEAD, so only uncommitted changes count.
+ */
+export function chooseBase(
+  since: string | undefined,
+  passes: Array<E2ePass | undefined>,
+  exists: (ref: string) => boolean,
+): E2eBase {
+  if (since) return { kind: "since", ref: since };
+  const newest = passes
+    .filter((p): p is E2ePass => !!p && !!p.ref && !Number.isNaN(Date.parse(p.at)) && exists(p.ref))
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+  return newest ? { kind: "passed", ...newest } : { kind: "head", ref: "HEAD" };
+}

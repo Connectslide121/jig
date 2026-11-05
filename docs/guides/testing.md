@@ -18,8 +18,14 @@ else when Jon asks.
 **Two ways to run them (D-242).**
 
 - `npm run e2e:changed` before committing a change: only the specs it needs, usually well under a minute. The
-  changed files are your uncommitted ones plus commits not yet pushed (`-- --since <ref>` for another
-  base; `-- --list` prints the choice without running). `scripts/e2e-select.ts` picks specs by the
+  changed files are those that differ from the source the last passing run tested (D-357): a
+  passing `e2e:changed` records the working tree it ran on (untracked files included) in
+  `.jig-e2e-changed.json`, a passing whole suite its commit in `.jig-e2e-passed.json`, and the newer
+  one is the base; with neither, only your uncommitted changes count. So a commit that touched a
+  file every spec depends on doesn't pull the whole suite into every later run of the session. It
+  prints the base it used. `-- --since <ref>` diffs from a ref instead (`-- --since origin/main`:
+  everything not yet pushed, the old behaviour); `-- --list` prints the choice without running or
+  recording. `scripts/e2e-select.ts` picks specs by the
   rules in `e2e/affected.json` (source folders → specs), by the `data-testid`s a changed view renders
   that a spec uses, and changed specs themselves; `smoke.spec.ts` always runs. Docs and unit tests run
   nothing; fixtures, the Playwright config, the preload and the IPC router run everything; a file no

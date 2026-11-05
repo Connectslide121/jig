@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AffectedRules, selectSpecs, testIds } from "./e2e-select";
+import { type AffectedRules, chooseBase, type E2ePass, selectSpecs, testIds } from "./e2e-select";
 
 const root = new URL("..", import.meta.url);
 const rules = JSON.parse(readFileSync(new URL("e2e/affected.json", root), "utf8")) as AffectedRules;
@@ -88,5 +88,37 @@ describe("e2e/affected.json", () => {
   it("has no globs that match nothing (a renamed folder would silently stop picking its specs)", () => {
     const globs = [...rules.all, ...rules.rules.flatMap((r) => r.files)];
     expect(globs.filter((g) => !tracked.some((f) => matchesGlob(f, g)))).toEqual([]);
+  });
+});
+
+describe("e2e:changed base", () => {
+  const full: E2ePass = { ref: "a".repeat(40), at: "2026-11-05T08:00:00.000Z", by: "e2e" };
+  const changed: E2ePass = { ref: "b".repeat(40), at: "2026-11-05T09:00:00.000Z", by: "e2e:changed" };
+  const all = () => true;
+
+  it("uses --since when given, whatever passed", () => {
+    expect(chooseBase("origin/main", [full, changed], all)).toEqual({ kind: "since", ref: "origin/main" });
+  });
+
+  it("uses the newest recorded pass of either command", () => {
+    expect(chooseBase(undefined, [full, changed], all)).toEqual({ kind: "passed", ...changed });
+    const later = { ...full, at: "2026-11-05T10:00:00.000Z" };
+    expect(chooseBase(undefined, [later, changed], all)).toEqual({ kind: "passed", ...later });
+  });
+
+  it("skips passes git no longer has, and broken records", () => {
+    expect(chooseBase(undefined, [full, changed], (ref) => ref === full.ref)).toEqual({
+      kind: "passed",
+      ...full,
+    });
+    expect(chooseBase(undefined, [{ ...changed, at: "never" }, undefined], all)).toEqual({
+      kind: "head",
+      ref: "HEAD",
+    });
+  });
+
+  it("falls back to HEAD (uncommitted changes only) when nothing passed", () => {
+    expect(chooseBase(undefined, [undefined, undefined], all)).toEqual({ kind: "head", ref: "HEAD" });
+    expect(chooseBase("", [], all)).toEqual({ kind: "head", ref: "HEAD" });
   });
 });

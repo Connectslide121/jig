@@ -9,6 +9,7 @@ playwright-report/
 .jig-test-home*/
 .jig-e2e-passed.json
 .jig-e2e-failed.json
+.jig-e2e-changed.json
 .DS_Store
 .azure-local/
 .tmp/

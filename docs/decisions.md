@@ -5616,3 +5616,25 @@ choice of Telegram and everything below: Claude, on my own.
   moves.
 - **Gap:** only tasks still in the queue; one only in History can't be marked.
 
+
+## D-357: e2e:changed diffs against the last passing run, not origin/main
+
+- Status: accepted. Refines D-331.
+- **Who:** Jon, 2026-11-05: he works on main and doesn't push during a session, so "uncommitted +
+  since origin/main" counted every unpushed commit; once one touched a broad file (e.g.
+  `apps/desktop/src/main/index.ts`) every later run picked the whole suite (~8 min) even for a
+  one-file change. He wants the specs the change being committed needs: the uncommitted changes plus
+  what changed since the last passing e2e:changed or full e2e run, else uncommitted only, with an
+  option for the old base, and the base printed. Details below are Claude, on my own.
+- **Base (`chooseBase` in `scripts/e2e-select.ts`, unit-tested):** `--since <ref>` when given
+  (diffed from its merge-base with HEAD, like before); otherwise the newer of the last passing
+  e2e:changed and the last passing whole suite whose source git still has; otherwise HEAD.
+- **A pass records the working tree, not HEAD:** `e2e:changed` usually runs on uncommitted changes
+  that are committed right after, so recording HEAD would count that commit again in the next run.
+  It writes the working tree as a tree object through a scratch index (`git add -A` + `write-tree`
+  with `GIT_INDEX_FILE`; the real index is untouched, ignored files left out) to
+  `.jig-e2e-changed.json` (git-ignored, beside D-272's `.jig-e2e-passed.json`), and diffs that tree
+  against a snapshot of the current one, so untracked files count too. Recorded when the run passes or
+  needs no specs; never with `--list`; a failed run leaves the older record.
+- **Gap:** an unreferenced snapshot tree can be pruned by `git gc` after a couple of weeks; the run
+  then falls back to the full-suite pass or HEAD.
