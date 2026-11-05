@@ -893,7 +893,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.14.0 being prepared (2026-11-05): Jig 0.14.0 adds Microsoft Teams as a phone channel (set up in Settings → Phone), a choice of how far the bottom panel reaches, chats that resume by themselves when a plan limit resets, and never steals focus while you type; Meetings captions and translation are more reliable. Publication not yet verified.
+Jig 0.14.0 published (2026-11-05): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.14.0),
+source/tag `c95fd9ba9a8c705a77c44552f566ffb07d98d9f0`. Installer: 389,205,722 bytes;
+SHA-256 `0c5dfdf2c2a0bab77f2cad3def4ad6445b0721a1f187084f5a8ed6ccb092054f`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.14.0 with its feed and installer. In 0.14.0: Jig 0.14.0 adds Microsoft Teams as a phone channel (set up in Settings → Phone), a choice of how far the bottom panel reaches, chats that resume by themselves when a plan limit resets, and never steals focus while you type; Meetings captions and translation are more reliable.
 
 Jig 0.13.0 published (2026-11-05): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.13.0),
 source/tag `58188007d8611b7a9c5bc8ddbc845a09cab0d53e`. Installer: 389,020,068 bytes;
