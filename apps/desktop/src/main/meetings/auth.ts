@@ -14,6 +14,8 @@ import {
   type MeetingChatMessage,
   needsDirectory,
   oneOnOneChatIds,
+  SELF_CHAT_ID,
+  selfChat,
   TEAMS_CHAT_ID,
   type TeamsChatSummary,
   toChatMessages,
@@ -371,7 +373,10 @@ export class MeetingAuth {
       chats = previews.map((c) => ({ ...c, members: byId.get(c.id) ?? [] }));
     }
     // Pinned chats older than the newest 50 are read one by one, so the Pinned section has them.
-    const missing = pins.filter((id) => !chats.some((c) => c.id === id)).slice(0, PINNED_EXTRA);
+    // So is your chat with yourself, which /me/chats never lists (D-385).
+    const missing = [SELF_CHAT_ID, ...pins.filter((id) => id !== SELF_CHAT_ID)]
+      .filter((id) => !chats.some((c) => c.id === id))
+      .slice(0, PINNED_EXTRA + 1);
     const extra = await Promise.all(missing.map((id) => this.chat(id).catch(() => undefined)));
     chats = [...chats, ...extra.filter((c): c is GraphChat => Boolean(c))];
     const self = this.account?.localAccountId;
@@ -388,6 +393,7 @@ export class MeetingAuth {
    * counts as read up to its last message (it's older than your 50 newest chats).
    */
   private async chat(chatId: string): Promise<GraphChat> {
+    if (chatId === SELF_CHAT_ID) return this.selfChat();
     const path = `/chats/${encodeURIComponent(chatId)}`;
     let r = await this.chatFetch(`${path}?$expand=members,lastMessagePreview`);
     if (!r.ok && r.status !== 401 && r.status !== 403 && r.status !== 404)
@@ -396,6 +402,18 @@ export class MeetingAuth {
     const chat = (await r.json()) as GraphChat;
     const last = chat.lastMessagePreview?.createdDateTime;
     return { ...chat, viewpoint: { lastMessageReadDateTime: last ?? chat.lastUpdatedDateTime ?? null } };
+  }
+  /**
+   * Your chat with yourself (D-385): Graph answers 400 for `/chats/48:notes` itself, so it is built
+   * from you and its newest messages (Graph lists them newest first).
+   */
+  private async selfChat(): Promise<GraphChat> {
+    const self = this.account?.localAccountId;
+    if (!self) throw chatError(401);
+    const r = await this.chatFetch(`/chats/${encodeURIComponent(SELF_CHAT_ID)}/messages?$top=5`);
+    if (!r.ok) throw chatError(r.status);
+    const { value } = (await r.json()) as { value: GraphChatMessage[] };
+    return selfChat(self, this.displayName?.trim() || this.name || "", value);
   }
   /**
    * A chat for `jig_teams_chat_read` (D-333): its name, kind and members, and up to `limit` messages

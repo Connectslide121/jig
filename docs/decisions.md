@@ -6527,3 +6527,24 @@ stopped for good.
   beside Caption translation, while ChatGPT is picked, that it's slower and Claude keeps up better.
   Claude stays the default provider for this feature.
 - Also: the stored caption schema keeps `source: "local"` (D-321), which a restart used to drop.
+
+## D-385: Your Teams chat with yourself (48:notes) in Chats, built from its messages
+
+- Status: accepted.
+- **Who:** Jon asked for it (2026-11-05): the Chats tab should list Jon's Teams self-chat, readable,
+  sendable and mentionable like other chats. How it's built is Claude, on my own.
+- **What Graph does (checked with Jon's own sign-in, Chat.Read + ChatMessage.Send, 2026-11-05).**
+  `/me/chats` never returns the self-chat: all 246 of Jon's chats over 6 pages, none with an id outside
+  `19:…`. `GET /chats/48:notes` (with or without `$expand`, and `/members`) answers 400 "Call made for
+  a thread which is not a ChatThread". `GET /chats/48:notes/messages` works (newest first, also with
+  `$orderby=lastModifiedDateTime desc` and a `$filter`, as `jig_teams_chat_read` pages), and
+  `POST /chats/48:notes/messages` sends (201).
+- **So Jig builds its row.** `TEAMS_CHAT_ID` accepts `48:notes` (`SELF_CHAT_ID`). `MeetingAuth.chats()`
+  always adds it like the pinned extras; `chat("48:notes")` reads its 5 newest messages and
+  `selfChat()` (`shared/meetingChat.ts`) turns them into a chat: you as its one member, the newest
+  message as the preview, read up to it (only you write there). When its messages can't be read it
+  gets no row. `toChatSummaries` names it "<your name> (You)" (just "You" without a name) as a
+  one-to-one chat whose "other person" is you, so the row has your picture and status and a search
+  for your own name finds it; it sorts by its last message like every chat.
+- Opening, sending, `@chat` and `jig_teams_chat_read` then work unchanged, since they go through the
+  messages endpoints. Avatar initials skip words that don't start with a letter ("(You)").

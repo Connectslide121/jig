@@ -36,6 +36,7 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [x] People's Teams status as a dot on their picture: chat list, open chat, People panel (D-329).
 - [ ] Verify colleagues' statuses match Teams after consenting to Presence.Read.All (D-329).
 - [x] Chats toolbar: search (loaded chats and Microsoft Search's messages), Unread/Chats/Meetings filters, New chat, Jig's own pins (D-332).
+- [x] Your Teams chat with yourself (48:notes) in Chats, built from its messages: Graph's chat list leaves it out (D-385).
 - [ ] Verify message search, filters and pins on real chats, and New chat once Chat.ReadWrite is approved (D-332).
 - [x] Mention a Teams chat in a Jig chat with `@chat`; Claude reads it with jig_teams_chat_read (D-333).
 - [ ] Verify @chat on a busy real chat in a Claude and a ChatGPT chat, paging back (D-333).

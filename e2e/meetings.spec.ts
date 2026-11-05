@@ -518,7 +518,7 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
       .getByRole("button", { name: "Chats", exact: true })
       .click();
     const rows = lobby.getByTestId("teams-chat");
-    await expect(rows).toHaveCount(9);
+    await expect(rows).toHaveCount(10);
     // Each person's Teams status on their picture (D-329); a group chat has none.
     await expect(rows.first().getByRole("img", { name: "Alex Contoso: Available" })).toBeVisible();
     await expect(rows.nth(1).getByTestId("presence")).toHaveCount(0);
@@ -534,6 +534,10 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     await expect(rows.nth(1)).toContainText("Portal planning");
     await expect(rows.nth(1)).toContainText("Sam Fabrikam: I added the sign-in flow to it.");
     await lobby.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/chats.png" });
+    // Your chat with yourself, which Graph's chat list leaves out: your name, picture and status.
+    const own = rows.filter({ hasText: "Riley Contoso (You)" });
+    await expect(own).toContainText("You: Send the Contoso quote on Friday.");
+    await expect(own.getByRole("img", { name: "Riley Contoso (You): Available" })).toBeVisible();
 
     // The whole row opens the chat; writing in it updates the list, and opening it counts as read.
     await rows.first().click();
@@ -544,8 +548,13 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     await expect(chat.getByTestId("meeting-chat")).toContainText("On it");
     await expect(rows.first()).toContainText("You: On it");
     await expect(rows.first()).not.toContainText("Unread");
+    await own.click();
+    await expect(chat.getByTestId("meeting-chat")).toContainText("Ideas for the Shop landing page");
+    await chat.getByTestId("meeting-chat-input").fill("Book the Fabrikam visit");
+    await chat.getByTestId("meeting-chat-send").click();
+    await expect(own).toContainText("You: Book the Fabrikam visit");
     // A picture and a file in a group chat (D-328).
-    await rows.nth(1).click();
+    await rows.filter({ hasText: "Portal planning" }).click();
     await expect(chat.getByTestId("chat-file")).toContainText("Shop spec.docx");
     await expect(chat.getByRole("button", { name: "Open picture" })).toBeVisible();
     await lobby.screenshot({
@@ -600,7 +609,7 @@ test("Meetings chats: search, filters, Jig's pins and New chat (D-332)", async (
       .getByRole("button", { name: "Chats", exact: true })
       .click();
     const rows = lobby.getByTestId("teams-chat");
-    await expect(rows).toHaveCount(9);
+    await expect(rows).toHaveCount(10);
     const toolbar = lobby.getByTestId("chats-toolbar");
     const list = lobby.getByTestId("teams-chats");
     const before = { toolbar: await toolbar.boundingBox(), list: await list.boundingBox() };
@@ -633,7 +642,7 @@ test("Meetings chats: search, filters, Jig's pins and New chat (D-332)", async (
     await filters.getByRole("button", { name: "Meetings", exact: true }).click();
     await expect(rows).toHaveCount(2);
     await filters.getByRole("button", { name: "Chats", exact: true }).click();
-    await expect(rows).toHaveCount(7);
+    await expect(rows).toHaveCount(8);
     await filters.getByRole("button", { name: "Unread", exact: true }).click();
     await expect(filters.getByRole("button", { name: "Unread", exact: true })).toHaveAttribute(
       "aria-pressed",
@@ -642,7 +651,7 @@ test("Meetings chats: search, filters, Jig's pins and New chat (D-332)", async (
     await expect(rows).toHaveCount(3);
     await lobby.screenshot({ animations: "disabled", path: `${shots}/chats-filter-narrow-dark.png` });
     await filters.getByRole("button", { name: "Unread", exact: true }).click();
-    await expect(rows).toHaveCount(9);
+    await expect(rows).toHaveCount(10);
     // The toolbar never moves the list.
     expect({ toolbar: await toolbar.boundingBox(), list: await list.boundingBox() }).toEqual(before);
 
@@ -656,7 +665,7 @@ test("Meetings chats: search, filters, Jig's pins and New chat (D-332)", async (
     await rows.filter({ hasText: "Portal planning" }).click({ button: "right" });
     await lobby.getByRole("menuitem", { name: /^Pin/ }).click();
     await expect(pinned.getByTestId("teams-chat")).toHaveText([/Kim Fabrikam/, /Portal planning/]);
-    await expect(rows).toHaveCount(9);
+    await expect(rows).toHaveCount(10);
     const pins = async () => {
       const result = await hostCall(lobby, "meetings.overview");
       return result.ok ? (result.value as MeetingOverview).chatPins : undefined;
@@ -697,7 +706,7 @@ test("Meetings chats: search, filters, Jig's pins and New chat (D-332)", async (
     const chat = lobby.getByRole("region", { name: "Chat" });
     await expect(chat.getByTestId("meeting-chat")).toContainText("Thanks for the review!");
     await expect(chat.getByTestId("meeting-chat")).toContainText("Lunch on Friday?");
-    await expect(rows).toHaveCount(9);
+    await expect(rows).toHaveCount(10);
 
     // More people make a group chat with its name.
     await lobby.getByTestId("new-chat").click();
@@ -714,7 +723,7 @@ test("Meetings chats: search, filters, Jig's pins and New chat (D-332)", async (
     await expect(dialog).toHaveCount(0);
     await expect(chat.getByRole("heading", { name: "Launch crew" })).toBeVisible();
     await expect(chat.getByTestId("meeting-chat")).toContainText("Welcome to the launch chat");
-    await expect(rows).toHaveCount(10);
+    await expect(rows).toHaveCount(11);
     await expect(rows.filter({ hasText: "Launch crew" })).toContainText("You: Welcome to the launch chat");
   } finally {
     await app.close();

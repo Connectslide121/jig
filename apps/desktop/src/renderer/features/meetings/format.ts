@@ -35,7 +35,9 @@ export function duration(fromIso: string, toIso: string): string {
 }
 
 export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  // Words only: "Riley Contoso (You)" is RC.
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const parts = words.some((w) => /^\p{L}/u.test(w)) ? words.filter((w) => /^\p{L}/u.test(w)) : words;
   if (!parts.length) return "?";
   return ((parts[0]![0] ?? "") + (parts.length > 1 ? (parts.at(-1)![0] ?? "") : "")).toUpperCase();
 }

@@ -324,6 +324,15 @@ answer should quote the right people and dates; ask about older messages to see 
 the same in a ChatGPT chat. After restarting Jig, a chat mentioned before should be mentioned again
 for Claude to read it.
 
+Your chat with yourself in Meetings → Chats (2026-11-05, D-385): the Teams chat you keep with
+yourself ("<your name> (You)") is in the Chats list, with your picture and status, sorted by its last
+message like any chat: open it, write in it, find it by your own name and mention it with `@chat` so
+Claude reads it. Microsoft's chat list leaves it out, so Jig builds its row from its newest messages;
+when those can't be read it has no row. Checked against Graph with a real sign-in (read and send work)
+and in the test meeting service; unit tests and the meetings e2e pass.
+**Check on your machine:** open Chats: your own chat shows with your latest note; send yourself a line
+from Jig and see it in Teams.
+
 Chats toolbar in Meetings (2026-11-04, D-332): the lobby's Chats list has a toolbar like Teams': a
 search that narrows your chats by name, people and last message as you type and, under them, the
 **Messages** Microsoft Search finds in all your chats; filter chips **Unread**, **Chats** and

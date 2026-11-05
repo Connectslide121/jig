@@ -22,6 +22,7 @@ import {
   type MeetingChatState,
   meetingChatId,
   mergeChat,
+  SELF_CHAT_ID,
   senderName,
   type TeamsChatSummary,
   toChatMessages,
@@ -85,9 +86,12 @@ const FAKE_PHOTOS: Record<string, string> = {
   sam: svgPhoto("#3f9d6b"),
   "alex@contoso.com": svgPhoto("#4a7bd0"),
   "00000000-0000-4000-8000-0000000005a3": svgPhoto("#3f9d6b"),
+  "00000000-0000-4000-8000-0000000000ee": svgPhoto("#7a5bc4"),
 };
 /** The test meeting service's own account id, and a few Teams chats to list, open and write in (D-296). */
 const FAKE_ME = "00000000-0000-4000-8000-0000000000ee";
+/** The test account's name, as its chat with itself shows it ("Riley Contoso (You)"). */
+const FAKE_ME_NAME = "Riley Contoso";
 const FAKE_ALEX = "00000000-0000-4000-8000-00000000a1e5";
 const FAKE_SAM = "00000000-0000-4000-8000-0000000005a3";
 const FAKE_ROBIN = "00000000-0000-4000-8000-0000000000b0";
@@ -103,6 +107,7 @@ const FAKE_PRESENCE: Record<string, TeamsPresence> = {
   [FAKE_KIM]: { availability: "DoNotDisturb", activity: "DoNotDisturb" },
   [FAKE_MORGAN]: { availability: "Offline", activity: "Offline" },
   [FAKE_ROBIN]: { availability: "Busy", activity: "InACall" },
+  [FAKE_ME]: { availability: "Available", activity: "Available" },
 };
 /**
  * A message as Graph sends it. `name` "" is a sender Graph leaves nameless (a guest or someone from
@@ -177,6 +182,14 @@ function fakeChatData() {
         fakeMessage("a1", FAKE_ME, "", ago(70), "Is the Shop API spec ready?"),
         fakeMessage("a1b", FAKE_ALEX, "", ago(14), "Nearly."),
         fakeMessage("a2", FAKE_ALEX, "", ago(12), "Almost: can you look at the error codes?"),
+      ],
+    },
+    // Your chat with yourself, which Graph's chat list leaves out (D-385).
+    {
+      chat: { id: SELF_CHAT_ID, chatType: "oneOnOne", members: [person(FAKE_ME, FAKE_ME_NAME)] },
+      messages: [
+        fakeMessage("n1", FAKE_ME, FAKE_ME_NAME, ago(8 * 24 * 60), "Ideas for the Shop landing page"),
+        fakeMessage("n2", FAKE_ME, FAKE_ME_NAME, ago(5 * 24 * 60 + 360), "Send the Contoso quote on Friday."),
       ],
     },
     {

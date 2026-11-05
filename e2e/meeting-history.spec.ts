@@ -207,6 +207,10 @@ test("Chats: @chat mentions a Teams chat, and Claude reads it with jig_teams_cha
     await page.screenshot({ animations: "disabled", path: `${shots}/chat-mention-picker-dark.png` });
     await hostCall(page, "config.update", { appearance: { themeId: "jig-light" } });
     await page.screenshot({ animations: "disabled", path: `${shots}/chat-mention-picker-light.png` });
+    // Your chat with yourself is mentionable too, found by your own name.
+    await input.fill("@chat riley");
+    await expect(picker.getByRole("option")).toHaveCount(1);
+    await expect(picker).toContainText("Riley Contoso (You)");
     await input.fill("@chat plann");
     await expect(picker.getByRole("option")).toHaveCount(1);
     await expect(picker).toContainText("Portal planning");

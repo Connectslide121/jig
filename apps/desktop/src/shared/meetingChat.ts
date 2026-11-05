@@ -381,8 +381,41 @@ export function chatChanged(before: MeetingChatMessage[], after: MeetingChatMess
   );
 }
 
-/** A Teams chat id: a thread (`19:…@thread.v2`) or a one-to-one chat (`19:…@unq.gbl.spaces`). */
-export const TEAMS_CHAT_ID = /^19:[\w.-]+@(thread\.(v2|tacv2|skype)|unq\.gbl\.spaces)$/i;
+/**
+ * Your chat with yourself in Teams ("<name> (You)", D-385). Graph's `/me/chats` leaves it out and
+ * `/chats/48:notes` answers 400, but its messages can be read and sent like any chat's.
+ */
+export const SELF_CHAT_ID = "48:notes";
+
+/** A Teams chat id: a thread (`19:…@thread.v2`), a one-to-one chat (`19:…@unq.gbl.spaces`) or your own. */
+export const TEAMS_CHAT_ID = /^(19:[\w.-]+@(thread\.(v2|tacv2|skype)|unq\.gbl\.spaces)|48:notes)$/i;
+
+/**
+ * Your chat with yourself as `/me/chats` would list it (it doesn't): you as its one member, and its
+ * newest message as the preview. It counts as read: only you write in it.
+ */
+export function selfChat(self: string, name: string, messages: GraphChatMessage[] = []): GraphChat {
+  const last = messages
+    .filter((m) => (m.messageType ?? "message") === "message" && !m.deletedDateTime)
+    .sort((a, b) => b.createdDateTime.localeCompare(a.createdDateTime))[0];
+  return {
+    id: SELF_CHAT_ID,
+    chatType: "oneOnOne",
+    members: [{ userId: self, displayName: name }],
+    ...(last
+      ? {
+          lastMessagePreview: {
+            createdDateTime: last.createdDateTime,
+            ...(last.messageType ? { messageType: last.messageType } : {}),
+            from: last.from ?? null,
+            ...(last.body ? { body: last.body } : {}),
+          },
+          lastUpdatedDateTime: last.createdDateTime,
+        }
+      : {}),
+    viewpoint: { lastMessageReadDateTime: last?.createdDateTime ?? null },
+  };
+}
 
 /**
  * A message as one line for the chat list: its words, else "Sent an image" or "Sent a file" (Graph's
@@ -444,11 +477,19 @@ export function toChatSummaries(
   return chats
     .filter((c) => !c.viewpoint?.isHidden && TEAMS_CHAT_ID.test(c.id))
     .map((c) => {
-      const kind = c.chatType === "oneOnOne" ? "oneOnOne" : c.chatType === "meeting" ? "meeting" : "group";
+      const own = c.id === SELF_CHAT_ID;
+      const kind =
+        own || c.chatType === "oneOnOne" ? "oneOnOne" : c.chatType === "meeting" ? "meeting" : "group";
       const others = (c.members ?? []).filter((m) => m.userId !== self);
-      const peer = kind === "oneOnOne" ? others[0] : undefined;
+      // Your own chat's "other person" is you: your picture and your name with "(You)".
+      const peer = own
+        ? c.members?.find((m) => m.userId === self)
+        : kind === "oneOnOne"
+          ? others[0]
+          : undefined;
       const names = others.map((m) => m.displayName?.trim()).filter(Boolean) as string[];
       const name =
+        (own ? (peer?.displayName?.trim() ? `${peer.displayName.trim()} (You)` : "You") : "") ||
         (kind === "oneOnOne" ? peer?.displayName?.trim() : c.topic?.trim()) ||
         (names.length
           ? names.length > 3

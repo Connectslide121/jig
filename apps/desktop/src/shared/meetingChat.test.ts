@@ -14,12 +14,15 @@ import {
   mergeChat,
   needsDirectory,
   oneOnOneChatIds,
+  SELF_CHAT_ID,
+  selfChat,
   senderName,
   TEAMS_CHAT_ID,
   teamsChatLink,
   toChatMessages,
   toChatSummaries,
 } from "./meetingChat";
+import { chatMentionMatches } from "./meetingChatMention";
 
 const ME = "11111111-1111-4111-8111-111111111111";
 const ALEX = "22222222-2222-4222-8222-222222222222";
@@ -266,9 +269,57 @@ describe("meeting chat", () => {
       expect(TEAMS_CHAT_ID.test(one.id)).toBe(true);
       expect(TEAMS_CHAT_ID.test("19:abc@thread.v2")).toBe(true);
       expect(TEAMS_CHAT_ID.test("../me")).toBe(false);
+      expect(TEAMS_CHAT_ID.test("48:notes")).toBe(true);
+      expect(TEAMS_CHAT_ID.test("48:notes/../x")).toBe(false);
       expect(teamsChatLink({ email: "alex@contoso.com" })).toBe(
         "https://teams.microsoft.com/l/chat/0/0?users=alex%40contoso.com",
       );
+    });
+    describe("your chat with yourself (D-385)", () => {
+      const note = (id: string, at: string, text: string, extra: object = {}) => ({
+        id,
+        createdDateTime: at,
+        from: { user: { id: ME, displayName: "Riley Contoso" } },
+        body: { contentType: "text", content: text },
+        ...extra,
+      });
+      const messages = [
+        note("2", "2026-11-03T11:00:00Z", "Newest"),
+        note("3", "2026-11-03T12:00:00Z", "Gone", { deletedDateTime: "2026-11-03T12:01:00Z" }),
+        note("1", "2026-11-01T08:00:00Z", "Older"),
+      ];
+      it("is built from its newest message, read, as you", () => {
+        const chat = selfChat(ME, "Riley Contoso", messages);
+        expect(chat).toMatchObject({
+          id: SELF_CHAT_ID,
+          chatType: "oneOnOne",
+          members: [{ userId: ME, displayName: "Riley Contoso" }],
+          lastMessagePreview: { createdDateTime: "2026-11-03T11:00:00Z", body: { content: "Newest" } },
+          viewpoint: { lastMessageReadDateTime: "2026-11-03T11:00:00Z" },
+        });
+        expect(selfChat(ME, "Riley Contoso").lastMessagePreview).toBeUndefined();
+      });
+      it("is listed as '<name> (You)' with your picture, sorted by its last message", () => {
+        const [a, b, c] = toChatSummaries([group, selfChat(ME, "Riley Contoso", messages), one], ME);
+        expect([a!.id, b!.id, c!.id]).toEqual([SELF_CHAT_ID, one.id, group.id]);
+        expect(a).toEqual({
+          id: SELF_CHAT_ID,
+          kind: "oneOnOne",
+          name: "Riley Contoso (You)",
+          peerId: ME,
+          preview: { from: "You", text: "Newest", mine: true },
+          at: "2026-11-03T11:00:00.000Z",
+          unread: false,
+        });
+        expect(toChatSummaries([selfChat(ME, "")], ME)[0]).toMatchObject({
+          name: "You",
+          at: new Date(0).toISOString(),
+        });
+      });
+      it("is found by your own name in the @chat picker", () => {
+        const chats = toChatSummaries([selfChat(ME, "Riley Contoso", messages), one], ME);
+        expect(chatMentionMatches(chats, "riley").map((c) => c.id)).toEqual([SELF_CHAT_ID]);
+      });
     });
   });
   describe("sender names (D-327)", () => {
