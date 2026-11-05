@@ -32,7 +32,9 @@ export function mergeCaption(captions: MeetingCaption[], incoming: MeetingCaptio
           translatedLanguage: current.translatedLanguage,
           translatedBy: current.translatedBy,
         }
-      : {};
+      : current.untranslated && !incoming.translated && current.text === incoming.text
+        ? { untranslated: current.untranslated }
+        : {};
   return captions.map((c, i) => (i === index ? { ...incoming, ...keep } : c));
 }
 

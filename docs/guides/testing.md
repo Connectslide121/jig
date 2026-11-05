@@ -192,8 +192,8 @@ write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAK
 for chats (`ai.providers`), so a ChatGPT chat can't be started (D-330).
 
 Code completion with Claude (D-255) uses the fake engine's `completer`: after `return ` at the caret it
-suggests `total;`, anywhere else `// suggested by the fake engine`. A caption to translate (D-277)
-comes back as `[<language>] <caption>`. The meetings test service rings for
+suggests `total;`, anywhere else `// suggested by the fake engine`. Captions to translate (D-277, a
+batch since D-384) come back as `<t n="…">[<language>] <caption></t>` each. The meetings test service rings for
 a Teams call when a test calls `window.jigTestRing(name)` in the meetings window (D-254). It has three
 Teams chats (D-296): an unread one-to-one with Alex, a "Portal planning" group and a one-to-one with
 Sam; Call… → Chat finds Alex's and Sam's, anyone else has none. `window.jigTestCaptionsUnavailable()`

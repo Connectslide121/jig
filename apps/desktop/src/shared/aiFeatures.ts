@@ -22,6 +22,8 @@ export interface AiFeature {
   json?: boolean;
   /** The provider it runs on until you pick one (default Claude). */
   provider?: AiProvider;
+  /** Said beside it in Settings while ChatGPT is picked: how it does worse there. */
+  chatgptNote?: string;
 }
 
 export const AI_FEATURE_IDS = [
@@ -116,6 +118,8 @@ export const AI_FEATURES: AiFeature[] = [
     where: "Meetings",
     fallback: (c) => c.meetings.translationModel,
     chatgpt: "luna",
+    // Each request is a new Codex process, so live captions wait longer (D-384).
+    chatgptNote: "Slower with ChatGPT: more lines are skipped to keep up. Claude keeps up better",
   },
   {
     id: "addonQuick",

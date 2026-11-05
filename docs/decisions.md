@@ -6498,3 +6498,32 @@ stopped for good.
   Teams and local lines carry one name and your picture. Others' local lines already use the
   participant's raw id and name (`attributePiece`). Notes already tell Claude your display name, so
   `mine` actions keep working.
+
+## D-384: Live caption translation keeps up: batches, skips stale lines, says Not translated
+
+- Status: accepted. Amends D-277.
+- **Who:** Jon reported it (2026-11-05, a live meeting): every caption line showed "Translating…" for
+  minutes and the translations never caught up. Asked for translation that stays live with either
+  provider. The numbers and wording are Claude, on my own.
+- **Cause.** `CaptionTranslator` chained every final caption one after another. With Meeting translation
+  on ChatGPT (`ai.meetingTranslation = chatgpt`) each caption was its own `codex exec` (a cold Codex
+  start, 60 s timeout), slower than people talk, so the queue only grew; nothing failed, so nothing
+  said so. The local Whisper transcript (D-321) adds many short final pieces, which made it worse.
+- **Batches.** Captions waiting go in one request, numbered (`<caption n="1">…`), and the answer comes
+  back as `<t n="1">…</t>` per caption, mapped back by number (`shared/translationQueue.ts`:
+  `batchPrompt`, `parseBatch`). A single caption answered as plain text still counts. Fewer cold starts
+  with Codex, fewer round trips with Claude's warm completer.
+- **Stale lines are skipped.** Before each request (`takeBatch`): captions that waited over 20 s
+  (`MAX_WAIT_MS`), beyond the newest 6 (`MAX_BATCH`), or for another meeting or language are skipped
+  and stay as spoken. The record counts them (`translationSkipped`, reset when the language changes)
+  and the Transcript header says "Translation skipped N lines to keep up".
+- **"Translating…" is honest.** A caption skipped, left out of the answer or in a failed request gets
+  `untranslated: "skipped" | "failed"` and shows **Not translated** (tooltip says which) in the same
+  reserved second line, so nothing moves. A final caption Teams sends again unchanged keeps its
+  translation or mark (`mergeCaption`) and isn't translated again.
+- **ChatGPT stays one `codex exec` per request for now.** The warm Codex completer planned with the
+  editor's ChatGPT completion (one `codex app-server` reused) hadn't landed when this was built; use it
+  here when it does instead of building a second warm Codex. Until then Settings → AI features says
+  beside Caption translation, while ChatGPT is picked, that it's slower and Claude keeps up better.
+  Claude stays the default provider for this feature.
+- Also: the stored caption schema keeps `source: "local"` (D-321), which a restart used to drop.

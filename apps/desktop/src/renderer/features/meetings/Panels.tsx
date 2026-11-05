@@ -163,7 +163,11 @@ export function TranscriptPanel({
         detail={
           record.translationError ??
           (aiTranslated
-            ? `${record.captions.length} captions · AI translation, may be inaccurate`
+            ? `${record.captions.length} captions${
+                record.translationSkipped
+                  ? ` · Translation skipped ${record.translationSkipped} ${record.translationSkipped === 1 ? "line" : "lines"} to keep up`
+                  : ""
+              } · AI translation, may be inaccurate`
             : `${record.captions.length} captions`)
         }
         menu={menu}
@@ -247,8 +251,19 @@ export function TranscriptPanel({
                             </p>
                           ) : (
                             translating && (
-                              <p aria-hidden className="text-xs leading-relaxed text-hint">
-                                {c.final ? "Translating…" : " "}
+                              // A line Claude won't translate says so in the same space (D-384).
+                              <p
+                                aria-hidden
+                                className="text-xs leading-relaxed text-hint"
+                                title={
+                                  c.untranslated === "skipped"
+                                    ? "Skipped to keep the translation live; it stays as spoken"
+                                    : c.untranslated === "failed"
+                                      ? "The translation failed for this line"
+                                      : undefined
+                                }
+                              >
+                                {!c.final ? " " : c.untranslated ? "Not translated" : "Translating…"}
                               </p>
                             )
                           )}

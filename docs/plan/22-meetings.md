@@ -43,6 +43,8 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [x] Transcribe on this computer (Whisper) when Teams captions aren't available, switch back without duplicates (D-321).
 - [x] Treat `FeatureNotSupported` right after Connected as not known yet, retry it, log the capability on each try (D-382).
 - [x] Name your own Teams captions (they come without a name) from the meeting sign-in, and your local lines the same (D-383).
+- [x] Caption translation keeps up: batches, skips lines that waited over 20 s, says Not translated (D-384).
+- [ ] Translate captions with ChatGPT on the warm Codex completer once it exists, instead of `codex exec` per batch (D-384).
 - [ ] Verify captions in a real group meeting and the local transcript's CPU on a 30-minute call (D-321).
 - [x] Noise suppression on your microphone: Azure deep noise suppression by default, browser fallback, switch in the call's ⋯ menu and Devices… (D-322).
 - [ ] Verify noise suppression on a real call: colleagues don't hear typing, voice quality matches Teams (D-322).

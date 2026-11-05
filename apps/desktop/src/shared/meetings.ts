@@ -40,6 +40,8 @@ export interface MeetingCaption {
   translatedBy?: "teams" | "ai";
   /** Transcribed on this computer (Whisper) because Teams captions weren't available (D-321). */
   source?: "local";
+  /** Claude won't translate it (D-384): skipped to keep the translation live, or the request failed. */
+  untranslated?: "skipped" | "failed";
 }
 export interface MeetingAction {
   id: string;
@@ -71,6 +73,8 @@ export interface MeetingRecord {
   aiTranslation?: string;
   /** Why Claude's last translation failed (cleared when one works again or the language changes). */
   translationError?: string;
+  /** Captions skipped to keep the translation live, since the language was picked (D-384). */
+  translationSkipped?: number;
   /**
    * The history folder you put it in (D-295): a folder's id, `null` when you took it out of every
    * folder, missing to let it go to its recurring meeting's folder (`meetingFolders.ts`).

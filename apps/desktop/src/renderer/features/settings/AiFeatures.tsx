@@ -107,7 +107,14 @@ export function AiFeaturesSettings() {
             >
               <div className="min-w-0 @xl:flex-1">
                 <div className="truncate text-sm text-fg">{feature.label}</div>
-                <div className="truncate text-xs text-muted">{feature.where}</div>
+                {/* One line either way, so nothing moves when the provider changes. */}
+                {provider === "chatgpt" && feature.chatgptNote ? (
+                  <div className="truncate text-xs text-muted" title={feature.chatgptNote}>
+                    {feature.where} · <span className="text-warning">{feature.chatgptNote}</span>
+                  </div>
+                ) : (
+                  <div className="truncate text-xs text-muted">{feature.where}</div>
+                )}
               </div>
               <div className="flex gap-3">
                 <div className="@max-xl:w-32 @xl:w-40">

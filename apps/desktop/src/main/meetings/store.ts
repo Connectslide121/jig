@@ -21,6 +21,8 @@ const caption = z.object({
   translated: z.string().optional(),
   translatedLanguage: z.string().optional(),
   translatedBy: z.enum(["teams", "ai"]).optional(),
+  untranslated: z.enum(["skipped", "failed"]).optional(),
+  source: z.literal("local").optional(),
 });
 const action = z.object({
   id: z.string(),
@@ -65,6 +67,7 @@ const record = z.object({
     .optional(),
   aiTranslation: z.string().optional(),
   translationError: z.string().optional(),
+  translationSkipped: z.number().int().nonnegative().optional(),
   folder: z.string().nullable().optional(),
 });
 const remembered = z.object({ id: z.string().max(500), name: z.string().max(500) });
@@ -334,7 +337,26 @@ export class MeetingStore {
       c.translated = text;
       c.translatedLanguage = language;
       c.translatedBy = "ai";
+      c.untranslated = undefined;
       r.translationError = undefined;
+    });
+  }
+  /**
+   * A caption Claude won't translate (D-384): skipped to keep the translation live, or its request
+   * failed. Only while it still says `source`, isn't translated and translation into `language` is on.
+   */
+  untranslated(
+    id: string,
+    captionId: string,
+    source: string,
+    language: string,
+    why: "skipped" | "failed",
+  ): Promise<void> {
+    return this.update(id, (r) => {
+      const c = r.captions.find((c) => c.id === captionId);
+      if (!c || c.text !== source || c.translated || r.aiTranslation !== language) return;
+      c.untranslated = why;
+      if (why === "skipped") r.translationSkipped = (r.translationSkipped ?? 0) + 1;
     });
   }
   caption(id: string, value: MeetingCaption): Promise<void> {

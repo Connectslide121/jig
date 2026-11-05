@@ -451,12 +451,17 @@ let queueChain: Promise<unknown> = Promise.resolve();
 const noteChats = new Map<string, string>();
 const changed = () => emit("meetings.changed", undefined);
 /** Claude's caption translation for the meeting you're in, when Teams can't translate (D-277). */
-const translator = new CaptionTranslator(
-  async ({ meetingId, captionId, source, text, language }) => {
+const translator = new CaptionTranslator({
+  translated: async ({ meetingId, captionId, source, text, language }) => {
     await store.translated(meetingId, captionId, source, text, language);
     changed();
   },
-  (error) => {
+  // Lines it won't translate say so instead of "Translating…" forever (D-384).
+  untranslated: async (captions, why) => {
+    for (const c of captions) await store.untranslated(c.meetingId, c.captionId, c.text, c.language, why);
+    changed();
+  },
+  failed: (error) => {
     const id = activeId;
     if (!id) return;
     const message = error instanceof Error ? error.message : String(error);
@@ -468,7 +473,7 @@ const translator = new CaptionTranslator(
       .then(changed)
       .catch(() => undefined);
   },
-);
+});
 const activity = (text: string) =>
   publishActivity({ kind: "addon.action", text: `meetings.${text}`, detail: { addonId: "meetings" } });
 
@@ -1392,7 +1397,10 @@ export async function startMeetings(): Promise<void> {
     current(id);
     await store.caption(id, caption);
     const language = store.get(id).aiTranslation;
-    if (language && caption.final && !caption.translated) translator.translate(id, caption, language);
+    // The caption as kept: a final one Teams sends again unchanged keeps its translation (D-384).
+    const kept = store.get(id).captions.find((c) => c.id === caption.id);
+    if (language && kept?.final && !kept.translated && !kept.untranslated)
+      translator.translate(id, kept, language);
     changed();
   });
   handle("meetings.aiTranslation", async ({ id, language }, ctx) => {
@@ -1408,8 +1416,15 @@ export async function startMeetings(): Promise<void> {
     await store.update(id, (r) => {
       r.aiTranslation = language || undefined;
       r.translationError = undefined;
+      r.translationSkipped = undefined;
+      // The last few lines too, so what is on screen reads in the new language; older ones without a
+      // translation stay as spoken and say so, instead of "Translating…" forever (D-384).
+      if (language) {
+        const older = r.captions.filter((c) => c.final && c.translatedLanguage !== language);
+        for (const [i, c] of older.entries())
+          c.untranslated = i >= older.length - 3 || c.translated ? undefined : "skipped";
+      }
     });
-    // The last few lines too, so what is on screen reads in the new language.
     if (language)
       for (const c of store
         .get(id)

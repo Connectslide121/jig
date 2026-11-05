@@ -1863,12 +1863,12 @@ ${output.slice(0, 600)}`,
       ask: async (prompt, signal) => {
         await new Promise((resolve) => setTimeout(resolve, this.delayMs * 4));
         if (signal?.aborted) throw new Error("Cancelled");
-        // Meeting captions (D-277): "[sv-se] the caption".
-        const caption =
-          /^Translate this meeting caption into .*\(([^)]+)\)\.\n<caption>\n([\s\S]*)\n<\/caption>$/.exec(
-            prompt,
-          );
-        if (caption) return `[${caption[1]}] ${caption[2]}`;
+        // Meeting captions (D-277, in batches since D-384): "[sv-se] the caption" for each.
+        const batch = /^Translate these meeting captions into .*\(([^)]+)\)\.\n/.exec(prompt);
+        if (batch)
+          return [...prompt.matchAll(/<caption n="(\d+)">\n([\s\S]*?)\n<\/caption>/g)]
+            .map((m) => `<t n="${m[1]}">[${batch[1]}] ${m[2]}</t>`)
+            .join("\n");
         return /return <CURSOR>/.test(prompt) ? "total;" : "// suggested by the fake engine";
       },
       close: () => {},
