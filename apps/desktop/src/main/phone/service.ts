@@ -6,7 +6,6 @@ import {
   chatPicker,
   chatTitle,
   codeIn,
-  conciergeReply,
   escapeHtml,
   excerpt,
   findProject,
@@ -26,12 +25,14 @@ import {
   type QueueView,
   queueMessage,
   replyDecision,
+  rich,
   speakable,
   statusMessage,
   tapDecision,
+  toTelegramHtml,
   usedBrowser,
 } from "./messages";
-import { chunkMarkdown, historyItems, roomPieces, toTelegramHtml } from "./mirror";
+import { chunkMarkdown, conciergeReply, historyItems, roomPieces } from "./mirror";
 import {
   keyboard,
   nameOf,
@@ -479,7 +480,7 @@ export class PhoneService {
       return `Nothing was sent: ${(error as Error).message}`;
     }
     const id = await this.send(
-      { text: `💬 ${chatTitle(meta)}\n\n${excerpt(text, 3000)}\n\n<i>Reply to this message to answer.</i>` },
+      { text: `💬 ${chatTitle(meta)}\n\n${rich(text, 3000)}\n\n<i>Reply to this message to answer.</i>` },
       { sessionId: meta.id, thread: await this.threadFor(meta) },
       photo,
     );
@@ -698,8 +699,14 @@ export class PhoneService {
       if (!text) return;
       spoken = true;
     }
-    if (!text)
-      return void (await this.send({ text: "Jig reads text and voice messages." }, { thread: here }));
+    if (!text) {
+      // Telegram's own notices (a topic was made, pinned…) are messages too: only answer things you sent.
+      const sent = ["photo", "document", "video", "audio", "sticker", "video_note", "animation"].some(
+        (kind) => kind in message,
+      );
+      if (sent) await this.send({ text: "Jig reads text and voice messages." }, { thread: here });
+      return;
+    }
     if (spoken) this.speaking = true;
     try {
       await this.route(text, message, here);
@@ -1235,7 +1242,7 @@ export class PhoneService {
       const reply = lastReply(snapshot.items);
       return void (await this.send(
         {
-          text: `Talking to ${chatTitle(snapshot.meta)}. Your messages here go there.${reply ? `\n\n${excerpt(reply, 800)}` : ""}`,
+          text: `Talking to ${chatTitle(snapshot.meta)}. Your messages here go there.${reply ? `\n\n${rich(reply, 800)}` : ""}`,
         },
         { sessionId: parsed.sessionId, thread: here },
       ));

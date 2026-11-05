@@ -1,37 +1,17 @@
-import { maskSecrets } from "@jig/learning";
 import type { ChatItem } from "../../shared/engine";
-import { escapeHtml } from "./messages";
+import { escapeHtml, toTelegramHtml } from "./messages";
 
 /**
  * A chat's room on your phone (D-350): its replies as Telegram HTML, cut into messages Telegram
  * takes, and its tool steps as short lines. Pure: the service sends and edits them.
  */
 
+/** Jig's own answer on the phone, marked as AI, its Markdown as Telegram HTML (the end kept when long). */
+export const conciergeReply = (text: string, max = 3500) =>
+  `🤖 <b>Jig</b> · AI\n\n${toTelegramHtml(text.length > max ? `…${text.slice(-(max - 1))}` : text)}`;
+
 /** Telegram allows 4,096 characters per message; HTML tags count, so leave room. */
 export const ROOM_CHUNK = 3500;
-
-/** Claude's Markdown as Telegram HTML: code blocks, inline code, bold, italics, headings and links. */
-export function toTelegramHtml(markdown: string): string {
-  const parts = maskSecrets(markdown).split(/(```[^\n]*\n[\s\S]*?(?:```|$))/g);
-  return parts
-    .map((part) => {
-      const fence = /^```([^\n]*)\n([\s\S]*?)(?:```)?$/.exec(part);
-      if (fence) return `<pre>${escapeHtml(fence[2]!.replace(/\n$/, ""))}</pre>`;
-      return part
-        .split(/(`[^`\n]+`)/g)
-        .map((bit) => {
-          if (/^`[^`\n]+`$/.test(bit)) return `<code>${escapeHtml(bit.slice(1, -1))}</code>`;
-          return escapeHtml(bit)
-            .replace(/^#{1,6}\s+(.+)$/gm, "<b>$1</b>")
-            .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
-            .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?:;]|$)/g, "$1<i>$2</i>")
-            .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>')
-            .replace(/^(\s*)[-*]\s+/gm, "$1• ");
-        })
-        .join("");
-    })
-    .join("");
-}
 
 /**
  * Markdown cut into pieces of at most `max` characters, at paragraph or line breaks, never inside a

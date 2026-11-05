@@ -73,6 +73,11 @@ describe("statusMessage", () => {
     expect(m?.text).toContain("Done &lt;ok&gt;");
   });
 
+  it("shows Claude's Markdown formatted, not raw", () => {
+    const m = statusMessage("working", meta(), "**Fixed** the `cart` total:\n- tests pass", true);
+    expect(m?.text).toContain("<b>Fixed</b> the <code>cart</code> total:\n• tests pass");
+  });
+
   it("tells an error, even with finished messages off", () => {
     expect(
       statusMessage("working", meta({ status: "error", lastError: "Boom\nstack" }), undefined, false)?.text,

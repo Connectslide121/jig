@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ChatItem } from "../../shared/engine";
-import { chunkMarkdown, historyItems, stepLine, stepsMessage, toTelegramHtml } from "./mirror";
+import { toTelegramHtml } from "./messages";
+import { chunkMarkdown, conciergeReply, historyItems, stepLine, stepsMessage } from "./mirror";
 
 describe("toTelegramHtml", () => {
   it("turns Markdown into Telegram's HTML, escaped", () => {
@@ -68,4 +69,9 @@ describe("historyItems", () => {
     expect(historyItems(items, 1).map((i) => i.id)).toEqual(["u2", "a2"]);
     expect(historyItems(items, 5).map((i) => i.id)).toEqual(["u1", "a1", "u2", "a2"]);
   });
+});
+
+describe("conciergeReply", () => {
+  it("marks Jig's answer as AI and formats its Markdown", () =>
+    expect(conciergeReply("- **Podium:** 2 chats")).toBe("🤖 <b>Jig</b> · AI\n\n• <b>Podium:</b> 2 chats"));
 });

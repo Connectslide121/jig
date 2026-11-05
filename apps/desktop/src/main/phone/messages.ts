@@ -41,11 +41,37 @@ export function excerpt(text: string, max = MAX_EXCERPT): string {
   return escapeHtml(cut);
 }
 
+/** Claude's Markdown as Telegram HTML: code blocks, inline code, bold, italics, headings and links. */
+export function toTelegramHtml(markdown: string): string {
+  const parts = maskSecrets(markdown).split(/(```[^\n]*\n[\s\S]*?(?:```|$))/g);
+  return parts
+    .map((part) => {
+      const fence = /^```([^\n]*)\n([\s\S]*?)(?:```)?$/.exec(part);
+      if (fence) return `<pre>${escapeHtml(fence[2]!.replace(/\n$/, ""))}</pre>`;
+      return part
+        .split(/(`[^`\n]+`)/g)
+        .map((bit) => {
+          if (/^`[^`\n]+`$/.test(bit)) return `<code>${escapeHtml(bit.slice(1, -1))}</code>`;
+          return escapeHtml(bit)
+            .replace(/^#{1,6}\s+(.+)$/gm, "<b>$1</b>")
+            .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+            .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?:;]|$)/g, "$1<i>$2</i>")
+            .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>')
+            .replace(/^(\s*)[-*]\s+/gm, "$1• ");
+        })
+        .join("");
+    })
+    .join("");
+}
+
+/** Claude's text (Markdown) for the phone: formatted, secrets masked, at most `max` characters (the end kept). */
+export function rich(text: string, max = MAX_EXCERPT): string {
+  const trimmed = text.trim();
+  return toTelegramHtml(trimmed.length > max ? `…${trimmed.slice(trimmed.length - max + 1)}` : trimmed);
+}
+
 /** The user's own chats: not the builder's, not Jig's own chat on the phone. */
 export const isUserChat = (m: Pick<SessionMeta, "kind">) => !m.kind || m.kind === "chat";
-
-/** Jig's own answer on the phone, marked as AI. */
-export const conciergeReply = (text: string) => `🤖 <b>Jig</b> · AI\n\n${excerpt(text, 3500)}`;
 
 export const chatTitle = (meta: Pick<SessionMeta, "title">) =>
   escapeHtml(meta.title.length > 80 ? `${meta.title.slice(0, 79)}…` : meta.title);
@@ -106,7 +132,7 @@ export function statusMessage(
   if (previous !== "working" && previous !== "starting") return undefined;
   if (meta.status === "idle" && finished)
     return {
-      text: `✅ <b>Finished</b> · ${chatTitle(meta)}${reply ? `\n\n${excerpt(reply)}` : ""}\n\n<i>Reply to this message to answer.</i>`,
+      text: `✅ <b>Finished</b> · ${chatTitle(meta)}${reply ? `\n\n${rich(reply)}` : ""}\n\n<i>Reply to this message to answer.</i>`,
       silent: true,
     };
   if (meta.status === "error")
@@ -151,14 +177,14 @@ export function permissionMessage(
     const one = singleQuestion(request);
     if (one)
       return {
-        text: `${head}\n\n${excerpt(one.question, 600)}\n\n<i>Pick one, or reply to this message with your own answer.</i>`,
+        text: `${head}\n\n${rich(one.question, 600)}\n\n<i>Pick one, or reply to this message with your own answer.</i>`,
         buttons: (one.options ?? [])
           .slice(0, 8)
           .map((o, i) => [{ text: o.label.slice(0, 60), data: `q:${key}:${i}` }]),
       };
     const lines = questionsOf(request).map(
       (q, i) =>
-        `${i + 1}. ${excerpt(q.question, 300)}${q.options?.length ? `\n    ${escapeHtml(q.options.map((o) => o.label).join(" · "))}` : ""}`,
+        `${i + 1}. ${rich(q.question, 300)}${q.options?.length ? `\n    ${escapeHtml(q.options.map((o) => o.label).join(" · "))}` : ""}`,
     );
     return {
       text: `${head}\n\n${lines.join("\n")}\n\n<i>Reply to this message with your answers.</i>`,
@@ -168,7 +194,7 @@ export function permissionMessage(
   if (request.toolName === "ExitPlanMode") {
     const plan = typeof request.input.plan === "string" ? request.input.plan : "";
     return {
-      text: `📋 <b>Plan ready</b> · ${chatTitle(meta)}${plan ? `\n\n${excerpt(plan)}` : ""}\n\n<i>Reply to this message to change it.</i>`,
+      text: `📋 <b>Plan ready</b> · ${chatTitle(meta)}${plan ? `\n\n${rich(plan)}` : ""}\n\n<i>Reply to this message to change it.</i>`,
       buttons: [
         [
           { text: "Approve", data: `p:${key}:a` },
@@ -389,8 +415,7 @@ export function queueMessage(project: ProjectInfo, queue: QueueView, max = 15): 
         ].slice(0, max)
       : tasks;
   const lines = shown.map((t) => {
-    const summary =
-      t.report?.summary && t.status !== "done" ? `\n      ${excerpt(t.report.summary, 160)}` : "";
+    const summary = t.report?.summary && t.status !== "done" ? `\n      ${rich(t.report.summary, 160)}` : "";
     return `${TASK_MARK[t.status] ?? "•"} ${escapeHtml(t.title.slice(0, 80))}${summary}`;
   });
   const more = tasks.length > shown.length ? `\n…and ${tasks.length - shown.length} more` : "";

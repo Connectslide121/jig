@@ -841,6 +841,19 @@ describe("PhoneService rooms", () => {
   });
 });
 
+describe("PhoneService notices", () => {
+  it("ignores Telegram's own notices, and says so for a picture", async () => {
+    const t = setup({ saved: paired, concierge: true });
+    current = t.service;
+    await t.service.start();
+    await t.text("", { text: undefined, forum_topic_created: { name: "Jig" } });
+    expect(t.messages()).toEqual([]);
+    await t.text("", { text: undefined, photo: [{ file_id: "p" }] });
+    expect(t.messages()).toEqual(["Jig reads text and voice messages."]);
+    expect(t.asked).toEqual([]);
+  });
+});
+
 describe("PhoneService voice", () => {
   const voiceNote = (t: ReturnType<typeof setup>, fileId: string, over: Record<string, unknown> = {}) =>
     t.text("", { text: undefined, voice: { file_id: fileId, duration: 3 }, ...over });
