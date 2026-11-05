@@ -793,7 +793,9 @@ export async function chatChanged(
   if (!projectId) return;
   await change(api, projectId, async (q) => {
     const task = q.tasks.find((t) => t.sessionId === sessionId && isActive(t));
-    if (!task) return [q, undefined];
+    // Its task was recorded already (the view's read reconciled it a moment before this event): the
+    // turn still ended, so the queue moves on rather than waiting for the next tick.
+    if (!task) return [status === "idle" || status === "error" ? await advance(api, q) : q, undefined];
     if (status === "working" || status === "starting") {
       const { waitingFor: _answered, limitResetsAt: _resumed, ...rest } = task;
       return [replace(q, { ...rest, status: "running", sawBusy: true }), undefined];

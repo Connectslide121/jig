@@ -14,7 +14,11 @@ export async function newSession(
   cwd?: string,
   draft?: string,
 ): Promise<string | undefined> {
-  const id = projectId ?? useProjects.getState().activeId;
+  // None known here yet: a project added a moment ago may not have reached this window; ask the host.
+  const id =
+    projectId ??
+    useProjects.getState().activeId ??
+    (await call("projects.list").catch(() => undefined))?.activeId;
   if (!id) {
     notify({
       title: "Add a project first",

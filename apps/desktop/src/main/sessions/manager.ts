@@ -1423,6 +1423,9 @@ export class SessionManager {
 
   async interrupt(id: string): Promise<void> {
     const live = await this.live(id);
+    // Stopped while its turn is still being put together (add-ons' context, the engine starting):
+    // stop that turn once it has been sent, rather than not at all.
+    if (!live.engine && live.starting) await live.starting;
     if (!live.engine) return;
     if (live.state.meta.status === "working") this.friction(live, "interrupt", "stopped Claude mid-turn");
     abortJigToolCalls(id);

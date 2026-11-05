@@ -245,6 +245,8 @@ export class FakeEngine implements Engine {
     const steers: string[] = [];
     const sleep = (ms: number, signal: AbortSignal) =>
       new Promise<void>((resolve, reject) => {
+        // Stopped before this step (while the turn was still starting): no abort event comes any more.
+        if (signal.aborted) return reject(new Error("aborted"));
         const t = setTimeout(resolve, ms);
         signal.addEventListener("abort", () => {
           clearTimeout(t);
