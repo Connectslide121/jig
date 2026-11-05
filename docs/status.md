@@ -1,5 +1,17 @@
 # Status
 
+Jig on your phone through Teams, the 1:1 chat (2026-11-05, D-379, phase 27 session 3): with
+`phone.channel` set to `teams`, Jig talks to your bot's relay instead of Telegram: pairing by the
+6-digit code you send the bot, requests and questions as Adaptive Cards whose buttons work like
+Telegram's (the card is updated when you answer on the computer or the phone), `/status`, `/queue`,
+`/pause`, `/resume`, `/screen` (the picture inline, fitted to Teams' 1 MB / 1024² limit), `/chats`
+and the command menu's bare words, and Jig itself answering anything else. Two Jigs on one relay
+show the "another Jig is reading" warning. Not usable from Settings yet: setup (creating the Azure
+pieces, the app package, the Teams/Telegram switch) is session 5, the team with a channel per
+project and a thread per chat is session 4. Covered by unit tests and `e2e/phone-teams.spec.ts`
+against a fake relay. **Needs a real tenant:** cards and their updates on the iPhone, whether a
+quoted message in the 1:1 chat reaches the bot as a reply, menu commands arriving bare.
+
 Phone reconnects after sleep (2026-11-05): the top bar's phone dot no longer says "Telegram can't be
 reached. Jig keeps trying." for up to a minute after the computer wakes or the network returns. On
 resume from sleep or unlocking, Jig drops the poll that was in flight and its backoff pause and asks

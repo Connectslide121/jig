@@ -1,6 +1,6 @@
 import type { ChatItem, PermissionDecision, SessionMeta } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import type { PhoneChannelId, PhoneState } from "../../shared/phone";
+import { isTeamsCredential, type PhoneChannelId, type PhoneState } from "../../shared/phone";
 import {
   type Account,
   type Address,
@@ -77,8 +77,8 @@ interface Room {
   timer?: ReturnType<typeof setTimeout>;
 }
 
-/** The commands the channel's menu offers when you type "/". */
-const COMMANDS: PhoneCommand[] = [
+/** The commands the channel's menu offers when you type "/" (Teams: its app package's command list). */
+export const COMMANDS: PhoneCommand[] = [
   { command: "status", description: "What every project is doing" },
   { command: "queue", description: "A project's task queue (/queue podium)" },
   { command: "pause", description: "Pause a project's queue" },
@@ -321,6 +321,8 @@ export class PhoneService {
 
   /** Checks the credential (Telegram's token) with the channel, keeps it and starts pairing with a new code. */
   async connect(token: string): Promise<PhoneState> {
+    if (this.kind === "teams" && !isTeamsCredential(token))
+      throw new JigError("invalid_token", "That isn't a Teams relay's address and key.");
     const channel = this.open(token.trim());
     if (!channel)
       throw new JigError("unavailable", `${CHANNEL_NAMES[this.kind]} isn't in this version of Jig yet.`);
@@ -357,6 +359,10 @@ export class PhoneService {
       await this.channel
         .send(to, { text: "Jig disconnected this bot. It won't message you any more." })
         .catch(() => undefined);
+    if (this.channel?.unpair)
+      await this.channel
+        .unpair()
+        .catch((error) => this.deps.log?.warn("The phone channel didn't forget the pairing", error));
     this.stop();
     this.saved = undefined;
     this.channel = undefined;
@@ -1180,6 +1186,12 @@ export class PhoneService {
         this.wrongCodes = 0;
         this.changed();
       }
+      return;
+    }
+    try {
+      await this.channel?.pair?.(chatId);
+    } catch (error) {
+      this.deps.log?.warn("The phone channel refused the pairing", error);
       return;
     }
     this.saved = { ...this.saved, owner: { chatId, name: from?.name ?? "you" } };

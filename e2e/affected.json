@@ -397,6 +397,14 @@
         "apps/desktop/src/shared/ogg.ts"
       ],
       "specs": ["phone.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/main/phone/**",
+        "apps/desktop/src/shared/phone.ts",
+        "relay/teams/src/protocol.ts"
+      ],
+      "specs": ["phone-teams.spec.ts"]
     }
   ]
 }

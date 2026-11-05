@@ -6318,3 +6318,42 @@ stopped for good.
   RSC needs `webApplicationInfo.id` to be an app registered in the user's own tenant, so a made-up
   id would not show what the real bot meets. `teams:check -- prove` then makes and renames a
   channel with that app's own token, the same call the relay makes. Instructions in the plan.
+
+## D-379: Teams phone channel: the 1:1 chat through the relay
+
+- Status: accepted.
+- **Who:** Claude, on my own, building phase 27 session 3 from the queued task (Jon asked for the Teams
+  channel, D-370; how it is cut is mine).
+- **The 1:1 chat first, through the same `PhoneChannel`.** `main/phone/teams.ts` is a client of the
+  relay (`GET /api/updates` long poll, 25 s, the service's backoff and warnings) and a
+  `TeamsChannel`. The account is the Entra object id; only the 1:1 chat (`personal`) counts as
+  private, so channel posts wait for session 4's places (`identify` reports no places yet).
+- **The credential is one string, `https://<relay>#<key>`** (`TEAMS_CREDENTIAL` in `shared/phone.ts`),
+  so `phone.json`, `phone.connect` and safeStorage stay as they are for Telegram's token. The key
+  travels only in the `x-jig-relay-key` header, never in URLs, messages or logs; the address isn't a
+  secret. `JIG_TEAMS_RELAY` replaces the address only with the fake engine (tests).
+- **Pairing goes through the channel:** `PhoneChannel` gained optional `pair(account)` and
+  `unpair()`. After the right code, Jig calls `PUT /api/pairing` before saving the owner (refused =
+  stay unpaired); Disconnect calls `DELETE /api/pairing` after the goodbye.
+- **One Jig per relay, like Telegram's 409:** Jig sends a stable reader id (`x-jig-reader`, a hash of
+  the computer's name and the Jig home); the relay answers `409 another_reader` to another reader
+  while the last one polled within 90 s, which Jig shows as the conflict warning. A small relay
+  change (protocol + `updates`), made together on both sides.
+- **Rendering:** text is Teams' `xml` format, the same HTML subset with `\n` as `<br>` outside
+  `<pre>`. A message with buttons is an Adaptive Card 1.5: its text as TextBlocks (bold, italic,
+  links as card Markdown; `<pre>` monospace; inline code plain, cards have no code style), one
+  `ActionSet` per button row, `Action.Submit` data `{ jig: <Telegram's callback data> }`, so taps parse
+  the same way; a card stays a card when updated (answered: same text plus the answer line, no
+  buttons). The card's first line is the notification's preview (`summary`).
+- **Taps:** Teams has no toast for a tapped card, so only a refusal ("This is no longer waiting.") is
+  written back as a message; taps older than 10 minutes are ignored (Jig was closed).
+- **Commands:** Teams' command menu comes from the app package (`teamsCommandLists(COMMANDS)`, for
+  session 5's package); picking one sends the bare title, so `status`, `screen`, `close`, `chats`,
+  `help` alone and `queue|pause|resume` with up to three words become commands. Anything longer
+  stays text for Jig itself.
+- **Replies:** Teams' 1:1 chat has no reply threads; a quoted message (`<blockquote itemid>`) or
+  `replyToId` is used when present. Whether Teams sends the quote's id to bots in the 1:1 chat needs
+  the real check; per-chat threads (session 4) are the dependable way to talk to one chat.
+- **Pictures** are fitted to Teams' inline limit in main (`nativeImage`: ≤ 1024², JPEG at falling
+  quality until ≤ 1 MB); one that can't fit is left out with a note. No typing indicator (the relay
+  has none), no silent messages, no voice (D-370).

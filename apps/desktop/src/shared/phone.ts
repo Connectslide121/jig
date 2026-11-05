@@ -53,3 +53,21 @@ export interface PhoneState {
 export const TELEGRAM_TOKEN = /^\d{5,15}:[A-Za-z0-9_-]{30,60}$/;
 
 export const isTelegramToken = (token: string) => TELEGRAM_TOKEN.test(token.trim());
+
+/**
+ * The Teams channel's credential (D-379): the relay's address and its key in one string,
+ * `https://<function app>#<key>`, kept like the Telegram token. The key is what setup generated
+ * (≥ 32 characters, base64url).
+ */
+export const TEAMS_CREDENTIAL = /^https:\/\/[^\s#/]+(\/[^\s#]*)?#[A-Za-z0-9_-]{32,256}$/;
+
+export const isTeamsCredential = (credential: string) => TEAMS_CREDENTIAL.test(credential.trim());
+
+export const teamsCredential = (url: string, key: string) => `${url.trim().replace(/\/+$/, "")}#${key}`;
+
+export function parseTeamsCredential(credential: string): { url: string; key: string } | undefined {
+  const trimmed = credential.trim();
+  if (!isTeamsCredential(trimmed)) return undefined;
+  const at = trimmed.lastIndexOf("#");
+  return { url: trimmed.slice(0, at), key: trimmed.slice(at + 1) };
+}

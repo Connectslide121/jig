@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { BOT_ISSUER } from "./botAuth.ts";
 import { HttpError } from "./microsoft.ts";
-import { KEEP_MS, RELAY_KEY_HEADER, type RelayUpdate } from "./protocol.ts";
+import { KEEP_MS, READER_HEADER, READER_WINDOW_MS, RELAY_KEY_HEADER, type RelayUpdate } from "./protocol.ts";
 import { createRelay, type RelayRequest } from "./relay.ts";
 import { MemoryStore } from "./store.ts";
 import { testSigner } from "./testing.ts";
@@ -177,6 +177,19 @@ describe("GET /api/updates", () => {
     await deliver(relay, personal("fresh"), clock.now());
     expect((await updates(relay)).map((u) => u.activity.text)).toEqual(["fresh"]);
     expect(await store.prune(0)).toBe(0);
+  });
+
+  it("answers 409 to a second Jig while the first one polls", async () => {
+    const { relay, clock } = await paired();
+    const poll = (reader: string) =>
+      relay.updates(
+        req({ query: "after=0&wait=0", headers: { [RELAY_KEY_HEADER]: KEY, [READER_HEADER]: reader } }),
+      );
+    expect((await poll("home")).status).toBe(200);
+    expect((await poll("laptop")).jsonBody).toEqual({ error: "another_reader" });
+    expect((await poll("home")).status).toBe(200);
+    clock.advance(READER_WINDOW_MS + 1);
+    expect((await poll("laptop")).status).toBe(200);
   });
 });
 

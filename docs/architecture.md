@@ -723,7 +723,18 @@ notes, `jig_knowledge_read` reads a document. The renderer shows them on the pro
 D-377): identify, poll + read (the channel's updates as Jig's `PhoneUpdate`s), send, edit, typing,
 answer a tap, places (a project's, a chat's room), commands and voice, with failures as a
 `ChannelError` reason and capabilities in `PHONE_CHANNEL_CAPABILITIES` (`shared/phone.ts`).
-`phone.channel` picks the channel (Telegram, or Teams once phase 27 builds it); one at a time.
+`phone.channel` picks the channel (Telegram or Teams); one at a time. A channel may also `pair` /
+`unpair` (Teams tells its relay which account to keep, D-379).
+`teams.ts` (D-379) is the Teams channel: a client of the user's relay (`relay/teams/`, D-370/D-378;
+its contract `relay/teams/src/protocol.ts`, the one file of it the app imports) with the relay key
+in a header and a stable reader id (a second Jig on one relay gets 409 = `conflict`), long polling
+`GET /api/updates` with the service's backoff (`JIG_TEAMS_RELAY` replaces the relay's address only
+with the fake engine). It renders messages as Teams' XML text (the same HTML subset, `<br>` line
+breaks) and messages with buttons as Adaptive Cards 1.5 whose `Action.Submit` carries the same data
+as Telegram's callbacks (`{ jig: "p:3:a" }`), kept a card when updated; pictures inline (fitted to
+1024² and 1 MB with `nativeImage`); menu commands arrive bare ("status") and become commands. Its
+credential is `https://<relay>#<key>` (`TEAMS_CREDENTIAL`), stored like the Telegram token. The
+1:1 chat only for now: places (the team's channels and threads) come in phase 27 session 4.
 `telegram.ts` is the Bot API client (POST JSON, long polling with `getUpdates`; `JIG_TELEGRAM_API`
 only with the fake engine) and `TelegramChannel`, which renders Jig's messages (a small HTML subset
 and button rows) as Telegram HTML and inline keyboards; `messages.ts` is pure (what to send for a

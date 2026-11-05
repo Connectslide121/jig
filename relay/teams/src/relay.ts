@@ -7,6 +7,8 @@ import {
   KEEP_MS,
   MAX_WAIT_S,
   type PairingRequest,
+  READER_HEADER,
+  READER_WINDOW_MS,
   RELAY_KEY_HEADER,
   type RelayActivity,
   type SendRequest,
@@ -226,6 +228,14 @@ export function createRelay(deps: RelayDeps) {
     async updates(req: RelayRequest): Promise<RelayResponse> {
       if (!authorized(req)) return fail(401, "relay_key");
       const after = Math.max(0, Math.floor(Number(req.query.get("after") ?? 0)) || 0);
+      const reader = req.headers.get(READER_HEADER)?.slice(0, 100);
+      if (reader) {
+        // One Jig per relay: another one that polled lately keeps it (Telegram's 409).
+        const last = await store.get<{ id: string; at: number }>("reader");
+        if (last && last.id !== reader && now() - last.at < READER_WINDOW_MS)
+          return fail(409, "another_reader");
+        await store.set("reader", { id: reader, at: now() });
+      }
       const wait = Math.min(MAX_WAIT_S, Math.max(0, Number(req.query.get("wait") ?? MAX_WAIT_S) || 0));
       if (after > 0) await store.forget(after);
       const deadline = now() + wait * 1000;

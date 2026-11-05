@@ -1,8 +1,10 @@
-import { randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { readFile, rm, stat } from "node:fs/promises";
+import { hostname } from "node:os";
 import { isAbsolute, join } from "node:path";
-import { powerMonitor, powerSaveBlocker, safeStorage } from "electron";
+import { nativeImage, powerMonitor, powerSaveBlocker, safeStorage } from "electron";
 import { z } from "zod";
+import { MAX_IMAGE_BYTES } from "../../../../../relay/teams/src/protocol";
 import type { PhoneChannelId } from "../../shared/phone";
 import { addonService } from "../addons";
 import { mainWindow } from "../appWindows";
@@ -14,10 +16,11 @@ import { logger } from "../log";
 import { projectStore } from "../projects";
 import { onChatUpdates, onPermissionCard, onSessionStatus, sessionManager } from "../sessions";
 import { readJson, writeJson } from "../state/jsonStore";
-import { paths } from "../state/paths";
+import { jigHome, paths } from "../state/paths";
 import { conciergeChat, onConciergeStartedChat, registerConcierge } from "./concierge";
 import type { QueueCounts, QueueView } from "./messages";
 import { PhoneService, type SavedPhone } from "./service";
+import { teamsChannel } from "./teams";
 import { telegramApi } from "./telegram";
 
 const log = logger("phone");
@@ -98,6 +101,30 @@ function phoneStore() {
 
 let service: PhoneService | undefined;
 
+/** Which Jig polls the Teams relay: the same on every start of this Jig home, apart from any other. */
+const readerId = () =>
+  createHash("sha256").update(`${hostname()}\n${jigHome()}`).digest("base64url").slice(0, 32);
+
+/** A picture within Teams' inline limit (≤ 1024 × 1024, ≤ 1 MB): scaled down, then JPEG as needed. */
+function fitForTeams(photo: Buffer): Buffer | undefined {
+  let image = nativeImage.createFromBuffer(photo);
+  const { width, height } = image.getSize();
+  if (!width || !height) return undefined;
+  const scale = Math.min(1, 1024 / Math.max(width, height));
+  if (scale === 1 && photo.length <= MAX_IMAGE_BYTES) return photo;
+  if (scale < 1)
+    image = image.resize({
+      width: Math.floor(width * scale),
+      height: Math.floor(height * scale),
+      quality: "best",
+    });
+  for (const quality of [85, 70, 55, 40]) {
+    const jpeg = image.toJPEG(quality);
+    if (jpeg.length <= MAX_IMAGE_BYTES) return jpeg;
+  }
+  return undefined;
+}
+
 /** Voice work the window does (Whisper, the natural voice, Opus): asked by event, answered by call. */
 const voiceJobs = new Map<
   string,
@@ -129,7 +156,7 @@ function keepAwake(on: boolean): void {
   }
 }
 
-/** Jig on your phone through your own Telegram bot (D-350). */
+/** Jig on your phone through your own Telegram bot (D-350) or Teams bot (D-370, D-379). */
 export async function startPhone(): Promise<void> {
   const m = sessionManager();
   registerConcierge();
@@ -142,6 +169,8 @@ export async function startPhone(): Promise<void> {
     },
     store: phoneStore(),
     api: (token) => telegramApi(token),
+    channel: (id, credential) =>
+      id === "teams" ? teamsChannel(credential, { reader: readerId(), fit: fitForTeams }) : undefined,
     project: async (id) => {
       const project = await projectStore().get(id);
       return { name: project.name, color: project.color };
@@ -241,7 +270,7 @@ export async function startPhone(): Promise<void> {
     {
       name: "jig_phone_send",
       description:
-        "Send a short message to the user's phone (Telegram, through Jig). Use it only when the user asked you to tell them on their phone, or when you're blocked on them during long work they left running. Their reply comes back to this chat as their next message. Jig already tells their phone by itself when this chat needs them, finishes or stops, so don't repeat those.",
+        "Send a short message to the user's phone (Telegram or Teams, through Jig). Use it only when the user asked you to tell them on their phone, or when you're blocked on them during long work they left running. Their reply comes back to this chat as their next message. Jig already tells their phone by itself when this chat needs them, finishes or stops, so don't repeat those.",
       shape: {
         text: z.string().min(1).max(3000).describe("The message, in plain text"),
         image: z

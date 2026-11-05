@@ -115,6 +115,13 @@ export interface PhoneChannel<Raw = unknown> {
   createPlace(chat: Account, place: PlaceSpec): Promise<Place>;
   renamePlace?(chat: Account, place: Place, name: string): Promise<void>;
   deletePlace(chat: Account, place: Place): Promise<void>;
+  /**
+   * The account that sent the right code (Teams: the relay keeps only its messages from now on);
+   * throws when the channel refuses it, and Jig stays unpaired.
+   */
+  pair?(account: Account): Promise<void>;
+  /** Disconnect: the channel forgets the account (Teams: the relay drops the pairing and what waits). */
+  unpair?(): Promise<void>;
   /** The menu of fixed commands (`capabilities.commands`). */
   setCommands?(commands: PhoneCommand[]): Promise<void>;
   /** A voice message: send one, fetch one you sent (`capabilities.voice`). */

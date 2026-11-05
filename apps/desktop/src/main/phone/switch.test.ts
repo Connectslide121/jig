@@ -73,8 +73,10 @@ describe("PhoneService channels", () => {
     await vi.waitFor(() => expect(t.service.state()).toMatchObject({ channel: "teams", status: "off" }));
     expect(t.sent.at(-1)).toContain("Jig disconnected this bot");
     expect(t.store.has("telegram")).toBe(false);
-    // Teams isn't in this version yet.
-    await expect(t.service.connect("key")).rejects.toMatchObject({ code: "unavailable" });
+    // Teams takes its relay's address and key; without a Teams channel (`deps.channel`) it's unavailable.
+    await expect(t.service.connect("key")).rejects.toMatchObject({ code: "invalid_token" });
+    const credential = `https://shop-relay.example.net#${"k".repeat(43)}`;
+    await expect(t.service.connect(credential)).rejects.toMatchObject({ code: "unavailable" });
     t.service.stop();
   });
 });

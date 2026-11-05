@@ -1,9 +1,16 @@
 /**
- * What Jig and the relay say to each other (D-370). Jig imports these types only (`import type`), so
- * the relay's code never ends up in the app. Every request carries the relay key in `RELAY_KEY_HEADER`.
+ * What Jig and the relay say to each other (D-370). Jig imports this file only (its types and these
+ * constants; it imports nothing), so the relay's code never ends up in the app (`main/phone/teams.ts`,
+ * D-379). Every request carries the relay key in `RELAY_KEY_HEADER`.
  */
 
 export const RELAY_KEY_HEADER = "x-jig-relay-key";
+/**
+ * Which Jig is polling (a stable id per computer and Jig home): a second Jig reading the same relay
+ * gets 409 `another_reader` while the first polled within `READER_WINDOW_MS`, like Telegram's 409.
+ */
+export const READER_HEADER = "x-jig-reader";
+export const READER_WINDOW_MS = 90_000;
 
 /** What the relay keeps of an activity Microsoft posted to the bot: no attachments' contents. */
 export interface RelayActivity {

@@ -227,7 +227,7 @@ settings, add-on permissions.
 | `azure.renameTenant` | `{ key, label? }` | `TenantsState` | any tenant, `default` (your az login) too: it keeps its key and behaviour, only its name is stored (D-301). No `label` goes back to the first name ("Your az login", an added tenant's display name); `not_found` for an unknown key (schema) |
 | `azure.removeTenant` | `{ key }` | `TenantsState` | forgets the tenant and deletes its folder (its sign-in); the active one falls back to your az login (schema) |
 | `phone.state` | — | `PhoneState` | Jig on your phone (D-350): `off` / `pairing` (with `code`) / `connected` (with `owner`), the bot's name, whether the token is `remembered` (encrypted) and a connection `error` |
-| `phone.connect` | `{ token }` | `PhoneState` | checks a @BotFather token with Telegram (`getMe`), keeps it (encrypted) and starts pairing with a new code; `invalid_token`, `unreachable` (schema: the token's shape) |
+| `phone.connect` | `{ token }` | `PhoneState` | the picked channel's credential: a @BotFather token checked with Telegram (`getMe`), or the Teams relay's `https://<relay>#<key>` checked with its `/api/health` (D-379); keeps it (encrypted) and starts pairing with a new code; `invalid_token`, `unreachable`, `unavailable` (schema: either shape) |
 | `phone.test` | — | — | sends the paired phone a test message; `not_connected` |
 | `phone.disconnect` | — | `PhoneState` | tells the phone, forgets the token and pairing (deletes `phone.json`) |
 | `phone.voiceDone` | `{ id, text?, data?, error? }` | — | the window's answer to a `phone.voiceJob`: the transcript, the Ogg voice message (base64) or the error |

@@ -1,7 +1,7 @@
 # Phase 27 — Jig on your phone through Teams
 
 Status: in progress (D-370): session 1, the channel layer, done (D-377); session 2, the relay, done
-(D-378), its tenant check waiting for Jon. Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
+(D-378), its tenant check waiting for Jon; session 3, the Teams channel's 1:1 chat, done (D-379). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
 we do a similar thing with Teams? so I can communicate through Teams?". His choices: a real bot with
 a small relay (so Jig's messages buzz the phone like a colleague's), Telegram **or** Teams ("one or
 the other"), Jig creates the Azure resources ("you have access"), and "a whole system … where i can
@@ -75,7 +75,8 @@ contract with Jig is `relay/teams/src/protocol.ts`):
   paired user (Entra object id + tenant), except the bot's own install events; stores activities
   (Table storage in the Function's storage account, 24 h TTL); remembers conversation references
   (1:1 chat, team, channels) for proactive messages.
-- `GET /api/updates?after=<cursor>`: Jig's `getUpdates`, long poll up to ~25 s. Relay key in a header.
+- `GET /api/updates?after=<cursor>`: Jig's `getUpdates`, long poll up to ~25 s. Relay key in a header;
+  a second Jig (another `x-jig-reader` within 90 s) gets 409 `another_reader` (D-379).
 - `POST /api/send`, `PUT /api/send/<id>`: send or update an activity as the bot (text, Adaptive
   Card, image, a new thread in a channel or a reply in one), token from the bot's app credentials.
 - `POST /api/channels`: create or rename a channel through Graph with the app's RSC token for the
@@ -173,18 +174,25 @@ Note what each step shows (a screenshot of any error) and tell a Jig chat; the r
 7. **Clean up:** delete the "Jig check" team (⋯ → Delete the team), remove the app (Apps → Manage
    your apps), delete the app registration in the portal, and `Remove-Item Env:JIG_CHECK_SECRET`.
 
-### 3. The Teams channel in Jig: 1:1 chat
-- [ ] `main/phone/teams.ts`: relay client (long poll with backoff; offline and conflict states as
-      Telegram), `TeamsChannel` implementing `PhoneChannel`.
-- [ ] Rendering: Markdown as Teams' supported Markdown/HTML; buttons as Adaptive Cards 1.5
-      (`Action.Submit` carrying the same ids as Telegram's callback data); answered on the computer →
-      the card is updated ("Allowed on the computer"); several questions one card each.
-- [ ] Pictures: inline image attachments (PNG/JPEG as `data:` URLs, ≤ 1 MB and ≤ 1024², the
-      relay refuses bigger), caption as text; `/screen`.
-- [ ] Fixed commands as typed text plus the manifest's `commandLists`; Jig itself in the 1:1 chat.
-- [ ] Fake relay server for tests (`JIG_TEAMS_RELAY` honoured only with the fake engine); unit tests;
-      `e2e/phone-teams.spec.ts` (pair, permission card Allow, /status, Jig itself) with a rule in
-      `e2e/affected.json`.
+### 3. The Teams channel in Jig: 1:1 chat — done (D-379)
+- [x] `main/phone/teams.ts`: relay client (long poll with backoff; offline and conflict states as
+      Telegram), `TeamsChannel` implementing `PhoneChannel`. Conflict: a stable reader id per
+      computer and Jig home; the relay answers 409 `another_reader` to a second Jig (a small relay
+      change). The credential is `https://<relay>#<key>`, stored like the Telegram token.
+- [x] Rendering: Jig's HTML subset as Teams' `xml` text (`<br>` line breaks); buttons as Adaptive
+      Cards 1.5 (`Action.Submit` carrying the same ids as Telegram's callback data); answered on the
+      computer → the card is updated ("Allowed on the computer"); several questions one card each.
+- [x] Pictures: inline image attachments (PNG/JPEG as `data:` URLs, fitted in main to ≤ 1 MB and
+      ≤ 1024²; one that can't fit is left out with a note), caption as text; `/screen`.
+- [x] Fixed commands as typed text plus the manifest's `commandLists` (`teamsCommandLists`, for
+      session 5's package; picked commands arrive bare and become commands); Jig itself in the 1:1 chat.
+- [x] Fake relay server for tests (`JIG_TEAMS_RELAY` honoured only with the fake engine); unit tests
+      (`teams.test.ts`, a relay test for the second reader); `e2e/phone-teams.spec.ts` (pair,
+      permission card Allow, /status, Jig itself) with a rule in `e2e/affected.json`.
+- Found on the way: the relay needs to hear about the pairing, so `PhoneChannel` gained optional
+  `pair` / `unpair` (`PUT` / `DELETE /api/pairing`). Teams' 1:1 chat has no real replies: a quoted
+  message's id is used when Teams sends it (check on a real tenant); threads (session 4) are the
+  dependable way to talk to one chat. Teams can't show a typing indicator through the relay.
 
 ### 4. The Teams channel in Jig: the team, channels and rooms
 - [ ] The "Jig" team: setup asks you to create a private team named Jig and add the app to it (Teams
