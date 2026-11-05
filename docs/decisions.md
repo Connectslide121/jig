@@ -5513,3 +5513,27 @@ choice of Telegram and everything below: Claude, on my own.
   (danger); every other count is muted text. No icons in the strip; the breakdown is a hover/focus
   tooltip.
 
+## D-353: A chat can revise the report of a task it ran
+
+- Status: accepted. Extends late reports (D-318).
+- **Who:** Jon, 2026-11-04: a queue task reported "partial"; he cleared up a misunderstanding in the
+  same chat, the work was finished, and he asked it to "report the task as done", which the tool
+  refused because the task already had a report. He wants a chat to be able to revise its own
+  task's report whenever it likes. Details below are Claude, on my own.
+- **Rule:** `addon_tasks_report` accepts a task of this chat that ended with a report (`canRevise`:
+  finished, reported, not skipped), by `taskId`, or without one as the last resort after the running
+  task and the unreported ones (`reportTarget`): unreported tasks still come first, and another chat's
+  task is still refused. `applyReport` replaces the report, sets the status from the new outcome and
+  keeps the times and cost, like a late report; a failed or blocked revision pauses by the D-318 rule
+  (not when the chat went on with a later task), and no report ever starts or un-pauses the queue.
+- **Kept:** the report it replaced, as `revised: { at, from }` on the task (only the last one; the
+  chat's transcript has the rest), so the details and Claude's list can say "Partly done → Done".
+  `reportedLate` stays as it was: a revision is not a late report.
+- **Shown quietly:** a pencil mark left of the status badge in the status slot (right-aligned, so
+  the badge and the status icon don't move and stay aligned with other rows), with "Reported again:
+  was …" on hover; the details show "Revised <when>, was …" with the old summary on hover.
+- **Telling the chat:** the tool's description says it revises; the running task's context says to
+  report again with the task's id when a follow-up changes the outcome, and a chat whose task ended
+  keeps one line naming that task and its id.
+- **Gap:** only tasks still in the queue; one already cleared (only in History) can't be revised.
+

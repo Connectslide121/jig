@@ -41,6 +41,7 @@ import {
   MoreHorizontal,
   Paperclip,
   Pause,
+  PencilLine,
   Play,
   Plus,
   X,
@@ -1648,6 +1649,19 @@ function TaskRow({
           </>
         ) : (
           <>
+            {/* Reported again after it ended (D-353): a quiet mark left of the badge, so nothing moves. */}
+            {task.revised && (
+              <span
+                className="flex shrink-0 items-center text-hint"
+                title={`Reported again: was ${STATUS_LABEL[task.revised.from.outcome]}`}
+                data-testid={`task-revised-${task.id}`}
+              >
+                <PencilLine
+                  aria-label={`Revised, was ${STATUS_LABEL[task.revised.from.outcome]}`}
+                  className="size-3"
+                />
+              </span>
+            )}
             <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
             <StatusIcon status={task.status} />
           </>
@@ -1799,6 +1813,15 @@ function TaskDialog({
         <div className="flex items-center gap-2">
           <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
           {task.reportedLate && <Badge tone="neutral">Reported late</Badge>}
+          {task.revised && (
+            <span
+              className="text-xs text-muted"
+              title={`Before: ${task.revised.from.summary}`}
+              data-testid="task-revised"
+            >
+              Revised {when(task.revised.at)}, was {STATUS_LABEL[task.revised.from.outcome]}
+            </span>
+          )}
         </div>
         <div className="grid grid-cols-4 gap-x-4 gap-y-2 rounded-md bg-surface p-3" data-testid="task-facts">
           {facts.map(([label, value]) => (

@@ -364,7 +364,9 @@ describe("late reports (D-318)", () => {
     expect(reportTarget(ran(), "s1").id).toBe("c");
     expect(reportTarget(ran(), "s1", "a").id).toBe("a");
     expect(() => reportTarget(ran(), "s1", "d")).toThrow(/didn't run in this chat/);
-    expect(() => reportTarget(ran(), "s1", "b")).toThrow(/done/);
+    expect(() => reportTarget(ran({ b: { status: "skipped", report: undefined } }), "s1", "b")).toThrow(
+      /skipped/,
+    );
     expect(() => reportTarget(ran(), "s1", "x")).toThrow(/no task x/);
   });
   it("never lands on a newer task when an earlier one of the chat is missing its report", () => {
@@ -427,6 +429,68 @@ describe("late reports (D-318)", () => {
     const next = recordRuns(history, before, queue);
     expect(next[0]!.tasks[0]).toMatchObject({ status: "done", reportedLate: true });
     expect(next[0]!.finishedAt).toBe("y");
+  });
+});
+
+describe("revised reports (D-353)", () => {
+  const report = (outcome: string) => parseReport({ outcome, summary: `it was ${outcome}` });
+  /** a reported partial and b done in chat s1, nothing running; c ran in s2; d never ran. */
+  const ran = (over: Partial<Record<string, Partial<Task>>> = {}): Queue => {
+    const q = pic("Ab C D");
+    const ended = { finishedAt: "2025-01-01T10:10:00Z", sentAt: "2025-01-01T10:00:00Z", costUsd: 0.4 };
+    const base: Record<string, Partial<Task>> = {
+      a: { status: "partial", sessionId: "s1", report: report("partial"), ...ended },
+      b: { status: "done", sessionId: "s1", report: report("done"), ...ended },
+      c: { status: "done", sessionId: "s2", report: report("done"), ...ended },
+    };
+    return { ...q, tasks: q.tasks.map((t) => ({ ...t, ...base[t.id], ...over[t.id] }) as Task) };
+  };
+  it("goes to a reported task of this chat by id, or its last reported task; never another chat's", () => {
+    expect(reportTarget(ran(), "s1", "a").id).toBe("a");
+    expect(reportTarget(ran(), "s1").id).toBe("b");
+    expect(() => reportTarget(ran(), "s1", "c")).toThrow(/didn't run in this chat/);
+    expect(() => reportTarget(ran(), "s1", "d")).toThrow(/didn't run in this chat/);
+  });
+  it("still goes to a task without a report first when no taskId is given", () => {
+    const q = ran({ a: { status: "no_report", report: undefined } });
+    expect(reportTarget(q, "s1").id).toBe("a");
+  });
+  it("replaces partial with done, keeping the time and cost and the report it replaced", () => {
+    const q = ran();
+    const { queue, late, revised, pause } = applyReport(
+      q,
+      q.tasks[0]!,
+      report("done"),
+      "2025-01-02T09:00:00Z",
+    );
+    expect({ late, revised, pause }).toEqual({ late: false, revised: true, pause: false });
+    expect(queue.tasks[0]).toMatchObject({
+      status: "done",
+      report: { outcome: "done", summary: "it was done" },
+      revised: { at: "2025-01-02T09:00:00Z", from: { outcome: "partial", summary: "it was partial" } },
+      finishedAt: "2025-01-01T10:10:00Z",
+      costUsd: 0.4,
+    });
+    expect(queue.tasks[0]!.reportedLate).toBeUndefined();
+  });
+  it("replaces done with partial, and a revision of a revision keeps only the last report", () => {
+    const q = ran();
+    const once = applyReport(q, q.tasks[1]!, report("partial")).queue;
+    expect(once.tasks[1]).toMatchObject({ status: "partial", revised: { from: { outcome: "done" } } });
+    const twice = applyReport(once, once.tasks[1]!, report("done")).queue;
+    expect(twice.tasks[1]).toMatchObject({ status: "done", revised: { from: { outcome: "partial" } } });
+  });
+  it("pauses on a revision to failed like a late report; done never starts the queue", () => {
+    const running = { ...ran(), running: true };
+    // b is s1's last task: a failed revision pauses, a's doesn't (its chat went on with b).
+    expect(applyReport(running, running.tasks[1]!, report("failed")).pause).toBe(true);
+    expect(applyReport(running, running.tasks[0]!, report("blocked")).pause).toBe(false);
+    const paused = ran();
+    expect(applyReport(paused, paused.tasks[0]!, report("done")).queue.running).toBe(false);
+  });
+  it("tells a chat whose task ended that it may report again", () => {
+    expect(taskContext(ran(), "s1")).toContain('call addon_tasks_report again with taskId "b"');
+    expect(taskContext(ran(), "s3")).toBe("");
   });
 });
 

@@ -62,6 +62,11 @@ export interface Task {
   nudgedAt?: string;
   /** Its report came after it was marked No report or Interrupted (`addon_tasks_report` with taskId). */
   reportedLate?: boolean;
+  /**
+   * Its chat reported it again after it ended (D-353), e.g. once the user followed up: when, and the
+   * report the new one replaced (only the last one; the chat has the rest).
+   */
+  revised?: { at: string; from: TaskReport };
   /** Jig closed while its chat worked on it (status error); it can still be reported late. */
   interrupted?: boolean;
   /** While it needs you: what its chat waits for (D-326). */
@@ -365,6 +370,11 @@ export function canReportLate(task: Task): boolean {
   );
 }
 
+/** A task that ended with a report, which its chat may replace (D-353). */
+export function canRevise(task: Task): boolean {
+  return !!task.report && isFinished(task) && task.status !== "skipped";
+}
+
 /** This chat's tasks that still miss their report, in queue order. */
 export function unreported(queue: Pick<Queue, "tasks">, sessionId: string): Task[] {
   return queue.tasks.filter((t) => t.sessionId === sessionId && canReportLate(t));
@@ -374,10 +384,11 @@ const named = (queue: Pick<Queue, "tasks">, t: Task) =>
   `task ${queue.tasks.indexOf(t) + 1} "${t.title}" (taskId "${t.id}")`;
 
 /**
- * Which task a chat's `addon_tasks_report` is for (D-318). With `taskId`: that task, when this chat
- * ran it and it is still running or misses its report; never another chat's. Without: the chat's
- * running task while it has no report; once it has one, the chat's earliest task still missing one
- * (a late report never lands on a newer task); with no running task, the most recent one missing it.
+ * Which task a chat's `addon_tasks_report` is for (D-318, D-353). With `taskId`: that task, when this
+ * chat ran it and it is still running, misses its report, or ended with one (a revision); never
+ * another chat's. Without: the chat's running task while it has no report; once it has one, the
+ * chat's earliest task still missing one (a late report never lands on a newer task); with no running
+ * task, the most recent one missing it, or else the chat's last reported task (a revision).
  */
 export function reportTarget(queue: Pick<Queue, "tasks">, sessionId: string, taskId?: string): Task {
   const active = queue.tasks.find((t) => t.sessionId === sessionId && isActive(t));
@@ -386,38 +397,47 @@ export function reportTarget(queue: Pick<Queue, "tasks">, sessionId: string, tas
     if (!task) throw new Error(`There is no task ${taskId} in this chat's queue`);
     if (task.sessionId !== sessionId)
       throw new Error(`Task ${taskId} didn't run in this chat; a chat can only report its own tasks`);
-    if (task === active || canReportLate(task)) return task;
+    if (task === active || canReportLate(task) || canRevise(task)) return task;
     throw new Error(
-      `Task ${taskId} is ${STATUS_LABEL[task.status].toLowerCase()}; only a running task or one without a report can be reported`,
+      `Task ${taskId} is ${STATUS_LABEL[task.status].toLowerCase()}; only a task that ran in this chat can be reported`,
     );
   }
   if (active && !active.report) return active;
   const missing = unreported(queue, sessionId);
   if (missing.length) return active ? missing[0]! : missing[missing.length - 1]!;
   if (active) return active;
+  const last = queue.tasks.filter((t) => t.sessionId === sessionId && canRevise(t)).pop();
+  if (last) return last;
   throw new Error("This chat isn't running a task from the task queue; there is nothing to report.");
 }
 
 /**
  * A report on `task`: a running task keeps running with it (its status comes when the chat ends). A
  * late one sets the status from the outcome and keeps the task's times and cost, marked
- * `reportedLate`. A late failed or blocked report pauses a running queue when "stop when a task
- * fails" is on, as an on-time one would, unless the chat already went on with a later task (D-318).
+ * `reportedLate`; a revision (D-353) does the same for a task that ended with a report, keeping the
+ * one it replaces in `revised`. A late or revised failed or blocked report pauses a running queue
+ * when "stop when a task fails" is on, as an on-time one would, unless the chat already went on with
+ * a later task (D-318); no report ever starts or un-pauses the queue.
  */
 export function applyReport(
   queue: Queue,
   task: Task,
   report: TaskReport,
-): { queue: Queue; late: boolean; pause: boolean } {
+  at = new Date().toISOString(),
+): { queue: Queue; late: boolean; revised: boolean; pause: boolean } {
   const swap = (q: Queue, t: Task): Queue => ({ ...q, tasks: q.tasks.map((x) => (x.id === t.id ? t : x)) });
-  if (isActive(task)) return { queue: swap(queue, { ...task, report }), late: false, pause: false };
+  if (isActive(task))
+    return { queue: swap(queue, { ...task, report }), late: false, revised: false, pause: false };
+  const revised = canRevise(task);
   const { error: _error, interrupted: _interrupted, ...rest } = task;
-  const done: Task = { ...rest, report, status: report.outcome, reportedLate: true };
+  const done: Task = revised
+    ? { ...rest, report, status: report.outcome, revised: { at, from: task.report! } }
+    : { ...rest, report, status: report.outcome, reportedLate: true };
   const next = swap(queue, done);
   const index = queue.tasks.findIndex((t) => t.id === task.id);
   const movedOn = queue.tasks.slice(index + 1).some((t) => t.sessionId && t.sessionId === task.sessionId);
   const pause = queue.running && shouldPause(next, done) && !movedOn;
-  return { queue: pause ? { ...next, running: false } : next, late: true, pause };
+  return { queue: pause ? { ...next, running: false } : next, late: !revised, revised, pause };
 }
 
 /**
@@ -955,7 +975,13 @@ export function unusedFiles(before: Queue, after: Queue, keep: string[] = []): s
 /** What Claude is told in the chat running a task (each turn, while the task runs). */
 export function taskContext(queue: Queue, sessionId: string): string {
   const task = queue.tasks.find((t) => t.sessionId === sessionId && isActive(t));
-  if (!task) return "";
+  if (!task) {
+    // A chat whose task ended keeps a short line, so a follow-up that changes the outcome is reported.
+    const last = queue.tasks.filter((t) => t.sessionId === sessionId && canRevise(t)).pop();
+    return last
+      ? `This chat ran ${named(queue, last)} in the user's task queue, reported ${STATUS_LABEL[last.status].toLowerCase()}. If the user follows up and its outcome changes, call addon_tasks_report again with taskId "${last.id}"; the new report replaces the old one.`
+      : "";
+  }
   const n = queue.tasks.indexOf(task) + 1;
   const waiting = queue.tasks.filter((t) => t.status === "queued");
   const shown = waiting.slice(0, MAX_QUEUED_IN_CONTEXT);
@@ -972,6 +998,7 @@ export function taskContext(queue: Queue, sessionId: string): string {
           ...missing.map((t) => `- ${named(queue, t)}`),
         ]
       : []),
+    "If the user follows up after you reported and the outcome changes, report again with the task's id; the new report replaces the old one.",
     "Report only with addon_tasks_report; never change the task queue's data with jig_set_addon_data.",
     ...(waiting.length
       ? [
@@ -1095,7 +1122,7 @@ export function listing(queue: Queue, projectDefault: TaskProvider = "claude"): 
   if (!queue.tasks.length) return "The task queue is empty.";
   const lines = queue.tasks.map(
     (t, i) =>
-      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}${t.reportedLate ? ", reported late" : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
+      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}${t.reportedLate ? ", reported late" : ""}${t.revised ? `, revised from ${STATUS_LABEL[t.revised.from.outcome].toLowerCase()}` : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
       (t.report ? ` — ${t.report.summary}` : ""),
   );
   return [`The task queue is ${queue.running ? "running" : "paused"}. ${queueRunsOn(queue)}`, ...lines].join(

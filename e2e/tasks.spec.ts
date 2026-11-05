@@ -153,6 +153,55 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await expect(page.getByTestId("user-message").first().getByTestId("chat-attachment")).toHaveCount(2);
 });
 
+test("Tasks: a chat reports its ended task again after a follow-up, and the row changes (D-353)", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts: ["do this only partly", "update the readme"], newChat: true },
+  });
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Partly done", { timeout: 45000 });
+  await expect(view.getByTestId("task-status-t2")).toContainText("Done", { timeout: 45000 });
+  const before = (await view.getByTestId("task-status-t2").boundingBox())!;
+  const list = (await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "list",
+    args: { projectId: ids.shop },
+  })) as { value: { tasks: Array<{ id: string; sessionId: string }> } };
+  const chat = list.value.tasks.find((t) => t.id === "t1")!.sessionId;
+
+  // You follow up in t1's chat; it reports again: Done, with a quiet mark, and the queue stays put.
+  await hostCall(page, "sessions.send", { id: chat, text: "report the task as done" });
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 20000 });
+  await expect(view.getByTestId("task-status-t1")).not.toContainText("Partly");
+  await expect(view.getByTestId("task-revised-t1")).toBeVisible();
+  await expect(view.getByTestId("task-revised-t2")).toHaveCount(0);
+  expect(await view.getByTestId("task-status-t2").boundingBox()).toEqual(before);
+  await expect(view.getByTestId("tasks-start")).toBeVisible();
+  await view.getByTestId("task-t1").click();
+  await expect(page.getByTestId("task-revised")).toContainText("was Partly done");
+  await expect(page.getByTestId("task-summary")).toContainText("Reported again: done");
+  await page.keyboard.press("Escape");
+
+  // Another chat's task can't be reported from here.
+  await view.getByTestId("task-group-chat-0").click();
+  await expect(page.getByText("Reported again.").first()).toBeVisible();
+  await hostCall(page, "sessions.send", { id: chat, text: "report task t2 as failed" });
+  await expect(page.getByText(/didn't run in this chat/).first()).toBeVisible({ timeout: 20000 });
+  const after = (await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "list",
+    args: { projectId: ids.shop },
+  })) as { value: { tasks: Array<{ id: string; status: string }> } };
+  expect(after.value.tasks.find((t) => t.id === "t2")!.status).toBe("done");
+});
+
 test("Tasks: leave tasks out, put a task back and start the queue over", async ({ page, jigHome }) => {
   test.setTimeout(90_000);
   const ids = await twoProjects(page, jigHome);

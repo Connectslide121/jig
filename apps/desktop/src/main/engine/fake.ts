@@ -37,6 +37,9 @@ import {
   type StartOptions,
 } from "./types";
 
+/** "report the task as done" / "report task t2 as failed": a task's chat reports again (D-353). */
+const REPORT_AGAIN = /^report (?:the task|task (t\d+)) as (done|partial|failed|blocked)\b/;
+
 const FAKE_COMMANDS: SlashCommandInfo[] = [
   {
     name: "compact",
@@ -484,6 +487,16 @@ ${output.slice(0, 600)}`,
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
             await stream(`${msg}:text:1`, "Reported.", signal);
           }
+        } else if (toolHandlers?.addon_tasks_report && REPORT_AGAIN.test(lower)) {
+          // "report the task as done", after you followed up in a task's chat: it reports again (D-353),
+          // to the named task or (without one) the chat's last reported task.
+          const [, taskId, outcome] = REPORT_AGAIN.exec(lower)!;
+          const toolId = `tool-${randomUUID()}`;
+          const input = { outcome, summary: `Reported again: ${outcome}`, ...(taskId ? { taskId } : {}) };
+          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_report", input });
+          const output = await reportTask(input);
+          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+          await stream(`${msg}:text:1`, output.startsWith("Error") ? output : "Reported again.", signal);
         } else if (/skip (?:the report|two reports)/.test(lower)) {
           // A task that ends its turn without reporting (waiting for something); "two" also skips the
           // queue's first request for the report.
@@ -493,9 +506,10 @@ ${output.slice(0, 600)}`,
           // A task from the Tasks add-on's queue (its context says so): do it and report back.
           const toolId = `tool-${randomUUID()}`;
           const failed = /fail this task/.test(lower);
+          const partly = /only partly/.test(lower);
           const task = text.replace(/^(?:\[[^\]]+\]\s*)+/, "").trim();
           const input = {
-            outcome: failed ? "failed" : "done",
+            outcome: failed ? "failed" : partly ? "partial" : "done",
             summary: failed ? `Could not do it: ${task}` : `Did it: ${task}`,
             notes: ["A fake note to know"],
             followUps: /with follow-ups/.test(lower) ? [`Follow up on: ${task}`] : [],
