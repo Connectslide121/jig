@@ -125,7 +125,7 @@ async function keepFile(dir: string, input: AttachmentInput): Promise<ChatAttach
     bytes = await readFile(input.path);
   } else {
     bytes = Buffer.from(input.data ?? "", "base64");
-    if (bytes.byteLength === 0) throw new JigError("invalid_args", "The file is empty");
+    if (bytes.byteLength === 0) throw new JigError("invalid_args", `${name} is empty`);
     if (bytes.byteLength > limitFor(type.kind)) throw tooLarge(type.kind);
   }
   if (type.kind === "office") {

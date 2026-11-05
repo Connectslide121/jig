@@ -33,6 +33,7 @@ import {
 import { ComposerPicker, type PickerItem } from "./ComposerPicker";
 import { chatCommands, TERMINAL_ONLY } from "./commands";
 import { inputMode, mentionScope, mentionsIn, removeMention, replaceToken, tokenAt } from "./composerInput";
+import { withoutEmptyFiles } from "./pastedFiles";
 
 /** Files Claude Code reads itself when mentioned with @. */
 const TEXT_FILE =
@@ -353,9 +354,10 @@ export function ComposerBox({
   };
   /** Pasted or dropped files (screenshots, PDFs, Office files…) become attachments of the message. */
   const takeFiles = (list: FileList | File[]): boolean => {
-    const dropped = [...list];
-    if (dropped.length === 0) return false;
-    void keep(dropped.map((file) => () => addFiles(sessionId, [file]).then((r) => r[0]!)));
+    if (list.length === 0) return false;
+    const { files, notice } = withoutEmptyFiles(list);
+    if (notice) notify({ ...notice, tone: "danger" });
+    void keep(files.map((file) => () => addFiles(sessionId, [file]).then((r) => r[0]!)));
     return true;
   };
   const attach = async () => {

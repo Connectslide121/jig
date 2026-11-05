@@ -150,6 +150,24 @@ test("screenshots pasted or dropped into the composer go to Claude with the mess
     el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
   });
   await expect(page.getByTestId("toast").last()).toContainText("Claude can take images, PDFs, Word");
+  // An empty entry next to a screenshot is skipped quietly; an empty one alone is named once.
+  await input.evaluate((el, b64) => {
+    const data = new DataTransfer();
+    data.items.add(new File([], "blank.png", { type: "image/png" }));
+    data.items.add(
+      new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], "shot.png", { type: "image/png" }),
+    );
+    el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+  }, tiny.toString("base64"));
+  await expect(page.getByTestId("composer").getByTestId("chat-attachment")).toHaveCount(1);
+  await expect(page.getByTestId("toast").filter({ hasText: "came through empty" })).toHaveCount(0);
+  await page.getByTestId("composer").evaluate((el) => {
+    const data = new DataTransfer();
+    data.items.add(new File([], "mail.pdf", { type: "application/pdf" }));
+    el.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await expect(page.getByTestId("toast").last()).toContainText("Couldn't attach mail.pdf");
+  await expect(page.getByTestId("composer").getByTestId("chat-attachment")).toHaveCount(1);
 });
 
 test("PDFs, Word, Excel and PowerPoint files can be attached as context", async ({ page, jigHome }) => {

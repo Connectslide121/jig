@@ -18,6 +18,7 @@ import { updateTabParams } from "../../shared/layout";
 import { switchTenant, useTenants } from "../features/azure/store";
 import { PersonAvatar, personPhoto } from "../features/people/PersonAvatar";
 import { ProjectSwatch } from "../features/projects/colors";
+import { withoutEmptyFiles } from "../features/sessions/pastedFiles";
 import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
 import { ProviderMark } from "../features/usage/ProviderMark";
@@ -270,12 +271,14 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
     attachments: {
       async add(files) {
         const { readAsBase64 } = await import("../features/sessions/ChatAttachments");
+        const { files: kept, notice } = withoutEmptyFiles(Array.from(files as ArrayLike<File>));
+        if (notice) notify({ ...notice, tone: "danger" });
         return keepAttachments(
-          Array.from(files).map(
+          kept.map(
             (file) => async () =>
               call("addons.addAttachment", {
                 id,
-                data: await readAsBase64(file as File),
+                data: await readAsBase64(file),
                 mime: file.type,
                 name: file.name,
               }),

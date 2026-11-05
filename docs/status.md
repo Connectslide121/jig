@@ -1558,7 +1558,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - **Screenshots and documents in chat:** paste (Ctrl+V) or drop images, PDFs, Word, Excel, PowerPoint
   (.docx/.xlsx/.pptx) and text files into the message box, or pick them with the paperclip. They show as
   thumbnails or chips (remove with ×), go to Claude with your message (PDFs as documents, Office files
-  as text Jig extracts), and stay in the transcript (click to open).
+  as text Jig extracts), and stay in the transcript (click to open). Empty entries (an extra blank
+  item Windows puts on the clipboard, a placeholder dragged from a browser, Outlook or a zip) are
+  skipped quietly; only when nothing else came with them does one message name the file and suggest
+  saving it to disk first (also for add-ons' attachments).
 - **Configure Jig from a chat:** ask Claude to change the theme, fonts, density, file icons, layout,
   add-ons on/off, a project's name or colour, or to find and install a theme. You approve each change
   (Claude Code's prompt) and a card in the chat shows what changed, with Undo. Billing and
