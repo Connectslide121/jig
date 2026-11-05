@@ -67,4 +67,5 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | [testing.md](guides/testing.md) | Unit and end-to-end tests, the fake engine and its trigger words, screenshots |
 | [writing-addons.md](guides/writing-addons.md) | Writing an add-on by hand |
 | [themes.md](guides/themes.md) | Jig and VS Code themes |
+| [teams-phone.md](guides/teams-phone.md) | Jig on your phone through Teams: setup in the Azure portal by hand, and what to ask an admin |
 | [packaging.md](guides/packaging.md) | The Windows installer, installing and updating |

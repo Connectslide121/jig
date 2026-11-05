@@ -83,3 +83,49 @@ export function parseTeamsCredential(credential: string): { url: string; key: st
   const at = trimmed.lastIndexOf("#");
   return { url: trimmed.slice(0, at), key: trimmed.slice(at + 1) };
 }
+
+/** A setup step's or command's progress in the "Set up Teams" modal (D-370, phase 27 session 5). */
+export type TeamsSetupStatus = "todo" | "running" | "done" | "failed";
+
+export interface TeamsSetupStepView {
+  id: string;
+  title: string;
+  /** What it creates, in a few words. */
+  creates: string;
+  status: TeamsSetupStatus;
+  /** Why it stopped (az's error, naming the tenant), shown with Retry. */
+  error?: string;
+  /** The commands it runs, as you'd type them: placeholders for what isn't known yet and for secrets. */
+  commands: Array<{ id: string; text: string; status: TeamsSetupStatus }>;
+}
+
+/**
+ * The "Set up Teams" modal's state, kept in main (D-370): where the Azure pieces go, what Create has
+ * done, the app package and what the relay has seen. Never the bot's secret or the relay key.
+ */
+export interface TeamsSetupView {
+  /** The active tenant from the top bar, as `az account show` answers for it. */
+  tenant?: { id: string; name?: string; user?: string };
+  /** Enabled subscriptions the sign-in sees; only those in `tenant` can be picked (D-370). */
+  subscriptions: Array<{ id: string; name: string; inTenant: boolean }>;
+  /** Regions with Flex Consumption for the picked subscription. */
+  regions: string[];
+  choice: { subscription?: string; region?: string; group: string };
+  /** What is being read for the first step. */
+  loading?: "where" | "regions";
+  whereError?: string;
+  /** Create ran at least one command: where it goes can't change any more (Start over can). */
+  started: boolean;
+  running: boolean;
+  /** Every Azure piece exists and Jig has the relay's key (or you made them in the portal). */
+  created: boolean;
+  /** Made by hand in the Azure portal (docs/guides/teams-phone.md), not by Create. */
+  manual: boolean;
+  steps: TeamsSetupStepView[];
+  /** The Teams app package Jig wrote (shown in Explorer). */
+  packagePath?: string;
+  /** What the relay has seen: the app added for yourself, and to a team. */
+  installs: { app: boolean; team: boolean };
+  /** What setup made, for Disconnect and Start over: Jig never deletes them. */
+  resources?: { subscription: string; group: string; names: string[]; commands: string[] };
+}

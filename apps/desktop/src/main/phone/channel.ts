@@ -139,6 +139,8 @@ export interface PhoneChannel<Raw = unknown> {
   pair?(account: Account): Promise<void>;
   /** Disconnect: the channel forgets the account (Teams: the relay drops the pairing and what waits). */
   unpair?(): Promise<void>;
+  /** Teams setup: whether the app was added for yourself and to a team (the relay's health). */
+  installs?(): Promise<{ app: boolean; team: boolean }>;
   /** The menu of fixed commands (`capabilities.commands`). */
   setCommands?(commands: PhoneCommand[]): Promise<void>;
   /** A voice message: send one, fetch one you sent (`capabilities.voice`). */

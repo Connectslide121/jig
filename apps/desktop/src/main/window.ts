@@ -33,6 +33,9 @@ export const APP_ICON = join(
   process.platform === "win32" ? "../../build/icon.ico" : "../../build/icon.png",
 );
 
+/** Jig's logo as a PNG on every platform (the Teams app package's icons, D-370). */
+export const APP_PNG = join(here, "../../build/icon.png");
+
 /** Creates the main window, restoring its last size and position. */
 export async function createMainWindow(): Promise<BrowserWindow> {
   const state = await readJson(paths.windowState(), WindowStateSchema);

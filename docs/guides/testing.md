@@ -177,6 +177,11 @@ More behaviour:
 - **Talking with Claude (D-209):** in fake mode the conversation doesn't listen to the microphone;
   `window.dispatchEvent(new CustomEvent("jig-fake-speech", { detail: "…" }))` is "you said …".
   Speaking is pretended (300 ms per sentence); the last sentence is on the button's `data-said`.
+- **The Teams phone (D-379, D-381):** with `JIG_ENGINE=fake`, `JIG_TEAMS_RELAY=<url>` points the Teams
+  channel at a fake relay instead of the credential's address, and `JIG_TEAMS_RELAY_ZIP=<file>` stands
+  in for the relay's deployment package. `e2e/phone-teams.spec.ts` runs Teams setup's Create against a
+  fake `az` in the test's `fake-bin` (it logs every command and hands the relay key to the fake relay);
+  no real Azure is touched.
 - **Guarded tool calls (Routines and Artifacts tabs):** answered by a scripted "cloud"
   (`fakeCloud.ts`) with two routines, one past run and two artifacts.
 

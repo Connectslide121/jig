@@ -44,6 +44,10 @@ export const paths = {
   azureTenants: () => join(jigHome(), "azure", "tenants.json"),
   /** Your phone's Telegram bot (D-350): its token encrypted with the OS, and who it is paired with. */
   phone: () => join(jigHome(), "phone.json"),
+  /** The "Set up Teams" progress (D-370): where the Azure pieces went and what was made. No secrets. */
+  phoneTeamsSetup: () => join(jigHome(), "phone-teams-setup.json"),
+  /** The Teams app package setup writes, to upload in Teams. */
+  phoneTeamsPackage: () => join(jigHome(), "teams", "jig-teams-app.zip"),
   /** The build that ran before the last update from source (launcher fallback). */
   appBuilds: () => join(jigHome(), "app-builds"),
 };

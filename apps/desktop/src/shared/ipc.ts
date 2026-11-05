@@ -54,7 +54,7 @@ import type {
   WorkedState,
 } from "./learning";
 import type { AzureItem } from "./links";
-import type { PhoneState } from "./phone";
+import type { PhoneState, TeamsSetupView } from "./phone";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
 import type { AiProvider, ProviderStatus } from "./providers";
@@ -543,6 +543,33 @@ export interface HostMethods {
    * Errors: `not_connected`, `no_topics` (the bot has no topics).
    */
   "phone.open": { args: { sessionId: string }; result: void };
+  /**
+   * The "Set up Teams" modal (D-381). `load` reads the active tenant, its
+   * subscriptions and Flex Consumption regions with `az` (read-only) when they aren't known yet;
+   * `installs` asks the relay what it has seen. Nothing is created.
+   */
+  "phone.teamsSetup": { args: { load?: boolean; installs?: boolean }; result: TeamsSetupView };
+  /** Where the Azure pieces go (before Create started). Errors: `invalid_name`, `started`. */
+  "phone.teamsSetupWhere": {
+    args: { subscription?: string; region?: string; group?: string };
+    result: TeamsSetupView;
+  };
+  /**
+   * Create: runs the listed `az` commands in order with Jig's az for the active tenant, from the
+   * first not done; a failure stops there (Create again retries it). Answers at once; progress comes
+   * as `phone.teamsSetupChanged`. Ends by connecting the phone to the relay (pairing).
+   */
+  "phone.teamsSetupCreate": { args: void; result: TeamsSetupView };
+  /**
+   * Made by hand in the Azure portal (docs/guides/teams-phone.md): the bot's app id and the relay's
+   * address and key (`https://<host>#<key>`); connects like Create's last step. Errors:
+   * `invalid_token`, `unreachable`.
+   */
+  "phone.teamsSetupManual": { args: { appId: string; credential: string }; result: TeamsSetupView };
+  /** Writes the Teams app package (bot, scopes, RSC, icons, commands) and shows it in the file manager. */
+  "phone.teamsPackage": { args: void; result: TeamsSetupView };
+  /** Start over: forgets what setup made (it lists it first; Jig never deletes Azure resources). */
+  "phone.teamsSetupForget": { args: void; result: TeamsSetupView };
   /** The window's answer to a `phone.voiceJob`: the text, the Ogg file (base64) or what went wrong. */
   "phone.voiceDone": { args: { id: string; text?: string; data?: string; error?: string }; result: void };
   /** Puts a chat in a project, moves it to another, or takes it out (`projectId` left out). */
@@ -948,6 +975,8 @@ export interface HostEvents {
   "azure.signInProgress": { key: string; text: string; done?: boolean };
   /** Your phone's bot was set up, paired, lost its connection or was forgotten (D-350). */
   "phone.changed": PhoneState;
+  /** The "Set up Teams" modal's state changed (Create's progress, the relay saw an install). */
+  "phone.teamsSetupChanged": TeamsSetupView;
   /**
    * A voice message needs the window's audio (D-350): `transcribe` an Ogg voice message (base64) with
    * Whisper, or `speak` a text with the natural voice into an Ogg file. Answered with `phone.voiceDone`.

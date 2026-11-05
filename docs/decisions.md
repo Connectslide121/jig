@@ -6395,3 +6395,55 @@ stopped for good.
   unless the team grants `ChannelMessage.Read.Group`; the tenant check's package now asks for it and
   session 5's app package must too. Without it you @mention Jig in the thread (the mention is
   stripped from the text).
+
+## D-381: Teams setup in Settings → Phone: one modal, Create runs listed az commands
+
+- Status: accepted (phase 27 session 5; never run against real Azure in the build, Jon's real check is
+  session 6).
+- **Who:** Jon asked for setup in one modal where Jig creates the Azure pieces with his `az` (D-370);
+  how the modal and the runner work: Claude, on my own.
+- **Settings → Phone starts with the channel** (a segmented Telegram | Teams control, always first);
+  switching asks first only when the current channel is set up, and disconnects it (D-377). Switching
+  away from Teams keeps the setup's record, so switching back and pressing Continue reconnects the
+  same Azure pieces (a new secret and key, below).
+- **One modal, a fixed list on the left, the picked row's detail on the right** (stacked in a narrow
+  window): 1 Where, 2 Create (eight steps), 3 Add to Teams (package, upload for yourself, a private
+  team, add the app to it), 4 Pair. Every row has the same slots (number, title and what it makes,
+  status at the far right); the detail has a fixed footnote for the hint or the error, so nothing
+  moves when a step finishes or fails. While Create runs, the selection follows the running step.
+- **Opening the modal only reads** (`az account show`, `account list`, `functionapp
+  list-flexconsumption-locations`); every creating command is listed with placeholders before it
+  runs, and runs only on Create, in order, from the first not done, with Jig's `az` for the active
+  tenant (`runAz` + `azureContext`). A failure stops there with az's error; Retry goes on from it.
+  Only subscriptions of the active tenant can be picked (D-370: the bot in another tenant's
+  subscription stays unsupported until the tenant check proves it).
+- **What Create runs:** `ad app create` (single-tenant) and `ad sp create`; `provider register
+  --wait` for Microsoft.Web, Microsoft.Storage and Microsoft.BotService (a fresh subscription refuses
+  `bot create` without it); `group create`; `storage account create` (Standard_LRS, TLS 1.2, no
+  public blobs); `functionapp create` (Flex Consumption, Node 22) and `functionapp show` for its
+  host name (Flex hosts aren't always `<name>.azurewebsites.net`); `config-zip` with the relay
+  package; `ad app credential reset --append` (2 years) and `functionapp config appsettings set`;
+  `bot create` (F0, SingleTenant, endpoint `/api/messages`) and `bot msteams create`; then Jig asks the
+  relay's health until it answers (up to 4 minutes) and connects (pairing). The settings go in before
+  the bot so the relay is configured before Teams can reach it. Names: `jigphone<6>` and
+  `jig-phone-<6>` (a random suffix), the group `jig-phone` unless you change it.
+- **Secrets:** the bot's secret is read from `credential reset`'s answer into memory and handed to az
+  only in a private temporary file (`--settings @file`, deleted right after), never as an argument,
+  never shown, saved or logged; it's dropped once the settings are set. The relay key (32 random
+  bytes, base64url) is made in memory at the same step and lives until `phone.connect` stores it
+  encrypted. After a restart in between, Continue runs the settings step again (a new secret and key).
+  `phone-teams-setup.json` keeps only the choice, the app id, the host and which commands are done.
+- **The relay tells setup about the app:** `Health.app` (new, `protocol.ts`): someone in the bot's
+  tenant added the app for themselves (its install event or a 1:1 message), before pairing too; the
+  team comes from `Health.team`. The modal asks every 5 s while it waits, and ticks the rows.
+- **The app package** (`teamsAppManifest`): manifest 1.17, the bot app id as the package id (a new
+  package replaces the app), the bot in `personal` and `team`, the command list (D-379), RSC
+  `Channel.Create.Group`, `ChannelSettings.ReadWrite.Group`, `ChannelMessage.Read.Group` (one list in
+  `protocol.ts`, shared with the tenant check), `webApplicationInfo` = the app id, icons from Jig's
+  logo (192² colour, 32² white outline). Written to `~/.jig/teams/jig-teams-app.zip` and shown in the
+  file manager on a click (never into a repository or Downloads by itself).
+- **Made in the portal by hand** (`docs/guides/teams-phone.md`): the modal's "Made it in the portal…"
+  takes the app id and the relay's `https://<host>#<key>` (a key you put in `JIG_RELAY_KEY`), like
+  the Telegram token's paste, and marks Create done.
+- **Never deletes Azure:** Disconnect (Teams) and Start over list what setup made with `az group
+  delete …` and `az ad app delete …` to copy, then forget the record; they run nothing.

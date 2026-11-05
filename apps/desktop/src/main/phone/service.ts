@@ -415,6 +415,11 @@ export class PhoneService {
     return this.state();
   }
 
+  /** Teams setup: what the relay has seen of the app; undefined without a channel that tells. */
+  async installs(): Promise<{ app: boolean; team: boolean } | undefined> {
+    return this.channel?.installs?.();
+  }
+
   async test(): Promise<void> {
     if (!this.saved?.owner) throw new JigError("not_connected", "Pair your phone first.");
     await this.checkTopics().catch(() => undefined);

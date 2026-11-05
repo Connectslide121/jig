@@ -1,7 +1,7 @@
 # Phase 27 — Jig on your phone through Teams
 
 Status: in progress (D-370): session 1, the channel layer, done (D-377); session 2, the relay, done
-(D-378), its tenant check waiting for Jon; session 3, the Teams channel's 1:1 chat, done (D-379); session 4, the team, channels and rooms, done (D-380). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
+(D-378), its tenant check waiting for Jon; session 3, the Teams channel's 1:1 chat, done (D-379); session 4, the team, channels and rooms, done (D-380); session 5, setup in Settings → Phone, done (D-381). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
 we do a similar thing with Teams? so I can communicate through Teams?". His choices: a real bot with
 a small relay (so Jig's messages buzz the phone like a colleague's), Telegram **or** Teams ("one or
 the other"), Jig creates the Azure resources ("you have access"), and "a whole system … where i can
@@ -217,11 +217,11 @@ Note what each step shows (a screenshot of any error) and tell a Jig chat; the r
   package must. Granting RSC after projects already wrote in General leaves them there until
   Disconnect.
 
-### 5. Setup in Settings → Phone
-- [ ] Settings → Phone starts with the channel: Telegram or Teams (segmented control, always in the
+### 5. Setup in Settings → Phone — done (D-381)
+- [x] Settings → Phone starts with the channel: Telegram or Teams (segmented control, always in the
       same place; the rest of the page is that channel's). Switching asks first and disconnects the
       other.
-- [ ] "Set up Teams" opens a modal with a fixed list of steps (each row: step, what it creates,
+- [x] "Set up Teams" opens a modal with a fixed list of steps (each row: step, what it creates,
       status at the far right; nothing moves when a step finishes):
       1. **Where:** the active tenant from the top bar (where your Teams is), a subscription, a
          region, a resource group (`jig-phone`).
@@ -239,12 +239,20 @@ Note what each step shows (a screenshot of any error) and tell a Jig chat; the r
       4. **Pair:** a 6-digit code you send the bot in the 1:1 chat.
       Then Send a test, Disconnect, on/off, when (away / always), away after, finished messages, as
       Telegram.
-- [ ] `docs/guides/teams-phone.md`: the same in the Azure portal, for a tenant where `az` can't make
+- [x] `docs/guides/teams-phone.md`: the same in the Azure portal, for a tenant where `az` can't make
       an app registration, and what to ask an admin.
-- [ ] Disconnect forgets the key and conversations and lists the Azure resources to delete (with the
+- [x] Disconnect forgets the key and conversations and lists the Azure resources to delete (with the
       `az group delete` command to copy); never deletes them itself.
-- [ ] Look at the modal and the page in Jig Dark, Light and an imported theme, narrow and wide
+- [x] Look at the modal and the page in Jig Dark, Light and an imported theme, narrow and wide
       (`shootView`).
+- Found on the way: the relay had no way to say the app was added for yourself before pairing, so
+  `Health.app` is new (a small relay change). Setup also registers the three resource providers
+  (`az provider register --wait`) and reads the Function's host with `functionapp show` (Flex hosts
+  aren't always `<name>.azurewebsites.net`); the relay settings go in before the bot. Settings is a
+  tab, not a view, so the look was checked with screenshots at two window sizes
+  (`e2e/ui-shots.spec.ts`), and Settings rows now put their control under the text in a narrow pane.
+  Not tried against real Azure: the command flags are from the CLI's docs, session 6's real check
+  proves them.
 
 ### 6. Docs and the real check
 - [ ] `docs/architecture.md` (phone: channels, relay), `docs/reference/ipc.md`,

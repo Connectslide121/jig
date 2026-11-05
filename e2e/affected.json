@@ -401,6 +401,7 @@
     {
       "files": [
         "apps/desktop/src/main/phone/**",
+        "apps/desktop/src/renderer/features/phone/**",
         "apps/desktop/src/shared/phone.ts",
         "relay/teams/src/protocol.ts"
       ],

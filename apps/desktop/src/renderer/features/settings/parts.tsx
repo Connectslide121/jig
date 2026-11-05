@@ -32,13 +32,16 @@ export function SettingRow({
   description?: ReactNode;
   children: ReactNode;
 }) {
+  // In a narrow pane the control goes under the text, instead of squeezing it into a column of words.
   return (
-    <div className="flex items-center gap-4 px-4 py-3">
-      <div className="min-w-0 flex-1">
-        <div className="text-sm text-fg">{label}</div>
-        {description && <div className="mt-0.5 text-xs text-muted">{description}</div>}
+    <div className="@container px-4 py-3">
+      <div className="flex gap-4 @max-md:flex-col @max-md:items-start @max-md:gap-2 @md:items-center">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm text-fg">{label}</div>
+          {description && <div className="mt-0.5 text-xs text-muted">{description}</div>}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">{children}</div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{children}</div>
     </div>
   );
 }

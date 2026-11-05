@@ -311,6 +311,16 @@ export class TeamsChannel implements PhoneChannel<RelayUpdate> {
     return { bot: "Jig", places: Boolean(this.team), ...(note ? { note } : {}) };
   }
 
+  async installs(): Promise<{ app: boolean; team: boolean }> {
+    let health: Health;
+    try {
+      health = await this.deps.api.request<Health>("GET", "health");
+    } catch (error) {
+      throw this.failure(error, "call");
+    }
+    return { app: Boolean(health.app || health.personal), team: Boolean(health.team) };
+  }
+
   async poll(signal: AbortSignal): Promise<RelayUpdate[]> {
     let updates: RelayUpdate[];
     try {

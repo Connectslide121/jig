@@ -106,7 +106,7 @@ A new state file is documented here in the same commit that adds it.
 | `editor.languageServers` | `true` | run the language servers found on PATH for files in the editor (D-259) |
 | `editor.claudeCompletionModel` | `"haiku"` | the model Claude completes with (from Claude Code's model list); protected |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
-| `phone.channel` | `"telegram"` | where Jig reaches your phone (D-377): `telegram` (your own Telegram bot, D-350) or `teams` (your own Teams bot through a relay in your Azure, D-370, D-379; connected only through `phone.connect` until Settings → Phone gets its Teams setup in phase 27 session 5). One at a time: switching disconnects the other and forgets its saved state; protected |
+| `phone.channel` | `"telegram"` | where Jig reaches your phone (D-377): `telegram` (your own Telegram bot, D-350) or `teams` (your own Teams bot through a relay in your Azure, D-370, D-379; set up in Settings → Phone → Set up Teams, D-381). One at a time: switching disconnects the other and forgets its saved state; protected |
 | `phone.enabled` | `false` | Jig on your phone (D-350): message your paired bot and read your replies; turned on by pairing; protected |
 | `phone.when` | `"away"` | `away`: only while this computer is idle for `phone.awayMinutes` or locked; `always`; protected |
 | `phone.awayMinutes` | `5` | 1–60; protected |
@@ -183,6 +183,12 @@ and the credential lives only until Jig closes. `bot` is the bot's name; `owner`
 account it is paired with (Telegram: the private chat's id; Teams: the Entra object id). `replies` maps the last 300 messages to their chats and `targets` (per place, 0 for the main chat)
 the chat plain text written there goes to, so replies keep working after Jig restarts. Message and
 place ids are the channel's own (numbers on Telegram, strings on Teams).
+
+`phone-teams-setup.json` (D-381): Teams setup's record, no secrets: `choice` (`tenantId`,
+`subscription`, `region`, `group`, `suffix` of the resource names), `outputs` (`appId`, `host`), `done`
+(the ids of the commands Create finished), `manual` (made in the portal), `packagePath`. The bot's
+secret and the relay key are only in memory while Create runs. Forgotten by Disconnect (Teams) and
+Start over. The app package goes to `teams/jig-teams-app.zip`.
 `topics` `{ jig?, projects? }` are the places Jig made (Telegram: topics in the bot's chat; Jig's own, per project id);
 `rooms` maps chats open as rooms on the phone to their places. Teams (D-380) adds `threads`
 (chat id → `{ place, parent }`: each chat's thread and the channel it is in; Jig's place there is the

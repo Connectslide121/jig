@@ -1,13 +1,18 @@
 import { createHash, randomInt, randomUUID } from "node:crypto";
-import { readFile, rm, stat } from "node:fs/promises";
-import { hostname } from "node:os";
-import { isAbsolute, join } from "node:path";
-import { nativeImage, powerMonitor, powerSaveBlocker, safeStorage } from "electron";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { hostname, tmpdir } from "node:os";
+import { dirname, isAbsolute, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { app, nativeImage, powerMonitor, powerSaveBlocker, safeStorage } from "electron";
+import { strToU8, zipSync } from "fflate";
 import { z } from "zod";
 import { MAX_IMAGE_BYTES } from "../../../../../relay/teams/src/protocol";
 import type { PhoneChannelId } from "../../shared/phone";
 import { addonService } from "../addons";
-import { mainWindow } from "../appWindows";
+import { mainWindow, showInFolder } from "../appWindows";
+import { azureContext } from "../azure/env";
+import { runAz } from "../azure/run";
 import { chatPageScreenshot } from "../browser";
 import { getConfig, onConfigChange, updateConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
@@ -17,10 +22,13 @@ import { projectStore } from "../projects";
 import { onChatUpdates, onPermissionCard, onSessionStatus, sessionManager } from "../sessions";
 import { readJson, writeJson } from "../state/jsonStore";
 import { jigHome, paths } from "../state/paths";
+import { APP_PNG } from "../window";
 import { conciergeChat, onConciergeStartedChat, registerConcierge } from "./concierge";
 import type { QueueCounts, QueueView } from "./messages";
-import { PhoneService, type SavedPhone } from "./service";
+import { COMMANDS, PhoneService, type SavedPhone } from "./service";
 import { teamsChannel } from "./teams";
+import { SavedSetup, TeamsSetup } from "./teamsSetup";
+import { teamsAppManifest } from "./teamsSetupPlan";
 import { telegramApi } from "./telegram";
 
 const log = logger("phone");
@@ -102,6 +110,52 @@ function phoneStore() {
 }
 
 let service: PhoneService | undefined;
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+/** The relay's deployment package: in the installer's resources, or built in a clone (`npm run relay:build`). */
+function relayZip(): string | undefined {
+  if (process.env.JIG_ENGINE === "fake" && process.env.JIG_TEAMS_RELAY_ZIP)
+    return process.env.JIG_TEAMS_RELAY_ZIP;
+  const file = app.isPackaged
+    ? join(process.resourcesPath, "relay", "teams-relay.zip")
+    : join(here, "..", "..", "..", "..", "relay", "teams", "dist", "relay.zip");
+  return existsSync(file) ? file : undefined;
+}
+
+/** Teams' two icons from Jig's logo: colour 192² (on the accent colour), outline 32² white on transparent. */
+function teamsIcons(): { color: Buffer; outline: Buffer } {
+  const logo = nativeImage.createFromPath(APP_PNG);
+  const color = logo.resize({ width: 192, height: 192, quality: "best" }).toPNG();
+  const small = logo.resize({ width: 32, height: 32, quality: "best" });
+  const bitmap = Buffer.from(small.toBitmap());
+  for (let i = 0; i < bitmap.length; i += 4) bitmap.fill(255, i, i + 3);
+  const outline = nativeImage.createFromBitmap(bitmap, { width: 32, height: 32 }).toPNG();
+  return { color, outline };
+}
+
+/** Writes the Teams app package (manifest and icons) into Jig's home and returns its path. */
+async function writeTeamsPackage(appId: string, host: string): Promise<string> {
+  const { color, outline } = teamsIcons();
+  const manifest = teamsAppManifest({ appId, host, commands: COMMANDS });
+  const zip = zipSync({
+    "manifest.json": strToU8(JSON.stringify(manifest, null, 2)),
+    "color.png": color,
+    "outline.png": outline,
+  });
+  const file = paths.phoneTeamsPackage();
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, zip);
+  return file;
+}
+
+/** The relay's settings with the bot's secret, for `--settings @file`: a private file, deleted right after. */
+async function privateFile(contents: string): Promise<{ path: string; done: () => Promise<void> }> {
+  const dir = await mkdtemp(join(tmpdir(), "jig-teams-"));
+  const file = join(dir, "settings.json");
+  await writeFile(file, contents, { mode: 0o600 });
+  return { path: file, done: () => rm(dir, { recursive: true, force: true }) };
+}
 
 /** Which Jig polls the Teams relay: the same on every start of this Jig home, apart from any other. */
 const readerId = () =>
@@ -236,7 +290,38 @@ export async function startPhone(): Promise<void> {
   });
   handle("phone.connect", ({ token }) => s.connect(token));
   handle("phone.test", () => s.test());
-  handle("phone.disconnect", () => s.disconnect());
+  // Settings → Phone → Set up Teams (D-381): az only when you press Create; the secret and key in memory.
+  const setup = new TeamsSetup({
+    az: (args, timeoutMs) => runAz(args, { ...azureContext(), timeoutMs }),
+    load: async () => readJson(paths.phoneTeamsSetup(), SavedSetup),
+    save: async (saved) => {
+      if (saved) await writeJson(paths.phoneTeamsSetup(), saved);
+      else await rm(paths.phoneTeamsSetup(), { force: true });
+    },
+    relayZip,
+    settingsFile: privateFile,
+    connect: (credential) => s.connect(credential),
+    installs: () => s.installs(),
+    writePackage: writeTeamsPackage,
+    onChange: (view) => emit("phone.teamsSetupChanged", view),
+  });
+  handle("phone.teamsSetup", (args) => setup.open(args));
+  handle("phone.teamsSetupWhere", (args) => setup.setWhere(args));
+  handle("phone.teamsSetupCreate", () => setup.create());
+  handle("phone.teamsSetupManual", ({ appId, credential }) => setup.manual(appId, credential));
+  handle("phone.teamsPackage", async () => {
+    const view = await setup.writePackage();
+    if (view.packagePath) showInFolder(view.packagePath);
+    return view;
+  });
+  handle("phone.teamsSetupForget", () => setup.forget());
+  // Disconnect forgets Teams setup too, after Settings listed what to delete (Jig never deletes it).
+  handle("phone.disconnect", async () => {
+    const teams = getConfig().phone.channel === "teams";
+    const state = await s.disconnect();
+    if (teams) await setup.forget().catch((error) => log.warn("Forgetting Teams setup failed", error));
+    return state;
+  });
   handle("phone.open", ({ sessionId }) => s.openRoom(sessionId));
   handle("phone.voiceDone", ({ id, ...result }) => {
     const job = voiceJobs.get(id);

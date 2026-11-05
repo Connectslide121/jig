@@ -44,6 +44,7 @@ const int = z.number().int();
 const tenantKey = z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/);
 const tenantInput = z.string().max(253).refine(isTenantInput, "a tenant id (GUID) or a domain");
 const signInMethod = z.enum(["browser", "code"]);
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const meetingAction = z.object({
   id,
   title: z.string().min(1).max(500),
@@ -501,6 +502,27 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
         .trim()
         .max(600)
         .refine((t) => TELEGRAM_TOKEN.test(t) || TEAMS_CREDENTIAL.test(t)),
+    })
+    .strict(),
+  // Teams setup (D-370): where the Azure pieces go, and a relay made by hand in the portal.
+  "phone.teamsSetupWhere": z
+    .object({
+      subscription: z.string().regex(GUID).optional(),
+      region: z
+        .string()
+        .regex(/^[a-z0-9]{2,40}$/)
+        .optional(),
+      group: z.string().max(90).optional(),
+    })
+    .strict(),
+  "phone.teamsSetupManual": z
+    .object({
+      appId: z.string().trim().regex(GUID),
+      credential: z
+        .string()
+        .trim()
+        .max(600)
+        .refine((t) => TEAMS_CREDENTIAL.test(t)),
     })
     .strict(),
   "phone.open": z.object({ sessionId: z.string().min(1).max(100) }).strict(),
