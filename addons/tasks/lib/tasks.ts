@@ -889,6 +889,84 @@ export function stepTasks(queue: Queue, ids: string[], to: -1 | 1 | "top" | "bot
   return moveTasks(queue, ids, target);
 }
 
+/**
+ * Why a task can't be removed, or undefined when it can. A running task or one that needs you never
+ * can (skip it in its chat first); with `queuedOnly` (Claude's `addon_tasks_delete`) only queued ones
+ * can, so finished tasks stay with their run.
+ */
+function removeBlocked(task: Task | undefined, id: string, queuedOnly: boolean): string | undefined {
+  if (!task) return `There is no task ${id} in this queue`;
+  if (isActive(task))
+    return queuedOnly
+      ? `Task ${id} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be deleted`
+      : "A running task can't be removed; skip it in its chat first";
+  if (queuedOnly && task.status !== "queued")
+    return `Task ${id} has finished (${STATUS_LABEL[task.status].toLowerCase()}); only queued tasks can be deleted, finished ones stay as the queue's history`;
+  return undefined;
+}
+
+/**
+ * Removes tasks from the queue, all or nothing (the Queue tab's Remove and Claude's delete tool): throws
+ * with the reason when one of them can't go (`removeBlocked`). A chat's first task that goes hands its
+ * chat to the next task of its chat card, which then starts it, as when it is moved away (`withoutTasks`).
+ */
+export function removeTasks(queue: Queue, ids: string[], options: { queuedOnly?: boolean } = {}): Queue {
+  const wanted = new Set(ids);
+  if (!wanted.size) throw new Error("Give at least one task to delete");
+  for (const id of wanted) {
+    const reason = removeBlocked(
+      queue.tasks.find((t) => t.id === id),
+      id,
+      !!options.queuedOnly,
+    );
+    if (reason) throw new Error(reason);
+  }
+  return { ...queue, tasks: withoutTasks(queue.tasks, wanted) };
+}
+
+/** The ids Claude passes to `addon_tasks_delete`: task ids, trimmed, each once, at most 50. */
+export function parseTaskIds(value: unknown): string[] {
+  const ids = [
+    ...new Set(
+      (Array.isArray(value) ? value : [value])
+        .map((v) => (typeof v === "string" ? v.trim() : ""))
+        .filter(Boolean),
+    ),
+  ];
+  if (!ids.length) throw new Error("Give the ids of the tasks to delete (addon_tasks_list shows them)");
+  if (ids.length > 50) throw new Error("At most 50 tasks at once");
+  return ids;
+}
+
+/**
+ * What the approval card of `addon_tasks_delete` says: its title, the tasks it deletes (id and title,
+ * in queue order) and, when a rule blocks it, why (the tool would refuse it, so the card only declines).
+ */
+export function deletePermission(
+  queue: Pick<Queue, "tasks">,
+  ids: string[],
+  projectName?: string,
+): { title: string; tasks: Array<{ id: string; title: string }>; blocked?: string } {
+  const wanted = new Set(ids);
+  const tasks = queue.tasks.filter((t) => wanted.has(t.id)).map((t) => ({ id: t.id, title: t.title }));
+  let blocked: string | undefined;
+  for (const id of wanted) {
+    blocked = removeBlocked(
+      queue.tasks.find((t) => t.id === id),
+      id,
+      true,
+    );
+    if (blocked) break;
+  }
+  const n = wanted.size;
+  const what = n === 1 ? "a queued task" : `${n} queued tasks`;
+  return {
+    title: `Delete ${what}${projectName ? ` from ${projectName}'s queue` : ""}`,
+    tasks,
+    ...(blocked ? { blocked } : {}),
+  };
+}
+
 /** A finished task back in the queue (Run again): a new queued copy at the end, in a new chat. */
 export function requeue(queue: Queue, id: string): Queue {
   const task = queue.tasks.find((t) => t.id === id);

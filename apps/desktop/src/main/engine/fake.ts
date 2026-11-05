@@ -619,6 +619,38 @@ ${output.slice(0, 600)}`,
             });
             await stream(`${msg}:text:0`, output.startsWith("Error") ? output : "Queued the tasks.", signal);
           }
+        } else if (toolHandlers?.addon_tasks_delete && /\bdelete the queued task\b/.test(lower)) {
+          // "delete the queued task": Claude asks to delete queued task t1 (`addon_tasks_delete`), on the
+          // Tasks add-on's card that names it; deletes it once allowed.
+          const toolId = `tool-${randomUUID()}`;
+          const input = { ids: ["t1"] };
+          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_delete", input });
+          const decision =
+            permissionMode === "bypassPermissions"
+              ? { behavior: "allow" as const, updatedInput: undefined }
+              : await options.askPermission(
+                  {
+                    requestId: toolId,
+                    toolName: "mcp__jig__addon_tasks_delete",
+                    input,
+                    canAlwaysAllow: false,
+                  },
+                  signal,
+                );
+          const output =
+            decision.behavior === "allow"
+              ? outputText(
+                  await toolHandlers
+                    .addon_tasks_delete(decision.updatedInput ?? input)
+                    .catch((e: Error) => `Error: ${e.message}`),
+                )
+              : `Error: ${decision.message ?? "Denied"}`;
+          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+          await stream(
+            `${msg}:text:0`,
+            output.startsWith("Error") ? "OK, I didn't delete it." : "Deleted the queued task.",
+            signal,
+          );
         } else if (isTestChat) {
           // Tools → Test something…: a short report that says which model and helpers ran it.
           const agents = Object.keys(options.agents ?? {}).join(", ") || "none";

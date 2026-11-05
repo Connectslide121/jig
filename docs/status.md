@@ -438,6 +438,13 @@ Queue tab. A move or chat change the rules don't allow is refused with the reaso
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
 continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
+Claude deletes queued tasks (2026-11-05, D-362): `addon_tasks_delete` removes queued tasks by id
+(several at once, all or nothing, optionally in another project), after you approve a card that
+names each task by id and title. Running, needs-you and finished tasks are refused with the reason;
+finished ones stay as history. It shares the Queue tab's Remove code, which now also hands a chat to
+its next task when its first task is removed (that task starts the chat). Try it: queue a task by
+mistake and ask a chat "delete t5". Covered by unit tests and `e2e/tasks.spec.ts`.
+
 Mark a task done by hand (2026-11-05, D-356): a task that ended in Error or without a report (say
 its ChatGPT chat committed the work, then hit its plan's limit before reporting) has **Mark as
 done…** in its ⋯ menu and details: an optional one-line note becomes its summary, it turns Done

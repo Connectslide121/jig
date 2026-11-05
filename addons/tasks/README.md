@@ -128,6 +128,13 @@ went, so you read the results as a table instead of scrolling one long chat.
   (`editTasks`/`setNewChat`/`moveTo` in `lib/tasks.ts`). Only queued tasks, and nothing else in the
   queue changes, so it is safe while the queue runs. Claude uses it instead of rewriting the queue with `jig_set_addon_data`,
   which now refuses to replace a key that changed since the chat read it.
+- **Claude can delete queued tasks** (`addon_tasks_delete`, D-362): `ids` (several at once, all or
+  nothing) and `project`, for a task queued by mistake or no longer needed. Only queued tasks: running
+  ones, ones that need you and finished ones are refused with the reason (finished ones stay as the
+  queue's history). It isn't read-only: its approval card (`DeleteTasks`) lists each task by id and
+  title, and when a rule blocks it, says why and only declines. It goes through the Queue tab's Remove
+  (`removeTasks` in `lib/tasks.ts`, `queuedOnly` for the tool): when the first task of a chat goes,
+  the next task of that chat starts the chat, as when it is moved away.
 - **What a running task's chat is told** (`contributes.context`, D-287): its place in the queue, how to
   report, and the titles of the tasks still queued (left-out ones marked), so it doesn't suggest work
   that is already planned as follow-ups.

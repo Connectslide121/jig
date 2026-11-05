@@ -435,6 +435,48 @@ test("Tasks: drag queued tasks and chats into a new order, or move them with Alt
   await expect.poll(order).toBe("T1 T3 t2");
 });
 
+test("Tasks: Claude deletes a queued task after you approve the card that names it", async ({
+  page,
+  jigHome,
+}) => {
+  const ids = await twoProjects(page, jigHome);
+  await openTasks(page);
+  // One chat, t1 with t2 continuing it, then t3 on its own.
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: {
+      projectId: ids.shop,
+      prompts: [
+        { prompt: "write the spec" },
+        { prompt: "add its tests", newChat: false },
+        { prompt: "tidy up" },
+      ],
+      newChat: true,
+    },
+  });
+  await page.keyboard.press("Control+N");
+  await page.locator("[data-testid=composer-input]:focus").fill("delete the queued task t1");
+  await page.keyboard.press("Enter");
+  const card = page.getByTestId("tasks-delete");
+  await expect(card).toBeVisible({ timeout: 15000 });
+  await expect(card.getByTestId("tasks-delete-title")).toHaveText("Delete a queued task from shop's queue");
+  await expect(card.getByTestId("tasks-delete-t1")).toContainText("write the spec");
+  await card.getByTestId("tasks-delete-allow").click();
+  await expect(page.getByText("Deleted the queued task.").first()).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId("tasks-delete-done")).toContainText("deleted");
+  // The next task of its chat now starts that chat, as Remove in the Queue tab does.
+  const queue = (await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "list",
+    args: { projectId: ids.shop },
+  })) as { value: { tasks: Array<{ id: string; newChat: boolean }> } };
+  expect(queue.value.tasks.map((t) => [t.id, t.newChat])).toEqual([
+    ["t2", true],
+    ["t3", true],
+  ]);
+});
+
 test("Tasks: the wheel scrolls the queue while a task is dragged, and the drop follows", async ({
   page,
   jigHome,

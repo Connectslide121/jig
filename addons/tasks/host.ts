@@ -40,10 +40,12 @@ import {
   parseQueueProvider,
   parseReport,
   parseTaskEdits,
+  parseTaskIds,
   pendingReportsNote,
   type Queue,
   type Run,
   recordRuns,
+  removeTasks,
   reportTarget,
   requeue,
   resetTasks,
@@ -601,11 +603,11 @@ export async function update(
 }
 
 export async function remove(args: ProjectArgs & { id: string }, api: AddonHostApi): Promise<void> {
-  await change(api, await projectArg(api, args?.projectId), (q) => {
-    const task = q.tasks.find((t) => t.id === args.id);
-    if (task && isActive(task)) throw new Error("A running task can't be removed; skip it in its chat first");
-    return [{ ...q, tasks: q.tasks.filter((t) => t.id !== args.id) }, undefined];
-  });
+  // The same rules and chat hand-off as Claude's addon_tasks_delete (`removeTasks`); gone already is fine.
+  await change(api, await projectArg(api, args?.projectId), (q) => [
+    q.tasks.some((t) => t.id === args.id) ? removeTasks(q, [args.id]) : q,
+    undefined,
+  ]);
 }
 
 /** Deletes files the view kept but no task took (a cancelled dialog, a removed file). */
@@ -977,6 +979,29 @@ export async function toolEdit(
       .filter(Boolean)
       .join(" and ");
     return [next, `Changed ${what}.\n${listing(next, fallback)}`];
+  });
+}
+
+/**
+ * `addon_tasks_delete`: deletes queued tasks, all or nothing, by the Queue tab's rules and code path
+ * (`removeTasks`: a chat's first task that goes hands its chat to the next one). Not read-only: the
+ * user approves it on its card (`DeleteTasks`), which names the tasks.
+ */
+export async function toolDelete(
+  args: ChatArgs & { ids?: unknown; project?: string },
+  api: AddonHostApi,
+): Promise<string> {
+  const ids = parseTaskIds(args.ids);
+  const projectId = await projectNamed(api, args.project, args.chat?.projectId);
+  if (!projectId) throw new Error("Say which project's queue (this chat has none)");
+  const fallback = await projectProvider(api, projectId);
+  return change(api, projectId, (q) => {
+    const next = removeTasks(q, ids, { queuedOnly: true });
+    const gone = q.tasks.filter((t) => ids.includes(t.id)).map((t) => `${t.id} "${t.title}"`);
+    return [
+      next,
+      `Deleted ${gone.length === 1 ? "task" : `${gone.length} tasks`} ${gone.join(", ")}.\n${listing(next, fallback)}`,
+    ];
   });
 }
 

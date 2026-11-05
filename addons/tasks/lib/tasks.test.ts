@@ -19,6 +19,7 @@ import {
   continuesChat,
   counts,
   currentSlot,
+  deletePermission,
   dropSlots,
   duration,
   editTasks,
@@ -41,11 +42,13 @@ import {
   parseQueueProvider,
   parseReport,
   parseTaskEdits,
+  parseTaskIds,
   pendingReportsNote,
   providerOfModel,
   type Queue,
   type Run,
   recordRuns,
+  removeTasks,
   reportTarget,
   requeue,
   resetTask,
@@ -601,6 +604,53 @@ describe("moving tasks (D-307)", () => {
     expect(draw(stepTasks(q, ["a"], "bottom"))).toBe("BCdA");
     expect(stepTasks(q, ["a"], -1)).toBe(q);
     expect(stepTasks(q, ["c", "d"], 1)).toBe(q);
+  });
+});
+
+describe("deleting tasks (the Queue tab's Remove, addon_tasks_delete)", () => {
+  it("hands a chat to its next task when its first one is deleted, as a move away does", () => {
+    expect(draw(removeTasks(pic("Abc D"), ["a"]))).toBe("BcD");
+    expect(draw(removeTasks(pic("Abc D"), ["a", "b"]))).toBe("CD");
+    expect(draw(removeTasks(pic("Abc D"), ["b"]))).toBe("AcD");
+    expect(draw(removeTasks(pic("Abc D"), ["a", "b", "c"], { queuedOnly: true }))).toBe("D");
+    // After a chat that ran, its next queued task still continues it.
+    expect(draw(removeTasks(pic("Abc D", "a"), ["b"], { queuedOnly: true }))).toBe("AcD");
+  });
+  it("deletes all or nothing, and only queued tasks for Claude", () => {
+    const q = pic("Ab Cd", "a");
+    q.tasks[1] = { ...q.tasks[1]!, status: "running" };
+    expect(() => removeTasks(q, ["c", "b"], { queuedOnly: true })).toThrow(
+      "Task b is running; only queued tasks can be deleted",
+    );
+    expect(() => removeTasks(q, ["c", "a"], { queuedOnly: true })).toThrow(
+      /Task a has finished \(done\); only queued tasks can be deleted, finished ones stay/,
+    );
+    expect(() => removeTasks(q, ["c", "x"], { queuedOnly: true })).toThrow(
+      "There is no task x in this queue",
+    );
+    expect(() => removeTasks(q, [])).toThrow(/at least one/);
+    // The Queue tab removes a finished task too, never one that runs.
+    expect(draw(removeTasks(q, ["a"]))).toBe("BCd");
+    expect(() => removeTasks(q, ["b"])).toThrow(/running task can't be removed/);
+  });
+  it("reads the tool's ids", () => {
+    expect(parseTaskIds([" t3 ", "t4", "t3", 7, ""])).toEqual(["t3", "t4"]);
+    expect(parseTaskIds("t5")).toEqual(["t5"]);
+    expect(() => parseTaskIds([])).toThrow(/addon_tasks_list/);
+    expect(() => parseTaskIds(Array.from({ length: 51 }, (_, i) => `t${i}`))).toThrow(/At most 50/);
+  });
+  it("names the tasks on the approval card, and why a rule blocks it", () => {
+    const q = pic("Ab Cd", "a");
+    expect(deletePermission(q, ["d", "c"], "Shop")).toEqual({
+      title: "Delete 2 queued tasks from Shop's queue",
+      tasks: [
+        { id: "c", title: "C" },
+        { id: "d", title: "d" },
+      ],
+    });
+    expect(deletePermission(q, ["b"]).title).toBe("Delete a queued task");
+    expect(deletePermission(q, ["a"]).blocked).toMatch(/finished ones stay as the queue's history/);
+    expect(deletePermission(q, ["x"]).blocked).toBe("There is no task x in this queue");
   });
 });
 

@@ -45,6 +45,7 @@ import {
   PencilLine,
   Play,
   Plus,
+  Trash2,
   UserCheck,
   X,
 } from "lucide-react";
@@ -92,6 +93,7 @@ import {
   counts,
   currentSlot,
   type DropSlot,
+  deletePermission,
   dropSlots,
   duration,
   fileName,
@@ -103,6 +105,7 @@ import {
   type NewTask,
   type PermissionMode,
   PROVIDER_LABEL,
+  parseTaskIds,
   type Queue,
   type Run,
   type RunsOn,
@@ -2812,6 +2815,146 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
         <div className="ml-auto">
           <LabeledSwitch checked={startNow} onChange={setStartNow} label="Start the queue right away" />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** The ids `addon_tasks_delete` got, as the card lists them before the tool checks them. */
+function deleteIds(input: Record<string, unknown>): string[] {
+  try {
+    return parseTaskIds(input.ids);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Claude asks to delete queued tasks (`addon_tasks_delete`): the card names each one (id and title, from
+ * the queue) before you allow it. One row per id from the start, so nothing moves when the titles load;
+ * when a rule blocks it the reason takes the hint's line and the card only declines.
+ */
+export function DeleteTasks({ request, status, projectId: chatProject, respond }: AddonPermissionProps) {
+  const projects = useProjectList();
+  const ids = deleteIds(request.input);
+  const named = typeof request.input.project === "string" ? request.input.project.trim() : "";
+  const project = named
+    ? projects.find((p) => p.id === named || p.name.toLowerCase() === named.toLowerCase())
+    : projects.find((p) => p.id === chatProject);
+  const { data: queue, reload } = useHostCall<Queue>(
+    "list",
+    project ? { projectId: project.id } : undefined,
+    {
+      skip: !project || status !== "pending",
+    },
+  );
+  useAddonEvent("changed", (payload) => {
+    const changed = (payload as { projectId?: string } | undefined)?.projectId;
+    if (status === "pending" && project && (!changed || changed === project.id)) void reload();
+  });
+  const [busy, setBusy] = useState(false);
+  const plan = queue ? deletePermission(queue, ids, project?.name) : undefined;
+  const blocked = !ids.length
+    ? "No task ids were given"
+    : !project
+      ? named
+        ? `There is no project called ${named}`
+        : "This chat has no project"
+      : plan?.blocked;
+  const titles = new Map(plan?.tasks.map((t) => [t.id, t.title]));
+
+  if (status !== "pending")
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted" data-testid="tasks-delete-done">
+        {status === "denied" || status === "cancelled" ? (
+          <X className="size-3.5 text-danger" />
+        ) : (
+          <CircleCheck className="size-3.5 text-success" />
+        )}
+        <span className="min-w-0 truncate">
+          Delete {ids.join(", ") || "tasks"} —{" "}
+          {status === "denied" ? "not deleted" : status === "cancelled" ? "cancelled" : "deleted"}
+        </span>
+      </div>
+    );
+
+  const answer = async (allow: boolean) => {
+    setBusy(true);
+    try {
+      await respond(
+        allow
+          ? { behavior: "allow" }
+          : {
+              behavior: "deny",
+              message: blocked
+                ? `Nothing was deleted: ${blocked}.`
+                : "The user chose not to delete these tasks.",
+            },
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className="flex flex-col gap-2 rounded-md border border-accent bg-accent-soft p-3"
+      data-testid="tasks-delete"
+    >
+      <div className="flex items-center gap-2 text-sm font-medium text-fg">
+        <Trash2 className="size-4 shrink-0 text-danger" />
+        <span className="min-w-0 truncate" data-testid="tasks-delete-title">
+          {deletePermission({ tasks: [] }, ids, project?.name).title}
+        </span>
+        {project && (
+          <span className="ml-auto shrink-0">
+            <ProjectSwatch color={project.color} />
+          </span>
+        )}
+      </div>
+      <div className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-line bg-raised">
+        {ids.map((id) => (
+          <div
+            key={id}
+            className="flex h-8 shrink-0 items-center gap-3 border-b border-line px-2 last:border-b-0"
+            data-testid={`tasks-delete-${id}`}
+          >
+            <span className="w-12 shrink-0 text-xs tabular-nums text-hint">{id}</span>
+            <span className={cn("min-w-0 flex-1 truncate text-sm", titles.has(id) ? "text-fg" : "text-hint")}>
+              {titles.get(id) ?? (queue ? "Not in this queue" : "")}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div
+        className={cn("h-4 truncate text-xs", blocked && (queue || !project) ? "text-danger" : "text-hint")}
+        data-testid="tasks-delete-hint"
+      >
+        {blocked && (queue || !project)
+          ? blocked
+          : "Deleted tasks are gone from the queue for good; finished tasks are never deleted."}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="danger"
+          icon={Trash2}
+          disabled={!queue || !!blocked || busy}
+          onClick={() => void answer(true)}
+          data-testid="tasks-delete-allow"
+        >
+          {ids.length === 1 ? "Delete the task" : `Delete ${ids.length} tasks`}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={X}
+          disabled={busy}
+          onClick={() => void answer(false)}
+          data-testid="tasks-delete-deny"
+        >
+          Don't delete
+        </Button>
       </div>
     </div>
   );

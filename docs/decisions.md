@@ -5737,3 +5737,24 @@ choice of Telegram and everything below: Claude, on my own.
 - **Guard:** `npm run verify` runs `check:decisions`, which fails when two headings share a number
   (the old D-165 pair is let through). If you disagree with reserving at once, the placeholder route
   can replace `scripts/decision.ts` without changing the check.
+
+## D-362: Tasks: Claude deletes queued tasks with its own tool (addon_tasks_delete)
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-05: a task queued by mistake could only be left out and renamed "delete"
+  with `addon_tasks_edit`, and he removed it by hand in the Queue tab. He asked for a way for Claude
+  to delete queued tasks, with the Queue tab's rules. The design choices are Claude, on my own.
+- **What:** `addon_tasks_delete` takes `ids` (several at once, all or nothing) and an optional
+  `project`. It deletes only tasks that are still queued: running ones, ones that need you and
+  finished ones are refused with the reason (finished ones stay as the queue's history). It isn't
+  read-only: the Tasks add-on draws its approval card (`DeleteTasks`), one row per id with its title,
+  and when a rule blocks it the card says why and only declines.
+- **A tool of its own, not `delete: true` in `addon_tasks_edit`:** edit changes tasks that stay; a
+  delete is the one irreversible change, so it gets its own approval card that names what goes, and a
+  description Claude can't mistake for an edit. Mixing it into edit's ordered list would also make
+  later entries refer to tasks an earlier one deleted.
+- **One code path with the tab:** `removeTasks` (`addons/tasks/lib/tasks.ts`) now backs both the
+  Queue tab's Remove and the tool (`queuedOnly` for the tool, since the tab also removes finished
+  tasks). It removes through `withoutTasks`, the helper moves use, so when the first task of a chat
+  goes, the next task of that chat starts the chat (the tab used to drop the task alone, which left
+  the next one continuing whatever chat came before).
