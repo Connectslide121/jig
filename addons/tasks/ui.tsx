@@ -863,6 +863,7 @@ function QueuePanel({
               }
             />
           </div>
+          {queue.tasks.length > 0 && <ProgressLine counts={countTasks(queue.tasks)} />}
         </div>
       </div>
       {queue.tasks.length === 0 ? (

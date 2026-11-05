@@ -254,6 +254,8 @@ test("Tasks: park ideas below the queue, where no tick includes them, and unpark
 }) => {
   const ids = await twoProjects(page, jigHome);
   const view = await openTasks(page);
+  // The header's progress line shows only with tasks in the queue (D-352).
+  await expect(view.getByTestId("tasks-progress-line")).toHaveCount(0);
   await hostCall(page, "addons.call", {
     id: "tasks",
     method: "add",
@@ -263,6 +265,7 @@ test("Tasks: park ideas below the queue, where no tick includes them, and unpark
       newChat: true,
     },
   });
+  await expect(view.getByTestId("tasks-progress-line")).toBeVisible();
   const pool = view.getByTestId("tasks-pool");
   await expect(pool.getByTestId("tasks-pool-empty")).toBeVisible();
   await expect(view.getByTestId("tasks-count-parked")).toContainText("0");
