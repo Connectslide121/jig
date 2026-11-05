@@ -228,6 +228,43 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     expect((await overview()).records[0]!.captions.filter((c) => c.id === "revision")).toEqual([
       { ...caption, text: "Ship Thursday", final: true },
     ]);
+    // The live transcript follows the newest caption; scrolled up, it stays put and offers Latest.
+    const say = (n: number) =>
+      hostCall(room, "meetings.caption", {
+        id,
+        caption: {
+          id: `follow-${n}`,
+          speakerId: n % 2 ? "alex" : "sam",
+          speaker: n % 2 ? "Alex" : "Sam",
+          timestamp: new Date().toISOString(),
+          text: `Line ${n} about the Shop backlog and what ships next`,
+          final: true,
+        },
+      });
+    for (let n = 0; n < 30; n++) await say(n);
+    const fromBottom = () =>
+      transcript.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
+    await expect(transcript).toContainText("Line 29 about");
+    await expect.poll(fromBottom).toBeLessThan(2);
+    const latest = room.getByTestId("meeting-transcript-latest");
+    await expect(latest).toHaveCount(0);
+    await transcript.hover();
+    await room.mouse.wheel(0, -600);
+    await expect(latest).toBeVisible();
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/transcript-latest.png",
+    });
+    const top = await transcript.evaluate((el) => el.scrollTop);
+    await say(30);
+    await expect(transcript).toContainText("Line 30 about");
+    expect(await transcript.evaluate((el) => el.scrollTop)).toBe(top);
+    await latest.click();
+    await expect.poll(fromBottom).toBeLessThan(2);
+    await expect(latest).toHaveCount(0);
+    await say(31);
+    await expect(transcript).toContainText("Line 31 about");
+    await expect.poll(fromBottom).toBeLessThan(2);
     await room.getByRole("button", { name: "Share screen", exact: true }).click();
     // No supported way to send the computer's sound: the dialog says so instead of a dead switch (D-324).
     await expect(room.getByRole("dialog", { name: "Share a screen or window" })).toContainText(

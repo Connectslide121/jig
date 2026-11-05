@@ -1,5 +1,4 @@
 import {
-  ArrowDown,
   Brain,
   ChevronDown,
   ChevronRight,
@@ -23,7 +22,7 @@ import { Icon } from "../../addons/icons";
 import { copyText } from "../../lib/clipboard";
 import { clockTime, eventTime, sameDay, shortDay } from "../../lib/time";
 import { useConfig } from "../../stores/config";
-import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
+import { cn, IconButton, JumpToLatest, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
 import { BuildCard } from "../builder/BuildCard";
 import { toggleReadAloud, useReading } from "../speech/speak";
@@ -671,19 +670,15 @@ export function Transcript({
         </div>
       </div>
       {away && (
-        <button
-          type="button"
+        <JumpToLatest
+          testId="jump-latest"
           onClick={() => {
             const el = ref.current;
             if (!el) return;
             stick.current = true;
             el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
           }}
-          className="absolute bottom-3 left-1/2 flex h-7 -translate-x-1/2 items-center gap-1 rounded-full border border-line bg-elevated px-3 text-xs text-fg shadow-popover hover:bg-hover"
-          data-testid="jump-latest"
-        >
-          <ArrowDown className="size-3.5" /> Latest
-        </button>
+        />
       )}
     </div>
   );

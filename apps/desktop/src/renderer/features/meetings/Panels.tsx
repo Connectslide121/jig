@@ -10,9 +10,19 @@ import {
   Video,
   VideoOff,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MeetingCaption, MeetingRecord } from "../../../shared/meetings";
-import { Button, CountBadge, cn, Empty, IconButton, Markdown, type MenuEntry, openMenuAt } from "../../ui";
+import {
+  Button,
+  CountBadge,
+  cn,
+  Empty,
+  IconButton,
+  JumpToLatest,
+  Markdown,
+  type MenuEntry,
+  openMenuAt,
+} from "../../ui";
 import { clock, initials } from "./format";
 import type { Person } from "./media";
 import { PersonPhoto } from "./photo";
@@ -108,20 +118,44 @@ export function TranscriptPanel({
   actions?: ReactNode;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLOListElement>(null);
+  // Following the newest caption: only the user scrolling up turns it off (wheel, keys, scrollbar);
+  // content growing, a translation landing or the panel resizing never does.
   const following = useRef(true);
+  const lastTop = useRef(0);
+  const [away, setAway] = useState(false);
   const previous = useRef<string | undefined>(undefined);
   const lastCaption = record.captions.at(-1);
+  const empty = !record.captions.length && !record.gaps.length;
   // Claude translates (D-277): each line keeps a second line for its original, so nothing moves when
   // the translation comes in.
   const translating = Boolean(record.aiTranslation);
   const aiTranslated = translating || record.captions.some((c) => c.translatedBy === "ai");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: follow new and revised captions.
-  useEffect(() => {
-    if (previous.current !== record.id) following.current = true;
-    previous.current = record.id;
+  const toBottom = () => {
     const element = container.current;
-    if (element && following.current) element.scrollTop = element.scrollHeight;
+    if (!element || !following.current) return;
+    element.scrollTop = element.scrollHeight;
+    lastTop.current = element.scrollTop;
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: follow new and revised captions before paint.
+  useLayoutEffect(() => {
+    if (previous.current !== record.id) {
+      following.current = true;
+      setAway(false);
+    }
+    previous.current = record.id;
+    toBottom();
   }, [record.id, lastCaption?.id, lastCaption?.text]);
+  // Anything else that makes the list taller (translations, wrapping, photos, a narrower panel).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: toBottom reads refs only.
+  useEffect(() => {
+    const element = content.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => toBottom());
+    observer.observe(element);
+    observer.observe(container.current!);
+    return () => observer.disconnect();
+  }, [empty]);
   return (
     <section className="flex size-full min-h-0 min-w-0 flex-col" aria-label="Transcript">
       <PanelHeader
@@ -136,87 +170,108 @@ export function TranscriptPanel({
       >
         {actions}
       </PanelHeader>
-      <div
-        data-testid="meeting-transcript"
-        ref={container}
-        onScroll={() => {
-          const element = container.current;
-          if (element)
-            following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
-        }}
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
-      >
-        {!record.captions.length && !record.gaps.length ? (
-          <Empty icon={MessageSquareText} title={live ? "Listening…" : "No captions"} className="h-full">
-            {live
-              ? "Captions appear here as people speak, with their names. No audio is recorded."
-              : "No captions were captured in this meeting."}
-          </Empty>
-        ) : (
-          <ol className="space-y-4">
-            {items(record).map((item) =>
-              item.kind === "gap" ? (
-                <li key={item.key} className="flex items-center gap-3 text-xs text-warning">
-                  <time className="w-10 shrink-0 text-right tabular-nums">{clock(item.at)}</time>
-                  <span className="flex size-7 shrink-0 items-center justify-center">
-                    <AlertTriangle className="size-3.5" />
-                  </span>
-                  <span className="min-w-0 flex-1">{item.reason}</span>
-                </li>
-              ) : (
-                <li key={item.key} className="flex gap-3">
-                  <time className="w-10 shrink-0 pt-1.5 text-right text-xs text-hint tabular-nums">
-                    {clock(item.at)}
-                  </time>
-                  <span
-                    aria-hidden
-                    className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised text-2xs font-semibold text-muted"
-                  >
-                    {initials(item.speaker)}
-                    <PersonPhoto id={item.speakerId} />
-                  </span>
-                  <div className="min-w-0 flex-1 text-sm">
-                    <div className="flex min-w-0 items-center gap-2 pt-1">
-                      <span className="min-w-0 truncate font-semibold">{item.speaker}</span>
-                      {item.local && (
-                        <span
-                          className="shrink-0 rounded-sm border border-line px-1 text-2xs leading-4 font-medium text-hint"
-                          title="Transcribed on this computer because Teams captions weren't available. Who spoke may be a guess."
-                        >
-                          Local
-                        </span>
-                      )}
-                    </div>
-                    {item.lines.map((c) => (
-                      <div key={c.id}>
-                        <p
-                          className={
-                            c.final
-                              ? "whitespace-pre-wrap leading-relaxed"
-                              : "whitespace-pre-wrap leading-relaxed text-muted"
-                          }
-                        >
-                          {c.translated ?? c.text}
-                        </p>
-                        {/* What was said, under its translation (D-260); its space is kept while Claude translates. */}
-                        {c.translated ? (
-                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-hint" lang="">
-                            {c.text}
-                          </p>
-                        ) : (
-                          translating && (
-                            <p aria-hidden className="text-xs leading-relaxed text-hint">
-                              {c.final ? "Translating…" : " "}
-                            </p>
-                          )
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          data-testid="meeting-transcript"
+          ref={container}
+          onWheel={(e) => {
+            if (e.deltaY < 0 && e.currentTarget.scrollTop > 0) following.current = false;
+          }}
+          onScroll={() => {
+            const element = container.current;
+            if (!element) return;
+            const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
+            // Moving down without reaching the end is the list settling, not the user leaving.
+            following.current = atBottom || (following.current && element.scrollTop >= lastTop.current);
+            lastTop.current = element.scrollTop;
+            setAway(!following.current);
+          }}
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+        >
+          {empty ? (
+            <Empty icon={MessageSquareText} title={live ? "Listening…" : "No captions"} className="h-full">
+              {live
+                ? "Captions appear here as people speak, with their names. No audio is recorded."
+                : "No captions were captured in this meeting."}
+            </Empty>
+          ) : (
+            <ol ref={content} className="space-y-4">
+              {items(record).map((item) =>
+                item.kind === "gap" ? (
+                  <li key={item.key} className="flex items-center gap-3 text-xs text-warning">
+                    <time className="w-10 shrink-0 text-right tabular-nums">{clock(item.at)}</time>
+                    <span className="flex size-7 shrink-0 items-center justify-center">
+                      <AlertTriangle className="size-3.5" />
+                    </span>
+                    <span className="min-w-0 flex-1">{item.reason}</span>
+                  </li>
+                ) : (
+                  <li key={item.key} className="flex gap-3">
+                    <time className="w-10 shrink-0 pt-1.5 text-right text-xs text-hint tabular-nums">
+                      {clock(item.at)}
+                    </time>
+                    <span
+                      aria-hidden
+                      className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised text-2xs font-semibold text-muted"
+                    >
+                      {initials(item.speaker)}
+                      <PersonPhoto id={item.speakerId} />
+                    </span>
+                    <div className="min-w-0 flex-1 text-sm">
+                      <div className="flex min-w-0 items-center gap-2 pt-1">
+                        <span className="min-w-0 truncate font-semibold">{item.speaker}</span>
+                        {item.local && (
+                          <span
+                            className="shrink-0 rounded-sm border border-line px-1 text-2xs leading-4 font-medium text-hint"
+                            title="Transcribed on this computer because Teams captions weren't available. Who spoke may be a guess."
+                          >
+                            Local
+                          </span>
                         )}
                       </div>
-                    ))}
-                  </div>
-                </li>
-              ),
-            )}
-          </ol>
+                      {item.lines.map((c) => (
+                        <div key={c.id}>
+                          <p
+                            className={
+                              c.final
+                                ? "whitespace-pre-wrap leading-relaxed"
+                                : "whitespace-pre-wrap leading-relaxed text-muted"
+                            }
+                          >
+                            {c.translated ?? c.text}
+                          </p>
+                          {/* What was said, under its translation (D-260); its space is kept while Claude translates. */}
+                          {c.translated ? (
+                            <p className="whitespace-pre-wrap text-xs leading-relaxed text-hint" lang="">
+                              {c.text}
+                            </p>
+                          ) : (
+                            translating && (
+                              <p aria-hidden className="text-xs leading-relaxed text-hint">
+                                {c.final ? "Translating…" : " "}
+                              </p>
+                            )
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </li>
+                ),
+              )}
+            </ol>
+          )}
+        </div>
+        {away && (
+          <JumpToLatest
+            testId="meeting-transcript-latest"
+            onClick={() => {
+              const element = container.current;
+              if (!element) return;
+              following.current = true;
+              setAway(false);
+              element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
+            }}
+          />
         )}
       </div>
     </section>

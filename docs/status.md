@@ -310,6 +310,12 @@ chunk, nothing extra to package). **Check on your machine (installed app or `npm
    (Settings → System → Sound → Input). Pick the C270 by name too and check the colleague still hears you.
 5. Switch microphone in Devices… during the call: ⋯ should still say **On** afterwards.
 
+Live transcript scrolling (2026-11-05): the meeting transcript now keeps following the newest caption
+until you scroll up yourself; captions growing, translations landing or the panel resizing no longer
+leave it stuck above the end. Scrolled up, a **Latest** button (the chat's) takes you back down and it
+follows again. Try in a long meeting: scroll up, captions keep coming without moving the view; press
+Latest.
+
 Meeting captions in group meetings, and a transcript without them (2026-11-04, D-321): in Teams
 meetings with several people, Jig 0.7.0 showed "Captions could not start" right after joining. The
 cause: Jig asked for captions before Teams had said you may start them in that meeting (the meeting's
