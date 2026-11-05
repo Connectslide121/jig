@@ -82,6 +82,8 @@ test("Tests: finds a repository's suites, runs them, shows failures and history;
   await page.getByTestId("composer-input").fill("run the unit tests");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("turn-result")).toHaveCount(1, { timeout: 30000 });
+  // It started the run without waiting and got the result from addon_tests_wait (D-359).
+  await expect(page.getByTestId("chat")).toContainText(/The unit tests ran\. test: passed \(exit 0/);
   await page.getByTestId("goto-button").click();
   await page.getByTestId("goto-input").fill("show tests");
   await page.keyboard.press("Enter");

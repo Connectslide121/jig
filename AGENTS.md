@@ -238,8 +238,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   D-331).** Write and update unit and e2e tests with each change. Before a commit run `npm run verify`
   (typecheck, lint, tokens; seconds) and, when the change touches the app or an e2e spec, `npm run
   e2e:changed` (only the specs it needs, usually under a minute; in Jig through the Tests add-on's
-  `addon_tests_run`, so Jon sees it). Fix what fails before committing. Docs-only and unit-test-only
-  changes run nothing. The whole `npm run e2e` and `npm run check` run at release, never at other
+  `addon_tests_run`, so Jon sees it; it answers within 100 s, so call `addon_tests_wait` with the run
+  id until it's done, D-359, never the shell instead). Fix what fails before committing. Docs-only
+  and unit-test-only changes run nothing. The whole `npm run e2e` and `npm run check` run at release, never at other
   moments: only a run on the release's own source proves it clean. Run a single quick unit test file
   (`npx vitest run <file>`) when a pure function's logic is tricky, and anything else when Jon asks.
 - A new spec gets a rule in `e2e/affected.json`. Tests run in parallel: no dependence on other tests or

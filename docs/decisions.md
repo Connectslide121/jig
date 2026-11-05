@@ -5671,3 +5671,23 @@ choice of Telegram and everything below: Claude, on my own.
     boxes are measured after a dialog's opening motion (`settledBox`), the split test waits for its
     own saved layout (saving waits 300 ms), the handover test for the turn to end, the learning test
     for the shell's prompt; the fake engine's steps notice a turn stopped before they started.
+
+## D-359: Claude's test runs answer within 100 s and are waited for by id
+
+- Status: accepted. Refines D-244.
+- **Who:** Jon, 2026-11-05: `addon_tests_run` waited for the whole suite and failed after 120 s
+  ("toolRun took longer than 120 s"), so `npm:e2e:changed` (1-8 minutes) couldn't run through it and
+  chats ran it in their own shell, where he doesn't see it in the Tests view. He asked for long runs
+  to work and stay visible there. The design below is Claude, on my own.
+- **Where the limit is:** the add-on host's call timeout (`HostProcess.call`, 120 s by default), which
+  every add-on tool goes through. It stays: a hung add-on call must still fail. Codex chats give Jig's
+  tools 1800 s, so the host's limit is the one that counts.
+- **The add-on answers in time instead:** `run` starts the suite (or joins its run already going) and
+  waits at most `wait` seconds (default 90, at most 100, `lib/report.ts`). Done in time: the result
+  as before (counts, failing tests, last 60 lines). Still going: "still running" with the run id, how
+  long so far, the output's last 15 lines and the instruction to call `addon_tests_wait` with the id.
+  `wait` (read-only, no prompt) waits the same way for a run started by `run` or in the view, and can
+  be called again until it's done; it never starts or stops a run. The run itself is the view's run, so
+  it shows live there, with its toast and history.
+- **Finished runs are found by id** for 20 runs while Jig runs (with their output); after a restart
+  `wait` says the id is unknown and points at `list`, which shows each suite's last result.

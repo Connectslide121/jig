@@ -1054,6 +1054,7 @@ ${output.slice(0, 600)}`,
               output,
               isError: output.startsWith("Error"),
             });
+            return output;
           };
           if (/as a workflow/.test(lower)) {
             await call("addon_workflows_save", {
@@ -1085,10 +1086,14 @@ ${output.slice(0, 600)}`,
             await call("jig_terminal_run", { command: "echo build finished", title: "Build" });
             await stream(`${msg}:text:0`, "It runs in a Jig terminal; I'll hear when it ends.", signal);
           } else if (/run the unit tests/.test(lower)) {
-            // The Tests add-on's tools: list the suites, then run one and report what it says.
+            // The Tests add-on's tools: list the suites, start one without waiting, then wait for it
+            // by its run id until it is done (D-359), as Claude does with a suite of several minutes.
             await call("addon_tests_list", {});
-            await call("addon_tests_run", { suite: "npm:test" });
-            await stream(`${msg}:text:0`, "The unit tests ran: see the result above.", signal);
+            let result = await call("addon_tests_run", { suite: "npm:test", wait: 0 });
+            const runId = /\(run ([\w-]+)/.exec(result)?.[1];
+            for (let i = 0; runId && i < 5 && /still running/.test(result); i++)
+              result = await call("addon_tests_wait", { id: runId, wait: 10 });
+            await stream(`${msg}:text:0`, `The unit tests ran. ${result.split("\n")[0]}`, signal);
           } else if (/remember in the notes/.test(lower)) {
             // The project notes tool: a note for this project (it shows in its Knowledge and Notes view).
             await call("jig_notes_add", {

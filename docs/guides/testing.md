@@ -127,7 +127,7 @@ in this order:
 | "since the last release" | Claude calls the Releases add-on's tool `addon_releases_changes` for the chat's repository |
 | "list jig library skills" | Reports the skill plugin ids actually selected at engine start; used to verify global/project controls and continuing chats |
 | "in a jig terminal" | Claude runs `echo build finished` in a Jig terminal (`jig_terminal_run`); when it exits, Jig sends the chat a "Terminal "Build" finished" message, which starts a new turn |
-| "run the unit tests" | Claude lists the project's test suites (`addon_tests_list`) and runs `npm:test` (`addon_tests_run`); the run shows in the Tests view (D-244) |
+| "run the unit tests" | Claude lists the project's test suites (`addon_tests_list`) starts `npm:test` without waiting (`addon_tests_run` with `wait: 0`), waits for it by run id (`addon_tests_wait`) and quotes the result's first line; the run shows in the Tests view (D-244, D-359) |
 | "remember in the notes" | Claude adds a project dependency about deferring pipeline improvements until migration, using `jig_notes_add`; all chats in that project see it |
 | "change the queued task" | Claude appends "Don't run the e2e tests." to queued task `t1` with `addon_tasks_edit` (only queued tasks; the queue's state is left alone) |
 | "move the queued task" | Claude moves queued task `t2` to the top of the queue, in a chat of its own, with `addon_tasks_edit` (`moveTo`, `newChat`) |

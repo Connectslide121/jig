@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import type { AddonHostApi, AddonProcess } from "@jig/sdk";
-import { parseResults, plainText, runStatus } from "./lib/results";
+import { doneReport, runningReport, waitSeconds, within } from "./lib/report";
+import { parseResults, runStatus } from "./lib/results";
 import { dotnetSuite, npmSuites, type Suite, sortSuites } from "./lib/suites";
 
 /**
@@ -131,8 +132,8 @@ interface Live {
   finished: Promise<TestRun>;
 }
 const live = new Map<string, Live>();
-/** Finished runs' output, kept while Jig runs (the newest 20). */
-const finishedOutput = new Map<string, string>();
+/** Finished runs with their output, kept while Jig runs (the newest 20), for the view and `wait`. */
+const finished = new Map<string, { run: TestRun; output: string }>();
 
 /** Runs in progress, with their output so far (the view shows it in a modal). */
 export async function running(): Promise<Array<TestRun & { output: string }>> {
@@ -140,7 +141,7 @@ export async function running(): Promise<Array<TestRun & { output: string }>> {
 }
 
 export async function output({ id }: { id: string }): Promise<string> {
-  return live.get(id)?.output ?? finishedOutput.get(id) ?? "";
+  return live.get(id)?.output ?? finished.get(id)?.output ?? "";
 }
 
 async function start(
@@ -178,9 +179,6 @@ async function start(
   live.set(run.id, entry);
   api.emit("runs", { repo });
   entry.finished = entry.process.done.then(async ({ code }) => {
-    finishedOutput.set(run.id, entry.output);
-    for (const old of [...finishedOutput.keys()].slice(0, -20)) finishedOutput.delete(old);
-    live.delete(run.id);
     const result = parseResults(entry.output);
     const done: TestRun = {
       ...run,
@@ -189,6 +187,9 @@ async function start(
       endedAt: new Date().toISOString(),
       status: entry.stopping ? "stopped" : runStatus(code, result),
     };
+    finished.set(run.id, { run: done, output: entry.output });
+    for (const old of [...finished.keys()].slice(0, -20)) finished.delete(old);
+    live.delete(run.id);
     await saveRun(api, done);
     if (done.status !== "stopped") {
       const counts = done.parsed
@@ -246,8 +247,18 @@ export async function toolList(args: ChatArgs, api: AddonHostApi): Promise<strin
   return lines.join("\n");
 }
 
+/**
+ * Waits up to `wait` seconds for a run (D-359): the add-on host gives a call 120 s and an e2e suite
+ * takes minutes, so a run still going is answered with its id and Claude calls `wait` again.
+ */
+async function report(entry: Live, wait: unknown): Promise<string> {
+  const done = await within(entry.finished, waitSeconds(wait) * 1000);
+  return done ? doneReport(done, entry.output) : runningReport(entry.run, entry.output);
+}
+
+/** Starts a suite (or joins its run already going) and waits for it, at most `wait` seconds. */
 export async function toolRun(
-  args: ChatArgs & { repo?: string; suite: string },
+  args: ChatArgs & { repo?: string; suite: string; wait?: number },
   api: AddonHostApi,
 ): Promise<string> {
   const repos = await suites({ projectId: args.chat?.projectId }, api);
@@ -256,14 +267,16 @@ export async function toolRun(
     repos.find((r) => r.suites.some((s) => s.id === args.suite));
   if (!repo) throw new Error("Name the repository (its path or name from the list tool).");
   const entry = await start({ repo: repo.path, suiteId: args.suite, by: "claude" }, api);
-  const done = await entry.finished;
-  const tail = plainText(entry.output).split("\n").slice(-60).join("\n");
-  return [
-    `${done.label}: ${done.status} (exit ${done.exitCode})`,
-    done.parsed ? `${done.passed} passed, ${done.failed} failed, ${done.skipped} skipped` : "",
-    done.failures.length ? `Failing:\n${done.failures.map((f) => `- ${f}`).join("\n")}` : "",
-    `Output (last lines):\n${tail}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return report(entry, args.wait);
+}
+
+/** Waits for a run started earlier (by `run` or in the view), at most `wait` seconds. */
+export async function toolWait(args: ChatArgs & { id: string; wait?: number }): Promise<string> {
+  const entry = live.get(args.id);
+  if (entry) return report(entry, args.wait);
+  const done = finished.get(args.id);
+  if (done) return doneReport(done.run, done.output);
+  throw new Error(
+    `No run ${args.id}: it ended before Jig restarted, or the id is wrong. The list tool shows each suite's last result.`,
+  );
 }

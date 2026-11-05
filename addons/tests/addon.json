@@ -35,7 +35,7 @@
       },
       {
         "id": "run",
-        "description": "Run one test suite and wait for it: returns passed/failed counts, the failing tests and the last lines of output. The user sees it run in the Tests view. Prefer the smallest suite that covers the change; a full end-to-end suite can take minutes.",
+        "description": "Start one test suite (or join its run already going) and wait for it, at most `wait` seconds (default 90, max 100). When it finishes in time: passed/failed counts, the failing tests and the last lines of output. When it is still running (an end-to-end suite often takes 1-8 minutes): its run id and the output so far; then call addon_tests_wait with that id, again each time it says still running, until it is done. Never run the suite in your own shell instead: the user sees this run in the Tests view. Prefer the smallest suite that covers the change.",
         "params": {
           "suite": {
             "type": "string",
@@ -45,9 +45,31 @@
             "type": "string",
             "description": "The repository's path or name from the list tool (needed when several have the suite)",
             "optional": true
+          },
+          "wait": {
+            "type": "number",
+            "description": "Seconds to wait for the result before answering with the run id (0-100, default 90)",
+            "optional": true
           }
         },
         "run": "toolRun"
+      },
+      {
+        "id": "wait",
+        "description": "Wait for a test run started with addon_tests_run (or in the Tests view), at most `wait` seconds (default 90, max 100). Returns the result like run (counts, failing tests, last lines of output) once it is done, or 'still running' with the output so far: then call it again with the same id. It never starts or stops a run.",
+        "readOnly": true,
+        "params": {
+          "id": {
+            "type": "string",
+            "description": "The run id that addon_tests_run answered with"
+          },
+          "wait": {
+            "type": "number",
+            "description": "Seconds to wait before answering (0-100, default 90)",
+            "optional": true
+          }
+        },
+        "run": "toolWait"
       }
     ]
   }
