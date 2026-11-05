@@ -62,7 +62,7 @@ Reuse these before writing new ones; add-ons get the same components as `@jig/sd
 
 | Component | Notes |
 |---|---|
-| `Button` | `variant` primary / secondary / ghost / danger, `size` sm / md, `icon`, `busy` |
+| `Button` | `variant` primary / secondary / ghost / danger, `size` sm / md / icon, `icon`, `busy`, `join` start / end (square right / left corners, for a split button; never shape corners with a `rounded-*` class, it loses to the base `rounded-md`, D-365) |
 | `IconButton` | square icon button; `label` is the tooltip and accessible name; `active` |
 | `Input`, `Textarea`, `Select`, `Switch` | form fields |
 | `Card`, `Badge` (tones), `CountBadge`, `Kbd`, `Empty`, `SectionTitle` | containers and labels |

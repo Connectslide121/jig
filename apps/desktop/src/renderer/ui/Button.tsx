@@ -12,6 +12,12 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   icon?: LucideIcon;
   busy?: boolean;
+  /**
+   * Joins the button to a neighbour as one control (a split button, D-365): `start` squares its right
+   * corners, `end` its left ones. Pick corners here, never with a `rounded-*` class: `cn` resolves no
+   * conflicts, so the base `rounded-md` would win.
+   */
+  join?: "start" | "end";
 }
 
 const variants: Record<ButtonVariant, string> = {
@@ -20,6 +26,8 @@ const variants: Record<ButtonVariant, string> = {
   ghost: "text-fg hover:bg-hover",
   danger: "bg-danger text-on-danger hover:opacity-90",
 };
+
+const radii = { none: "rounded-md", start: "rounded-l-md", end: "rounded-r-md" } as const;
 
 const sizes: Record<ButtonSize, string> = {
   sm: "h-6 px-2 text-sm gap-1",
@@ -34,6 +42,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     size = "md",
     icon: Icon,
     busy,
+    join,
     className,
     children,
     disabled,
@@ -49,7 +58,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cn(
-        "no-drag inline-flex shrink-0 items-center justify-center rounded-md font-medium leading-none whitespace-nowrap transition-colors",
+        "no-drag inline-flex shrink-0 items-center justify-center font-medium leading-none whitespace-nowrap transition-colors",
+        radii[join ?? "none"],
         "disabled:pointer-events-none",
         !busy && "disabled:opacity-50",
         // Only for the spinner laid over an icon-less label; never fights a caller's `absolute`.

@@ -5822,7 +5822,9 @@ choice of Telegram and everything below: Claude, on my own.
   in the same accent (`composer-send-menu`, `w-4`), always there, idle or busy, so nothing moves when
   a turn starts or ends. Amended (Jon, 2026-11-05): the halves read as one control, square inner
   corners and a hairline (`border-on-accent/25`) between them instead of a 1 px gap, and the chevron
-  is disabled whenever Send is (empty box), with the same faded look, so its menu can't open. Its menu (`openMenuAt`, right-aligned, through `ui/Menu.tsx`): **Send** idle
+  is disabled whenever Send is (empty box), with the same faded look, so its menu can't open. Send squares its right corners with `Button`'s `join="start"` (`end` squares the left
+  ones): a `rounded-r-none` class lost to the base `rounded-md` because `cn` resolves no conflicts
+  (Claude, on my own, 2026-11-05). Its menu (`openMenuAt`, right-aligned, through `ui/Menu.tsx`): **Send** idle
   or **Queue: after this turn** busy (Enter; Run in shell / Remember in `!`/`#` mode), **Send now:
   into the running turn** (Mod+Enter, enabled only while busy), **Park: keep it, send it later**
   (**Alt+Enter**, free in the composer and app-wide), a separator, **Send in a new chat**. Entries

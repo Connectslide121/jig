@@ -533,7 +533,7 @@ export function Composer({
                   title={sendLabel}
                   disabled={empty}
                   data-testid="composer-send"
-                  className="rounded-r-none"
+                  join="start"
                   onClick={() => submit()}
                 />
                 <button
