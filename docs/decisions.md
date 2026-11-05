@@ -5501,3 +5501,68 @@ choice of Telegram and everything below: Claude, on my own.
   other components. Moving Boards and `ArrangeList` to the helper is a follow-up.
 - Tests: `e2e/tasks.spec.ts` drags with the mouse, wheels mid-drag and checks the line followed.
 
+## D-352: The task queue counts tasks one way everywhere, and progress is done of what will run
+
+- Status: accepted. Replaces the queue strip's per-status icons and chat count (D-307 era) and the
+  dashboard card's run-only "N of M finished" (D-326).
+- **Who:** Jon, 2026-11-05: the strip "just looks like a bunch of random numbers" (15 chats, 5 done,
+  1 running, 13 queued for 19 tasks, 13 of them left out). He wants tasks as the unit, the chat count
+  kept beside it ("20 tasks in 16 chats"), and a minimal one-line strip (his mockup v2: "minimalism is
+  very important for a clean UI"). Details below are Claude, on my own.
+- **Rules** (`addons/tasks/lib/counts.ts`, `countTasks`): every task is in exactly one count, in a
+  fixed order (done, partly done, failed, blocked, error, no report, running, needs you, up next,
+  skipped, left out), so they add up to the total; a queued task is "Up next", or "Left out" when it's
+  unticked. **Will run** is every task except the left-out and skipped ones, and progress is
+  `done of will run` ("5 of 6 done", "All 6 done", "All left out"). Chats are counted as the queue
+  groups them (a task that continues the chat before shares it); **chats up next** have at least one
+  task up next. Time and cost are over the same tasks.
+- **Where:** the Queue tab's strip (and a past run's), a chat card's header, and the All queues
+  dashboard's cards, which now count the whole queue like the strip instead of only the current run.
+  The progress line/bar is `ProgressParts` (`parts.tsx`): done, the rest that ran, then running, as
+  shares of what will run; left-out tasks aren't drawn.
+- **Colour only where it needs an eye:** running (info), needs you (warning), failed and error
+  (danger); every other count is muted text. No icons in the strip; the breakdown is a hover/focus
+  tooltip.
+
+## D-353: A chat can revise the report of a task it ran
+
+- Status: accepted. Extends late reports (D-318).
+- **Who:** Jon, 2026-11-04: a queue task reported "partial"; he cleared up a misunderstanding in the
+  same chat, the work was finished, and he asked it to "report the task as done", which the tool
+  refused because the task already had a report. He wants a chat to be able to revise its own
+  task's report whenever it likes. Details below are Claude, on my own.
+- **Rule:** `addon_tasks_report` accepts a task of this chat that ended with a report (`canRevise`:
+  finished, reported, not skipped), by `taskId`, or without one as the last resort after the running
+  task and the unreported ones (`reportTarget`): unreported tasks still come first, and another chat's
+  task is still refused. `applyReport` replaces the report, sets the status from the new outcome and
+  keeps the times and cost, like a late report; a failed or blocked revision pauses by the D-318 rule
+  (not when the chat went on with a later task), and no report ever starts or un-pauses the queue.
+- **Kept:** the report it replaced, as `revised: { at, from }` on the task (only the last one; the
+  chat's transcript has the rest), so the details and Claude's list can say "Partly done → Done".
+  `reportedLate` stays as it was: a revision is not a late report.
+- **Shown quietly:** a pencil mark left of the status badge in the status slot (right-aligned, so
+  the badge and the status icon don't move and stay aligned with other rows), with "Reported again:
+  was …" on hover; the details show "Revised <when>, was …" with the old summary on hover.
+- **Telling the chat:** the tool's description says it revises; the running task's context says to
+  report again with the task's id when a follow-up changes the outcome, and a chat whose task ended
+  keeps one line naming that task and its id.
+- **Gap:** only tasks still in the queue; one already cleared (only in History) can't be revised.
+
+## D-354: History shows what a run's tasks ran on, from the tasks
+
+- Status: accepted. Extends History (D-248) and providers per task (D-330, D-338, D-339).
+- **Who:** Jon, 2026-11-05: a run's provider in History, both marks when it mixed them, counts on
+  hover, derived from what the tasks actually ran on, never a guess for old runs. Details below are
+  Claude, on my own.
+- **Derived, not stored:** `runProviders(tasks)` counts each started task's `ranOn` (set when its chat
+  starts, and moved to the provider that finished it after a handover) and its `startedOn` when that
+  differs, so a task handed over mid-chat counts for both. The queue's "Runs on" at the time is never
+  used. A handover between two tasks of one chat shows on the later task's `ranOn`. No new field: runs
+  are already the tasks as they ended.
+- **Old runs:** a started task without `ranOn` counts as "not recorded" (said in the tooltip); a run
+  with none recorded leaves the slot empty.
+- **Shown:** a fixed "Ran on" slot between Cost and Status (`@max-xl:w-8 @xl:w-20`): the marks, most
+  tasks first, with the name (or "Mixed") beside them when the container is `@xl`; tooltip "Ran on
+  ChatGPT · 5 tasks, Claude · 1". The run page's header shows the same at its right, beside ⋯, so a
+  provider joining an open run grows leftward and moves nothing.
+

@@ -17,6 +17,7 @@ import {
   Switch,
   Tabs,
   Textarea,
+  Tooltip,
   useActiveProject,
   useAddon,
   useAddonEvent,
@@ -40,12 +41,24 @@ import {
   MoreHorizontal,
   Paperclip,
   Pause,
+  PencilLine,
   Play,
   Plus,
   X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { DashboardView } from "./Dashboard";
+import {
+  COUNT_LABEL,
+  COUNT_ORDER,
+  type CountKey,
+  countTasks,
+  countText,
+  progressText,
+  type QueueCounts,
+  restCounts,
+  sizeText,
+} from "./lib/counts";
 import {
   addFiles,
   addStep,
@@ -85,6 +98,8 @@ import {
   type Run,
   type RunsOn,
   runOutcome,
+  runProviders,
+  runProvidersText,
   runsOn,
   STATUS_LABEL,
   stepTasks,
@@ -94,7 +109,15 @@ import {
   type TaskStatus,
   tally,
 } from "./lib/tasks";
-import { BAR, money, onQueueRequest, STATUS_TONE, StatusIcon, takeRequestedQueue } from "./parts";
+import {
+  countTextClass,
+  money,
+  onQueueRequest,
+  ProgressParts,
+  STATUS_TONE,
+  StatusIcon,
+  takeRequestedQueue,
+} from "./parts";
 import { type ProviderChoice, RunsOnButton, runsOnText, SOURCE_TEXT } from "./RunsOn";
 
 const MODES: Array<{ value: PermissionMode; label: string }> = [
@@ -173,6 +196,8 @@ const COL = {
   /** Who runs the chat: always the mark, in the same place on every row (D-330). */
   provider: "flex w-4 shrink-0 items-center justify-center",
 };
+/** History's "Ran on": the marks alone when narrow, with the name beside them when there's room. */
+const RAN_ON = "@max-xl:w-8 @xl:w-20 flex shrink-0 items-center gap-1";
 /** Every value column: one line, right-aligned, digits of equal width. */
 const CELL = "shrink-0 whitespace-nowrap text-right tabular-nums";
 
@@ -661,10 +686,11 @@ function QueuePanel({
 
   return (
     <>
-      {/* One row: the queue's progress on the left, its controls on the right. In a narrow place
-          (a sidebar) the time and cost, then the switch's words and the status counts give way. */}
+      {/* One row: the queue's progress on the left, its size, time and cost and its controls on the
+          right, a 2 px progress line along the bottom edge (D-352). In a narrow place (a sidebar) the
+          size, the time, the quiet counts and the switch's words give way. */}
       <div className="@container shrink-0">
-        <div className="flex h-10 items-center gap-3 px-3">
+        <div className="relative flex h-10 items-center gap-3 px-3">
           {queue.tasks.length > 0 ? <QueueSummary tasks={queue.tasks} inline /> : <span className="flex-1" />}
           <div className="flex shrink-0 items-center gap-2">
             <LabeledSwitch
@@ -1075,6 +1101,9 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
         <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Failed</span>
         <span className={cn(COL.time, CELL)}>Time</span>
         <span className={cn(COL.cost, CELL)}>Cost</span>
+        <span className={RAN_ON} title="The providers its tasks ran on">
+          <span className="@max-xl:hidden @xl:inline">Ran on</span>
+        </span>
         <span className={cn("w-24", CELL)}>Status</span>
       </div>
       <div className="overflow-hidden rounded-lg border border-line bg-raised">
@@ -1109,6 +1138,7 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
               </span>
               <span className={cn(COL.time, CELL, "text-xs text-muted")}>{runTime(run)}</span>
               <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
+              <RanOn tasks={run.tasks} className={RAN_ON} testId={`tasks-run-provider-${i}`} />
               <span className="flex w-24 shrink-0 items-center justify-end gap-1.5 whitespace-nowrap">
                 {run.finishedAt ? (
                   o.failed ? (
@@ -1125,6 +1155,27 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * The providers a run's tasks ran on (from the tasks, never the queue's setting): one mark, or both
+ * when it mixed them, the counts in the tooltip. Empty for a run from before Jig kept it.
+ */
+function RanOn({ tasks, className, testId }: { tasks: Task[]; className: string; testId: string }) {
+  const ran = runProviders(tasks);
+  const text = runProvidersText(ran);
+  return (
+    <span className={className} title={text ? `Ran on ${text}` : undefined} data-testid={testId}>
+      {ran.counts.map((c) => (
+        <ProviderMark key={c.provider} provider={c.provider} iconOnly />
+      ))}
+      {ran.counts.length > 0 && (
+        <span className="@max-xl:hidden @xl:inline min-w-0 truncate text-xs text-muted">
+          {ran.counts.length > 1 ? "Mixed" : PROVIDER_LABEL[ran.counts[0]!.provider]}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -1178,7 +1229,7 @@ function RunPanel({
     );
   return (
     <>
-      <div className="flex h-10 shrink-0 items-center gap-2 px-3" data-testid="tasks-run">
+      <div className="@container flex h-10 shrink-0 items-center gap-2 px-3" data-testid="tasks-run">
         <IconButton
           size="sm"
           icon={ArrowLeft}
@@ -1189,6 +1240,8 @@ function RunPanel({
         <span className="min-w-0 truncate text-sm text-fg">Run of {when(run.startedAt)}</span>
         <span className="shrink-0 text-xs text-muted">{run.finishedAt ? "" : "· still going"}</span>
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          {/* At the right, beside ⋯: a provider joining while it runs grows leftward, moving nothing. */}
+          <RanOn tasks={run.tasks} className="flex shrink-0 items-center gap-1" testId="tasks-run-provider" />
           <IconButton
             size="sm"
             icon={MoreHorizontal}
@@ -1271,84 +1324,96 @@ function RunPanel({
   );
 }
 
-const SUMMARY_ORDER: TaskStatus[] = [
-  "done",
-  "partial",
-  "failed",
-  "blocked",
-  "error",
-  "no_report",
-  "running",
-  "needs_you",
-  "queued",
-  "skipped",
-];
+/** The full breakdown behind the strip's lead: every count (they add up), then tasks and chats. */
+function Breakdown({ counts: c }: { counts: QueueCounts }) {
+  const always: CountKey[] = ["done", "running", "upNext", "leftOut"];
+  const row = (label: string, n: number, quiet?: boolean) => (
+    <div key={label} className={cn("flex justify-between gap-8", quiet && "text-muted")}>
+      <span>{label}</span>
+      <span className="tabular-nums">{n}</span>
+    </div>
+  );
+  return (
+    <div className="flex w-40 flex-col gap-0.5 py-1 tabular-nums" data-testid="tasks-breakdown">
+      {COUNT_ORDER.filter((k) => always.includes(k) || c.by[k]).map((k) =>
+        row(COUNT_LABEL[k], c.by[k], k === "leftOut" || k === "skipped"),
+      )}
+      <div className="my-1 border-t border-line" />
+      {row("Tasks", c.total)}
+      {row("Chats", c.chats)}
+      {row("Chats up next", c.chatsUpNext)}
+    </div>
+  );
+}
 
-/** The whole queue at a glance: a bar of how the tasks went, counts per status, time and cost. */
 /**
- * The queue's progress: a bar, the count per status, the time and cost. `inline` sits in the queue's
- * header row (inside its `@container`) and gives way as the row narrows; otherwise it's its own row.
+ * The queue's progress in one line (D-352): "5 of 6 done" (of the tasks that will run), then only the
+ * counts that aren't zero, the full breakdown on hover; on the right, muted, the size, time and cost
+ * of the same tasks. `inline` sits in the queue's header row (inside its `@container`, which draws the
+ * progress line) and gives way as the row narrows; otherwise it's its own row with its own line.
  */
 function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
-  const t = tally(tasks);
-  // How many chats the tasks run in (a task that continues the one before shares its chat).
-  const chats = chatGroups({ tasks }).length;
-  const chatsLabel = `${chats} ${chats === 1 ? "chat" : "chats"}`;
+  const c = countTasks(tasks);
+  const rest = restCounts(c);
+  const dot = <span className="text-hint"> · </span>;
+  const time = formatMs(c.ms);
   return (
-    <div
-      className={cn("flex min-w-0 items-center", inline ? "flex-1 gap-3" : "h-12 shrink-0 gap-4 px-6")}
-      data-testid="tasks-summary"
-      title={`${chatsLabel} · ${t.byStatus.queued ?? 0} queued · ${t.finished} of ${tasks.length} finished`}
-    >
+    <>
       <div
-        className={cn(
-          "flex h-1.5 shrink-0 overflow-hidden rounded-full bg-raised",
-          inline ? "@max-xl:w-16 @xl:w-28" : "w-40",
-        )}
+        className={cn("flex min-w-0 items-center gap-3", inline ? "flex-1" : "relative h-10 shrink-0 px-6")}
+        data-testid="tasks-summary"
       >
-        {SUMMARY_ORDER.map((status) =>
-          t.byStatus[status] ? (
-            <div
-              key={status}
-              className={BAR[STATUS_TONE[status]]}
-              style={{ width: `${((t.byStatus[status] ?? 0) / tasks.length) * 100}%` }}
-            />
-          ) : null,
-        )}
-      </div>
-      <div
-        className={cn(
-          "min-w-0 flex-1 items-center gap-3 overflow-hidden text-xs text-muted",
-          inline ? "@max-lg:hidden @lg:flex" : "flex",
-        )}
-      >
-        <span className="flex shrink-0 items-center gap-1" data-testid="tasks-chats">
-          <MessageSquare className="size-3.5 text-hint" />
-          <span className="tabular-nums text-fg">{chats}</span>
-          {chats === 1 ? "chat" : "chats"}
-        </span>
-        {SUMMARY_ORDER.filter((status) => t.byStatus[status]).map((status) => (
-          <span key={status} className="flex shrink-0 items-center gap-1">
-            <StatusIcon status={status} />
-            <span className="tabular-nums text-fg">{t.byStatus[status]}</span>
-            {STATUS_LABEL[status].toLowerCase()}
-          </span>
-        ))}
-      </div>
-      {(t.ms > 0 || (t.costUsd ?? 0) > 0) && (
+        <Tooltip content={<Breakdown counts={c} />}>
+          <button
+            type="button"
+            aria-label={`${progressText(c)}. ${COUNT_ORDER.map((k) => countText(k, c.by[k])).join(", ")}. ${sizeText(c)}.`}
+            className="block min-w-0 cursor-default truncate text-left text-xs tabular-nums text-muted"
+            data-testid="tasks-progress"
+          >
+            <span className="font-semibold text-fg">{progressText(c)}</span>
+            {rest.map(({ key, n }) => {
+              // Narrow: only the coloured counts (running, needs you, failed) stay.
+              const quiet = countTextClass(key) === "text-muted";
+              return (
+                <span key={key} className={cn(quiet && inline && "@max-xl:hidden @xl:inline")}>
+                  {dot}
+                  <span className={countTextClass(key)}>{countText(key, n)}</span>
+                </span>
+              );
+            })}
+          </button>
+        </Tooltip>
         <span
-          className={cn("shrink-0 text-xs tabular-nums text-muted", inline && "@max-4xl:hidden @4xl:inline")}
+          className="ml-auto shrink-0 whitespace-nowrap text-xs tabular-nums text-muted"
+          data-testid="tasks-size"
         >
-          {[formatMs(t.ms), money(t.costUsd)].filter(Boolean).join(" · ")}
+          <span className={cn(inline && "@max-3xl:hidden @3xl:inline")}>
+            {sizeText(c)}
+            {(time || c.costUsd !== undefined) && dot}
+          </span>
+          {time && (
+            <span className={cn(inline && "@max-2xl:hidden @2xl:inline")} title="Time spent on these tasks">
+              {time}
+              {c.costUsd !== undefined && dot}
+            </span>
+          )}
+          {c.costUsd !== undefined && <span title="What these tasks cost so far">{money(c.costUsd)}</span>}
         </span>
-      )}
-      {/* Narrow: no counts per status, so say how far along the queue is. */}
-      {inline && (
-        <span className="min-w-0 truncate text-xs text-muted tabular-nums @lg:hidden">
-          {chatsLabel} · {t.finished}/{tasks.length}
-        </span>
-      )}
-    </div>
+        {!inline && <ProgressLine counts={c} />}
+      </div>
+      {inline && <ProgressLine counts={c} />}
+    </>
+  );
+}
+
+/** The 2 px progress line along a strip's bottom edge: it adds no height (D-352). */
+function ProgressLine({ counts }: { counts: QueueCounts }) {
+  return (
+    <ProgressParts
+      counts={counts}
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-raised"
+      testId="tasks-progress-line"
+    />
   );
 }
 
@@ -1438,9 +1503,7 @@ function ChatCard({
         <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
         <ProviderSlot on={runsOnOf(tasks[0]!)} testId={`task-group-provider-${number - 1}`} />
         <span className="w-7 shrink-0" />
-        <span className={cn(COL.status, CELL, "text-xs text-muted")}>
-          {t.finished} of {tasks.length} finished
-        </span>
+        <span className={cn(COL.status, CELL, "text-xs text-muted")}>{progressText(countTasks(tasks))}</span>
       </div>
       {group.tasks.map(({ task, index }) => (
         <TaskRow
@@ -1617,6 +1680,19 @@ function TaskRow({
           </>
         ) : (
           <>
+            {/* Reported again after it ended (D-353): a quiet mark left of the badge, so nothing moves. */}
+            {task.revised && (
+              <span
+                className="flex shrink-0 items-center text-hint"
+                title={`Reported again: was ${STATUS_LABEL[task.revised.from.outcome]}`}
+                data-testid={`task-revised-${task.id}`}
+              >
+                <PencilLine
+                  aria-label={`Revised, was ${STATUS_LABEL[task.revised.from.outcome]}`}
+                  className="size-3"
+                />
+              </span>
+            )}
             <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
             <StatusIcon status={task.status} />
           </>
@@ -1768,6 +1844,15 @@ function TaskDialog({
         <div className="flex items-center gap-2">
           <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
           {task.reportedLate && <Badge tone="neutral">Reported late</Badge>}
+          {task.revised && (
+            <span
+              className="text-xs text-muted"
+              title={`Before: ${task.revised.from.summary}`}
+              data-testid="task-revised"
+            >
+              Revised {when(task.revised.at)}, was {STATUS_LABEL[task.revised.from.outcome]}
+            </span>
+          )}
         </div>
         <div className="grid grid-cols-4 gap-x-4 gap-y-2 rounded-md bg-surface p-3" data-testid="task-facts">
           {facts.map(([label, value]) => (

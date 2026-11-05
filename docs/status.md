@@ -438,6 +438,35 @@ Queue tab. A move or chat change the rules don't allow is refused with the reaso
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
 continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
+History shows each run's provider (2026-11-05, D-354): the Tasks add-on's History list has a "Ran on"
+column with the provider marks of what the run's tasks actually ran on (both marks when a run mixed
+ChatGPT and Claude, e.g. a task on Claude in a ChatGPT queue or a handover; the counts on hover, the
+name or "Mixed" beside the marks when there's room); the run page's header shows the same. Runs from
+before Jig kept a task's provider leave it empty. Unit tests and `e2e/tasks.spec.ts` cover it.
+
+A chat can revise its task's report (2026-11-05, D-353): when you follow up in a task's chat after it
+reported (say it reported Partly done and you cleared up a misunderstanding), ask it to report the
+task again: `addon_tasks_report` with the task's id replaces the report, the status follows the new
+outcome (times and cost stay), and the row gets a quiet pencil mark beside its status (hover: "was
+Partly done"); the details say when it was revised. Only the chat's own tasks; a revision to failed
+or blocked pauses like a late report, and nothing restarts the queue. Covered by unit tests and
+`e2e/tasks.spec.ts`. Known gap: a task already cleared from the queue (only in History) can't be
+revised.
+
+The task queue's summary strip adds up (2026-11-05, D-352): one line at the top of the Queue tab
+reads "5 of 6 done" (done of the tasks that will run, so left-out tasks never make a queue look
+unfinished; "All 6 done" when it's through), then only the counts that aren't zero (running in
+blue, failed in red, left out muted); on the right, muted, "20 tasks in 16 chats · 1h 32m · $16.40"
+over the same tasks. A 2 px progress line runs along the strip's bottom edge (done, failed,
+running; the track is up next). Hover or focus the left text for the full breakdown: Done, Running,
+Up next, Left out (and any other status there is), then Tasks, Chats and Chats up next; it adds up
+to the total. In a sidebar the line keeps "5 of 6 done · 1 running" and the cost. A chat card's
+header ("0 of 1 done", "All left out") and the All queues dashboard's cards ("5 of 6 done · 20 tasks
+in 16 chats") use the same counting (`addons/tasks/lib/counts.ts`, unit-tested). Checked with
+screenshots of a mixed queue (done, failed, up next, left out), wide and at sidebar width; the
+running colour wasn't caught on screen (the fake engine's turns are too quick). Clicking a count
+doesn't filter: the Queue tab has no filter to reuse.
+
 Scrolling while dragging in the task queue (2026-11-05, D-351): while you drag a task or a chat in
 the Queue tab, the mouse wheel and the trackpad scroll the list as usual, and the drop line follows
 to whatever is under the pointer after the scroll; a small label with the task's title follows the

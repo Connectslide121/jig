@@ -45,6 +45,11 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       (project default, Claude, ChatGPT), a per-task provider and model in Add tasks and Edit, the
       mark on every row, the details and the dashboard card; `chats.create({ provider, model })` for
       add-ons; `addon_tasks_add`/`addon_tasks_edit` take `provider`, `model` and `runsOn`.
+- [x] **A chat revises its task's report** (added 2026-11-05, D-353): `addon_tasks_report` with the
+      task's id replaces the report of an ended task of that chat; a pencil mark beside the status.
+- [x] **A queue summary whose numbers add up** (added 2026-11-05, D-352): "5 of 6 done" of the tasks
+      that will run, non-zero counts only, "20 tasks in 16 chats", a 2 px progress line and the
+      breakdown on hover; chat headers and the dashboard count the same way (`lib/counts.ts`).
 - [x] **Scroll with the wheel while dragging a task** (added 2026-11-05, D-351): the queue drags with
       pointer events (`usePointerDrag`), so the wheel and trackpad scroll the list mid-drag and the drop
       line follows; Boards and `ArrangeList` can move to the same helper later.

@@ -783,8 +783,9 @@ export async function context(args: ChatArgs, api: AddonHostApi): Promise<string
 }
 
 /**
- * A chat reports its task: the one it runs, or (D-318) one of its own tasks that ended without a
- * report (`taskId`, or the rules in `reportTarget`). A late report sets the task's status at once.
+ * A chat reports its task: the one it runs, (D-318) one of its own tasks that ended without a report,
+ * or (D-353) one of its own that ended with one, which the new report replaces (`taskId`, or the
+ * rules in `reportTarget`). A late or revised report sets the task's status at once.
  */
 export async function toolReport(
   args: ChatArgs & {
@@ -806,7 +807,8 @@ export async function toolReport(
   return change(api, projectId, (q) => {
     const task = reportTarget(q, sessionId, taskId);
     const n = q.tasks.indexOf(task) + 1;
-    const { queue, late, pause } = applyReport(q, task, report);
+    const from = task.report?.outcome;
+    const { queue, late, revised, pause } = applyReport(q, task, report);
     if (pause)
       api.notify({
         title: `Task queue paused: task ${n} reported ${STATUS_LABEL[report.outcome].toLowerCase()}`,
@@ -817,9 +819,11 @@ export async function toolReport(
       });
     return [
       queue,
-      late
-        ? `Reported task ${n} ("${task.title}") late: ${report.outcome}.${pause ? " The queue is paused." : ""} The user sees it in the task queue.`
-        : `Reported task ${n}: ${report.outcome}. The user sees it in the task queue.`,
+      revised
+        ? `Revised the report of task ${n} ("${task.title}"): ${from} → ${report.outcome}.${pause ? " The queue is paused." : ""} The user sees it in the task queue.`
+        : late
+          ? `Reported task ${n} ("${task.title}") late: ${report.outcome}.${pause ? " The queue is paused." : ""} The user sees it in the task queue.`
+          : `Reported task ${n}: ${report.outcome}. The user sees it in the task queue.`,
     ];
   });
 }

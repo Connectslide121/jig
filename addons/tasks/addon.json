@@ -57,7 +57,7 @@
     "tools": [
       {
         "id": "report",
-        "description": "Reports how the task-queue task this chat is running went. Call it once when the task is done or can't go on (only in a chat that runs a queued task; the instructions say so). The user reads the reports as a table instead of reading the chat. It also takes late reports: an earlier task of this chat that ended without a report (No report, or interrupted) is reported with its taskId, which the instructions and the queue's request name; report those first. Only this chat's own tasks. Never change the task queue with jig_set_addon_data: this tool is the only way to report.",
+        "description": "Reports how the task-queue task this chat is running went. Call it once when the task is done or can't go on (only in a chat that runs a queued task; the instructions say so). The user reads the reports as a table instead of reading the chat. It also takes late reports: an earlier task of this chat that ended without a report (No report, or interrupted) is reported with its taskId, which the instructions and the queue's request name; report those first. It also revises: if the user follows up after you reported and the outcome changes (e.g. the work is now finished), call it again with the task's id; the new report replaces the old one and the status follows it. Only this chat's own tasks. Never change the task queue with jig_set_addon_data: this tool is the only way to report.",
         "params": {
           "outcome": {
             "type": "string",
@@ -80,7 +80,7 @@
           },
           "taskId": {
             "type": "string",
-            "description": "The task to report when it isn't the one running now: an earlier task of this chat without a report (its id, e.g. t3). Leave out for the running task",
+            "description": "The task to report when it isn't the one running now: an earlier task of this chat without a report, or one it already reported whose outcome changed (its id, e.g. t3). Leave out for the running task",
             "optional": true
           }
         },

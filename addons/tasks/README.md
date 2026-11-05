@@ -77,6 +77,15 @@ went, so you read the results as a table instead of scrolling one long chat.
   id and title (`pendingReportsNote`), as the running task's context does. **Ask for a report** (a No
   report row's ⋯, and its details) sends the chat the same request; it answers with a late report.
   The chat never needs `jig_set_addon_data` for the queue, and the tool says so.
+- **Revised reports (D-353):** a chat may report its own ended task again, e.g. after you followed
+  up in it and the work is finished: `addon_tasks_report` with that `taskId` (without one, once the
+  chat has no running task and nothing unreported, its last reported task). The new report replaces
+  the old one; the status follows the new outcome and the times and cost stay. The task keeps the
+  report it replaced in `revised: { at, from }` (only the last one). The row shows a quiet pencil
+  mark left of its status badge ("Reported again: was Partly done"), the details say "Revised …, was
+  …", and Claude's list says "revised from …". A revision to failed or blocked pauses like a late
+  report; no report ever starts or un-pauses the queue. A chat whose task ended keeps one line of
+  context telling it it may report again (`taskContext`).
 - **The results** (D-186): a bar and counts per status with the total time and cost, then a card per
   chat: its link (opens the chat), number of tasks, project, time, cost and "n of m finished". In it,
   a row per task: #, title (with "same chat", "queued by Claude", "a follow-up", non-default
@@ -140,7 +149,11 @@ went, so you read the results as a table instead of scrolling one long chat.
   Follow-ups and Files first, then Time and Cost, then the hints beside titles (container variants on
   both sides, D-297).
 - **History** (D-248): every Start opens a run; the tasks it starts belong to it, and it finishes
-  when the queue does. The History tab lists runs (started, tasks, done, failed, time, cost, status);
+  when the queue does. The History tab lists runs (started, tasks, done, failed, time, cost, ran on,
+  status); "Ran on" (D-354) is the provider marks of what the run's tasks ran on (`runProviders`: each
+  started task's `ranOn`, plus `startedOn` after a handover), both when it mixed them, the counts on
+  hover, the name beside them when there's room; empty for runs from before `ranOn` was kept. The run's
+  header shows the same.
   a run opens read-only (details, files, open chat, Run again, Queue every task again, Remove from
   history once finished). Clearing finished tasks keeps them in the history; the last 200 runs are
   kept, and their files stay until the run is removed.
