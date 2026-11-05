@@ -5537,3 +5537,21 @@ choice of Telegram and everything below: Claude, on my own.
   keeps one line naming that task and its id.
 - **Gap:** only tasks still in the queue; one already cleared (only in History) can't be revised.
 
+## D-354: History shows what a run's tasks ran on, from the tasks
+
+- Status: accepted. Extends History (D-248) and providers per task (D-330, D-338, D-339).
+- **Who:** Jon, 2026-11-05: a run's provider in History, both marks when it mixed them, counts on
+  hover, derived from what the tasks actually ran on, never a guess for old runs. Details below are
+  Claude, on my own.
+- **Derived, not stored:** `runProviders(tasks)` counts each started task's `ranOn` (set when its chat
+  starts, and moved to the provider that finished it after a handover) and its `startedOn` when that
+  differs, so a task handed over mid-chat counts for both. The queue's "Runs on" at the time is never
+  used. A handover between two tasks of one chat shows on the later task's `ranOn`. No new field: runs
+  are already the tasks as they ended.
+- **Old runs:** a started task without `ranOn` counts as "not recorded" (said in the tooltip); a run
+  with none recorded leaves the slot empty.
+- **Shown:** a fixed "Ran on" slot between Cost and Status (`@max-xl:w-8 @xl:w-20`): the marks, most
+  tasks first, with the name (or "Mixed") beside them when the container is `@xl`; tooltip "Ran on
+  ChatGPT · 5 tasks, Claude · 1". The run page's header shows the same at its right, beside ⋯, so a
+  provider joining an open run grows leftward and moves nothing.
+

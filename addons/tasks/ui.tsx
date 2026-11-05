@@ -98,6 +98,8 @@ import {
   type Run,
   type RunsOn,
   runOutcome,
+  runProviders,
+  runProvidersText,
   runsOn,
   STATUS_LABEL,
   stepTasks,
@@ -194,6 +196,8 @@ const COL = {
   /** Who runs the chat: always the mark, in the same place on every row (D-330). */
   provider: "flex w-4 shrink-0 items-center justify-center",
 };
+/** History's "Ran on": the marks alone when narrow, with the name beside them when there's room. */
+const RAN_ON = "@max-xl:w-8 @xl:w-20 flex shrink-0 items-center gap-1";
 /** Every value column: one line, right-aligned, digits of equal width. */
 const CELL = "shrink-0 whitespace-nowrap text-right tabular-nums";
 
@@ -1097,6 +1101,9 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
         <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Failed</span>
         <span className={cn(COL.time, CELL)}>Time</span>
         <span className={cn(COL.cost, CELL)}>Cost</span>
+        <span className={RAN_ON} title="The providers its tasks ran on">
+          <span className="@max-xl:hidden @xl:inline">Ran on</span>
+        </span>
         <span className={cn("w-24", CELL)}>Status</span>
       </div>
       <div className="overflow-hidden rounded-lg border border-line bg-raised">
@@ -1131,6 +1138,7 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
               </span>
               <span className={cn(COL.time, CELL, "text-xs text-muted")}>{runTime(run)}</span>
               <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
+              <RanOn tasks={run.tasks} className={RAN_ON} testId={`tasks-run-provider-${i}`} />
               <span className="flex w-24 shrink-0 items-center justify-end gap-1.5 whitespace-nowrap">
                 {run.finishedAt ? (
                   o.failed ? (
@@ -1147,6 +1155,27 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * The providers a run's tasks ran on (from the tasks, never the queue's setting): one mark, or both
+ * when it mixed them, the counts in the tooltip. Empty for a run from before Jig kept it.
+ */
+function RanOn({ tasks, className, testId }: { tasks: Task[]; className: string; testId: string }) {
+  const ran = runProviders(tasks);
+  const text = runProvidersText(ran);
+  return (
+    <span className={className} title={text ? `Ran on ${text}` : undefined} data-testid={testId}>
+      {ran.counts.map((c) => (
+        <ProviderMark key={c.provider} provider={c.provider} iconOnly />
+      ))}
+      {ran.counts.length > 0 && (
+        <span className="@max-xl:hidden @xl:inline min-w-0 truncate text-xs text-muted">
+          {ran.counts.length > 1 ? "Mixed" : PROVIDER_LABEL[ran.counts[0]!.provider]}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -1200,7 +1229,7 @@ function RunPanel({
     );
   return (
     <>
-      <div className="flex h-10 shrink-0 items-center gap-2 px-3" data-testid="tasks-run">
+      <div className="@container flex h-10 shrink-0 items-center gap-2 px-3" data-testid="tasks-run">
         <IconButton
           size="sm"
           icon={ArrowLeft}
@@ -1211,6 +1240,8 @@ function RunPanel({
         <span className="min-w-0 truncate text-sm text-fg">Run of {when(run.startedAt)}</span>
         <span className="shrink-0 text-xs text-muted">{run.finishedAt ? "" : "· still going"}</span>
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          {/* At the right, beside ⋯: a provider joining while it runs grows leftward, moving nothing. */}
+          <RanOn tasks={run.tasks} className="flex shrink-0 items-center gap-1" testId="tasks-run-provider" />
           <IconButton
             size="sm"
             icon={MoreHorizontal}

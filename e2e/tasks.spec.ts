@@ -286,9 +286,13 @@ test("Tasks: every run is kept in the history, with its results", async ({ page,
   // The queue paused on the failure: the run is still open, with the two tasks it ran.
   await view.getByRole("tab", { name: "History" }).click();
   await expect(view.getByTestId("tasks-run-0")).toContainText("2 tasks");
+  // What its tasks ran on, from the tasks themselves: both on Claude.
+  await expect(view.getByTestId("tasks-run-provider-0")).toHaveAttribute("title", "Ran on Claude · 2 tasks");
+  await expect(view.getByTestId("tasks-run-provider-0").getByTestId("provider-mark-claude")).toBeVisible();
   await view.getByTestId("tasks-run-0").click();
   const run = view.getByTestId("tasks-run");
   await expect(run).toContainText("still going");
+  await expect(view.getByTestId("tasks-run-provider")).toHaveAttribute("title", "Ran on Claude · 2 tasks");
   await expect(view.getByTestId("task-status-t1")).toContainText("Done");
   await expect(view.getByTestId("task-status-t2")).toContainText("Failed");
   await expect(view.getByTestId("task-t3")).toHaveCount(0);
@@ -574,6 +578,14 @@ test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it 
   await expect(view.getByTestId("task-status-t1")).toContainText("Done");
   await view.getByTestId("task-group-chat-0").click();
   await expect(page.getByText("Reported from ChatGPT.").first()).toBeVisible();
+
+  // History says what the run's tasks ran on (t3 was left out, so ChatGPT only).
+  const tasks = await openTasks(page);
+  await tasks.getByRole("tab", { name: "History" }).click();
+  await expect(tasks.getByTestId("tasks-run-provider-0")).toHaveAttribute(
+    "title",
+    "Ran on ChatGPT · 2 tasks",
+  );
 });
 
 test("Tasks: a task for ChatGPT while it isn't signed in is blocked and pauses the queue", async () => {

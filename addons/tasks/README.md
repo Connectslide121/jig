@@ -149,7 +149,11 @@ went, so you read the results as a table instead of scrolling one long chat.
   Follow-ups and Files first, then Time and Cost, then the hints beside titles (container variants on
   both sides, D-297).
 - **History** (D-248): every Start opens a run; the tasks it starts belong to it, and it finishes
-  when the queue does. The History tab lists runs (started, tasks, done, failed, time, cost, status);
+  when the queue does. The History tab lists runs (started, tasks, done, failed, time, cost, ran on,
+  status); "Ran on" (D-354) is the provider marks of what the run's tasks ran on (`runProviders`: each
+  started task's `ranOn`, plus `startedOn` after a handover), both when it mixed them, the counts on
+  hover, the name beside them when there's room; empty for runs from before `ranOn` was kept. The run's
+  header shows the same.
   a run opens read-only (details, files, open chat, Run again, Queue every task again, Remove from
   history once finished). Clearing finished tasks keeps them in the history; the last 200 runs are
   kept, and their files stay until the run is removed.

@@ -1242,6 +1242,45 @@ export function runsOn(
   return { provider: projectDefault, from: "project" };
 }
 
+/** A run's tasks per provider they ran on: most tasks first; `unrecorded` started before Jig kept it. */
+export interface RunProviders {
+  counts: Array<{ provider: TaskProvider; tasks: number }>;
+  unrecorded: number;
+}
+
+/**
+ * Which providers a run's tasks actually ran on: each started task's `ranOn` (the chat's provider when
+ * it started, or the one that finished it after a handover), plus `startedOn` when its chat was handed
+ * over mid-task (D-338), so such a task counts for both. Never the queue's setting: a task from before
+ * `ranOn` was kept counts as unrecorded, and a run with none recorded has no providers.
+ */
+export function runProviders(tasks: Task[]): RunProviders {
+  const n: Record<TaskProvider, number> = { claude: 0, chatgpt: 0 };
+  let unrecorded = 0;
+  for (const task of tasks) {
+    if (!task.ranOn) {
+      if (task.sentAt) unrecorded++;
+      continue;
+    }
+    for (const p of new Set([task.ranOn, task.startedOn ?? task.ranOn])) n[p]++;
+  }
+  const counts = TASK_PROVIDERS.filter((p) => n[p] > 0)
+    .map((provider) => ({ provider, tasks: n[provider] }))
+    .sort((a, b) => b.tasks - a.tasks);
+  return { counts, unrecorded };
+}
+
+/** A run's providers in words: "ChatGPT · 5 tasks, Claude · 1"; empty when none was recorded. */
+export function runProvidersText({ counts, unrecorded }: RunProviders): string {
+  if (!counts.length) return "";
+  const parts = counts.map(
+    (c, i) =>
+      `${PROVIDER_LABEL[c.provider]} · ${c.tasks}${i === 0 ? (c.tasks === 1 ? " task" : " tasks") : ""}`,
+  );
+  if (unrecorded) parts.push(`${unrecorded} not recorded`);
+  return parts.join(", ");
+}
+
 /** What a task's error starts with when it was to run on ChatGPT while Codex isn't signed in. */
 export const CHATGPT_SIGNED_OUT = "ChatGPT isn't signed in";
 

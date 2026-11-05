@@ -438,6 +438,12 @@ Queue tab. A move or chat change the rules don't allow is refused with the reaso
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
 continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
+History shows each run's provider (2026-11-05, D-354): the Tasks add-on's History list has a "Ran on"
+column with the provider marks of what the run's tasks actually ran on (both marks when a run mixed
+ChatGPT and Claude, e.g. a task on Claude in a ChatGPT queue or a handover; the counts on hover, the
+name or "Mixed" beside the marks when there's room); the run page's header shows the same. Runs from
+before Jig kept a task's provider leave it empty. Unit tests and `e2e/tasks.spec.ts` cover it.
+
 A chat can revise its task's report (2026-11-05, D-353): when you follow up in a task's chat after it
 reported (say it reported Partly done and you cleared up a misunderstanding), ask it to report the
 task again: `addon_tasks_report` with the task's id replaces the report, the status follows the new

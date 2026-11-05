@@ -46,6 +46,8 @@ import {
   resetTask,
   resetTasks,
   runOutcome,
+  runProviders,
+  runProvidersText,
   runsOn,
   setLeftOut,
   setProviderChoice,
@@ -1014,5 +1016,53 @@ describe("who runs a task (D-330)", () => {
     expect(blocked.error).toMatch(/^ChatGPT isn't signed in/);
     expect(shouldPause(q, blocked)).toBe(true);
     expect(startFailed(q.tasks[0]!, "That project no longer exists").status).toBe("error");
+  });
+});
+
+describe("runProviders: what a run's tasks ran on", () => {
+  const t = (over: Partial<Task>): Task => ({
+    ...queued(["x"]).tasks[0]!,
+    sentAt: "2026-11-05T10:00:00Z",
+    status: "done",
+    ...over,
+  });
+
+  it("counts the provider each task's chat ran on, most first", () => {
+    const run = runProviders([
+      t({ ranOn: "claude" }),
+      t({ ranOn: "chatgpt" }),
+      t({ ranOn: "chatgpt" }),
+      t({ status: "queued", sentAt: undefined }),
+    ]);
+    expect(run).toEqual({
+      counts: [
+        { provider: "chatgpt", tasks: 2 },
+        { provider: "claude", tasks: 1 },
+      ],
+      unrecorded: 0,
+    });
+    expect(runProvidersText(run)).toBe("ChatGPT · 2 tasks, Claude · 1");
+  });
+
+  it("counts a task handed over mid-chat for both providers (D-338)", () => {
+    const run = runProviders([t({ ranOn: "claude", startedOn: "chatgpt" }), t({ ranOn: "chatgpt" })]);
+    expect(run.counts).toEqual([
+      { provider: "chatgpt", tasks: 2 },
+      { provider: "claude", tasks: 1 },
+    ]);
+  });
+
+  it("never guesses: old tasks without a recorded provider stay out", () => {
+    const old = runProviders([t({}), t({})]);
+    expect(old).toEqual({ counts: [], unrecorded: 2 });
+    expect(runProvidersText(old)).toBe("");
+    const mixed = runProviders([t({ ranOn: "claude" }), t({})]);
+    expect(runProvidersText(mixed)).toBe("Claude · 1 task, 1 not recorded");
+  });
+
+  it("ignores the task's own choice when it didn't start", () => {
+    expect(runProviders([t({ provider: "chatgpt", sentAt: undefined, status: "skipped" })]).counts).toEqual(
+      [],
+    );
   });
 });
