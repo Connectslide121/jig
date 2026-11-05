@@ -370,6 +370,8 @@ export interface Found {
   pipelines: PipelineInfo[];
   /** Repositories whose pipelines couldn't be listed, with why. */
   errors: string[];
+  /** The checkouts searched (lowercase paths, sorted): another set of checkouts is searched again. */
+  searched?: string[];
 }
 
 async function git(api: AddonHostApi, cwd: string, args: string[]) {
@@ -398,16 +400,21 @@ export async function pipelines({ force }: { force?: boolean } = {}, host: Addon
   const tenant = tenantOf(api);
   const foundKey = perTenant(api, "found");
   const kept = await api.storage.get<Found>(foundKey);
+  const repos = await checkouts(api);
+  const searched = repos.map((r) => r.path.toLowerCase()).sort();
   // A list saved with another tenant's errors on it (a search that ran into a switch before D-345) is
-  // searched again, however new.
+  // searched again, however new; so is one searched over other checkouts (a repository added since).
   const fresh =
-    kept && Date.now() - kept.at < FIND_AGAIN && !foreignErrors(kept.errors, api.azure.tenant()).length;
+    kept &&
+    Date.now() - kept.at < FIND_AGAIN &&
+    !foreignErrors(kept.errors, api.azure.tenant()).length &&
+    (kept.searched ?? []).join("\n") === searched.join("\n");
   if (kept && fresh && !force) return { ...kept, tenant };
   const remotes = new Map<
     string,
     { path: string; name: string; org: string; project: string; repo: string }
   >();
-  for (const c of await checkouts(api)) {
+  for (const c of repos) {
     const remote = parseRemote(await git(api, c.path, ["remote", "get-url", "origin"]));
     if (!remote) continue;
     const id = `${remote.org}/${remote.project}/${remote.repo}`.toLowerCase();
@@ -478,10 +485,11 @@ export async function pipelines({ force }: { force?: boolean } = {}, host: Addon
       .flat()
       .sort((a, b) => a.repoName.localeCompare(b.repoName) || a.name.localeCompare(b.name)),
     errors,
+    searched,
   };
   // A failed search (signed out…) doesn't replace pipelines found before, only another tenant's errors.
   if (result.pipelines.length || !kept?.pipelines.length) await api.storage.set(foundKey, result);
-  else if (!fresh) await api.storage.set(foundKey, { ...kept, errors });
+  else if (!fresh) await api.storage.set(foundKey, { ...kept, errors, searched });
   return result.pipelines.length || !kept ? result : { ...kept, tenant, errors };
 }
 

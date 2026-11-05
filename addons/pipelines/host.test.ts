@@ -82,6 +82,22 @@ describe("pipelines across a tenant switch", () => {
     switchBack();
     expect((await saved(undefined, api)).found?.pipelines).toHaveLength(2);
   });
+
+  it("searches again when the checkouts changed since a fresh list, and not when they didn't", async () => {
+    // Found at start, before a repository was added: nothing, over no checkouts.
+    const empty: Found = { at: Date.now(), tenant: "default", pipelines: [], errors: [], searched: [] };
+    const { api, ranIn, switchBack } = fakeApi({ found: empty });
+    switchBack();
+    expect(ranIn).toEqual([]);
+    const first = await pipelines({}, api);
+    expect(ranIn.length).toBeGreaterThan(0);
+    expect(first.searched).toEqual(["/r/api", "/r/web"]);
+    // The same checkouts: the list just saved is used as it is.
+    const calls = ranIn.length;
+    switchBack();
+    await pipelines({}, api);
+    expect(ranIn.length).toBe(calls);
+  });
 });
 
 /** One checkout (api in Shop) with pipeline 1, a run going and one that failed; records every az call. */
