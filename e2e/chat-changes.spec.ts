@@ -65,8 +65,9 @@ test("whole-chat changes stay above the input, show a breakdown, and undo locall
   await expect(rows.nth(0).locator("td").nth(1)).toHaveText("2");
   await expect(rows.nth(0).locator("td").nth(2)).toHaveText("+2");
   await expect(rows.nth(1).locator("td").nth(2)).toHaveText("+1");
-  const firstCount = await rows.nth(0).locator("td").nth(2).boundingBox();
-  const secondCount = await rows.nth(1).locator("td").nth(2).boundingBox();
+  // Measured once the dialog has finished opening.
+  const firstCount = await settledBox(rows.nth(0).locator("td").nth(2));
+  const secondCount = await settledBox(rows.nth(1).locator("td").nth(2));
   expect(firstCount!.x).toBe(secondCount!.x);
   expect(await composer.boundingBox()).toEqual(inputPosition);
   await expect(page.locator(".jig-modal-layer")).toHaveCSS("opacity", "1");

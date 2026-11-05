@@ -8,6 +8,34 @@ export function hiddenMode(env: Record<string, string | undefined> = process.env
   return Boolean(env.JIG_HIDDEN);
 }
 
+/**
+ * While Jig runs hidden, its pages are never throttled as background pages (timers, animations), the
+ * workbench, meeting and helper windows alike. Call before the first window opens.
+ */
+export function keepHiddenPagesDrawing(): void {
+  if (!hiddenMode()) return;
+  app.on("web-contents-created", (_event, contents) => contents.setBackgroundThrottling(false));
+}
+
+/** Whether a page may be throttled in the background: as asked, never while Jig runs hidden. */
+export function mayThrottle(wanted: boolean): boolean {
+  return wanted && !hiddenMode();
+}
+
+/**
+ * While Jig runs hidden, puts a window on screen where nobody sees it: transparent, far off the
+ * desktop, never focused, not on the taskbar or in Alt+Tab. Chromium draws a window that was never
+ * shown only about once a second, so tests waited for every frame and raced the DOM (D-358).
+ */
+export function showUnseen(window: BrowserWindow): void {
+  if (!hiddenMode() || window.isDestroyed() || window.isVisible()) return;
+  window.setFocusable(false);
+  window.setSkipTaskbar(true);
+  window.setOpacity(0);
+  window.setPosition(-30000, -30000);
+  window.showInactive();
+}
+
 /** Opens a link in the user's browser; nothing opens while Jig runs hidden (tests). */
 export async function openExternal(url: string): Promise<void> {
   if (!hiddenMode()) await shell.openExternal(url);

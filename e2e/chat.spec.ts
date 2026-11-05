@@ -169,7 +169,10 @@ test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await page.getByTestId("model-menu").click();
   // Claude Code's own list has no opusplan: the picker still names it.
   await expect(page.getByTestId("model-opusplan")).toContainText("Opus Plan Mode");
-  await expect(page.getByRole("menu")).not.toContainText("opusplan");
+  // (The permission menu may still be fading out beside it.)
+  await expect(page.getByRole("menu").filter({ has: page.getByTestId("model-opusplan") })).not.toContainText(
+    "opusplan",
+  );
   await page.getByTestId("model-opusplan").click();
   await expect(page.getByTestId("model-menu")).toContainText("Opus Plan Mode");
   // And Opus can be chosen again.

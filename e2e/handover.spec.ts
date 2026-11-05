@@ -18,6 +18,8 @@ test("hand a chat over to ChatGPT mid-chat: a dialog, a divider, and ChatGPT pic
   await page.getByTestId("composer-input").fill("Fix the cart total");
   await page.keyboard.press("Enter");
   await expect(page.getByText("You said:")).toBeVisible({ timeout: 15000 });
+  // Between turns: while the answer still streams, ChatGPT only comes after this turn.
+  await expect(page.getByTestId("composer-stop")).toHaveCount(0);
 
   // The picker hands over now; Cancel leaves everything as it was.
   const picker = page.getByTestId("provider-menu");

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, launchJig, test } from "./fixtures";
+import { expect, hostCall, launchJig, settledBox, test } from "./fixtures";
 
 const TINY_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -32,8 +32,6 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   page,
   jigHome,
 }) => {
-  // Long: every click waits for a frame, and hidden windows draw about one a second.
-  test.setTimeout(120_000);
   await twoProjects(page, jigHome);
 
   // Chats → Task queue (here through the Tools search, which lists the same actions).
@@ -54,8 +52,9 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   // A task takes files like the chat: a pasted screenshot and a dropped document.
   const field = add.getByTestId("tasks-add-text-0-0");
   const row = add.getByTestId("tasks-add-row-0-0");
-  const rowBefore = await row.boundingBox();
-  const fieldBefore = await field.boundingBox();
+  // Measured once the dialog has finished opening.
+  const rowBefore = await settledBox(row);
+  const fieldBefore = await settledBox(field);
   await field.evaluate((el, b64) => {
     const data = new DataTransfer();
     data.items.add(

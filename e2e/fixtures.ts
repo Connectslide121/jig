@@ -84,7 +84,8 @@ export const test = base.extend<JigFixtures>({
   },
   page: async ({ app }, use) => {
     const page = await app.firstWindow();
-    await page.waitForSelector("[data-testid=app-root]");
+    // The workbench with its layout loaded: a tab opened before that (Ctrl+N right away) is dropped.
+    await page.waitForSelector("[data-testid=app-root] [data-testid=main-area]");
     await use(page);
   },
 });
@@ -107,7 +108,7 @@ export async function browserPageChat(page: Page): Promise<string> {
  * panels finish their opening motion (D-200), not in the middle of it. Finite animations are awaited
  * first: on a loaded machine frames can stall mid-animation long enough for two equal reads.
  */
-export async function settledBox(locator: Locator) {
+export async function settledBox(locator: Locator): ReturnType<Locator["boundingBox"]> {
   await locator.page().evaluate(() =>
     Promise.all(
       document

@@ -38,10 +38,15 @@ test("split view: open a tab to the side, drag one to the edge, close back to on
   });
   await expect(page.getByTestId("main-pane-right").getByTestId("tab-jig.settings")).toBeVisible();
 
-  // The split is kept in the layout and survives a reload.
+  // The split is kept in the layout and survives a reload. Wait for this split, Settings on the right:
+  // the layout is saved a moment after it changes, so the one from "Open to the side" may still be there.
+  type Main = { tabs: { id: string; type: string }[]; split?: { right: string[] } };
   await expect
-    .poll(async () => JSON.stringify(((await hostCall(page, "layout.get")) as { value: unknown }).value))
-    .toContain('"split"');
+    .poll(async () => {
+      const { main } = ((await hostCall(page, "layout.get")) as { value: { main: Main } }).value;
+      return main.split?.right.map((id) => main.tabs.find((t) => t.id === id)?.type);
+    })
+    .toEqual(["jig.settings"]);
   await page.reload();
   await page.waitForSelector("[data-testid=app-root]");
   await expect(page.getByTestId("main-pane-right").getByTestId("tab-jig.settings")).toBeVisible();

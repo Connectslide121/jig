@@ -5638,3 +5638,36 @@ choice of Telegram and everything below: Claude, on my own.
   needs no specs; never with `--list`; a failed run leaves the older record.
 - **Gap:** an unreferenced snapshot tree can be pruned by `git gc` after a couple of weeks; the run
   then falls back to the full-suite pass or HEAD.
+
+## D-358: A hidden Jig puts its window on screen where nobody sees it, so it draws at full speed
+
+- Status: accepted. Refines how `JIG_HIDDEN` works (the e2e tests).
+- **Who:** Jon, 2026-11-05: hidden test windows redrew about once a second, so every test was slow and
+  raced the DOM (a drag started on a row that hadn't re-rendered). He asked to turn off background
+  throttling only while `JIG_HIDDEN` is set, without anything becoming visible. What follows is
+  Claude, on my own, after measuring.
+- **Throttling wasn't the cause:** a never-shown window reports `visible` and runs its timers at full
+  speed either way; it gets about one animation frame a second because Chromium only draws windows
+  that are shown. `backgroundThrottling: false` alone (and Chromium's
+  `disable-renderer-backgrounding` switches) changed nothing.
+- **What does it:** `showUnseen` (`main/appWindows.ts`) shows the workbench window while Jig runs
+  hidden: not focusable (it never takes focus), not on the taskbar, fully transparent, at
+  (-30000, -30000), with `showInactive`. It then draws ~50 frames a second instead of ~1. `keepHiddenPagesDrawing` also turns background throttling off for every page a
+  hidden Jig opens (`web-contents-created`), and `mayThrottle` keeps "Hey Jig"'s setting from
+  turning it back on. Never in the user's normal app: all three do nothing without `JIG_HIDDEN`.
+- **Only the workbench window:** meeting windows stay hidden in tests (`revealWindow` does nothing),
+  since their logic depends on `isVisible()` (a hidden call window waits for calls, D-292). Claude's
+  browser is an offscreen page with its own frame rate.
+- **Measured** (Windows, `tasks`, `split` and `workbench` specs together): 119 s → 67 s, e.g.
+  dragging tasks 56 s → 13 s, the Tasks queue test ~70 s → ~10 s; the whole suite 4.3 min, all
+  passing. Input used to wait for the next frame too, which hid races that now showed:
+  - in the app: Stop while a turn was still being put together (add-ons' context, before the engine
+    started) did nothing, now `interrupt` waits for that start; the task queue waited for its
+    one-minute tick when the view's read had recorded a task just before its chat's "idle" event,
+    now that event still moves the queue on; Ctrl+N right after a project was added said "Add a
+    project first", now `newSession` asks the host when the window doesn't know one yet (host events
+    and call replies can arrive in either order);
+  - in the tests: `page` waits for the loaded layout (`main-area`; tabs opened before it are dropped),
+    boxes are measured after a dialog's opening motion (`settledBox`), the split test waits for its
+    own saved layout (saving waits 300 ms), the handover test for the turn to end, the learning test
+    for the shell's prompt; the fake engine's steps notice a turn stopped before they started.

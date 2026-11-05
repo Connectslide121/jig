@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, screen } from "electron";
 import { z } from "zod";
-import { closeHelpersIfAlone, hiddenMode, openExternal } from "./appWindows";
+import { closeHelpersIfAlone, hiddenMode, mayThrottle, openExternal, showUnseen } from "./appWindows";
 import { getConfig, onConfigChange } from "./config";
 import { logger } from "./log";
 import { guardWindowClose } from "./quit";
@@ -76,6 +76,8 @@ export async function createMainWindow(): Promise<BrowserWindow> {
       spellcheck: false,
       // Chromium's own PDF viewer, for PDF previews (a PDF can't run code in Jig).
       plugins: true,
+      // Never throttled while Jig runs hidden (`keepHiddenPagesDrawing`).
+      backgroundThrottling: mayThrottle(true),
     },
   });
 
@@ -93,6 +95,7 @@ export async function createMainWindow(): Promise<BrowserWindow> {
   }
 
   window.once("ready-to-show", () => {
+    showUnseen(window);
     if (!hiddenMode()) {
       if (process.platform === "win32") {
         window.setIcon(APP_ICON);
@@ -121,9 +124,9 @@ export async function createMainWindow(): Promise<BrowserWindow> {
   // Closing the last window quits Jig, so it asks first like quitting does (D-343).
   guardWindowClose(window);
   // "Hey Jig" listens while Jig is minimized or behind other windows (D-278): its audio and
-  // timers must not be slowed down then. Otherwise Chromium's usual saving applies.
+  // timers must not be slowed down then. Otherwise Chromium's usual saving applies (never while hidden).
   const throttle = (wake: boolean) => {
-    if (!window.isDestroyed()) window.webContents.setBackgroundThrottling(!wake);
+    if (!window.isDestroyed()) window.webContents.setBackgroundThrottling(mayThrottle(!wake));
   };
   throttle(getConfig().speech.wake);
   const stopFollowing = onConfigChange((config) => throttle(config.speech.wake));

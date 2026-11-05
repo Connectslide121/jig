@@ -138,6 +138,8 @@ test("activity is recorded locally and can be deleted", async ({ page, jigHome }
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
   await page.keyboard.press("Control+`");
+  // Typed at the shell's prompt: a command counts once the shell echoes it, so not before it started.
+  await expect(page.locator(".jig-xterm:visible .xterm-rows")).toContainText(/[>$#%]/, { timeout: 15000 });
   await page.locator(".jig-xterm:visible").click();
   await page.keyboard.type("echo recorded-command\r");
   await expect

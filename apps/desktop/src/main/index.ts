@@ -5,7 +5,7 @@ import { registerAboutHandlers } from "./about";
 import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAiHandlers } from "./ai";
 import { registerAppHandlers } from "./app";
-import { appWindows, focusJig } from "./appWindows";
+import { appWindows, focusJig, keepHiddenPagesDrawing } from "./appWindows";
 import { registerArtifactHandlers } from "./artifacts";
 import { startAttempts } from "./attempts";
 import { startAzure } from "./azure";
@@ -66,6 +66,7 @@ if (!app.requestSingleInstanceLock({ jigHome: jigHome() })) {
 }
 
 async function start() {
+  keepHiddenPagesDrawing();
   await app.whenReady();
   log.info(`Starting Jig ${app.getVersion()} (home: ${jigHome()})`);
   installAppProtocol();

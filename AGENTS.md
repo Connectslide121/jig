@@ -113,7 +113,8 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   (Claude's browser) are marked with `markHelperWindow`. Show or focus a window with
   `revealWindow`/`focusJig`, and open links, files and folders with `openExternal`/`openPath`/
   `showInFolder` (same file): they do nothing while Jig runs hidden (`JIG_HIDDEN`, the e2e tests), so
-  tests never take over the user's screen.
+  tests never take over the user's screen. A hidden Jig shows its workbench window only through
+  `showUnseen` (transparent, off-screen, unfocusable), so it draws at full speed (D-358).
 - **Never read, copy, store, log or forward Claude, Codex or ChatGPT credentials or tokens.** No login
   UI: sign-in is the official CLI's own flow in a private terminal (`claude auth login`, `codex
   login`). Keep the default that strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from session

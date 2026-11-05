@@ -48,7 +48,12 @@ Keep tests short and focused (under ~30 s): the slowest single test sets how lon
 - a fresh temporary `JIG_HOME` per test (deleted afterwards),
 - `JIG_ENGINE=fake`, so no Claude Code process is started and no quota is used,
 - `JIG_HIDDEN=1`, so the windows never show: on a desktop they would take focus and the mouse could
-  cancel a hover (`JIG_HIDDEN=` with an empty value to watch them). A hidden Jig sends no system
+  cancel a hover (`JIG_HIDDEN=` with an empty value to watch them). The workbench window is still put
+  on screen where nobody sees it (`showUnseen`: transparent, far off the desktop, never focused, not
+  on the taskbar), because Chromium draws a window that was never shown only about once a second;
+  this way it draws at full speed and nothing waits for a frame (D-358). Its pages are never
+  throttled as background pages either. So the UI reacts as fast as on your screen: wait for the
+  state you need (a saved layout, a turn that ended, a shell's prompt), never for a moment to pass. A hidden Jig sends no system
   notifications either (`notificationsAllowed`), which it otherwise would, being "in the background" Nor
   does it ask before closing or quitting (an active meeting, add-ons' quit guards, D-343): it just
   quits. `JIG_ASK_BEFORE_QUIT=1` makes a hidden Jig ask in its quit modal anyway
@@ -58,7 +63,8 @@ Tests that fake a home folder set `USERPROFILE`/`APPDATA` as well as `HOME` (Win
 folder from them), and fake programs on `PATH` also get a `.cmd` next to them (Windows runs no
 shebang scripts).
 
-Fixtures: `jigHome`, `app` (ElectronApplication), `page` (main window, waits for the UI).
+Fixtures: `jigHome`, `app` (ElectronApplication), `page` (main window, waits for the UI with its
+layout loaded).
 `hostCall(page, method, args)` calls a host method and returns the raw `{ ok, value | error }`
 envelope.
 
