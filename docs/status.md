@@ -918,6 +918,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.15.0 being prepared (2026-11-05): Jig 0.15.0 lets you train Hey Jig on your voice and hears it more reliably, adds a default reasoning effort for Claude chats in Settings, and lets you mark Partly done, Failed and Blocked tasks as done. Publication not yet verified.
+
 Jig 0.14.0 published (2026-11-05): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.14.0),
 source/tag `c95fd9ba9a8c705a77c44552f566ffb07d98d9f0`. Installer: 389,205,722 bytes;
 SHA-256 `0c5dfdf2c2a0bab77f2cad3def4ad6445b0721a1f187084f5a8ed6ccb092054f`.
