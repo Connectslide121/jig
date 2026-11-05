@@ -2,7 +2,7 @@
  * Go to… (D-176): one list of chats, views, actions and files, filtered by what you type. Pure, so the
  * ranking is tested; `QuickOpen.tsx` gathers the items and shows them.
  */
-export type QuickKind = "chat" | "view" | "action" | "file" | "result";
+export type QuickKind = "chat" | "view" | "action" | "setting" | "file" | "result";
 
 export interface QuickItem {
   kind: QuickKind;
@@ -10,6 +10,8 @@ export interface QuickItem {
   label: string;
   /** Second line: the chat's project, the action's group, the file's folder. */
   detail?: string;
+  /** Other words it is found by (a settings page: "telegram" finds Phone), matched like the detail. */
+  keywords?: string[];
   /** Newer first among equal matches (chats: last activity, ISO). */
   recency?: string;
   /** Add-on search results (`result`, D-215): the provider's group (key and title), shown in its order. */
@@ -20,21 +22,27 @@ export const QUICK_KINDS: Array<{ kind: QuickKind; title: string }> = [
   { kind: "chat", title: "Chats" },
   { kind: "view", title: "Views" },
   { kind: "action", title: "Actions" },
+  { kind: "setting", title: "Settings" },
   { kind: "file", title: "Files" },
 ];
 
-/** How well an item matches: every word must be in its label or detail; label prefix > label > detail. */
+/**
+ * How well an item matches: every word must be in its label, detail or keywords; label prefix > label >
+ * a keyword > detail.
+ */
 export function quickScore(item: QuickItem, query: string): number {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) return 1;
   const label = item.label.toLowerCase();
   const detail = (item.detail ?? "").toLowerCase();
+  const keywords = (item.keywords ?? []).map((k) => k.toLowerCase());
   let score = 0;
   for (const w of words) {
     if (label.startsWith(w)) score += 3;
     else if (label.split(/[\s/._-]+/).some((part) => part.startsWith(w))) score += 2;
     else if (label.includes(w)) score += 1.5;
-    else if (detail.includes(w)) score += 0.5;
+    else if (keywords.some((k) => k.startsWith(w))) score += 1;
+    else if (detail.includes(w) || keywords.some((k) => k.includes(w))) score += 0.5;
     else return 0;
   }
   return score;

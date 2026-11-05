@@ -43,6 +43,13 @@ test("Go to (Ctrl+P) finds views, actions, chats and the project's files", async
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("tab-jig.chat")).toBeVisible();
 
+  // A settings page, by what's on it: "telegram" finds Phone.
+  await page.keyboard.press("Control+P");
+  await page.getByTestId("goto-input").fill("telegram");
+  await expect(goto.getByTestId("goto-setting-phone")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("phone-setup")).toBeVisible();
+
   // An action, with its shortcut.
   await page.keyboard.press("Control+P");
   await page.getByTestId("goto-input").fill("chats board");

@@ -1,5 +1,5 @@
 import type { AddonTarget } from "@jig/sdk";
-import { AppWindow, MessageSquare, Search, Wrench } from "lucide-react";
+import { AppWindow, MessageSquare, Search, Settings, Wrench } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
@@ -7,6 +7,7 @@ import { iconByName } from "../../addons/icons";
 import { openAddonTarget } from "../../addons/runtime";
 import { call } from "../../lib/host";
 import { cn, FileIcon, Kbd, SearchInput } from "../../ui";
+import { openSettings } from "../../workbench/actions";
 import { useActiveProject, useProjects } from "../../workbench/projects";
 import { type QuickItem, quickGroups } from "../../workbench/quickOpen";
 import { registerAction, runAction, useRegistry } from "../../workbench/registry";
@@ -14,6 +15,7 @@ import { formatShortcut } from "../../workbench/shortcuts";
 import { workbench } from "../../workbench/store";
 import { openPreview } from "../preview/actions";
 import { useSessions } from "../sessions/store";
+import { useSettingsPages } from "../settings/SettingsTab";
 
 /**
  * Go to… (Ctrl+P, D-176): chats, views, actions and the active project's files in one list. A menu
@@ -60,7 +62,7 @@ export function TopbarSearch() {
   );
 }
 
-const ICON = { chat: MessageSquare, view: AppWindow, action: Wrench } as const;
+const ICON = { chat: MessageSquare, view: AppWindow, action: Wrench, setting: Settings } as const;
 
 export function registerGoTo(): void {
   registerAction({
@@ -174,6 +176,7 @@ function GoTo() {
   const metas = useSessions((s) => s.metas);
   const views = useRegistry((s) => s.views);
   const actions = useRegistry((s) => s.actions);
+  const settings = useSettingsPages((s) => s.pages);
   const files = useFileMatches(project?.path, query);
   const found = useAddonResults(project, query);
   const ref = useRef<HTMLDivElement>(null);
@@ -198,11 +201,24 @@ function GoTo() {
       })),
       ...Object.values(actions)
         .filter((a) => a.id !== "jig.goTo" && a.visible?.() !== false)
-        .map((a) => ({ kind: "action" as const, id: a.id, label: a.title, detail: a.group })),
+        .map((a) => ({
+          kind: "action" as const,
+          id: a.id,
+          label: a.title,
+          detail: a.group,
+          keywords: a.keywords,
+        })),
+      ...Object.values(settings).map((p) => ({
+        kind: "setting" as const,
+        id: p.id,
+        label: p.title,
+        detail: "Settings",
+        keywords: p.keywords,
+      })),
       ...files,
       ...found.items,
     ];
-  }, [metas, views, actions, files, found, projects]);
+  }, [metas, views, actions, settings, files, found, projects]);
 
   const groups = useMemo(() => quickGroups(items, query, query ? 8 : 5), [items, query]);
   const flat = groups.flatMap((g) => g.items);
@@ -225,6 +241,7 @@ function GoTo() {
     if (item.kind === "chat") workbench.openTab("jig.chat", { sessionId: item.id });
     else if (item.kind === "view") workbench.showView(item.id);
     else if (item.kind === "action") runAction(item.id);
+    else if (item.kind === "setting") openSettings(item.id);
     else if (item.kind === "result") {
       const r = found.targets.get(item.id);
       if (r) openAddonTarget(r.addonId, r.target);
@@ -290,7 +307,9 @@ function GoTo() {
                   ? undefined
                   : item.kind === "result"
                     ? (iconByName(found.targets.get(item.id)?.icon) ?? Search)
-                    : ICON[item.kind];
+                    : item.kind === "setting"
+                      ? (settings[item.id]?.icon ?? Settings)
+                      : ICON[item.kind];
               const action = item.kind === "action" ? actions[item.id] : undefined;
               return (
                 <div

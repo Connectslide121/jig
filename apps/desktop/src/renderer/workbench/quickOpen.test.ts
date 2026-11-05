@@ -27,6 +27,27 @@ describe("Go to…", () => {
     expect(quickGroups(items, "", 1)[0]!.items).toHaveLength(1);
   });
 
+  it("finds settings pages by their keywords, between actions and files", () => {
+    const phone: QuickItem = {
+      kind: "setting",
+      id: "phone",
+      label: "Phone",
+      detail: "Settings",
+      keywords: ["telegram", "bot", "voice messages"],
+    };
+    expect(quickScore(phone, "telegram")).toBeGreaterThan(0);
+    expect(quickScore(phone, "voice")).toBeGreaterThan(0);
+    expect(quickScore(phone, "phone")).toBeGreaterThan(quickScore(phone, "telegram"));
+    expect(quickScore(phone, "whatsapp")).toBe(0);
+    expect(quickGroups([...items, phone], "").map((g) => g.title)).toEqual([
+      "Chats",
+      "Views",
+      "Actions",
+      "Settings",
+      "Files",
+    ]);
+  });
+
   it("adds add-on results after files, one group per provider, in the provider's order", () => {
     const results = [
       {
