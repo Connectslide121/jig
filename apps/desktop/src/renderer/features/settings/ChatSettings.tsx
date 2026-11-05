@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { ChatProvider, ModelInfo } from "../../../shared/engine";
 import {
   CODEX_EFFORT_LEVELS,
+  EFFORT_LEVELS,
   LIMIT_POLICIES,
   LIMIT_POLICY_LABELS,
   type LimitPolicy,
@@ -194,6 +195,25 @@ function ClaudeChats({ isDefault }: { isDefault: boolean }) {
         hybrid
         onSave={(defaultModel) => void updateConfig({ engine: { defaultModel } })}
       />
+      <SettingRow
+        label="Reasoning effort"
+        description="How hard new Claude chats think, unless their project sets its own. A chat can change it; a model without effort levels ignores it."
+      >
+        <Select
+          className={PICKER}
+          aria-label="Claude reasoning effort"
+          data-testid="settings-claude-effort"
+          value={e.effort}
+          onChange={(ev) => void updateConfig({ engine: { effort: ev.target.value as typeof e.effort } })}
+        >
+          <option value="">Model's default</option>
+          {EFFORT_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </Select>
+      </SettingRow>
       <ModelSetting
         label="Subagent fallback model"
         description="For subagents without an explicit model choice."
@@ -415,7 +435,7 @@ function ChatGptChats({ isDefault }: { isDefault: boolean }) {
       </SettingRow>
       <SettingRow
         label="Reasoning effort"
-        description="How hard new ChatGPT chats think. A chat can change it."
+        description="How hard new ChatGPT chats think, unless their project sets its own. A chat can change it."
       >
         <Select
           className={PICKER}

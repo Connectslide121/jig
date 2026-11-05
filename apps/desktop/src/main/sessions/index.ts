@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { aiLineHashes, correctionSignal } from "@jig/learning";
 import { app, BrowserWindow, dialog, Notification, powerMonitor } from "electron";
+import { chatDefaults as newChatDefaults } from "../../shared/chatDefaults";
 import { chatToMarkdown } from "../../shared/chatExport";
 import { toolUse } from "../../shared/chatStats";
 import {
@@ -11,7 +12,6 @@ import {
   type ChatProvider,
   type ChatUpdate,
   chatProvider,
-  type EffortLevel,
   ENGINE_CAPABILITIES,
   otherProvider,
   type PermissionMode,
@@ -121,35 +121,10 @@ export function onChatUpdates(listener: (sessionId: string, updates: ChatUpdate[
 }
 
 /**
- * A new chat with the project's defaults first, then Jig's (`cwd`: a folder inside it, or no project).
- * Its provider: the one asked for, else the project's, else `engine.provider` (D-309). The project's
- * model and effort are for its own provider's chats; a chat on the other one gets Jig's default.
+ * A chat's provider and its defaults: the project's first, then Jig's for that provider (D-309, D-390).
  */
-/**
- * A chat's provider and its defaults: the one asked for, else the project's, else `engine.provider`.
- * The project's model and effort belong to the project's provider; the other one gets Jig's.
- */
-function chatDefaults(
-  project: Project | undefined,
-  asked: ChatProvider | undefined,
-): { provider: ChatProvider; model: string; effort?: EffortLevel } {
-  const { engine } = getConfig();
-  const projectProvider = project?.provider ?? engine.provider;
-  const provider = asked ?? projectProvider;
-  if (provider === projectProvider && project?.model)
-    return { provider, model: project.model, effort: project.effort };
-  if (provider === "codex")
-    return {
-      provider,
-      model: engine.codexModel,
-      effort: project?.provider === "codex" ? project.effort : engine.codexEffort || undefined,
-    };
-  return {
-    provider,
-    model: engine.defaultModel,
-    effort: provider === projectProvider ? project?.effort : undefined,
-  };
-}
+const chatDefaults = (project: Project | undefined, asked: ChatProvider | undefined) =>
+  newChatDefaults(getConfig().engine, project, asked);
 
 /** Plan only where the provider has plan mode; elsewhere it asks before changes instead (D-314). */
 const modeFor = (provider: ChatProvider, mode: PermissionMode): PermissionMode =>

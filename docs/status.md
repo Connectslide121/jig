@@ -1,5 +1,12 @@
 # Status
 
+Default reasoning effort for Claude chats (2026-11-05, D-390): **Settings → Chats → Claude chats →
+Reasoning effort** (Model's default, low … max) sets how hard new Claude chats think, unless their
+project sets its own; a chat can still change it, and a model without effort levels ignores it. Fixed
+on the way: a ChatGPT project without an effort of its own, or any project that sets only a model,
+now gives its new chats Jig's default effort (`engine.codexEffort` / `engine.effort`) instead of none.
+Covered by a unit test and `chat-provider.spec.ts`.
+
 Jig on your phone through Teams, complete in code (2026-11-05, D-370, D-377–D-381, phase 27): in
 **Settings → Phone** pick **Teams** instead of Telegram and press **Set up Teams…**. One modal does
 it all: **Where** (the top bar's tenant, a subscription, a region, the group `jig-phone`), **Create**

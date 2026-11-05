@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AI_FEATURE_IDS, AI_FEATURES, type AiFeatureId } from "./aiFeatures";
-import { CHAT_PROVIDERS, CODEX_EFFORT_LEVELS, LIMIT_POLICIES } from "./engine";
+import { CHAT_PROVIDERS, CODEX_EFFORT_LEVELS, EFFORT_LEVELS, LIMIT_POLICIES } from "./engine";
 import { PHONE_CHANNELS } from "./phone";
 import { AI_PROVIDERS, type AiProvider } from "./providers";
 
@@ -87,6 +87,11 @@ export const ConfigSchema = z.object({
       allowApiKey: z.boolean().default(false),
       /** Model alias or id for new sessions; opusplan = Opus only in Plan mode, Sonnet otherwise. */
       defaultModel: z.string().default("opus"),
+      /**
+       * Reasoning effort for new Claude chats (D-390), after the project's; "" = the model's own default.
+       * Claude Code ignores an effort the model doesn't support.
+       */
+      effort: z.enum([...EFFORT_LEVELS, ""]).default(""),
       /** Fallback for subagents without an explicit model; empty respects Claude Code settings. */
       subagentModel: z.string().default("sonnet"),
       /** No-tools questions from add-ons (commit messages, reviews and other helpers). */

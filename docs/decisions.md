@@ -6657,3 +6657,26 @@ stopped for good.
 - **Readout:** every wake check (what Whisper wrote, woke or not and why, loudness, voice score) is
   kept in memory (last 8), logged with `console.debug("[hey-jig]")` in dev, and the last four are
   shown in the training dialog under "Heard lately while listening". Nothing is written to disk.
+
+## D-390: A default reasoning effort for Claude chats; effort defaults fall back per provider
+
+- Status: accepted.
+- **Who:**
+  Jon asked for the setting (2026-11-05, task queue t103/t148): "a default reasoning effort for new
+  Claude chats", with Settings → Chats as its place. The fallback order and the ChatGPT fix are
+  Claude, on my own, as the task asked to decide them.
+- **What:** `engine.effort` (`""` | `low` … `max`, default `""` = the model's own default) is the
+  reasoning effort of new Claude chats. A new chat's defaults come from `chatDefaults`
+  (`shared/chatDefaults.ts`, pure and unit-tested): the project's model and effort first, but only
+  for the project's own provider (D-309); each one the project leaves empty falls back to Jig's for
+  the chat's provider: `defaultModel`/`effort` for Claude, `codexModel`/`codexEffort` for ChatGPT.
+  Settings → Chats → Claude chats → **Reasoning effort**, styled like ChatGPT's.
+- **No model check:** Claude Code ignores an effort the model doesn't support (Haiku), the same as
+  a project's effort today, so the default is passed as is.
+- **The ChatGPT quirk was a bug, fixed the same way:** a ChatGPT project without an effort of its own
+  gave its new chats no effort instead of `engine.codexEffort`, and so did any project that set a
+  model (the model branch returned the project's effort, empty or not). Nothing chose that: the
+  project-model shortcut and the `project?.provider === "codex"` test were written for the case where
+  the project sets both. Now model and effort fall back independently, for both providers.
+- **Why:** one rule ("the project's, else Jig's, else the model's") for both settings and both
+  providers is what the Settings descriptions promise ("unless their project sets its own").

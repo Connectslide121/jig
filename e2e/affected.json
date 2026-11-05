@@ -139,7 +139,8 @@
       "files": [
         "apps/desktop/src/renderer/features/settings/ChatSettings.tsx",
         "apps/desktop/src/renderer/features/settings/parts.tsx",
-        "apps/desktop/src/renderer/stores/providers.ts"
+        "apps/desktop/src/renderer/stores/providers.ts",
+        "apps/desktop/src/shared/chatDefaults.ts"
       ],
       "specs": ["chat-provider.spec.ts", "themes.spec.ts", "workbench.spec.ts", "ai.spec.ts"]
     },
@@ -276,7 +277,8 @@
         "apps/desktop/src/renderer/features/sessions/ProviderPicker.tsx",
         "apps/desktop/src/renderer/features/sessions/LimitCard.tsx",
         "apps/desktop/src/renderer/features/sessions/menus.ts",
-        "apps/desktop/src/renderer/stores/providers.ts"
+        "apps/desktop/src/renderer/stores/providers.ts",
+        "apps/desktop/src/shared/chatDefaults.ts"
       ],
       "specs": ["handover.spec.ts", "chat-provider.spec.ts"]
     },

@@ -53,3 +53,32 @@ test("Settings → Chats: new chats run on ChatGPT, with the default badge on it
   await expect(badge("settings-chatgpt-chats")).toBeVisible();
   await expect(badge("settings-claude-chats")).toHaveCount(0);
 });
+
+test("Settings → Chats: Claude's reasoning effort is the default for new chats after the project's (D-390)", async ({
+  page,
+  jigHome,
+}) => {
+  const path = join(jigHome, "shop");
+  await mkdir(path, { recursive: true });
+  const project = (await hostCall(page, "projects.add", { path })) as { value: { id: string } };
+  await page.getByTestId("settings-button").click();
+  await page.getByTestId("settings-nav-engine").click();
+  const picker = page.getByTestId("settings-claude-effort");
+  await expect(picker).toHaveValue("");
+  await picker.selectOption("high");
+  const effortOfNewChat = async (provider?: "claude" | "codex") =>
+    (
+      (await hostCall(page, "sessions.create", { projectId: project.value.id, cwd: path, provider })) as {
+        value: { effort?: string };
+      }
+    ).value.effort ?? "";
+  await expect.poll(() => effortOfNewChat()).toBe("high");
+  // A project that sets only a model still gets Jig's effort; its own effort wins.
+  await hostCall(page, "projects.update", { id: project.value.id, model: "sonnet" });
+  expect(await effortOfNewChat()).toBe("high");
+  await hostCall(page, "projects.update", { id: project.value.id, effort: "low" });
+  expect(await effortOfNewChat()).toBe("low");
+  // ChatGPT chats keep their own default.
+  await page.getByTestId("settings-codex-effort").selectOption("medium");
+  await expect.poll(() => effortOfNewChat("codex")).toBe("medium");
+});
