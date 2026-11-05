@@ -60,6 +60,28 @@ export function lastReply(items: ChatItem[]): string | undefined {
   return undefined;
 }
 
+/**
+ * A reply as something to read aloud: no code, no Markdown marks, at most `max` characters (cut at a
+ * sentence). Undefined when nothing is left to say.
+ */
+export function speakable(text: string, max = 1200): string | undefined {
+  const plain = text
+    .replace(/```[\s\S]*?(```|$)/g, " (code) ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, "a link")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/[*_~>|]/g, "")
+    .replace(/^\s*[-•]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return undefined;
+  if (plain.length <= max) return plain;
+  const cut = plain.slice(0, max);
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "));
+  return `${end > max / 2 ? cut.slice(0, end + 1) : cut}…`;
+}
+
 /** This turn (since your last message) used Claude's browser: its page is worth a screenshot. */
 export function usedBrowser(items: ChatItem[]): boolean {
   for (let i = items.length - 1; i >= 0; i--) {

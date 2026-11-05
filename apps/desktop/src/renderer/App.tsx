@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { registerFeatures } from "./features";
 import { startPhone } from "./features/phone/store";
+import { startPhoneVoice } from "./features/phone/voice";
 import { followWakeSetting } from "./features/speech/commands/wake";
 import { useHostEvent } from "./lib/host";
 import { useThemeController } from "./lib/theme";
@@ -15,6 +16,7 @@ export function App() {
   useEffect(() => followWakeSetting(), []);
   // Jig on your phone (D-350): its state for the chat menu's Open on my phone.
   useEffect(startPhone, []);
+  useEffect(startPhoneVoice, []);
   useHostEvent("meetings.chatOpen", ({ sessionId }) => {
     workbench.openTab("jig.chat", { sessionId });
   });

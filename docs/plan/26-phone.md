@@ -96,8 +96,14 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       for you and the phone is connected; setting `phone.keepAwake`, default on.
 - [x] Finished messages arrive silently (`disable_notification`); what waits for you still buzzes.
 - [ ] Several questions: one message per question with its options as buttons, sent in turn.
-- [ ] Voice messages: a Telegram voice note is transcribed with Jig's Whisper (`speech.*`) and
-      handled as text (shown back as "🎙 …" so you see what was understood).
+- [x] Voice messages: a Telegram voice note is transcribed with Jig's Whisper (`speech.*`) and
+      handled as text (shown back as "🎙 …" so you see what was understood). The answer of the chat
+      or of Jig itself you spoke to comes back read aloud too (the natural voice, Opus through
+      WebCodecs, `shared/ogg.ts`), besides the text. Both run in the window (`features/phone/voice.ts`),
+      asked by the host with `phone.voiceJob` and answered with `phone.voiceDone`.
+- [x] The phone switch at the top right (Jon: "a global switch to turn the bot on and off … so I can
+      easily switch it on when I leave"): `phone.enabled`, always in its place; before setup it opens
+      Settings → Phone. Jig itself can open a chat as a room when asked (`jig_chat_open`).
 - [ ] Settings → Phone: the topics check (on / how to turn it on), the concierge's model, a link to
       open the concierge chat on the computer.
 

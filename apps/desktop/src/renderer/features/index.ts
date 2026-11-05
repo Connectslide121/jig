@@ -13,6 +13,7 @@ import { registerKnowledge } from "./knowledge";
 import { registerLearning } from "./learning";
 import { registerLinks } from "./links";
 import { registerMeetingHistory } from "./meetings/History";
+import { registerPhone } from "./phone/PhoneButton";
 import { registerPreview } from "./preview";
 import { registerProjects } from "./projects";
 import { registerRoutines } from "./routines";
@@ -43,6 +44,7 @@ export function registerFeatures(): void {
   registerPreview();
   registerAttempts();
   registerBrowser();
+  registerPhone();
   registerRoutines();
   registerArtifacts();
   registerTour();

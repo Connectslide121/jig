@@ -1,4 +1,4 @@
-import { randomInt } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { readFile, rm, stat } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { powerMonitor, powerSaveBlocker, safeStorage } from "electron";
@@ -70,6 +70,27 @@ function phoneStore() {
 }
 
 let service: PhoneService | undefined;
+
+/** Voice work the window does (Whisper, the natural voice, Opus): asked by event, answered by call. */
+const voiceJobs = new Map<
+  string,
+  {
+    resolve: (result: { text?: string; data?: string }) => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }
+>();
+function voiceJob(kind: "transcribe" | "speak", data: string): Promise<{ text?: string; data?: string }> {
+  const id = randomUUID();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      voiceJobs.delete(id);
+      reject(new Error("Jig's window didn't answer (is it open?)."));
+    }, 180_000);
+    voiceJobs.set(id, { resolve, reject, timer });
+    emit("phone.voiceJob", { id, kind, data });
+  });
+}
 let blocker: number | undefined;
 
 /** Windows (and macOS) don't sleep while a chat works for you and the phone is connected. */
@@ -123,6 +144,14 @@ export async function startPhone(): Promise<void> {
         return readFile(full);
       },
     },
+    voice: {
+      transcribe: async (ogg) => (await voiceJob("transcribe", ogg.toString("base64"))).text ?? "",
+      speak: async (text) => {
+        const data = (await voiceJob("speak", text)).data;
+        if (!data) throw new Error("No audio came back.");
+        return Buffer.from(data, "base64");
+      },
+    },
     projects: async () => (await projectStore().list()).map((p) => ({ id: p.id, name: p.name })),
     queues: {
       overview: async () => (await addonService().call("tasks", "overview", {})) as QueueCounts[],
@@ -151,14 +180,19 @@ export async function startPhone(): Promise<void> {
   handle("phone.test", () => s.test());
   handle("phone.disconnect", () => s.disconnect());
   handle("phone.open", ({ sessionId }) => s.openRoom(sessionId));
+  handle("phone.voiceDone", ({ id, ...result }) => {
+    const job = voiceJobs.get(id);
+    if (!job) return;
+    voiceJobs.delete(id);
+    clearTimeout(job.timer);
+    if (result.error) job.reject(new Error(result.error));
+    else job.resolve(result);
+  });
   onChatUpdates((sessionId, updates) => {
     if (updates.some((u) => u.op !== "meta" && u.op !== "queue")) s.chatChanged(sessionId);
   });
   // A chat Jig starts for you from the phone opens as a room there.
-  onConciergeStartedChat(
-    (sessionId) =>
-      void s.openRoom(sessionId, s.askedIn()).catch((error) => log.warn("Opening the room failed", error)),
-  );
+  onConciergeStartedChat((sessionId) => s.openRoom(sessionId, s.askedIn()));
 
   onConfigChange(() => s.refresh());
   onSessionStatus((meta) => void s.chatStatus(meta).catch((error) => log.warn("Phone status failed", error)));

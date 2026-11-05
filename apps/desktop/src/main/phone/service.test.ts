@@ -45,7 +45,15 @@ function setup(
   const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
   let messageId = 100;
   const photos: Array<{ method: string; params: Record<string, unknown>; bytes: number }> = [];
+  const voices: Array<{ params: Record<string, unknown>; bytes: number }> = [];
   const api: TelegramApi = {
+    async voice<T>(params: Record<string, unknown>, ogg: Buffer) {
+      voices.push({ params, bytes: ogg.length });
+      return { message_id: ++messageId } as T;
+    },
+    async download(fileId: string) {
+      return Buffer.from(`ogg:${fileId}`);
+    },
     async photo<T>(method: string, params: Record<string, unknown>, photo: Buffer) {
       photos.push({ method, params, bytes: photo.length });
       return { message_id: ++messageId } as T;
@@ -116,6 +124,10 @@ function setup(
           },
         }
       : {}),
+    voice: {
+      transcribe: async (ogg: Buffer) => (ogg.toString() === "ogg:silence" ? "" : "how is it going"),
+      speak: async (text: string) => Buffer.from(`spoken:${text}`),
+    },
     screens: {
       window: async () => Buffer.from("window"),
       browser: async (id: string) => (id === "s1" ? Buffer.from("page") : undefined),
@@ -213,6 +225,7 @@ function setup(
     asked,
     photos,
     timers,
+    voices,
   };
 }
 
@@ -825,5 +838,58 @@ describe("PhoneService rooms", () => {
     current = t.service;
     await t.service.start();
     await expect(t.service.openRoom("s1")).rejects.toThrow(/topics/);
+  });
+});
+
+describe("PhoneService voice", () => {
+  const voiceNote = (t: ReturnType<typeof setup>, fileId: string, over: Record<string, unknown> = {}) =>
+    t.text("", { text: undefined, voice: { file_id: fileId, duration: 3 }, ...over });
+
+  it("hears a voice message, shows what it understood, and answers aloud", async () => {
+    const t = setup({ saved: paired, concierge: true });
+    current = t.service;
+    await t.service.start();
+    await voiceNote(t, "v1");
+    expect(t.messages().at(-1)).toBe("🎙 <i>how is it going</i>");
+    expect(t.asked).toEqual(["[Said in a voice message on the phone, in the bot's chat]\n\nhow is it going"]);
+
+    const jig = meta({ id: "jig1", kind: "concierge" });
+    t.metas.set("jig1", jig);
+    t.items.set("jig1", [{ kind: "assistant", id: "a", text: "All **quiet**: `0` tasks." } as ChatItem]);
+    await t.service.chatStatus({ ...jig, status: "working" });
+    await t.service.chatStatus({ ...jig, status: "idle" });
+    expect(t.voices).toHaveLength(1);
+    expect(t.voices[0]!.bytes).toBe(Buffer.from("spoken:All quiet: 0 tasks.").length);
+
+    // A typed message gets a typed answer only.
+    await t.text("and now?");
+    await t.service.chatStatus({ ...jig, status: "working" });
+    await t.service.chatStatus({ ...jig, status: "idle" });
+    expect(t.voices).toHaveLength(1);
+  });
+
+  it("says when it heard no words", async () => {
+    const t = setup({ saved: paired, concierge: true });
+    current = t.service;
+    await t.service.start();
+    await voiceNote(t, "silence");
+    expect(t.messages().at(-1)).toContain("couldn't make out any words");
+    expect(t.asked).toEqual([]);
+  });
+
+  it("answers a voice reply to a chat aloud when it finishes", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", []);
+    await t.service.fromChat(meta(), "Deploy?");
+    await voiceNote(t, "v2", {
+      reply_to_message: { message_id: 101, date: NOW, chat: { id: OWNER, type: "private" } },
+    });
+    expect(t.sent).toEqual([{ id: "s1", text: "how is it going" }]);
+    t.items.set("s1", [{ kind: "assistant", id: "a", text: "Deployed." } as ChatItem]);
+    await t.service.chatStatus(meta({ status: "working" }));
+    await t.service.chatStatus(meta({ status: "idle" }));
+    expect(t.voices).toHaveLength(1);
   });
 });

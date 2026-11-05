@@ -26,6 +26,7 @@ import {
   type QueueView,
   queueMessage,
   replyDecision,
+  speakable,
   statusMessage,
   tapDecision,
   usedBrowser,
@@ -104,6 +105,11 @@ export interface PhoneDeps {
   project?(id: string): Promise<{ name: string; color?: string } | undefined>;
   /** Jig itself (D-350): sends what you wrote to today's chat with Jig; returns that chat's id. */
   concierge?: { ask(text: string): Promise<string> };
+  /** Voice messages: what you said (Whisper), and an answer read aloud (Ogg Opus). */
+  voice?: {
+    transcribe(ogg: Buffer): Promise<string>;
+    speak(text: string): Promise<Buffer>;
+  };
   /** Pictures for the phone: Jig's window, a chat's browser page, a file a chat names. */
   screens?: {
     window(): Promise<Buffer | undefined>;
@@ -185,6 +191,8 @@ export class PhoneService {
   private conciergeId: string | undefined;
   private conciergeThread: number | undefined;
   private readonly rooms = new Map<string, Room>();
+  /** Chats you last spoke to (a voice message): their next answer comes read aloud too. */
+  private readonly spoken = new Set<string>();
   private readonly previous = new Map<string, SessionMeta["status"]>();
   /** Telegram message → the chat it was about, so a reply goes there. */
   private readonly replies = new Map<number, string>();
@@ -383,11 +391,10 @@ export class PhoneService {
       settings.screenshots && items && usedBrowser(items)
         ? await this.deps.screens?.browser(meta.id).catch(() => undefined)
         : undefined;
-    await this.send(
-      this.withOpen(message, meta),
-      { sessionId: meta.id, thread: await this.threadFor(meta) },
-      photo,
-    );
+    const thread = await this.threadFor(meta);
+    await this.send(this.withOpen(message, meta), { sessionId: meta.id, thread }, photo);
+    const reply = items && lastReply(items);
+    if (meta.status === "idle" && reply) await this.speak(meta.id, reply, thread);
   }
 
   /** A permission card changed in a chat: send it when it waits; update the phone's copy when answered. */
@@ -684,9 +691,93 @@ export class PhoneService {
     if (message.chat.id !== owner.chatId) return;
     // Answers go to the topic you wrote in.
     const here = message.is_topic_message ? message.message_thread_id : undefined;
-    const text = message.text?.trim() ?? "";
+    let text = message.text?.trim() ?? "";
+    let spoken = false;
+    if (!text && message.voice) {
+      text = (await this.listen(message.voice.file_id, message.message_id, here)) ?? "";
+      if (!text) return;
+      spoken = true;
+    }
     if (!text)
-      return void (await this.send({ text: "Jig only reads text messages for now." }, { thread: here }));
+      return void (await this.send({ text: "Jig reads text and voice messages." }, { thread: here }));
+    if (spoken) this.speaking = true;
+    try {
+      await this.route(text, message, here);
+    } finally {
+      this.speaking = false;
+    }
+  }
+
+  /** True while handling a voice message: the chat it goes to answers read aloud. */
+  private speaking = false;
+
+  /** A voice message as text (Whisper on this computer), shown back so you see what was understood. */
+  private async listen(
+    fileId: string,
+    messageId: number,
+    here: number | undefined,
+  ): Promise<string | undefined> {
+    if (!this.deps.voice || !this.api) {
+      await this.send({ text: "Voice messages need Jig's speech on this computer." }, { thread: here });
+      return undefined;
+    }
+    try {
+      await this.api
+        .call("sendChatAction", {
+          chat_id: this.saved?.owner?.chatId,
+          action: "typing",
+          ...(here ? { message_thread_id: here } : {}),
+        })
+        .catch(() => undefined);
+      const text = (await this.deps.voice.transcribe(await this.api.download(fileId))).trim();
+      if (!text) {
+        await this.send({ text: "🎙 I couldn't make out any words." }, { thread: here });
+        return undefined;
+      }
+      await this.api
+        .call("sendMessage", {
+          chat_id: this.saved?.owner?.chatId,
+          text: `🎙 <i>${escapeHtml(text)}</i>`,
+          parse_mode: "HTML",
+          disable_notification: true,
+          reply_parameters: { message_id: messageId },
+          ...(here ? { message_thread_id: here } : {}),
+        })
+        .catch(() => undefined);
+      return text;
+    } catch (error) {
+      await this.send(
+        { text: `🎙 Couldn't understand the voice message: ${excerpt((error as Error).message, 200)}` },
+        { thread: here },
+      );
+      return undefined;
+    }
+  }
+
+  /** Reads an answer aloud as a voice message, after a chat you spoke to answered. */
+  private async speak(sessionId: string, text: string, thread: number | undefined): Promise<void> {
+    if (!this.spoken.delete(sessionId) || !this.deps.voice || !this.api) return;
+    const clean = speakable(text);
+    if (!clean) return;
+    try {
+      const ogg = await this.deps.voice.speak(clean);
+      await this.api.voice(
+        {
+          chat_id: this.saved?.owner?.chatId,
+          ...(thread ? { message_thread_id: thread } : {}),
+        },
+        ogg,
+      );
+    } catch (error) {
+      this.deps.log?.warn("Reading the answer aloud failed", error);
+    }
+  }
+
+  private async route(
+    text: string,
+    message: NonNullable<TelegramUpdate["message"]>,
+    here: number | undefined,
+  ): Promise<void> {
     const command = /^\/(\w+)/.exec(text)?.[1]?.toLowerCase();
     if (command === "start" || command === "help")
       return void (await this.send({ text: this.help() }, { thread: here }));
@@ -723,7 +814,10 @@ export class PhoneService {
         ? "the bot's chat"
         : "Jig's topic";
     try {
-      this.conciergeId = await this.deps.concierge!.ask(`[Written on the phone, in ${where}]\n\n${text}`);
+      this.conciergeId = await this.deps.concierge!.ask(
+        `[${this.speaking ? "Said in a voice message" : "Written"} on the phone, in ${where}]\n\n${text}`,
+      );
+      if (this.speaking) this.spoken.add(this.conciergeId);
       this.conciergeThread = here;
       await this.api
         ?.call("sendChatAction", {
@@ -757,6 +851,7 @@ export class PhoneService {
     const items = (await this.deps.chats.snapshot(meta.id).catch(() => undefined))?.items ?? [];
     const reply = lastReply(items);
     if (reply) await this.send({ text: conciergeReply(reply) }, { sessionId: meta.id, thread });
+    if (reply) await this.speak(meta.id, reply, thread);
   }
 
   // --- rooms: a chat, whole and live, in a topic of its own -------------------------------------
@@ -948,8 +1043,12 @@ export class PhoneService {
     }
     await this.syncRoom(meta.id);
     if (previous !== "working" && previous !== "starting") return;
-    if (meta.status === "idle")
+    if (meta.status === "idle") {
       await this.send({ text: "✅ <b>Finished</b>" }, { sessionId: meta.id, thread: room.thread });
+      const items = (await this.deps.chats.snapshot(meta.id).catch(() => undefined))?.items ?? [];
+      const reply = lastReply(items);
+      if (reply) await this.speak(meta.id, reply, room.thread);
+    }
     if (meta.status === "error")
       await this.send(
         {
@@ -1063,6 +1162,7 @@ export class PhoneService {
       ));
     }
     const title = chatTitle(snapshot.meta);
+    if (this.speaking) this.spoken.add(sessionId);
     const pending = snapshot.items.filter(
       (i): i is PermissionItem => i.kind === "permission" && i.status === "pending",
     );

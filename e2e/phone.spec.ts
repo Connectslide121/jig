@@ -16,6 +16,7 @@ async function fakeTelegram(opts: { topics?: boolean } = {}) {
   const queue: Array<Record<string, unknown>> = [];
   const photos: number[] = [];
   const topics: Array<Record<string, unknown>> = [];
+  const voices: string[] = [];
   let nextUpdate = 1;
   let nextMessage = 1;
   const server: Server = createServer((req, res) => {
@@ -23,6 +24,11 @@ async function fakeTelegram(opts: { topics?: boolean } = {}) {
     req.on("data", (c) => (body += c));
     req.on("end", async () => {
       const method = req.url?.split("/").pop();
+      if (req.url?.startsWith(`/file/bot${TOKEN}/`)) return res.end(Buffer.from("OggS fake voice"));
+      if (method === "sendVoice" && req.url?.startsWith(`/bot${TOKEN}/`)) {
+        voices.push(body);
+        return res.end(JSON.stringify({ ok: true, result: { message_id: nextMessage++ } }));
+      }
       if (method === "sendPhoto" && req.url?.startsWith(`/bot${TOKEN}/`)) {
         photos.push(body.length);
         return res.end(JSON.stringify({ ok: true, result: { message_id: nextMessage++ } }));
@@ -41,6 +47,7 @@ async function fakeTelegram(opts: { topics?: boolean } = {}) {
           username: "shop_bot",
           has_topics_enabled: opts.topics ?? false,
         });
+      if (method === "getFile") return reply({ file_id: params.file_id, file_path: "voice/file_1.oga" });
       if (method === "createForumTopic") {
         topics.push(params);
         return reply({ message_thread_id: nextTopic++, name: params.name });
@@ -70,6 +77,18 @@ async function fakeTelegram(opts: { topics?: boolean } = {}) {
     edits,
     photos,
     topics,
+    voices,
+    say: () =>
+      queue.push({
+        update_id: nextUpdate++,
+        message: {
+          message_id: 1000 + nextUpdate,
+          date: now(),
+          chat: { id: ME, type: "private" },
+          from,
+          voice: { file_id: "v1", duration: 2, mime_type: "audio/ogg" },
+        },
+      }),
     inThread: (thread: number) =>
       sent.filter((m) => m.message_thread_id === thread).map((m) => String(m.text)),
     texts: () => sent.map((m) => String(m.text)),
@@ -272,6 +291,44 @@ test("phone: open a chat on the phone and talk to it there", async ({ jigHome })
     await expect(page.getByTestId("user-message-text").last()).toHaveText("from the phone", {
       timeout: 15000,
     });
+  } finally {
+    await telegram.close();
+  }
+});
+
+// Voice messages (D-350): what you say is heard with Whisper, shown back, and the answer comes read
+// aloud as an Ogg Opus voice message made in the window (the fake engine: fixed text and a tone).
+test("phone: a voice message is heard, and the answer comes back as a voice message", async ({ jigHome }) => {
+  const telegram = await fakeTelegram();
+  try {
+    const page = await start(jigHome, telegram);
+    const connected = (await hostCall(page, "phone.connect", { token: TOKEN })) as {
+      value: { code: string };
+    };
+    telegram.write(connected.value.code);
+    await expect
+      .poll(
+        async () => ((await hostCall(page, "phone.state")) as { value: { status: string } }).value.status,
+        { timeout: 15000 },
+      )
+      .toBe("connected");
+
+    telegram.say();
+    await expect
+      .poll(() => telegram.texts().join("\n"), { timeout: 20000 })
+      .toContain("🎙 <i>Hello Claude, this came from the microphone.</i>");
+    await expect.poll(() => telegram.texts().join("\n"), { timeout: 20000 }).toContain("<b>Jig</b> · AI");
+    await expect.poll(() => telegram.voices.length, { timeout: 30000 }).toBe(1);
+    expect(telegram.voices[0]).toContain("OggS");
+    expect(telegram.voices[0]).toContain("OpusHead");
+
+    // The switch at the top right turns the phone off and on again.
+    const button = page.getByTestId("topbar-phone");
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+    await button.click();
+    await expect(button).toHaveAttribute("aria-pressed", "false");
+    await button.click();
+    await expect(button).toHaveAttribute("aria-pressed", "true");
   } finally {
     await telegram.close();
   }

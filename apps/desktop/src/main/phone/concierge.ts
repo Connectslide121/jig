@@ -20,6 +20,7 @@ export const CONCIERGE_PROMPT = `You are Jig itself, the user's desktop workbenc
 
 - Answer briefly: a few short lines of plain text, no tables or headings. The phone shows your last reply of each turn.
 - You can't read or change files or run commands. To get work done, start a chat in the right project with jig_chat_start and a clear prompt (what to look at, what to produce). New chats start in plan mode: when the plan is ready the user approves it on their phone. Use mode "default" only when the user clearly asks for the work to be done directly; the chat still asks before it changes anything.
+- jig_chat_open opens a chat on their phone as a room (they follow it live and write to it there): use it when they ask to see, open or join a chat.
 - jig_chats_list and jig_chat_read tell how chats are doing; jig_chat_send writes to a running chat (the user approves it). The Tasks add-on's tools read and change task queues; the Boards add-on's tools read and update Azure DevOps cards; jig_list_projects lists projects.
 - Each message says which topic it was written in. A project's topic means that project unless the user names another. When it's unclear which project, ask.
 - Never approve, deny or answer anything waiting in another chat: the user does that with the buttons. Never run pipelines or deploys.
@@ -34,9 +35,9 @@ async function projectNames(): Promise<Map<string, string>> {
 
 const userChat = (m: SessionMeta) => !m.draft && (!m.kind || m.kind === "chat");
 
-let startedChat: ((sessionId: string) => void) | undefined;
-/** A chat Jig started for you from the phone (it opens as a room there). */
-export function onConciergeStartedChat(listener: (sessionId: string) => void): void {
+let startedChat: ((sessionId: string) => Promise<void> | void) | undefined;
+/** Opens a chat as a room on the phone: one Jig started for you there, or one you asked to see. */
+export function onConciergeStartedChat(listener: (sessionId: string) => Promise<void> | void): void {
   startedChat = listener;
 }
 
@@ -102,8 +103,23 @@ export const conciergeTools: ChatTool[] = [
         limitFallback: true,
       });
       await sessionManager().send(meta.id, String(args.prompt), [], true);
-      startedChat?.(meta.id);
+      await Promise.resolve(startedChat?.(meta.id)).catch(() => undefined);
       return `Started a chat (id ${meta.id}) in ${project.name}. It opens on the user's phone as a room of its own (when their bot has topics), where they follow it and write to it.`;
+    },
+  },
+  {
+    name: "jig_chat_open",
+    description:
+      "Open one of the user's chats on their phone as a room: a topic of its own with its last turns, then everything it does, live, where they write to it. Use it when they ask to see, open, follow or join a chat (find its id with jig_chats_list first).",
+    shape: { chatId: z.string().describe("The chat's id from jig_chats_list") },
+    readOnly: true,
+    alwaysLoad: true,
+    handler: async (args) => {
+      const { meta } = await sessionManager().snapshot(String(args.chatId));
+      if (!userChat(meta)) throw new JigError("forbidden", "Only the user's own chats.");
+      if (!startedChat) throw new JigError("not_connected", "The phone isn't connected.");
+      await startedChat(meta.id);
+      return `Opened “${meta.title}” on the user's phone in a topic of its own.`;
     },
   },
   {

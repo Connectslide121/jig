@@ -540,6 +540,8 @@ export interface HostMethods {
    * Errors: `not_connected`, `no_topics` (the bot has no topics).
    */
   "phone.open": { args: { sessionId: string }; result: void };
+  /** The window's answer to a `phone.voiceJob`: the text, the Ogg file (base64) or what went wrong. */
+  "phone.voiceDone": { args: { id: string; text?: string; data?: string; error?: string }; result: void };
   /** Puts a chat in a project, moves it to another, or takes it out (`projectId` left out). */
   "sessions.setProject": { args: { id: string; projectId?: string }; result: void };
   /**
@@ -926,6 +928,11 @@ export interface HostEvents {
   "azure.signInProgress": { key: string; text: string; done?: boolean };
   /** Your phone's bot was set up, paired, lost its connection or was forgotten (D-350). */
   "phone.changed": PhoneState;
+  /**
+   * A voice message needs the window's audio (D-350): `transcribe` an Ogg voice message (base64) with
+   * Whisper, or `speak` a text with the natural voice into an Ogg file. Answered with `phone.voiceDone`.
+   */
+  "phone.voiceJob": { id: string; kind: "transcribe" | "speak"; data: string };
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };
   /** The add-on views' badges changed (all of them, by full view id). */

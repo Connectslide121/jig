@@ -21,6 +21,8 @@ export interface TelegramMessage {
   from?: TelegramUser;
   text?: string;
   reply_to_message?: { message_id: number };
+  /** A voice message you recorded (Ogg Opus). */
+  voice?: { file_id: string; duration: number; mime_type?: string };
   /** The topic it was written in (private chats with topics, Bot API 9.3). */
   message_thread_id?: number;
   is_topic_message?: boolean;
@@ -56,6 +58,10 @@ export interface TelegramApi {
   call<T>(method: string, params?: Record<string, unknown>, signal?: AbortSignal): Promise<T>;
   /** Sends a picture (multipart): `params` as form fields, the PNG or JPEG as `photo`. */
   photo<T>(method: string, params: Record<string, unknown>, photo: Buffer): Promise<T>;
+  /** Sends a voice message: `params` as form fields, the Ogg Opus file as `voice`. */
+  voice<T>(params: Record<string, unknown>, ogg: Buffer): Promise<T>;
+  /** Downloads a file you sent (a voice message), by its `file_id`. */
+  download(fileId: string): Promise<Buffer>;
 }
 
 /** The API's address; only the fake engine (tests) may point it elsewhere. */
@@ -95,6 +101,31 @@ export function telegramApi(token: string, base = telegramBase()): TelegramApi {
         { headers: { "content-type": "application/json" }, body: JSON.stringify(params) },
         signal ?? AbortSignal.timeout(20_000),
       ),
+    voice: <T>(params: Record<string, unknown>, ogg: Buffer) => {
+      const form = new FormData();
+      for (const [key, value] of Object.entries(params))
+        if (value !== undefined) form.append(key, typeof value === "string" ? value : JSON.stringify(value));
+      form.append("voice", new Blob([new Uint8Array(ogg)], { type: "audio/ogg" }), "voice.ogg");
+      return post<T>("sendVoice", { body: form });
+    },
+    download: async (fileId: string) => {
+      const file = await post<{ file_path?: string }>(
+        "getFile",
+        { headers: { "content-type": "application/json" }, body: JSON.stringify({ file_id: fileId }) },
+        AbortSignal.timeout(20_000),
+      );
+      if (!file.file_path) throw new TelegramError("Telegram has no such file.");
+      let response: Response;
+      try {
+        response = await fetch(`${base}/file/bot${token}/${file.file_path}`, {
+          signal: AbortSignal.timeout(60_000),
+        });
+      } catch {
+        throw new TelegramError("Telegram can't be reached.");
+      }
+      if (!response.ok) throw new TelegramError(`Telegram answered ${response.status}.`, response.status);
+      return Buffer.from(await response.arrayBuffer());
+    },
     photo: <T>(method: string, params: Record<string, unknown>, photo: Buffer) => {
       const form = new FormData();
       for (const [key, value] of Object.entries(params))

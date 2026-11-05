@@ -5464,6 +5464,13 @@ choice of Telegram and everything below: Claude, on my own.
   replies edited as they grow, steps, pictures, requests); writing there writes to the chat. One room
   per chat, only on request (a button, /chats, the chat's menu, or a chat Jig started from the phone),
   so the phone doesn't fill with topics; /close deletes the topic and leaves the chat.
+- **Voice messages, not calls:** a Telegram bot can't call or be called. You send a voice note; Jig
+  transcribes it on this computer (Whisper, as dictation) and answers in text and, because you spoke,
+  read aloud as a voice message (the natural voice). The window does the audio: Chromium decodes
+  Opus and WebCodecs encodes it, and `shared/ogg.ts` writes the Ogg file Telegram needs, so no audio
+  package is added. A real call (Teams through Azure Communication Services) is left for later.
+- **A switch at the top right** turns the phone on and off (`phone.enabled`); off, Jig neither
+  messages the phone nor reads the bot.
 - **Commands without Claude:** `/status`, `/queue`, `/pause`, `/resume` read the Tasks add-on
   (`overview`, `list`, `start`, `pause` through `addonService().call`) and the chats, and answer at
   once: asking how things are going costs nothing from the plan.

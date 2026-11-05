@@ -311,8 +311,12 @@ function phoneMenu(meta: SessionMeta): MenuEntry[] {
       detail: phone.topics ? undefined : "Turn on topics for your bot (Settings → Phone)",
       onSelect: () =>
         void call("phone.open", { sessionId: meta.id })
-          .then(() => notify({ tone: "success", title: "Open on your phone", message: "It's in a topic of its own." }))
-          .catch((error) => notify({ tone: "danger", title: "Couldn't open it", message: errorMessage(error) })),
+          .then(() =>
+            notify({ tone: "success", title: "Open on your phone", message: "It's in a topic of its own." }),
+          )
+          .catch((error) =>
+            notify({ tone: "danger", title: "Couldn't open it", message: errorMessage(error) }),
+          ),
       testId: "session-open-phone",
     },
   ];
