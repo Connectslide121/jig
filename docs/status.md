@@ -145,6 +145,20 @@ the handoff with the mapped model.
 **Known gap:** the header's context meter disappears after a handover until the new provider's first
 turn (the header no longer shows the provider since D-340, so nothing slides).
 
+A limit nobody answers resumes by itself at the reset (2026-11-05, D-376): with **Ask me**, the
+limit card still offers Continue with ChatGPT (or Claude), but its last line now says **Resumes by
+itself at 14:00 unless you choose** with **Don't resume**, and the chat header says "Waiting for the
+limit · resumes 14:00". Continue, Dismiss, Don't resume or a message of yours always win: the chat
+never resumes after you took over, and never twice. The reset time comes from the provider's limit
+(Claude's rate-limit event, ChatGPT's rate limits), else from the usage meter, the same data the
+status bar's usage card shows; a reset that has already passed (a stale meter) doesn't count, so
+the card just asks. If Jig was closed at the reset, the chat resumes a moment after Jig starts; after
+a sleep or a locked screen, Jig looks at the clock again on wake and resumes then. A queued task
+whose limit nobody answers keeps running and waits (a clock mark beside its Running badge, "Resumes
+at 14:00" on the dashboard) instead of needing you; Don't resume makes it need you again.
+**Check on your machine:** leave a real limit unanswered over a reset (and once with the laptop asleep
+through it) and see the chat resume once.
+
 A chat that hits its plan's limit carries on with the other provider (2026-11-04, D-338): when
 Claude's (or ChatGPT's) limit stops a chat, the plain error is now a **limit card**: "Claude's limit
 is reached", when it resets ("Resets 14:00 · in 2 h 13 min"), and **Continue with ChatGPT** (only when

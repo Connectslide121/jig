@@ -91,6 +91,13 @@ Jig's tools in Codex chats below, D-313). Routines and Artifacts stay on Claude 
 - **Waiting:** a timer sends "Your usage limit has reset. Carry on…" 30 s after `resetsAt` on the same
   provider (re-armed when Jig starts again). A message you send yourself ends the wait (the card
   says Dismissed).
+- **Nobody answers (D-376):** with `ask` and a reset still ahead, the chat waits too, marked
+  `limit.auto`; the card keeps Continue and offers Don't resume (`cancel`, back to `ask`). Any action
+  of yours (`limitAction`, a message, a handover) drops `auto` or clears the limit, and
+  `resumeAfterLimit` clears `limit` before its turn, so it runs once. A reset that already passed
+  (a stale meter) doesn't wait at all, so a resume can't loop into the same limit. `wake()` (on
+  `powerMonitor` resume and unlock-screen) resumes the chats whose reset passed during a sleep and
+  re-arms the others from the clock.
 - **Continuing** (`continueWith(to, reason)`): stops the old process, pushes a `handoff` item (the
   divider), moves the old provider's `engineSessionId` and model into `SessionMeta.providers`, sets
   `provider`, `model`, `effort` and `permissionMode` from `providerDefaults` (the same model tier

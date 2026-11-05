@@ -62,7 +62,13 @@ export interface QueueCard {
   /** Cost of the queue's tasks; undefined until one has a cost. */
   costUsd?: number;
   /** The task running or waiting for you. */
-  current?: DashboardTask & { chatTitle: string; sentAt?: string; waitingFor?: WaitingFor };
+  current?: DashboardTask & {
+    chatTitle: string;
+    sentAt?: string;
+    waitingFor?: WaitingFor;
+    /** Its chat waits for its plan's limit to reset at this time, then carries on (D-376). */
+    limitResetsAt?: string;
+  };
   /** The next queued titles (two at most) and how many more wait after them. */
   next: string[];
   more: number;
@@ -127,6 +133,7 @@ function current(queue: Queue, task: Task): NonNullable<QueueCard["current"]> {
     chatTitle: chatTitle ?? task.title,
     ...(task.sentAt ? { sentAt: task.sentAt } : {}),
     ...(task.status === "needs_you" && task.waitingFor ? { waitingFor: task.waitingFor } : {}),
+    ...(task.status === "running" && task.limitResetsAt ? { limitResetsAt: task.limitResetsAt } : {}),
   };
 }
 

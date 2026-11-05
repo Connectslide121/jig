@@ -89,7 +89,7 @@ export function ChatSettings() {
         </SettingRow>
         <SettingRow
           label="When a chat hits its limit"
-          description="Ask me: the chat shows what you can do. Continue: the same chat carries on with the other provider when its plan has room (else it waits for the reset), reading what happened so far. Wait: the chat resumes by itself when the limit resets. A project can choose its own."
+          description="Ask me: the chat shows what you can do, and resumes by itself at the reset if you don't choose. Continue: the same chat carries on with the other provider when its plan has room (else it waits for the reset), reading what happened so far. Wait: the chat resumes by itself when the limit resets. A project can choose its own."
         >
           <Select
             className={PICKER}

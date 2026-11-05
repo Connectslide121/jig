@@ -66,6 +66,12 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       `Project.onLimit`, the task queue following it, fake "hit the limit", `e2e/limit-handoff.spec.ts`.
 - [ ] Try a real limit with both providers signed in: the reset time on the card, Continue, and the
       handoff the other provider gets (D-338).
+- [x] **A limit nobody answers resumes by itself at the reset** (added 2026-11-05, D-376): `ask`
+      waits automatically (`ChatLimit.auto`), the card keeps its choices and gets Don't resume, the
+      header says when it resumes, `SessionManager.wake` on resume/unlock, stale resets ignored,
+      queued tasks keep running with a clock mark; unit tests and `e2e/limit-handoff.spec.ts`.
+- [ ] Leave a real limit unanswered across its reset, once with the computer asleep, and check it
+      resumes exactly once (D-376).
 - [x] **Hand a chat over to the other provider whenever you want** (added 2026-11-04, D-339): the
       composer's provider picker and the ⋯ menu open a confirmation dialog (what carries over, what
       doesn't, what's different), disabled while a turn runs; model tier and effort mapped; a

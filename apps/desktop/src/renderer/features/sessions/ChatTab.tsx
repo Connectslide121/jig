@@ -16,6 +16,7 @@ import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
 import { fillComposer } from "./drafts";
+import { resetTime } from "./LimitCard";
 import { renameSession, sessionMenu } from "./menus";
 import { canChangeProject, showProjectOf, switchChatProject } from "./project";
 import { STATUS_LABEL, StatusDot } from "./status";
@@ -136,8 +137,12 @@ export function ChatTab({ params, active, focused }: TabProps) {
         </button>
         {project && <ChatProject meta={meta} project={project} canMove={canMove} />}
         {meta.kind === "builder" && <Badge tone="accent">Builder</Badge>}
-        <span className="text-xs text-hint" data-testid="chat-status">
-          {meta.limit ? "Limit reached" : STATUS_LABEL[meta.status]}
+        <span className="min-w-0 truncate text-xs text-hint" data-testid="chat-status">
+          {meta.limit?.state === "waiting" && meta.limit.resetsAt
+            ? `Waiting for the limit · resumes ${resetTime(meta.limit.resetsAt)}`
+            : meta.limit
+              ? "Limit reached"
+              : STATUS_LABEL[meta.status]}
         </span>
         {/* The spacer is the tenant label's slot: it appears at its right end and nothing moves. */}
         <div className="flex min-w-0 flex-1 justify-end">

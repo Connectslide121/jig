@@ -285,6 +285,16 @@ function QueueCardView({
                   {current.waitingFor ? WAITING_LABEL[current.waitingFor] : "Needs you"} ·
                 </span>
               )}
+              {current.status === "running" && current.limitResetsAt && (
+                <span className="shrink-0 text-muted" data-testid={`tasks-dashboard-limit-${name}`}>
+                  Resumes at{" "}
+                  {new Date(current.limitResetsAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  ·
+                </span>
+              )}
               {current.sessionId ? (
                 <button
                   type="button"

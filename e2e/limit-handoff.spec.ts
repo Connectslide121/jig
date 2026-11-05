@@ -28,7 +28,10 @@ test("the limit card: continue with ChatGPT, a divider, and ChatGPT picks up the
   await expect(card).toBeVisible({ timeout: 15000 });
   await expect(card).toContainText("Claude's limit is reached");
   await expect(card.getByTestId("limit-resets")).toContainText("Resets");
-  await expect(card.getByTestId("limit-wait")).toContainText("Wait and resume at");
+  // Nobody has answered yet: it waits for the reset by itself, and the question stays (D-376).
+  await expect(card).toHaveAttribute("data-status", "waiting");
+  await expect(card.getByTestId("limit-waiting")).toContainText("unless you choose");
+  await expect(page.getByTestId("chat-status").filter({ visible: true })).toContainText("resumes");
   // The turn's "Failed" line would only repeat the card.
   await expect(page.getByTestId("turn-result")).toHaveCount(0);
   // ChatGPT's meter has room: the primary action is there (once the meter has been read).
@@ -63,17 +66,24 @@ test("the limit card: continue with ChatGPT, a divider, and ChatGPT picks up the
   expect(list[0]?.providers?.[0]).toMatchObject({ provider: "claude", reason: "limit" });
 });
 
-test("the limit card: wait for the reset, then don't wait", async ({ page, jigHome }) => {
+test("the limit card: don't resume, wait by choice, then don't wait", async ({ page, jigHome }) => {
   await shopProject(page, jigHome);
   await page.keyboard.press("Control+N");
   await page.getByTestId("composer-input").fill("hit the limit");
   await page.keyboard.press("Enter");
   const card = page.getByTestId("limit-card");
   await expect(card).toBeVisible({ timeout: 15000 });
+  await expect(card).toHaveAttribute("data-status", "waiting");
   const box = await card.boundingBox();
+  // Cancelling the automatic wait leaves the question (D-376).
+  await card.getByTestId("limit-cancel").click();
+  await expect(card).toHaveAttribute("data-status", "open");
+  await expect(page.getByTestId("chat-status").filter({ visible: true })).toContainText("Limit reached");
+  expect((await card.boundingBox())?.height).toBe(box?.height);
   await card.getByTestId("limit-wait").click();
   await expect(card).toHaveAttribute("data-status", "waiting");
   await expect(card.getByTestId("limit-waiting")).toContainText("Resumes by itself at");
+  await expect(card.getByTestId("limit-waiting")).not.toContainText("unless you choose");
   expect((await card.boundingBox())?.height).toBe(box?.height);
   await card.getByTestId("limit-cancel").click();
   await expect(card).toHaveAttribute("data-status", "open");
@@ -117,4 +127,24 @@ test("Tasks: with 'continue with the other provider', a task that hits Claude's 
   await page.getByTestId("task-open-chat").click();
   await expect(page.getByTestId("handoff-divider")).toBeVisible();
   await expect(page.getByText("Reported from ChatGPT.").first()).toBeVisible();
+});
+
+test("Tasks: a task whose limit nobody answers keeps running and waits for the reset (D-376)", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(60_000);
+  const projectId = await shopProject(page, jigHome);
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("task queue");
+  await page.keyboard.press("Enter");
+  const view = page.getByTestId("tasks-view");
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId, prompts: ["update the readme and hit the limit"], newChat: true },
+  });
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-limit-wait-t1")).toBeVisible({ timeout: 30000 });
+  await expect(view.getByTestId("task-status-t1")).toContainText("Running");
 });

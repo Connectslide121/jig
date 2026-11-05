@@ -151,7 +151,8 @@ Writes are atomic (write temp file + rename). Formats are documented in `docs/re
   dialog): the session manager ends the old process, records it in `SessionMeta.providers`, adds a
   `handoff` divider, maps the model tier and effort (`mapModelAndEffort`), and the new provider's
   first message brings a handoff built from the transcript (`shared/handoff.ts`, no AI);
-  `engine.onLimit` / `Project.onLimit` decide ask, switch or wait after a limit.
+  `engine.onLimit` / `Project.onLimit` decide ask, switch or wait after a limit (an unanswered ask
+  resumes at the reset, D-376; `SessionManager.wake` on resume from sleep).
   `Engine.capabilities` (`ENGINE_CAPABILITIES`)
   says what each provider's chats can do, so the UI hides what a provider lacks. Both drive an
   official, unmodified CLI; Jig never runs an agent loop of its own.

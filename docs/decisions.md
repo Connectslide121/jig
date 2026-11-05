@@ -6180,3 +6180,38 @@ choice of Telegram and everything below: Claude, on my own.
   pictures in a `SegmentedSwitch` (Centre / Left / Right / Full), first in the section.
 - **Tools:** the layout op `{ op: "span", span }` (chat tools and the builder's `stage_layout`);
   `jig_get_layout` reports `bottom panel width`.
+
+## D-376: A limit nobody answers resumes by itself at the reset
+
+Extends D-338: the limit card's question stays, but leaving it unanswered no longer leaves the chat
+stopped for good.
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-05 (the question stays, answering always wins, the chat shows it waits and
+  when it resumes, you can cancel, a queued task waits instead of failing, never twice or after you
+  took over; reuse the reset time Jig's usage meter already shows). The rest is Claude, on my own.
+- **Where the reset comes from:** both providers say it. Claude: the `rate_limit_event` before the
+  limit error (or an old message's `|<seconds>` ending); ChatGPT: the latest
+  `account/rateLimits/updated`. Missing that, the usage meter's full window (`planResetsAt`, the
+  same data as the status bar's usage card). Nothing was infeasible for either provider.
+- **Model:** with `ask` and a reset ahead, `limitHit` puts the chat in the existing `waiting` state
+  with `ChatLimit.auto: true`, so everything waiting already does (the timer, re-arming at start,
+  the task queue keeping the task running with `limitResetsAt`) applies unchanged. The card stays
+  `waiting` with Continue (when the other plan has room) and "Resumes by itself at 14:00 unless you
+  choose" with **Don't resume**, which is `cancel`: back to `ask`, the card's Wait and Dismiss, and a
+  queued task that needs you. Choosing Wait yourself drops `auto`. No new setting: `ask` now means
+  "ask, and resume at the reset if I don't answer"; the setting's description says so.
+- **Answers win, once:** Continue, Dismiss, Don't resume, a message of yours and a handover all end
+  or change the wait before the timer can fire; the resume clears `meta.limit` before its turn
+  starts, so the timer, a wake and a restart can't each resume it.
+- **A reset already in the past doesn't wait** (any policy): the meter is stale and a resume would
+  hit the same limit again, every second. The card just asks. No backoff retries: with a reset known
+  for both providers there's nothing to guess.
+- **Jig closed or the computer asleep at the reset:** a waiting chat is resumed a moment after Jig
+  starts (as D-338's explicit wait already was), however long ago the reset was: you left it to carry
+  on. Timers can be put off by a sleep, so `powerMonitor` `resume` and `unlock-screen` call
+  `SessionManager.wake()`, which resumes the chats whose reset passed and re-arms the others.
+- **Visible:** the chat header says "Waiting for the limit · resumes 14:00" instead of "Limit
+  reached"; a waiting task has a clock mark left of its Running badge (the quiet-mark slot, nothing
+  moves) and the dashboard's Now row says "Resumes at 14:00".
+

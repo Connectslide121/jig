@@ -3,7 +3,7 @@ import { appendFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { aiLineHashes, correctionSignal } from "@jig/learning";
-import { app, BrowserWindow, dialog, Notification } from "electron";
+import { app, BrowserWindow, dialog, Notification, powerMonitor } from "electron";
 import { chatToMarkdown } from "../../shared/chatExport";
 import { toolUse } from "../../shared/chatStats";
 import {
@@ -486,6 +486,9 @@ export function startSessions(): void {
     },
   });
   const m = manager;
+  // Chats waiting for a limit's reset look at the clock again after a sleep (D-376).
+  powerMonitor.on("resume", () => m.wake());
+  powerMonitor.on("unlock-screen", () => m.wake());
 
   // A system notification when a chat needs you or finishes while Jig is in the background.
   const lastStatus = new Map<string, SessionStatus>();

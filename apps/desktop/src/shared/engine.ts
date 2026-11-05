@@ -62,6 +62,11 @@ export interface ChatLimit {
   provider: ChatProvider;
   state: "ask" | "waiting" | "continuing";
   resetsAt?: string;
+  /**
+   * Waiting because nobody answered the card (D-376): with `ask` a chat still resumes at the reset,
+   * unless you choose first. Missing when you (or the setting) chose to wait.
+   */
+  auto?: boolean;
 }
 
 /** One stretch of a chat on one provider, kept when it continued with the other (D-338). */

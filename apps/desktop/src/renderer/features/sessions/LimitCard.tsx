@@ -15,7 +15,7 @@ type LimitItem = Extract<ChatItem, { kind: "limit" }>;
 type Action = "continue" | "wait" | "cancel" | "dismiss";
 
 /** "14:00", or "Thu 5 Nov 14:00" when it isn't today. */
-function resetTime(iso: string): string {
+export function resetTime(iso: string): string {
   return sameDay(iso, new Date().toISOString()) ? clockTime(iso) : `${shortDay(iso)} ${clockTime(iso)}`;
 }
 
@@ -28,11 +28,14 @@ function useRoom(provider: ChatProvider) {
 /**
  * The chat's provider hit its plan limit (D-338): what happened, when it resets, and what to do — carry
  * on with the other provider, wait and resume at the reset, or dismiss it. Three fixed lines, the last
- * one swapping its buttons for what was chosen, so nothing moves when you choose.
+ * one swapping its buttons for what was chosen, so nothing moves when you choose. Unanswered, it waits
+ * for the reset by itself and still offers the other provider; "Don't resume" asks again (D-376).
  */
 export function LimitCard({ item, sessionId }: { item: LimitItem; sessionId: string }) {
   const current = useSessions((s) => s.metas[sessionId]?.limit?.itemId === item.id);
   const builder = useSessions((s) => Boolean(s.metas[sessionId]?.kind));
+  // Nobody answered: the card still asks, and the chat resumes at the reset meanwhile (D-376).
+  const auto = useSessions((s) => s.metas[sessionId]?.limit?.auto === true);
   const other = otherProvider(item.provider);
   const room = useRoom(other);
   const [busy, setBusy] = useState<Action>();
@@ -99,7 +102,7 @@ export function LimitCard({ item, sessionId }: { item: LimitItem; sessionId: str
                   data-testid="limit-waiting"
                 >
                   <Clock className="size-3.5 shrink-0 text-muted" />
-                  Resumes by itself at {reset}
+                  {auto ? `Resumes by itself at ${reset} unless you choose` : `Resumes by itself at ${reset}`}
                 </span>
                 <Button
                   size="sm"
@@ -108,7 +111,7 @@ export function LimitCard({ item, sessionId }: { item: LimitItem; sessionId: str
                   onClick={() => void act("cancel")}
                   data-testid="limit-cancel"
                 >
-                  Don't wait
+                  {auto ? "Don't resume" : "Don't wait"}
                 </Button>
               </>
             ) : (

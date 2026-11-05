@@ -259,8 +259,10 @@
         "apps/desktop/src/shared/usage.ts",
         "apps/desktop/src/renderer/features/sessions/LimitCard.tsx",
         "apps/desktop/src/renderer/features/sessions/Transcript.tsx",
+        "apps/desktop/src/renderer/features/sessions/ChatTab.tsx",
         "addons/tasks/host.ts",
-        "addons/tasks/lib/tasks.ts"
+        "addons/tasks/lib/tasks.ts",
+        "addons/tasks/ui.tsx"
       ],
       "specs": ["limit-handoff.spec.ts"]
     },

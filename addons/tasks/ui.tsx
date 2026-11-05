@@ -35,6 +35,7 @@ import {
   CircleDashed,
   CircleMinus,
   CircleX,
+  Clock,
   CornerDownRight,
   FileText,
   GripVertical,
@@ -2025,8 +2026,8 @@ function ChatCard({
   );
 }
 
-const startedAt = (task: Task) =>
-  task.sentAt ? new Date(task.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const startedAt = (task: Task) => (task.sentAt ? clock(task.sentAt) : "");
 
 function TaskRow({
   ctx,
@@ -2215,6 +2216,16 @@ function TaskRow({
                   aria-label={`Revised, was ${STATUS_LABEL[task.revised.from.outcome]}`}
                   className="size-3"
                 />
+              </span>
+            )}
+            {/* Its chat waits for its plan's limit to reset, then carries on (D-376): the same quiet place. */}
+            {task.status === "running" && task.limitResetsAt && (
+              <span
+                className="flex shrink-0 items-center text-hint"
+                title={`Waits for the plan's limit to reset, resumes at ${clock(task.limitResetsAt)}`}
+                data-testid={`task-limit-wait-${task.id}`}
+              >
+                <Clock aria-label={`Resumes at ${clock(task.limitResetsAt)}`} className="size-3" />
               </span>
             )}
             <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>

@@ -92,6 +92,11 @@ describe("queueCard", () => {
     const q = queue([task("t1", { status: "running", sessionId: "s9", sentAt: "2026-11-04T11:00:00Z" })]);
     expect(queueCard("p1", q)!.current?.chatTitle).toBe("Task t1");
   });
+  it("says when a task waiting for its plan's limit resumes (D-376)", () => {
+    const resetsAt = "2026-11-04T14:00:00Z";
+    const q = queue([task("t1", { status: "running", sessionId: "s9", limitResetsAt: resetsAt })]);
+    expect(queueCard("p1", q)!.current?.limitResetsAt).toBe(resetsAt);
+  });
 });
 
 describe("cardTime", () => {

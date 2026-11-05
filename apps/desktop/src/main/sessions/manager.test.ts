@@ -693,14 +693,24 @@ it("reloads selected skills only between turns, preserves resume, and follows a 
 });
 
 describe("limits (D-338)", () => {
-  function twoEngines(policy: "ask" | "switch" | "wait", room = true) {
+  function twoEngines(
+    policy: "ask" | "switch" | "wait",
+    room = true,
+    /** The provider doesn't say when it resets; the usage meter says this. */
+    meterResetsAt?: string,
+  ) {
     const claude = new FakeEngine(1);
     const codex = new FakeEngine(1, "codex");
     const sent: Array<{ provider: string; text: string }> = [];
     for (const engine of [claude, codex]) {
       const start = engine.start.bind(engine);
       engine.start = (options, onEvent) => {
-        const session = start(options, onEvent);
+        const session = start(
+          options,
+          meterResetsAt
+            ? (event) => onEvent(event.type === "error" ? { ...event, resetsAt: undefined } : event)
+            : onEvent,
+        );
         const send = session.send.bind(session);
         session.send = (text, ...rest) => {
           sent.push({ provider: engine.provider, text });
@@ -719,6 +729,7 @@ describe("limits (D-338)", () => {
       onUpdate: () => {},
       limitPolicy: () => policy,
       providerRoom: () => (room ? { ok: true } : { ok: false, reason: "no room" }),
+      ...(meterResetsAt ? { providerResetsAt: () => meterResetsAt } : {}),
       providerDefaults: (meta, provider) => ({
         model: provider === "codex" ? "sol" : "opus",
         permissionMode: meta.permissionMode,
@@ -736,9 +747,10 @@ describe("limits (D-338)", () => {
     await m.send(chat.id, "And the tests");
     await until(async () => (await metaOf(m, chat.id)).limit);
     const meta = await metaOf(m, chat.id);
-    expect(meta.limit).toMatchObject({ provider: "claude", state: "ask" });
+    // Unanswered, it waits for the reset by itself; the card still asks (D-376).
+    expect(meta.limit).toMatchObject({ provider: "claude", state: "waiting", auto: true });
     const card = (await m.snapshot(chat.id)).items.find((i) => i.kind === "limit");
-    expect(card).toMatchObject({ status: "open", provider: "claude" });
+    expect(card).toMatchObject({ status: "waiting", provider: "claude" });
     await until(async () => ["idle", "error"].includes((await metaOf(m, chat.id)).status));
     // The turn its limit stopped leaves the queued message for later.
     expect((await m.snapshot(chat.id)).queue).toHaveLength(1);
@@ -755,6 +767,10 @@ describe("limits (D-338)", () => {
     expect(handed).toContain("> Fix the cart, then hit the limit");
     expect(handed).toContain("cart.ts | 2 +-");
     expect(handed).toContain("Carry on with this chat's work");
+    // Your answer won: the reset passing later resumes nothing.
+    m.wake(Date.now() + 3 * 3_600_000);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(sent.filter((s) => s.text.includes("usage limit has reset"))).toHaveLength(0);
     // Rewinding stops at the handoff.
     const first = after.items.find((i) => i.kind === "user")!;
     await expect(m.rewind(chat.id, first.id, false)).rejects.toMatchObject({ code: "invalid_args" });
@@ -783,6 +799,75 @@ describe("limits (D-338)", () => {
     await waiting.m.limitAction(other.id, card!.id, "dismiss");
     expect((await metaOf(waiting.m, other.id)).limit).toBeUndefined();
     await waiting.m.shutdown();
+  });
+
+  describe("nobody answers (D-376)", () => {
+    const resumes = (sent: Array<{ text: string }>) =>
+      sent.filter((s) => s.text.includes("usage limit has reset")).length;
+    async function limited(m: SessionManager) {
+      const chat = await create(m);
+      await m.send(chat.id, "hit the limit");
+      await until(async () => (await metaOf(m, chat.id)).limit);
+      await until(async () => ["idle", "error"].includes((await metaOf(m, chat.id)).status));
+      const card = (await m.snapshot(chat.id)).items.find((i) => i.kind === "limit")!;
+      const resetsAt = (await metaOf(m, chat.id)).limit!.resetsAt!;
+      return { chat, card, due: new Date(resetsAt).getTime() + 60_000 };
+    }
+
+    it("resumes once when the reset has passed, also when a sleep put the timer off", async () => {
+      const { m, sent } = twoEngines("ask");
+      const { chat, card, due } = await limited(m);
+      // Before the reset nothing happens.
+      m.wake(Date.now());
+      await new Promise((r) => setTimeout(r, 50));
+      expect(resumes(sent)).toBe(0);
+      // Woken after the reset (twice: the screen unlocks right after the resume): one resume.
+      m.wake(due);
+      m.wake(due);
+      await until(async () => (await metaOf(m, chat.id)).turns >= 2);
+      expect(resumes(sent)).toBe(1);
+      const after = await m.snapshot(chat.id);
+      expect(after.meta.limit).toBeUndefined();
+      expect(after.items.find((i) => i.id === card.id)).toMatchObject({ status: "resumed" });
+      await m.shutdown();
+    });
+
+    it("your answer wins: Don't resume asks again, and a message of yours ends the wait", async () => {
+      const { m, sent } = twoEngines("ask");
+      const { chat, card, due } = await limited(m);
+      await m.limitAction(chat.id, card.id, "cancel");
+      expect((await metaOf(m, chat.id)).limit).toMatchObject({ state: "ask" });
+      expect((await metaOf(m, chat.id)).limit?.auto).toBeUndefined();
+      m.wake(due);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(resumes(sent)).toBe(0);
+
+      const other = await limited(m);
+      await m.send(other.chat.id, "I'll take it from here");
+      await until(async () => (await metaOf(m, other.chat.id)).turns >= 2);
+      expect((await metaOf(m, other.chat.id)).limit).toBeUndefined();
+      expect((await m.snapshot(other.chat.id)).items.find((i) => i.id === other.card.id)).toMatchObject({
+        status: "dismissed",
+      });
+      m.wake(other.due);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(resumes(sent)).toBe(0);
+
+      // Waiting by your choice is no longer the automatic wait.
+      await m.limitAction(chat.id, card.id, "wait");
+      expect((await metaOf(m, chat.id)).limit).toMatchObject({ state: "waiting" });
+      expect((await metaOf(m, chat.id)).limit?.auto).toBeUndefined();
+      await m.shutdown();
+    });
+
+    it("doesn't wait for a reset the usage meter says has already passed", async () => {
+      const { m } = twoEngines("ask", true, new Date(Date.now() - 60_000).toISOString());
+      const chat = await create(m);
+      await m.send(chat.id, "hit the limit");
+      await until(async () => (await metaOf(m, chat.id)).limit);
+      expect((await metaOf(m, chat.id)).limit).toMatchObject({ state: "ask" });
+      await m.shutdown();
+    });
   });
   it("hands over by hand between turns (D-339): a plan, a divider, and the next message brings the handoff", async () => {
     const { m, sent } = twoEngines("ask", false);

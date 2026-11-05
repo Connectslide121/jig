@@ -1291,10 +1291,14 @@ export class SessionManager {
     const provider = chatProvider(meta);
     const policy: LimitPolicy = meta.kind ? "ask" : (this.options.limitPolicy?.(meta) ?? "ask");
     const resetsAt = card.resetsAt ?? this.options.providerResetsAt?.(provider);
+    // A reset already past is a stale meter: resuming at it would only hit the limit again.
+    const ahead = resetsAt && new Date(resetsAt).getTime() > Date.now() ? resetsAt : undefined;
     const room = this.options.providerRoom?.(otherProvider(provider));
     let state: ChatLimit["state"] = "ask";
     if (policy === "switch" && room?.ok && this.options.engineFor) state = "continuing";
-    else if (policy !== "ask" && resetsAt) state = "waiting";
+    else if (ahead) state = "waiting";
+    // With `ask` the card still asks; nobody answering resumes the chat at the reset (D-376).
+    const auto = state === "waiting" && policy === "ask";
     live.autoContinue = state === "continuing";
     this.replaceItem(live, {
       ...card,
@@ -1302,7 +1306,13 @@ export class SessionManager {
       status: state === "waiting" ? "waiting" : "open",
     });
     this.setMeta(live, {
-      limit: { itemId: card.id, provider, state, ...(resetsAt ? { resetsAt } : {}) },
+      limit: {
+        itemId: card.id,
+        provider,
+        state,
+        ...(resetsAt ? { resetsAt } : {}),
+        ...(auto ? { auto } : {}),
+      },
     });
     if (state === "waiting") this.armWait(live);
   }
@@ -1315,8 +1325,25 @@ export class SessionManager {
     if (card?.kind === "limit")
       this.replaceItem(live, { ...card, status: state === "waiting" ? "waiting" : "open" });
     if (state !== "waiting") clearTimeout(live.limitTimer);
-    this.setMeta(live, { limit: { ...limit, state } });
+    // A choice of yours: the wait is no longer the one nobody answered (D-376).
+    const { auto: _auto, ...chosen } = limit;
+    this.setMeta(live, { limit: { ...chosen, state } });
     if (state === "waiting") this.armWait(live);
+  }
+
+  /**
+   * After the computer slept (or the screen was locked): resumes the chats whose reset passed
+   * meanwhile and sets the others' timers again from the clock, which a sleep can put off (D-376).
+   */
+  wake(now = Date.now()): void {
+    for (const live of this.sessions.values()) {
+      const limit = live.state.meta.limit;
+      if (live.deleted || limit?.state !== "waiting" || !limit.resetsAt) continue;
+      if (new Date(limit.resetsAt).getTime() + RESUME_GRACE_MS <= now) {
+        clearTimeout(live.limitTimer);
+        void this.resumeAfterLimit(live);
+      } else this.armWait(live);
+    }
   }
 
   /** Resumes the chat on its own provider shortly after its limit resets. */
