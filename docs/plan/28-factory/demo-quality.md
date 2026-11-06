@@ -59,15 +59,15 @@ own kit).
 ## The critic loop (S6)
 
 1. The demo builder finishes v<N> and runs `npm run check`.
-2. The critic (on ChatGPT when signed in, J-11) gets the screenshots, `check.json`, the brief and
+2. The critic (on ChatGPT when signed in, D-434) gets the screenshots, `check.json`, the brief and
    the kit, and returns the scorecard and a **fix list** (concrete: screen, element, what to change).
 3. Failing checks or a failing score → the builder fixes the list → back to 1. At most 3 rounds,
    then the run shows the best version with its scorecard and "needs you".
 4. Only a passing version reaches G1. The scorecard shows on the Demo review tab.
 
-## The demo kit (its own repository, J-6)
+## The demo kit (its own repository, D-429)
 
-- **Stack (J-3):** Vite, React, TypeScript, Tailwind v4, shadcn/ui (Radix or Base UI primitives),
+- **Stack (D-426):** Vite, React, TypeScript, Tailwind v4, shadcn/ui (Radix or Base UI primitives),
   Lucide, Motion for animation, TanStack Table, charts with shadcn's chart components (Recharts) and
   Tremor blocks (MIT) for dashboards. Hash routes, relative base, one static folder.
 - **Shells:** sidebar app, top-nav app, phone frame, tablet frame, landing page.
@@ -96,13 +96,13 @@ and screenshots. A **drift check** (a recipe on a schedule, or before each run) 
 with the product's current tokens.
 
 **New brands** (no product kit): the `directions` recipe makes 3 direction boards (name and logo as
-you gave them, or invented when you said so (J-12), palette, type pairing, a sample screen in the
+you gave them, or invented when you said so (D-435), palette, type pairing, a sample screen in the
 kit's shell); your pick at GD becomes the run's kit.
 
 ## Skills and resources
 
 Vendored into `skills/` like the existing catalogue (pinned, licences kept, reviewed text only, no
-upstream scripts; J-7). Their scripts' jobs are done by the demo kit.
+upstream scripts; D-430). Their scripts' jobs are done by the demo kit.
 
 | Resource | Use in Jig factory | How |
 |---|---|---|

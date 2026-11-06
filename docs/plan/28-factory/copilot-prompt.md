@@ -11,7 +11,7 @@ that turns an idea into an interview, a polished demo, and a full pack of docume
 
 Read these first, in this order, and follow them strictly:
 1. AGENTS.md (binding rules: architecture, UI and design rules, testing, commits, docs).
-2. docs/plan/28-factory.md (decisions J-1…J-16 and the sessions with their checklists).
+2. docs/plan/28-factory.md (decisions D-424…D-439 and the sessions with their checklists).
 3. The detail docs the session needs: docs/plan/28-factory/architecture.md, pipeline.md, ui.md,
    demo-quality.md, testing.md, and docs/plan/28-factory/mockup.html for how the screens look.
 4. docs/reference/addon-api.md and docs/reference/slots.md, and one existing built-in add-on

@@ -7542,3 +7542,115 @@ records the data and opens two extension points:
   Code's transcripts, so calls from before this change are estimated (≈) for Claude chats too, and new
   calls are exact for both providers. It adds the "Where the time went" section (bar, top four
   categories, three slowest calls, More in Chat time) in a fixed `h-60`.
+
+## D-424: Jig factory is a built-in add-on
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-1 there before numbering); recorded by Claude in session 0.
+
+Jig factory is a built-in add-on, `addons/factory`, called **Jig factory** (working name). Not a skill and not a workflow: the whole thing (runs, stages, outputs with status, gates, board, inbox), built so it can be tested end to end. Workflows can't hold outputs, statuses or gates (the first design's comparison in `docs/plan/28-factory.md`).
+
+## D-425: Jig factory runs its own stage chats in parallel
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-2 there before numbering); recorded by Claude in session 0.
+
+Jig factory runs its own stage chats, in parallel (`factory.concurrency`, default 3 at a time), through the add-on host's `api.chats` (D-182 following, D-318 finished rules). Not through the Tasks queue, which is sequential and one per project. This replaces option C of the first design (state in the add-on, work in the Tasks queue).
+
+## D-426: One demo stack for concept demos
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-3 there before numbering); recorded by Claude in session 0.
+
+Every concept demo (L1) is built on one stack: React + TypeScript + Tailwind + shadcn/ui, built into a static folder, whatever the product's own stack is. One stack lets the demo kit, its blocks and its quality gate be shared by every product. Working prototypes (L2) and full builds (L3) use the product's own stack.
+
+## D-427: A factory run's files live in the product repository on a branch per run
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-4 there before numbering); recorded by Claude in session 0.
+
+A run's files (brief, demo versions, quality results, the pack) live in the product's repository under `docs/factory/<slug>/`, on a branch per run (`factory/<slug>`), committed by the stage chats (never pushed) and merged when the pack is approved. Versioned, diffable and readable without Jig; the add-on's project-scoped storage (D-116) holds only the run's state.
+
+## D-428: A new product without a repository: asked every time
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-5 there before numbering); recorded by Claude in session 0.
+
+A new product with no repository: the interview asks every time whether to create one, its name and where. Jig factory runs `git init` there (nothing remote) only after the user says yes. Jon decides each time; there is no default.
+
+## D-429: The demo kit has its own repository
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-6 there before numbering); recorded by Claude in session 0.
+
+The demo kit (shells, blocks, tokens pipeline, quality gate `npm run check`) has its own repository beside Jig in the workspace. Jig only points to it with the setting `factory.demoKitPath`; it is not part of Jig's source or installer.
+
+## D-430: Vendor the design and web-testing skills for Jig factory
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-7 there before numbering); recorded by Claude in session 0.
+
+Vendor Anthropic's `web-artifacts-builder`, `theme-factory`, `webapp-testing` and Vercel's `web-design-guidelines` into `skills/`, text only, after a licence check, with source pins (the built-in skills rules in AGENTS.md). Their scripts are not bundled; what the factory needs of them is rebuilt inside the demo kit.
+
+## D-431: Jig factory's gate owners are set by hand per run
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-8 there before numbering); recorded by Claude in session 0.
+
+Gate owners are set by hand per run, on the Plan step ("me", or a person with their board), not as global roles. Who approves differs from idea to idea, and Jig has one user.
+
+## D-432: Phone buttons for add-ons
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-9 there before numbering); recorded by Claude in session 0.
+
+Add-ons get phone buttons: a core phone API (`phone` permission, `api.phone.send/update`, `phone.action` events) so Jig factory can send "Demo v2 is ready · Approve · Ask for changes · Open in Jig" and receive the tap. Same rules as the core cards: masked and cut text, the paired account only, buttons are the add-on's own ids, never commands (D-350, D-370). Built in session 6.
+
+## D-433: Approvals by other people through the product's Azure DevOps board
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-10 there before numbering); recorded by Claude in session 0.
+
+Approvals by other people go through the product's own Azure DevOps board: a card per gate, assigned to its owner, polled by the add-on (resolved column = approved; a comment starting "changes:" = ask for changes). Jig has one paired phone account, so others approve where they already work.
+
+## D-434: An independent design critic on ChatGPT when signed in
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-11 there before numbering); recorded by Claude in session 0.
+
+The design critic that scores demo screenshots is independent of the builder: it runs on ChatGPT (Codex) when it is signed in, else on Claude (`factory.critic`). A second model catches what the builder's own model won't.
+
+## D-435: New brands: name and logo asked, invented only when told
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-12 there before numbering); recorded by Claude in session 0.
+
+For a new brand, the interview asks for the name and logo; the factory invents them only when the user says so.
+
+## D-436: Sharing a demo outside Jig: asked at every Publish
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-13 there before numbering); recorded by Claude in session 0.
+
+Sharing a demo outside Jig is asked every time, at Publish: where (local only, or a publish target from settings) and for how long. Publish is always a person's click after the pre-publish scan for real data.
+
+## D-437: Jig factory's languages: asked every time, English by default
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-14 there before numbering); recorded by Claude in session 0.
+
+Languages are asked every time in the interview, per output group; English is the default (`factory.defaultLanguage`).
+
+## D-438: Jig factory runs go on unattended and stop only at gates
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-15 there before numbering); recorded by Claude in session 0.
+
+Runs go on unattended (overnight, while away) and stop only at gates, with a cap on retries per stage (1) and AI revisions per gate (3), both in the track's data. Needs D-363 widened in session 2 so a run where the user picked "Don't ask" on the Plan step may start its stage chats in that mode.
+
+## D-439: Jig factory has no usage design
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-16 there before numbering); recorded by Claude in session 0.
+
+No usage design: runs use the user's own plan like any chat. Recipe evals on real models only start from a button; nothing in the factory spends plan usage in the background except the run the user started.

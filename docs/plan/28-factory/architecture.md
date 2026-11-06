@@ -69,13 +69,13 @@ interface Run {
   slug: string;               // "shift-swap" → branch factory/shift-swap, folder docs/factory/shift-swap
   title: string;
   projectId: string;
-  repo?: string;              // the product repo (absolute path); unset until chosen/created (J-5)
+  repo?: string;              // the product repo (absolute path); unset until chosen/created (D-428)
   track: TrackId;
   level?: Level;
-  languages: Record<string, string>;   // output group → language; default "en" (J-14)
+  languages: Record<string, string>;   // output group → language; default "en" (D-437)
   state: "interview" | "planning" | "running" | "waiting" | "stuck" | "done" | "stopped";
   brief?: BriefMeta;          // front-matter of brief.md + coverage
-  owners: Record<GateId, Owner>;       // set by hand per run on the Plan step (J-8)
+  owners: Record<GateId, Owner>;       // set by hand per run on the Plan step (D-431)
   stages: StageRun[];
   outputs: Output[];
   gates: GateState[];
@@ -165,7 +165,7 @@ same `id` in `<repo>/.jig/factory/recipes/` (committed). `lib/recipes.ts` valida
 outputs inside the run folder, a reviewer gate that exists) and builds the stage prompt: recipe
 text + the run's inputs (paths) + the rules from [pipeline.md](pipeline.md) → Rules + how to report.
 
-## The stage runner (J-2)
+## The stage runner (D-425)
 
 - The Conductor starts a stage with `api.chats.create({ projectId, cwd: repo, title, provider,
   model, permissionMode })` and `api.chats.send({ sessionId, text: prompt, from: "factory" })`,
@@ -178,7 +178,7 @@ text + the run's inputs (paths) + the rules from [pipeline.md](pipeline.md) → 
   `needs-you` with the chat's last answer.
 - `limit` (D-338) and `waitingFor` (D-326) on `chats.get` show as "waiting for the plan's reset"
   or "needs you" on the run.
-- **Unattended runs (J-15) need a core change.** `chats.create` allows `bypassPermissions` only from
+- **Unattended runs (D-438) need a core change.** `chats.create` allows `bypassPermissions` only from
   the Tasks add-on (D-363), and stage chats run commands (`npm run check`, `git commit`) that
   `acceptEdits` would stop at. Session 2 widens D-363 to Jig factory, for a run where **you** chose
   "Don't ask" on the Plan step (a user-only choice, like in Add tasks), with a new decision entry.
@@ -197,7 +197,7 @@ text + the run's inputs (paths) + the rules from [pipeline.md](pipeline.md) → 
 `claude.context` gives a stage chat its role, run, stage, inputs and "report with `factory_report`
 when done". Each tool gets a fake-engine row (`docs/guides/testing.md`).
 
-## Files in the product repository (J-4)
+## Files in the product repository (D-427)
 
 ```
 <repo>/
@@ -220,7 +220,7 @@ Every Markdown output starts with front-matter: `status`, `recipe`, `version`, `
 (small commits, the run id in the message); it never pushes. The branch is merged when the pack is
 approved: a button on the Run tab that shows the git commands it will run first.
 
-A **new product** with no repository: the interview asks whether to create one (J-5), the name and
+A **new product** with no repository: the interview asks whether to create one (D-428), the name and
 the folder; Jig factory runs `git init` there (and nothing remote) only after you say yes.
 
 ## Viewing demos
@@ -232,7 +232,7 @@ the folder; Jig factory runs `git init` there (and nothing remote) only after yo
   as a decision.
 - "Open in browser" and "Show in Pages" for the full-size view; Pages keeps versions.
 
-## Phone buttons (J-9, core change, session 6)
+## Phone buttons (D-432, core change, session 6)
 
 Today `main/phone/` sends core cards with buttons (permissions, questions, plans) through
 `PhoneChannel` (`channel.ts`, Telegram and Teams), and `jig_phone_send` sends text and a picture;
@@ -254,7 +254,7 @@ own ids (never commands); answered elsewhere updates the card. Docs: `addon-api.
 Jig factory's cards: **"<run> · Demo v2 is ready"** (screenshot, Approve · Ask for changes · Open in
 Jig); **"<run> needs you"** (the question, Answer · Open); **"<run> is done"** (summary, Open).
 
-## Approvals by other people (J-10)
+## Approvals by other people (D-433)
 
 For a gate owned by a person: a card in the product's board (Boards add-on) titled
 "<run> · <gate>", assigned to them, with links to the outputs. The watcher reads its state:
@@ -265,7 +265,7 @@ The board's column roles come from the Boards add-on's data.
 
 `factory.demoKitPath`, `factory.concurrency` (1–6, default 3), `factory.critic` (provider:
 `chatgpt` when signed in, else `claude`), `factory.publishTargets` (Azure Static Web Apps sites,
-asked at each publish, J-13), `factory.defaultLanguage` (`en`). Settings that run programs or decide
+asked at each publish, D-436), `factory.defaultLanguage` (`en`). Settings that run programs or decide
 spending go into `PROTECTED_SETTINGS` (D-077).
 
 ## Exports (other add-ons, D-215)

@@ -31,27 +31,27 @@ names in examples").
 
 ## Decisions (Jon, 2026-11-06)
 
-Not yet in `docs/decisions.md`: the first session reserves D-numbers for them with
-`npm run decision` (one per row) and replaces "J-n" below with the numbers.
+Recorded in `docs/decisions.md` as D-424 … D-439 (session 0; they were J-1 … J-16 in the first
+draft of this plan, in the same order).
 
 | # | Decision |
 |---|---|
-| J-1 | **A built-in Jig add-on**, `addons/factory`, called **Jig factory** (working name). Not a skill, not a workflow: the full thing, built so it can be tested end to end. |
-| J-2 | **Jig factory runs its own stage chats**, in parallel (default 3 at a time), through the add-on host's `api.chats`. Not through the Tasks queue (sequential, one per project). This replaces option C of the first design. |
-| J-3 | **One demo stack for every concept demo (L1)**: React + TypeScript + Tailwind + shadcn/ui, built into a static folder, whatever the product's own stack is. Working prototypes (L2) and full builds (L3) use the product's own stack. |
-| J-4 | **A run's files live in the product's repository** under `docs/factory/<run>/`, on a branch per run (`factory/<slug>`), merged when the pack is approved. |
-| J-5 | **A new product with no repository:** the interview asks every time whether to create one, its name and where; Jon decides each time. |
-| J-6 | **The demo kit has its own repository** (beside Jig in the workspace); Jig only points to it (a setting). |
-| J-7 | **Vendor** Anthropic's `web-artifacts-builder`, `theme-factory`, `webapp-testing` and Vercel's `web-design-guidelines` into `skills/`, text only, after a licence check; their scripts are rebuilt inside the demo kit. |
-| J-8 | **Gate owners are set by hand per run** (on the Plan step), not as global roles. |
-| J-9 | **Phone buttons for add-ons:** yes. A core phone API so Jig factory can send "Demo v2 is ready · Approve · Ask for changes · Open in Jig" and receive the tap. |
-| J-10 | **Approvals by other people** go through the product's own Azure DevOps board (a card per gate, polled). |
-| J-11 | **An independent design critic** runs on ChatGPT (Codex) when it is signed in, else on Claude. |
-| J-12 | **New brands:** the interview asks for the name and logo; the factory invents them only when told to. |
-| J-13 | **Sharing a demo outside Jig:** asked every time, at Publish (where, how long). |
-| J-14 | **Languages:** asked every time in the interview, English by default. |
-| J-15 | **Runs go on unattended** (overnight, while away) and stop only at gates, with a cap on retries per stage. |
-| J-16 | **No usage design:** runs use the user's own plan like any chat; recipe evals on real models only start from a button. |
+| D-424 | **A built-in Jig add-on**, `addons/factory`, called **Jig factory** (working name). Not a skill, not a workflow: the full thing, built so it can be tested end to end. |
+| D-425 | **Jig factory runs its own stage chats**, in parallel (default 3 at a time), through the add-on host's `api.chats`. Not through the Tasks queue (sequential, one per project). This replaces option C of the first design. |
+| D-426 | **One demo stack for every concept demo (L1)**: React + TypeScript + Tailwind + shadcn/ui, built into a static folder, whatever the product's own stack is. Working prototypes (L2) and full builds (L3) use the product's own stack. |
+| D-427 | **A run's files live in the product's repository** under `docs/factory/<run>/`, on a branch per run (`factory/<slug>`), merged when the pack is approved. |
+| D-428 | **A new product with no repository:** the interview asks every time whether to create one, its name and where; Jon decides each time. |
+| D-429 | **The demo kit has its own repository** (beside Jig in the workspace); Jig only points to it (a setting). |
+| D-430 | **Vendor** Anthropic's `web-artifacts-builder`, `theme-factory`, `webapp-testing` and Vercel's `web-design-guidelines` into `skills/`, text only, after a licence check; their scripts are rebuilt inside the demo kit. |
+| D-431 | **Gate owners are set by hand per run** (on the Plan step), not as global roles. |
+| D-432 | **Phone buttons for add-ons:** yes. A core phone API so Jig factory can send "Demo v2 is ready · Approve · Ask for changes · Open in Jig" and receive the tap. |
+| D-433 | **Approvals by other people** go through the product's own Azure DevOps board (a card per gate, polled). |
+| D-434 | **An independent design critic** runs on ChatGPT (Codex) when it is signed in, else on Claude. |
+| D-435 | **New brands:** the interview asks for the name and logo; the factory invents them only when told to. |
+| D-436 | **Sharing a demo outside Jig:** asked every time, at Publish (where, how long). |
+| D-437 | **Languages:** asked every time in the interview, English by default. |
+| D-438 | **Runs go on unattended** (overnight, while away) and stop only at gates, with a cap on retries per stage. |
+| D-439 | **No usage design:** runs use the user's own plan like any chat; recipe evals on real models only start from a button. |
 
 ## Overview
 
@@ -90,7 +90,7 @@ Sessions run in order. Each ends with something Jon can try (in Jig, after pulli
 
 ### 0. Foundations: decisions, skeleton, mockup in code — not started
 
-- [ ] Reserve D-numbers for J-1 … J-16 (`npm run decision`), fill each entry, replace J-n here.
+- [x] Reserve D-numbers for J-1 … J-16 (`npm run decision`): D-424 … D-439, filled, used here.
 - [ ] `addons/factory/` skeleton: `addon.json` (id `factory`, name "Jig factory", icon `factory`,
       `storage.scope: "project"`, permissions `chat`, `ai`, `exec`, `fs:read`, `fs:write`), empty
       `host.ts`, `ui.tsx`, `README.md`; the view "Jig factory" listed in View → Views (hard rule: no
@@ -108,7 +108,7 @@ the mockup.
 
 ### 1. The demo kit and the quality gate — not started
 
-Its own repository (J-6); this session creates it beside `jig/` and adds only a setting in Jig.
+Its own repository (D-429); this session creates it beside `jig/` and adds only a setting in Jig.
 
 - [ ] Demo kit repo: Vite + React + TS + Tailwind v4 + shadcn/ui, hash routes, relative base, one
       static folder output; shells (sidebar app, top-nav app, phone frame, tablet frame, landing).
@@ -123,7 +123,7 @@ Its own repository (J-6); this session creates it beside `jig/` and adds only a 
       (0 serious/critical), screenshots at 1440/1280/834/390, layout shift, banner present, real-data
       scan; writes `check.json` + screenshots ([demo-quality.md](28-factory/demo-quality.md)).
 - [ ] Jig setting `factory.demoKitPath` (`ConfigSchema`, `SETTINGS_GUIDE`, `state.md`).
-- [ ] Vendored skills (J-7) into `skills/` with pins and licences, plus the factory's own critic
+- [ ] Vendored skills (D-430) into `skills/` with pins and licences, plus the factory's own critic
       rubric as a reference file.
 
 **Done when:** a hand-written brief turned into a demo with the kit passes `npm run check` and looks
@@ -135,7 +135,7 @@ like a product, not an MVP.
       stage), caps (3 revisions per gate), resume after restart, a watcher tick (1 min).
 - [ ] Stage runner on `api.chats.create/send/get` with `factory.concurrency` (default 3); one chat
       per stage, named "Factory · <run> · <stage>", in the run's project.
-- [ ] Unattended runs (J-15): widen D-363 so Jig factory may start stage chats in "Don't ask" when
+- [ ] Unattended runs (D-438): widen D-363 so Jig factory may start stage chats in "Don't ask" when
       **you** picked it on the Plan step (user-only, like Add tasks); new decision entry
       ([architecture.md](28-factory/architecture.md) → The stage runner).
 - [ ] Recipes loader (`lib/recipes.ts`): built-in `addons/factory/recipes/*.md`, overrides in
@@ -144,7 +144,7 @@ like a product, not an MVP.
       `factory_ask`, `factory_questions` (interview), and `claude.context` telling a stage chat its
       role, run and what to report. All engine-neutral (Claude and ChatGPT chats); fake-engine rows
       for each. A recipe's provider and model come from `addons/shared/providers.ts` (D-412).
-- [ ] Output files with front-matter status in `docs/factory/<run>/` on branch `factory/<slug>` (J-4),
+- [ ] Output files with front-matter status in `docs/factory/<run>/` on branch `factory/<slug>` (D-427),
       committed by the stage chat; the Conductor reads them back.
 - [ ] Run tab live (stage graph, outputs grid, timeline, chats), Inspector (state, prompts,
       reports, timings), re-run a stage, fork a run from a stage.
@@ -160,10 +160,10 @@ and survives a Jig restart.
 - [ ] Interview tab: question cards with suggested answers (accept with one click, edit, or
       dictate), the brief building live beside them, coverage meter, "Looks right" (G0).
 - [ ] Interviewer and Scout recipes ([pipeline.md](28-factory/pipeline.md) → The interview), level
-      suggestion with reasons; new product → ask about the repository (J-5), name and logo (J-12);
-      languages (J-14).
+      suggestion with reasons; new product → ask about the repository (D-428), name and logo (D-435);
+      languages (D-437).
 - [ ] Plan step: the run's stages, outputs (pre-ticked per track, untick), gate owners picked by
-      hand (J-8), level, languages; Start.
+      hand (D-431), level, languages; Start.
 - [ ] "Start Jig factory" from a meeting (Meetings' actions) and from a message (`context.message`).
 
 **Done when:** from a voice note or a meeting you reach a one-page brief you would sign, and a plan.
@@ -173,7 +173,7 @@ and survives a Jig restart.
 - [ ] Design director: product kit from the product repo (tokens + reference screenshots,
       `.jig/factory/kit/`); for a new brand, 3 directions (GD gate, direction cards).
 - [ ] Demo builder (L1) on the demo kit; critic loop (score → fix list → rebuild, max 3 rounds,
-      J-11); the quality gate's results on the run.
+      D-434); the quality gate's results on the run.
 - [ ] Demo review tab: device frames (desktop, tablet, phone) side by side, v1–v3 switcher with
       change log, comment pins on screens, critic scorecard, Approve / Ask for changes (modal) = G1.
 - [ ] L2 path: product engineer recipe on `factory/<slug>`, feature flag, demo data; the demo is the
@@ -196,15 +196,15 @@ and survives a Jig restart.
 
 ### 6. Reach: phone buttons, other people, publishing — not started
 
-- [ ] Core: phone API for add-ons (J-9, [architecture.md](28-factory/architecture.md) → Phone
+- [ ] Core: phone API for add-ons (D-432, [architecture.md](28-factory/architecture.md) → Phone
       buttons): `phone` permission, `api.phone.send/update`, `phone.action` events, Telegram and
       Teams channels, a reply-with-text button; docs in `addon-api.md`, `26-phone.md`; e2e with the
       fake Telegram server.
 - [ ] Jig factory's phone cards: gate waiting (screenshot + Approve / Ask for changes / Open),
       run finished, run stuck.
-- [ ] Approvals by others (J-10): a card per gate in the product's board (Boards add-on), polled;
+- [ ] Approvals by others (D-433): a card per gate in the product's board (Boards add-on), polled;
       owner chosen per run.
-- [ ] Publish (J-13): asks where (local only / Azure Static Web Apps target from settings) and for
+- [ ] Publish (D-436): asks where (local only / Azure Static Web Apps target from settings) and for
       how long, runs the pre-publish scan, then the human-confirmed deploy; a customer confirm page.
 
 **Done when:** you approve a demo from your phone; a colleague approves the sales material from
