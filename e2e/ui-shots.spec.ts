@@ -37,11 +37,18 @@ test("Tasks queue with every kind of row and a parked pool, at all three widths"
     ],
     newChat: true,
   });
+  // The pool: an idea, a parked chat of three tasks (D-396), and another idea.
+  await tasks("add", { prompts: ["try a dark theme for the shop"], newChat: true, parked: true });
   await tasks("add", {
-    prompts: ["try a dark theme for the shop", "a search that forgives typos"],
+    prompts: [
+      { prompt: "redo the footer links", newChat: true },
+      { prompt: "add a language switch to the footer", newChat: false },
+      { prompt: "test the footer on a phone", newChat: false },
+    ],
     newChat: true,
     parked: true,
   });
+  await tasks("add", { prompts: ["a search that forgives typos"], newChat: true, parked: true });
   await tasks("setStopOnFailure", { on: false });
   await tasks("select", { ids: ["t5"], on: false });
   await tasks("start");
@@ -53,7 +60,11 @@ test("Tasks queue with every kind of row and a parked pool, at all three widths"
   expect(await status()).toEqual(expect.arrayContaining(["t1:done", "t2:failed", "t4:queued"]));
 
   const shots = await shootView(page, "addon.tasks.tasks", "tasks-queue", {
-    ready: (panel) => expect(panel.getByTestId("task-status-t3")).toContainText("Running"),
+    ready: async (panel) => {
+      await expect(panel.getByTestId("task-status-t3")).toContainText("Running");
+      // Each placement shows the parked pool: its chat card and the single ideas around it.
+      await panel.getByTestId("tasks-pool").scrollIntoViewIfNeeded();
+    },
   });
   console.log(shots.join("\n"));
   // The parked pool at the end of the queue, in the tab (the last placement), scrolled into view.

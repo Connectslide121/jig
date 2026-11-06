@@ -36,10 +36,16 @@ went, so you read the results as a table instead of scrolling one long chat.
   following its chat). The view's ⋯ → **Start over…** puts every task back and takes the open run out
   of History.
 - **Parked ideas** (D-369): a pool at the very end of the queue, under a "Parked · N" divider, faded,
-  in a dashed card. Parked tasks never run, have no tick (the tick for every task passes them by) and
-  each starts its own chat; nothing that isn't parked ever comes after them (`poolLast`: new tasks,
-  Claude's too, land before the pool). ⋯ → **Park: keep as an idea** / **Unpark: back to the queue**
-  (unparked = last before the pool, left out), or drag a task into or out of the pool. **Add idea** in
+  in a dashed card. Parked tasks never run and have no tick (the tick for every task passes them by);
+  nothing that isn't parked ever comes after them (`poolLast`: new tasks, Claude's too, land before
+  the pool). A parked task may continue the parked one before it, so **a parked chat stays a group**
+  (D-396): a card of its own in the pool, with the queue's header (grip, title, ⋯, "Parked"); the
+  pool's first task always starts a chat and nothing in the queue continues a parked chat. ⋯ → **Park: keep as an idea** / **Unpark: back to the queue**
+  (unparked = last before the pool, left out), or drag a task into or out of the pool. A chat card's ⋯
+  (or right-click) has **Park this chat** / **Unpark this chat**: the whole chat goes together, order and
+  joins kept, and dragging the card's header into or out of the pool does the same; dragging one task
+  out of a parked chat splits it like in the queue, and a single idea is never joined by a drop (make
+  a parked chat by parking one, by the edit dialog's "Continue the chat" switch, or with Claude). **Add idea** in
   the divider (also the view's ⋯ and the empty queue) writes ideas straight into it. Same word and
   icons as the composer's parked prompts (D-365), but a separate pool.
 - **The header's counts** (D-369): six fixed segments, done (of what will run), running, not done, to
@@ -149,14 +155,14 @@ went, so you read the results as a table instead of scrolling one long chat.
   `{ ids, slot }` (a drop) or `{ ids, to: -1 | 1 | "top" | "bottom" }` (a step).
 - **Claude can queue tasks** (`addon_tasks_add`): "make a task for each spec in docs/specs" in any
   chat. They land before the parked pool; with `parked` (when you ask for ideas) at its end, and the
-  review card's **Park as ideas** switch does the same. Each prompt must stand alone. Claude starts the queue only when you say so, and you review
+  review card's **Park as ideas** switch does the same; with `sameChat` they stay one parked chat. Each prompt must stand alone. Claude starts the queue only when you say so, and you review
   the tasks first (it isn't read-only). `addon_tasks_list` shows the queue: this chat's project's,
   another's with `project` (name or id), or with `all` every project's, one line per task (id, status,
   title) under the project's name and id (D-326), so a chat anywhere finds a task and changes it with
   `addon_tasks_edit` and its `project`.
 - **Claude can change queued tasks** (`addon_tasks_edit`, D-287): title, prompt, a paragraph appended
   to the prompt, or left out, or parked (`parked`, D-369: unparked goes last before the pool, left out
-  unless `leftOut` is false). Also (D-317) whether a task continues the previous task's chat
+  unless `leftOut` is false; with `wholeChat` the task's whole chat goes together, D-396). Also (D-317) whether a task continues the previous task's chat
   (`newChat`; the first task in the queue can't, the one right after a task that ran can) and where it
   is (`moveTo`: `"top"`, `"bottom"`, `{ after: id }`, `{ before: id }`; `wholeChat` moves its whole
   chat). Moves go through the same `dropSlots` as a drag: inside a chat the task continues it, between

@@ -141,6 +141,15 @@ their own line above the buttons. Checked with screenshots in the sidebar, botto
 unit tests and the Tasks e2e specs pass.
 **Check on your machine:** park the ideas you keep moving to the bottom; Select all leaves them be.
 
+Park a whole chat (2026-11-06, D-396, Jon): a chat card's ⋯ (or right-click) has Park this chat /
+Unpark this chat, and dragging a card's header into the pool parks it. A parked chat stays one card in
+the pool, its tasks in order and still continuing each other; unparking or dragging it out puts the
+whole chat back at the end of the queue (left out). Claude: `addon_tasks_edit` with `parked` and
+`wholeChat`, and `addon_tasks_add` with `parked` and `sameChat`. Checked with screenshots in the
+sidebar, bottom panel and a tab; unit tests pass.
+**Check on your machine:** park a chat of two or three tasks and unpark it again; drag one task out
+of a parked chat.
+
 Meetings call window stays light between calls (2026-11-05, D-368): after a meeting or call, the
 hidden call window that listens for Teams calls is replaced by a fresh one, so it no longer keeps
 ~1.7 GB of memory (and the camera service) for the rest of the day. Calls still ring in Jig.

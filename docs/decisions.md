@@ -6786,3 +6786,31 @@ stopped for good.
   and restart is the user's. It now says the queue holds, so a release task needn't wait for anything.
 - **Not done:** a "Jig is updating" label in the queue's header: the hold lasts the 2 s before Jig
   closes and ends right after the restart, so the paused state is hardly seen.
+
+## D-396: Tasks: park a whole chat group, kept together in the pool
+
+- Status: accepted; amends D-369 (a parked task always starts its own chat, a whole chat is never parked).
+- **Who:** Jon, 2026-11-06: "i just realized, i cant park a group of tasks, i should". How: Claude, on my own.
+- **State:** a parked task may continue the parked task before it, so a parked chat stays a group in the
+  pool with its order and joins. Invariants: a parked task never runs; the pool's first parked task
+  always starts a chat (`poolLast` fixes it after every change); nothing in the queue continues a
+  parked chat and no parked task continues one of the queue (the pool is always last).
+- **Park and unpark** (`setParked`): tasks that go together keep their joins (a task stays in its chat
+  only when the task before it goes too); the first of them, and any task that goes alone, starts its
+  own chat. Parking a group puts it at the pool's end; unparking puts it last before the pool, as
+  before (left out, until the stop-line task changes that). Single tasks behave as before; moving one
+  task out of a parked group splits it like in the queue (the next task takes over the chat).
+- **Moves:** the pool's drop slots mirror the queue's: inside a parked card a single task joins that
+  chat (`join` slots with `parked`), a whole chat lands between cards and in the pool's end, so a
+  whole chat can be dragged into the pool (the old "goes to the end of the queue" fallback is gone).
+  A single idea has no card and is never joined by a drop or a step (`join` slots only at a parked
+  chat of several tasks); a parked chat comes from parking one, the edit dialog's "Continue the chat"
+  switch (enabled for a parked task whose predecessor is parked) or Claude.
+- **View:** a parked chat of several tasks is a card in the pool (same header: grip, title, count,
+  provider, ⋯, "Parked" with the pause icon; faded), a single one a plain row. The chat card's ⋯ (and
+  right-click) has **Park this chat** / **Unpark this chat**, with the single-task item's icons.
+- **Claude:** `addon_tasks_edit` takes `parked` with `wholeChat: true` (the chat's queued tasks go
+  together); `addon_tasks_add` takes `parked` with `sameChat` (one parked chat). The review card's
+  Same chat switch works with Park as ideas. Nothing is migrated: old parked tasks are single.
+- **Not there yet:** t156 (stop lines) and t157 hadn't landed when this was built, so unparking still
+  leaves tasks out; that task changes it for groups too.

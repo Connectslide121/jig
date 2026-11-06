@@ -42,6 +42,7 @@ import {
   parseTaskEdits,
   parseTaskIds,
   pendingReportsNote,
+  poolLast,
   type Queue,
   type Run,
   recordRuns,
@@ -617,15 +618,16 @@ export async function update(
       args.provider === undefined || args.provider === null
         ? args.provider
         : parseQueueProvider(args.provider);
-    const next = replace(q, {
+    const replaced = replace(q, {
       ...setProviderChoice(task, provider, args.model),
       prompt,
       attachments: attachments.length ? attachments : undefined,
       title: args.title?.trim() || (args.prompt !== undefined ? titleFor(prompt, attachments) : task.title),
-      // A parked task always starts its own chat (D-369).
-      newChat: task.parked ? true : (args.newChat ?? task.newChat),
+      newChat: args.newChat ?? task.newChat,
       permissionMode: parsePermissionMode(args.permissionMode) ?? task.permissionMode,
     });
+    // A parked task may continue the parked one before it; the pool's first starts its own chat (D-396).
+    const next = { ...replaced, tasks: poolLast(replaced.tasks) };
     checkProviderChoices(next, [task.id]);
     return [next, undefined];
   });
@@ -1012,7 +1014,6 @@ export async function toolAdd(
 ): Promise<string> {
   const tasks = parseNewTasks(args.tasks);
   const parked = args.parked === true;
-  if (parked && args.sameChat) throw new Error("Parked tasks each start their own chat: leave sameChat out");
   const projectId = await projectNamed(api, args.project, args.chat?.projectId);
   if (!projectId) throw new Error("Say which project the tasks are for (this chat has none)");
   const fallback = await projectProvider(api, projectId);
@@ -1027,7 +1028,7 @@ export async function toolAdd(
     if (args.start) next = await advance(api, openRun({ ...next, running: true }));
     const n = `${tasks.length} task${tasks.length === 1 ? "" : "s"}`;
     const what = parked
-      ? `Parked ${n} at the end of the queue: they never run until the user unparks them`
+      ? `Parked ${n} at the end of the queue${args.sameChat ? ", as one parked chat" : ""}: they never run until the user unparks them`
       : `Queued ${n}${args.start ? " and started the queue" : "; the user starts the queue from its view"}`;
     return [next, `${what}.\n${listing(next, fallback)}`];
   });

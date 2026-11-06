@@ -688,6 +688,21 @@ function QueuePanel({
     }
   };
 
+  /** A chat card's ⋯: park or unpark the whole chat, kept together (D-396). */
+  const menuForChat = (tasks: Task[], at: MouseEvent | HTMLElement) => {
+    const parked = tasks.every((t) => t.parked);
+    ctx.menu(
+      [
+        {
+          label: parked ? "Unpark this chat" : "Park this chat",
+          icon: parked ? QUEUE_ICON : PARK_ICON,
+          onSelect: () => call("park", { ids: tasks.map((t) => t.id), on: !parked }),
+        },
+      ],
+      at,
+    );
+  };
+
   const menuFor = (task: Task, at: MouseEvent | HTMLElement) => {
     const queued = task.status === "queued";
     ctx.menu(
@@ -894,6 +909,7 @@ function QueuePanel({
           projectName={projectName}
           onOpen={setOpen}
           onMenu={menuFor}
+          onChatMenu={menuForChat}
           onTick={(ids, on) => void call("select", { ids, on })}
           onMove={(ids, move) => void call("move", { ids, ...move })}
           onAddIdea={() => setIdea(true)}
@@ -1050,6 +1066,7 @@ function TaskTable({
   projectName,
   onOpen,
   onMenu,
+  onChatMenu,
   onTick,
   onMove,
   onAddIdea,
@@ -1060,6 +1077,8 @@ function TaskTable({
   projectName: (id?: string) => string;
   onOpen: (id: string) => void;
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
+  /** The queue (not a past run): a chat card's ⋯ (park or unpark the whole chat). */
+  onChatMenu?: (tasks: Task[], at: MouseEvent | HTMLElement) => void;
   /** The queue (not a past run): ticks that include or leave out queued tasks. */
   onTick?: (ids: string[], on: boolean) => void;
   /** The queue (not a past run): moves queued tasks to a dropped slot, or a step. */
@@ -1069,10 +1088,11 @@ function TaskTable({
 }) {
   const all = tickState(queue.tasks);
   const groups = chatGroups(queue);
-  // The parked pool is always last (D-369): the chats above it, its tasks (one per chat) below.
+  // The parked pool is always last (D-369): the chats above it, its tasks below (a parked chat of
+  // several tasks is a card there too, D-396).
   const poolAt = groups.findIndex((g) => isParked(g.tasks[0]!.task));
   const work = poolAt < 0 ? groups : groups.slice(0, poolAt);
-  const pool = poolAt < 0 ? [] : groups.slice(poolAt).flatMap((g) => g.tasks);
+  const pool = poolAt < 0 ? [] : groups.slice(poolAt);
   const listRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<DropSlot>();
@@ -1131,12 +1151,17 @@ function TaskTable({
       const task = queue.tasks.find((t) => t.id === row.dataset.dropTask);
       if (!task || ids.includes(task.id)) return show(undefined);
       const box = row.getBoundingClientRect();
+      const group = groups.find((g) => g.tasks.some((t) => t.task.id === task.id));
+      const top = y < box.top + box.height / 2;
       if (task.parked) {
-        const before = y < box.top + box.height / 2 ? task.id : left[left.indexOf(task) + 1]?.id;
-        return show(resolve({ before, join: false, parked: true }));
+        // A single idea has no card: a drop beside it goes between ideas. Inside a parked chat's card
+        // it joins that chat, as in the queue (D-396).
+        const card = (group?.tasks.filter((t) => !ids.includes(t.task.id)).length ?? 0) > 1;
+        const first = group?.tasks.find((t) => !ids.includes(t.task.id))?.task;
+        const before = top ? task.id : left[left.indexOf(task) + 1]?.id;
+        return show(resolve({ before, join: card && (top ? first !== task : true), parked: true }));
       }
-      if (y < box.top + box.height / 2) {
-        const group = groups.find((g) => g.tasks.some((t) => t.task.id === task.id));
+      if (top) {
         const first = group?.tasks.find((t) => !ids.includes(t.task.id))?.task;
         return show(resolve({ before: task.id, join: first !== task }));
       }
@@ -1161,16 +1186,13 @@ function TaskTable({
     if (header) {
       const group = groups[Number(header.dataset.dropGroup)];
       const first = group?.tasks.find((t) => !ids.includes(t.task.id))?.task;
-      return show(resolve(first && { before: first.id, join: false }));
+      return show(
+        resolve(first && { before: first.id, join: false, ...(first.parked ? { parked: true } : {}) }),
+      );
     }
     // Below the pool, its end; between the last chat and the pool's divider, the end of the queue.
     const end = listRef.current?.lastElementChild;
-    // (A whole chat can't be parked: there it goes to the end of the queue.)
-    if (end && y > end.getBoundingClientRect().bottom)
-      return show(
-        resolve({ join: false, parked: true }) ??
-          resolve({ before: left.find((t) => t.parked)?.id, join: false }),
-      );
+    if (end && y > end.getBoundingClientRect().bottom) return show(resolve({ join: false, parked: true }));
     const lastCard = listRef.current?.querySelector("[data-pool]")?.previousElementSibling;
     if (lastCard && y > lastCard.getBoundingClientRect().bottom)
       show(resolve({ before: left.find((t) => t.parked)?.id, join: false }));
@@ -1188,7 +1210,7 @@ function TaskTable({
   // The end of the queue: above the pool (or at the very end without one).
   const lineAtEnd = !!target && !target.join && !target.parked && target.before === firstParked;
   // In the pool: above the parked task it goes before, or below the last one.
-  const poolLine = target?.parked ? (target.before ?? "end") : undefined;
+  const poolLine = target?.parked && !target.join ? (target.before ?? "end") : undefined;
 
   const dnd: QueueDnd | undefined = onMove && {
     dragging: (id) => !!dragged?.includes(id),
@@ -1240,6 +1262,7 @@ function TaskTable({
               runsOnOf={(task) => runsOn(queue, task, projectDefault)}
               onOpen={onOpen}
               onMenu={onMenu}
+              onChatMenu={onChatMenu}
               onTick={onTick}
               dnd={dnd}
             />
@@ -1249,10 +1272,13 @@ function TaskTable({
         {onMove && (
           <ParkedPool
             ctx={ctx}
-            tasks={pool}
+            groups={pool}
+            firstNumber={poolAt < 0 ? 0 : poolAt}
+            projectName={projectName}
             runsOnOf={(task) => runsOn(queue, task, projectDefault)}
             onOpen={onOpen}
             onMenu={onMenu}
+            onChatMenu={onChatMenu}
             onAddIdea={onAddIdea}
             dnd={dnd}
             lineBefore={poolLine}
@@ -1272,20 +1298,28 @@ function TaskTable({
  */
 function ParkedPool({
   ctx,
-  tasks,
+  groups,
+  firstNumber,
+  projectName,
   runsOnOf,
   onOpen,
   onMenu,
+  onChatMenu,
   onAddIdea,
   dnd,
   lineBefore,
   lineAbove,
 }: {
   ctx: AddonUiContext;
-  tasks: Array<{ task: Task; index: number }>;
+  /** The parked chats in order: one task is a plain row, several a card (D-396). */
+  groups: ChatGroup[];
+  /** The index of the first of them among all the queue's chats (the headers' drop targets). */
+  firstNumber: number;
+  projectName: (id?: string) => string;
   runsOnOf: (task: Task) => RunsOn;
   onOpen: (id: string) => void;
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
+  onChatMenu?: (tasks: Task[], at: MouseEvent | HTMLElement) => void;
   onAddIdea?: () => void;
   dnd?: QueueDnd;
   /** Where a drag will land in the pool: before this task, or "end". */
@@ -1293,6 +1327,7 @@ function ParkedPool({
   /** The drop line for the end of an empty queue, drawn above the divider. */
   lineAbove?: boolean;
 }) {
+  const count = groups.reduce((n, g) => n + g.tasks.length, 0);
   return (
     <div className="relative flex flex-col" data-pool data-testid="tasks-pool">
       {lineAbove && <DropLine at="above" />}
@@ -1305,7 +1340,7 @@ function ParkedPool({
           <Pause className="size-3.5" />
         </span>
         <span className="shrink-0" title="Ideas kept for later: they never run until you unpark them">
-          Parked · <span className="tabular-nums">{tasks.length}</span>
+          Parked · <span className="tabular-nums">{count}</span>
         </span>
         <span className="h-px min-w-4 flex-1 bg-line" />
         {onAddIdea && (
@@ -1322,22 +1357,40 @@ function ParkedPool({
         )}
       </div>
       <div className="relative overflow-hidden rounded-lg border border-dashed border-line">
-        {tasks.map(({ task, index }) => (
-          <div key={task.id} className="relative">
-            {lineBefore === task.id && <DropLine at="row-top" />}
-            <TaskRow
-              ctx={ctx}
-              task={task}
-              index={index}
-              continues={false}
-              on={runsOnOf(task)}
-              onOpen={() => onOpen(task.id)}
-              onMenu={(at) => onMenu(task, at)}
-              dnd={dnd}
-            />
-          </div>
-        ))}
-        {!tasks.length && (
+        {groups.map((group, gi) => {
+          const head = group.tasks[0]!.task;
+          return (
+            <div key={head.id} className="relative border-b border-line last:border-b-0">
+              {lineBefore === head.id && <DropLine at="row-top" />}
+              {group.tasks.length > 1 ? (
+                <ChatCard
+                  ctx={ctx}
+                  group={group}
+                  number={firstNumber + gi + 1}
+                  projectName={projectName(group.projectId)}
+                  runsOnOf={runsOnOf}
+                  onOpen={onOpen}
+                  onMenu={onMenu}
+                  onChatMenu={onChatMenu}
+                  dnd={dnd}
+                  parked
+                />
+              ) : (
+                <TaskRow
+                  ctx={ctx}
+                  task={head}
+                  index={group.tasks[0]!.index}
+                  continues={false}
+                  on={runsOnOf(head)}
+                  onOpen={() => onOpen(head.id)}
+                  onMenu={(at) => onMenu(head, at)}
+                  dnd={dnd}
+                />
+              )}
+            </div>
+          );
+        })}
+        {!groups.length && (
           <div
             data-drop-pool-end
             className="flex h-16 items-center gap-3 px-3 text-xs text-hint"
@@ -1937,8 +1990,10 @@ function ChatCard({
   runsOnOf,
   onOpen,
   onMenu,
+  onChatMenu,
   onTick,
   dnd,
+  parked,
 }: {
   ctx: AddonUiContext;
   group: ChatGroup;
@@ -1947,10 +2002,14 @@ function ChatCard({
   runsOnOf: (task: Task) => RunsOn;
   onOpen: (id: string) => void;
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
+  /** In the queue (not a past run): the header's ⋯, for a chat whose tasks are all still queued. */
+  onChatMenu?: (tasks: Task[], at: MouseEvent | HTMLElement) => void;
   /** In the queue (not a past run): ticks that include or leave out queued tasks. */
   onTick?: (ids: string[], on: boolean) => void;
   /** In the queue: drag the header to move the whole chat (when all its tasks are still queued). */
   dnd?: QueueDnd;
+  /** A parked chat in the pool (D-396): faded, no tick, kept inside the pool's dashed card. */
+  parked?: boolean;
 }) {
   const tasks = group.tasks.map((t) => t.task);
   const t = tally(tasks);
@@ -1959,7 +2018,7 @@ function ChatCard({
   const ids = tasks.map((task) => task.id);
   return (
     <div
-      className="overflow-hidden rounded-lg border border-line bg-raised"
+      className={cn("overflow-hidden bg-raised", !parked && "rounded-lg border border-line")}
       data-testid={`task-group-${number - 1}`}
     >
       <div
@@ -1967,18 +2026,26 @@ function ChatCard({
         data-testid={`task-group-header-${number - 1}`}
         data-drop-group={dnd ? number - 1 : undefined}
         onPointerDown={canDrag ? (e) => dnd.start(ids, e) : undefined}
+        onContextMenu={
+          canDrag && onChatMenu
+            ? (e) => {
+                e.preventDefault();
+                onChatMenu(tasks, e.nativeEvent);
+              }
+            : undefined
+        }
         className={cn(
           "group flex h-9 items-center gap-3 border-b border-line px-3",
-          canDrag && ids.every((id) => dnd.dragging(id)) && "opacity-40",
+          canDrag && ids.every((id) => dnd.dragging(id)) ? "opacity-40" : parked && "opacity-60",
         )}
       >
-        {onTick && (
+        {(onTick || parked) && (
           <Tick
-            hidden={!ticks.ids.length}
+            hidden={parked || !ticks.ids.length}
             checked={ticks.checked}
             mixed={ticks.mixed}
             label={ticks.checked ? "Leave this chat's queued tasks out" : "Include this chat's queued tasks"}
-            onChange={(on) => onTick(ticks.ids, on)}
+            onChange={(on) => onTick?.(ticks.ids, on)}
             testId={`task-group-tick-${number - 1}`}
           />
         )}
@@ -2013,8 +2080,34 @@ function ChatCard({
         <span className={cn(COL.time, CELL, "text-xs text-muted")}>{formatMs(t.ms)}</span>
         <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
         <ProviderSlot on={runsOnOf(tasks[0]!)} testId={`task-group-provider-${number - 1}`} />
-        <span className="w-7 shrink-0" />
-        <span className={cn(COL.status, CELL, "text-xs text-muted")}>{progressText(countTasks(tasks))}</span>
+        <span className="w-7 shrink-0">
+          {canDrag && onChatMenu && (
+            <IconButton
+              size="sm"
+              icon={MoreHorizontal}
+              label="Chat actions"
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100"
+              data-testid={`task-group-menu-${number - 1}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChatMenu(tasks, e.currentTarget);
+              }}
+            />
+          )}
+        </span>
+        {parked ? (
+          <span
+            className={cn(COL.status, "flex shrink-0 items-center justify-end gap-1.5 text-xs text-muted")}
+          >
+            Parked
+            <Pause className="size-4 shrink-0 text-hint" />
+          </span>
+        ) : (
+          <span className={cn(COL.status, CELL, "text-xs text-muted")}>
+            {progressText(countTasks(tasks))}
+          </span>
+        )}
       </div>
       {group.tasks.map(({ task, index }) => (
         <TaskRow
@@ -2886,6 +2979,8 @@ function EditDialog({
   };
   const empty = !text.trim() && !files.length;
   const [sameChat, setSameChat] = useState(!task.newChat);
+  // A parked task may continue the parked one before it, but the pool's first starts its own chat (D-396).
+  const firstParked = !!task.parked && !queue.tasks[queue.tasks.indexOf(task) - 1]?.parked;
   const [mode, setMode] = useState<PermissionMode>(task.permissionMode ?? "acceptEdits");
   const [choice, setChoice] = useState<ProviderChoice>({ provider: task.provider, model: task.model });
   const [busy, setBusy] = useState(false);
@@ -2985,10 +3080,10 @@ function EditDialog({
         <LabeledSwitch
           checked={sameChat}
           onChange={setSameChat}
-          disabled={!!task.parked}
+          disabled={firstParked}
           label={
-            task.parked
-              ? "Continue the chat of the task before (a parked task starts its own)"
+            firstParked
+              ? "Continue the chat of the task before (the first parked task starts its own)"
               : "Continue the chat of the task before"
           }
         />
@@ -3142,11 +3237,11 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
         .filter((i) => i.prompt.trim())
         .map((i, n) => ({
           prompt: i.prompt.trim(),
-          newChat: parked || i.newChat,
+          newChat: i.newChat,
           ...(i.title.trim() ? { title: i.title.trim() } : {}),
           // A task that continues a chat runs on that chat's provider: its own choice goes.
-          ...((parked || i.newChat || n === 0) && i.provider !== undefined ? { provider: i.provider } : {}),
-          ...((parked || i.newChat || n === 0) && i.model !== undefined ? { model: i.model } : {}),
+          ...((i.newChat || n === 0) && i.provider !== undefined ? { provider: i.provider } : {}),
+          ...((i.newChat || n === 0) && i.model !== undefined ? { model: i.model } : {}),
         }));
       await respond({
         behavior: "allow",
@@ -3230,8 +3325,7 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
               </div>
               {i > 0 && (
                 <LabeledSwitch
-                  checked={!parked && !item.newChat}
-                  disabled={parked}
+                  checked={!item.newChat}
                   onChange={(on) => set(item.key, { newChat: !on })}
                   label="Same chat"
                 />

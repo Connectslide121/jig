@@ -737,8 +737,12 @@ describe("the parked pool (D-369)", () => {
     expect(q.tasks.map((t) => t.id)).toEqual(["a", "t1", "x"]);
     const same = addTasks(parkedPic("A X", "x"), ["b"], { newChat: false });
     expect(drawPool(same)).toBe("At1~X");
-    const ideas = addTasks(parkedPic("A X", "x"), ["b", "c"], { newChat: false, parked: true });
+    const ideas = addTasks(parkedPic("A X", "x"), ["b", "c"], { newChat: true, parked: true });
     expect(drawPool(ideas)).toBe("A~X~T1~T2");
+    // Parked with the same chat: they continue the last parked chat (D-396).
+    expect(drawPool(addTasks(parkedPic("A X", "x"), ["b", "c"], { newChat: false, parked: true }))).toBe(
+      "A~X~t1~t2",
+    );
     // Run again lands before the pool too.
     expect(requeue(parkedPic("A X", "x", "a"), "a").tasks.map((t) => t.id)).toEqual(["a", "t1", "x"]);
   });
@@ -747,7 +751,7 @@ describe("the parked pool (D-369)", () => {
     expect(joined.tasks.map((t) => t.id)).toEqual(["a", expect.any(String), "x"]);
     expect(poolLast(pic("A B").tasks)).toEqual(pic("A B").tasks);
   });
-  it("drops a single task into the pool or a parked one into the queue, never a whole chat", () => {
+  it("drops a task or a whole chat into the pool, or a parked one into the queue", () => {
     const q = parkedPic("Ab C X Y", "xy");
     const slots = dropSlots(q, ["c"]);
     expect(slots.filter((s) => s.parked)).toEqual([
@@ -757,7 +761,13 @@ describe("the parked pool (D-369)", () => {
     ]);
     // The queue's end is before the first parked task, outside the pool.
     expect(slots).toContainEqual({ before: "x", join: false });
-    expect(dropSlots(q, ["a", "b"]).some((s) => s.parked)).toBe(false);
+    // A whole chat goes into the pool too, between its chats (D-396).
+    expect(dropSlots(q, ["a", "b"]).filter((s) => s.parked)).toEqual([
+      { before: "x", join: false, parked: true },
+      { before: "y", join: false, parked: true },
+      { before: undefined, join: false, parked: true },
+    ]);
+    expect(drawPool(moveTasks(q, ["a", "b"], { before: "y", join: false, parked: true }))).toBe("C~X~A~b~Y");
     expect(drawPool(moveTasks(q, ["c"], { before: "y", join: false, parked: true }))).toBe("Ab~X~C~Y");
     expect(drawPool(moveTasks(q, ["y"], { before: "c", join: false }))).toBe("Ab-YC~X");
     expect(drawPool(moveTasks(q, ["y"], { before: "x", join: true }))).toBe("AbC-y~X");
@@ -785,7 +795,8 @@ describe("the parked pool (D-369)", () => {
     expect(drawPool(editTasks(q, [{ id: "x", parked: false, leftOut: false }]))).toBe("ABX~Y");
     expect(drawPool(editTasks(q, [{ id: "a", parked: true }]))).toBe("B~X~Y~A");
     expect(() => editTasks(q, [{ id: "x", leftOut: false }])).toThrow(/unpark it first/);
-    expect(() => editTasks(q, [{ id: "x", newChat: false }])).toThrow(/always starts its own chat/);
+    expect(() => editTasks(q, [{ id: "x", newChat: false }])).toThrow(/first parked task/);
+    expect(drawPool(editTasks(q, [{ id: "y", newChat: false }]))).toBe("AB~X~y");
     // All or nothing: the second edit breaks a rule, so the first doesn't apply either.
     expect(() =>
       editTasks(q, [
@@ -802,6 +813,88 @@ describe("the parked pool (D-369)", () => {
     const c = countTasks(q.tasks);
     expect(c).toMatchObject({ total: 1, willRun: 1, parked: 1, chats: 1 });
     expect(c.by.upNext).toBe(1);
+  });
+});
+
+describe("parking a whole chat (D-396)", () => {
+  it("parks a chat together, in order, joins intact, and unparks it as a group", () => {
+    const q = parkedPic("Abc D X", "x");
+    const parked = setParked(q, ["a", "b", "c"], true);
+    expect(drawPool(parked)).toBe("D~X~A~b~c");
+    // Unparking the group puts it back last before the pool, left out, still one chat.
+    const back = setParked(parked, ["a", "b", "c"], false);
+    expect(drawPool(back)).toBe("D-A-b-c~X");
+    expect(chatGroups(back).map((g) => g.tasks.length)).toEqual([1, 3, 1]);
+    // Two chats at once keep their own joins.
+    expect(drawPool(setParked(pic("Ab Cd E"), ["a", "b", "c", "d"], true))).toBe("E~A~b~C~d");
+  });
+  it("parks one task of a chat alone, and the chat's next task takes over", () => {
+    const q = pic("Abc D");
+    expect(drawPool(setParked(q, ["a"], true))).toBe("BcD~A");
+    expect(drawPool(setParked(q, ["b"], true))).toBe("AcD~B");
+    // Two neighbours that go together stay one chat; the one that lost its head's chat doesn't.
+    expect(drawPool(setParked(q, ["b", "c"], true))).toBe("AD~B~c");
+    expect(drawPool(setParked(q, ["a", "c"], true))).toBe("BD~A~C");
+  });
+  it("splits a parked group like the queue when one task leaves it", () => {
+    const q = setParked(pic("Abc D"), ["a", "b", "c"], true);
+    expect(drawPool(q)).toBe("D~A~b~c");
+    // The middle one goes to the queue: its chat is cut in two.
+    expect(drawPool(moveTasks(q, ["b"], { before: "d", join: false }))).toBe("-BD~A~c");
+    // The head leaves: the next task starts the parked chat.
+    expect(drawPool(moveTasks(q, ["a"], { before: "d", join: false }))).toBe("-AD~B~c");
+    expect(drawPool(setParked(q, ["a"], false))).toBe("D-A~B~c");
+    // A task dropped inside the card joins it; at its end too, but not next to a single idea.
+    const withIdea = setParked(pic("Ab C D"), ["a", "b", "d"], true);
+    expect(drawPool(withIdea)).toBe("C~A~b~D");
+    expect(drawPool(moveTasks(withIdea, ["c"], { before: "b", join: true, parked: true }))).toBe("~A~c~b~D");
+    expect(drawPool(moveTasks(withIdea, ["c"], { before: "d", join: true, parked: true }))).toBe("~A~b~c~D");
+    expect(dropSlots(withIdea, ["c"])).not.toContainEqual({ before: undefined, join: true, parked: true });
+    expect(drawPool(moveTasks(withIdea, ["c"], { before: undefined, join: false, parked: true }))).toBe(
+      "~A~b~D~C",
+    );
+  });
+  it("keeps the invariants: the pool's first starts a chat, nothing continues across", () => {
+    const q = pic("Ab C");
+    // The pool's first task never continues the queue's chat, however it got there.
+    expect(
+      drawPool({ ...q, tasks: poolLast(q.tasks.map((t) => (t.id === "b" ? { ...t, parked: true } : t))) }),
+    ).toBe("AC~B");
+    expect(() => editTasks(parkedPic("A X y", "xy"), [{ id: "x", newChat: false }])).toThrow(
+      /first parked task/,
+    );
+    const p = parkedPic("A X y", "xy");
+    expect(nextTask(p)?.id).toBe("a");
+    expect(nextTask({ ...p, tasks: p.tasks.slice(1) })).toBeUndefined();
+    expect(
+      dropSlots(p, ["a"])
+        .filter((s) => s.parked)
+        .every((s) => s.join === false || s.before !== "x"),
+    ).toBe(true);
+  });
+  it("Claude parks and unparks a whole chat with wholeChat, and adds a parked chat", () => {
+    const q = parkedPic("Abc D X", "x");
+    const edited = editTasks(q, [{ id: "b", parked: true, wholeChat: true }]);
+    expect(drawPool(edited)).toBe("D~X~A~b~c");
+    expect(drawPool(editTasks(edited, [{ id: "c", parked: false, wholeChat: true }]))).toBe("D-A-b-c~X");
+    expect(drawPool(editTasks(edited, [{ id: "c", parked: false, wholeChat: true, leftOut: false }]))).toBe(
+      "DAbc~X",
+    );
+    // Without wholeChat only that task goes.
+    expect(drawPool(editTasks(q, [{ id: "b", parked: true }]))).toBe("AcD~X~B");
+    // A chat that already ran: its queued rest goes, as one chat of its own.
+    expect(drawPool(editTasks(pic("Abc D", "a"), [{ id: "b", parked: true, wholeChat: true }]))).toBe(
+      "AD~B~c",
+    );
+    expect(parseTaskEdits([{ id: "b", parked: true, wholeChat: true }])).toEqual([
+      { id: "b", parked: true, wholeChat: true },
+    ]);
+    expect(() => parseTaskEdits([{ id: "b", wholeChat: true }])).toThrow(/needs a moveTo or parked/);
+    // The add tool: parked with the same chat is one parked chat.
+    const added = addTasks(q, ["one", "two", "three"], { newChat: false, parked: true });
+    expect(drawPool(added)).toBe("AbcD~X~t1~t2~t3");
+    const first = addTasks(parkedPic("A", ""), ["one", "two"], { newChat: false, parked: true });
+    expect(drawPool(first)).toBe("A~T1~t2");
   });
 });
 
