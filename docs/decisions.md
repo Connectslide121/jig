@@ -7112,3 +7112,39 @@ browser call, or the first one after its page was closed as idle or by you). Cal
 already open still show it as driving, but never switch the panel or add a badge. The D-349 rule
 still decides how a new page shows itself (show, or a badge while you work on another tab of its
 panel), and `browser.showWhenUsed` off still keeps the view closed.
+
+## D-411: Natural voice starts sooner: short first chunk, streamed pieces, warm-ups
+
+- Status: accepted.
+- **Who:** Jon: the natural voice took a couple of seconds to start talking. How it is done is
+  **Claude, on my own**.
+- **Measured first** (Jon's 20-core Xeon, warm disk): Kokoro makes audio in about 0.22× its spoken
+  length (not half, as D-243 measured), plus ~0.4 s per call whatever its length. Claude's own time
+  from the request to its first text was ~0.6 s for a one-line question (more with thinking or
+  tools; Jig can't change it). Before, a reply's first sentences arrived as one span, were made in
+  full (a 150-character sentence: 2.2 s) and only then played. A cold voice process (forked to first
+  audio) took 2.8–3.6 s, of which ~2.2–2.9 s loading.
+- **Short first chunk** (`earlyBreak` in `features/speech/speak.ts`): when nothing is being said, the
+  first chunk ends at the first comma, semicolon, colon or dash with at least 4 words before it (and
+  2 after), or after 8 words while the sentence is still being written; only between two whole words,
+  never inside a number, inline code, a link, bold text or a code block. Everything after is queued a
+  sentence per chunk (`speechChunks`), so each next one is made while the one before plays. Read
+  aloud (the message button) starts the same way. The talking window still shows one line per message.
+- **Pieces streamed from the host:** the voice process sends each piece's audio as soon as it is made
+  (`FromVoiceHost.part`, then a last message with the count); the host passes them to the window that
+  asked as `speech.part` events (new `speech.sayParts`; `speech.say` still returns the whole audio for
+  the phone). The first piece ends at a comma within ~100 characters (`pieces(text, 300, 100)`), later
+  ones up to 300, so even a long first sentence is heard after ~1 s. The renderer schedules the pieces
+  on the AudioContext clock back to back (`playSpeech`), with the waves following each piece when it
+  plays and the echo tail after the last one. Measured: first sound ~0.47–0.6 s after asking for a
+  short first chunk (was 2.2 s for the sentence it came from).
+- **Warm-ups** (`warmNaturalVoice`, at most once a minute): Talk start and each message you send in
+  Talk; "Hey Jig" heard in the first moments of a command, and any command; a chat starting to work
+  while announcements are on (its "done" comes later). **Not kept alive while `speech.wake` is on:**
+  the process holds ~890 MB, too much to keep for a voice that may speak a few times a day; the wake
+  check is heard ~2 s before the command ends, which hides most of the ~2–3 s load.
+- **Threads:** `intraOpNumThreads` = half the logical cores, 2 to 8. Measured: 8 threads as fast as
+  the default (all 20 cores), 2 twice as slow; the cap leaves cores to Whisper and Jig.
+- **Timings:** in development the console prints `[voice timing]` per reply (your message → Claude's
+  first text → voice asked → first audio → playing); the voice process logs its load time and each
+  piece (characters, time to make, audio length; never the text) in the main log at debug level.

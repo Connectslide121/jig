@@ -242,6 +242,7 @@ settings, add-on permissions.
 | `speech.voiceModel` | — | `VoiceModelStatus` | the natural voice's model: `downloaded`, bytes on disk (D-243) |
 | `speech.prepareVoice` | `{ voice }` | — | downloads what the voice lacks (model, the voice's style file) and loads it in the voice process (schema: a known voice) |
 | `speech.say` | `{ text, voice, speed }` | `Float32Array` | `text` read by a natural voice: 24 kHz mono audio (schema: known voice, text ≤ 20 000, speed 0.5–2) |
+| `speech.sayParts` | `{ id, text, voice, speed }` | `{ parts }` | the same piece by piece (D-411): each piece as a `speech.part` event with the caller's `id`, to the calling window only, as soon as it is made; resolves with the number of pieces once all are made (schema as `speech.say`, `id` a whole number ≥ 0) |
 | `speech.removeVoiceModel` | — | — | stops the voice process and deletes its model |
 | `speech.microphone` | — | `MicrophoneAccess` | `granted`, `denied` or `unknown`; asks macOS for access the first time, reads Windows' privacy switch |
 
@@ -281,6 +282,7 @@ settings, add-on permissions.
 | `azure.signInProgress` | `{ key, text, done? }` | a line of `az login`'s output (WARNING lines left out; never tokens: `--output none`), then `done` |
 | `usage.changed` | `UsageByProvider` | either provider's usage refreshed, or Claude Code reported a rate limit |
 | `speech.progress` | `{ model, loaded, total }` | a dictation model, or the natural voice (`model: "voice"`), is downloading (bytes; at most every 150 ms) |
+| `speech.part` | `{ id, index, audio }` | a piece of `speech.sayParts`' audio (24 kHz mono `Float32Array`, `index` from 0) was made; sent only to the window that asked (D-411) |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |
 | `worktrees.changed` | `WorktreeChat[]` | a worktree chat was started or removed |
 | `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted, the check-in setting changed |

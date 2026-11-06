@@ -1658,7 +1658,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   computer (19 voices: American and British English and Spanish, women and men). The first time it
   reads, it asks to download the model (~330 MB) and the system's voice reads until it's ready.
   Settings → Speech → Reading aloud: Reads aloud (natural / system), Natural voice, Try it, Natural
-  voice model (Download / Remove).
+  voice model (Download / Remove). It starts after a few words (D-411): the first chunk ends at a
+  comma (or after 8 words while Claude still writes), each piece plays as soon as it is made, and the
+  voice is loaded ahead when you talk, say "Hey Jig" or a chat starts work with announcements on.
 - Real-time speech and talking with Claude (D-209): with a graphics card Whisper runs on it
   (WebGPU), and the words appear while you speak. The Talk button (sound waves) in the composer (or + →
   Talk with Claude) starts a spoken conversation: pause and it is sent, Claude answers out loud,
@@ -2269,6 +2271,15 @@ Things the cloud build environment couldn't verify:
   then the "ready" toast), talking with Claude (no gaps between sentences, speaking over it stops it,
   the waves follow the real voice), each Spanish voice, Remove in Settings, and memory once the voice
   process stops after 10 minutes unused. Packaged app: `voice-host.mjs` and `phonemizer` must ship.
+- **Natural voice starts sooner (D-411):** measured on Jon's machine outside Jig (the voice process
+  in Electron): first sound ~0.5 s after asking for a short first chunk (was ~2.2 s for a whole
+  sentence), a cold process ~2.8–3.1 s. Not yet heard in Jig. Try with `npm run dev` and the
+  DevTools console (`[voice timing]` lines: Claude's first text, voice asked, first audio, playing)
+  and the main log (`[voice]` lines: load time, each piece): talk with Claude and check the time to
+  the first word, that a reply starting "I looked at the cart code, and …" has no audible gap or odd
+  pause after the comma, that long sentences play with no gaps between pieces, that the waves follow
+  every piece, and that speaking over it still stops it. Then "Hey Jig, …" after 10 minutes idle
+  (the answer shouldn't wait ~3 s) and an announcement after a long-running chat.
 - **Talking window (D-210):** untested with a real microphone and voice: whether the waves follow
   your voice smoothly (128 ms batches played back in 16 ms steps), whether your system voice gives
   word boundaries (else Claude's wave is a gentle pulse per sentence), the loudness of the working

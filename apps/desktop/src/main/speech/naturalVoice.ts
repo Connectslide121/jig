@@ -19,7 +19,11 @@ export class NaturalVoiceHost {
   private nextId = 0;
   private readonly pending = new Map<
     number,
-    { resolve: (m: FromVoiceHost) => void; reject: (e: Error) => void }
+    {
+      resolve: (m: FromVoiceHost) => void;
+      reject: (e: Error) => void;
+      part?: (audio: Float32Array) => void;
+    }
   >();
   private idle: ReturnType<typeof setTimeout> | undefined;
 
@@ -35,8 +39,29 @@ export class NaturalVoiceHost {
 
   /** `text` in `voice` at `speed` (1 = normal), as 24 kHz audio. */
   async say(text: string, voice: string, speed: number): Promise<Float32Array> {
-    const reply = await this.request({ t: "say", text, voice, speed });
-    return reply.audio ?? new Float32Array(0);
+    const parts: Float32Array[] = [];
+    await this.stream(text, voice, speed, (part) => parts.push(part));
+    const audio = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
+    let at = 0;
+    for (const p of parts) {
+      audio.set(p, at);
+      at += p.length;
+    }
+    return audio;
+  }
+
+  /**
+   * `text` as audio piece by piece: `part` gets each piece as soon as it is made, so it can play
+   * while the rest is made. Resolves with the number of pieces once all are made.
+   */
+  async stream(
+    text: string,
+    voice: string,
+    speed: number,
+    part: (audio: Float32Array) => void,
+  ): Promise<number> {
+    const reply = await this.request({ t: "say", text, voice, speed }, part);
+    return reply.parts ?? 0;
   }
 
   /** Stops the process (the model is being removed, or Jig quits). */
@@ -48,12 +73,15 @@ export class NaturalVoiceHost {
     this.failAll(new Error("The voice stopped"));
   }
 
-  private request(message: DistributiveOmit<ToVoiceHost, "id">): Promise<FromVoiceHost> {
+  private request(
+    message: DistributiveOmit<ToVoiceHost, "id">,
+    part?: (audio: Float32Array) => void,
+  ): Promise<FromVoiceHost> {
     clearTimeout(this.idle);
     const id = ++this.nextId;
     const channel = this.ensure();
     return new Promise<FromVoiceHost>((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      this.pending.set(id, { resolve, reject, part });
       channel.send({ ...message, id } as ToVoiceHost);
     }).finally(() => this.armIdle());
   }
@@ -65,6 +93,10 @@ export class NaturalVoiceHost {
     channel.onMessage((message) => {
       const call = this.pending.get(message.id);
       if (!call) return;
+      if (message.part) {
+        call.part?.(message.part);
+        return;
+      }
       this.pending.delete(message.id);
       if (message.error) call.reject(new Error(message.error));
       else call.resolve(message);

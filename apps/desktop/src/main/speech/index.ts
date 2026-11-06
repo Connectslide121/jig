@@ -2,7 +2,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, net, protocol, systemPreferences, utilityProcess } from "electron";
 import type { MicrophoneAccess } from "../../shared/speech";
-import { emit, handle } from "../ipc/router";
+import { emit, emitTo, handle } from "../ipc/router";
 import { logger } from "../log";
 import { paths } from "../state/paths";
 import { SpeechModels } from "./models";
@@ -68,6 +68,14 @@ export function startSpeech(): void {
   handle("speech.say", async ({ text, voice: id, speed }) => {
     await models!.ensureVoice(id);
     return voice!.say(text, id, speed);
+  });
+  handle("speech.sayParts", async ({ id, text, voice: voiceId, speed }, { sender }) => {
+    await models!.ensureVoice(voiceId);
+    let index = 0;
+    const parts = await voice!.stream(text, voiceId, speed, (audio) =>
+      emitTo(sender, "speech.part", { id, index: index++, audio }),
+    );
+    return { parts };
   });
   handle("speech.removeVoiceModel", async () => {
     voice!.stop();

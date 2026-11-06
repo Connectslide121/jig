@@ -92,6 +92,11 @@ export function emit<T extends EventTopic>(topic: T, payload: HostEvents[T]): vo
   for (const listener of localListeners) listener(topic, payload);
 }
 
+/** Sends an event to one window only (an answer meant for the page that asked). */
+export function emitTo<T extends EventTopic>(target: WebContents, topic: T, payload: HostEvents[T]): void {
+  if (!target.isDestroyed()) target.send(CHANNEL_EVENT, topic, payload);
+}
+
 /** Subscribes host modules to events emitted inside the host. */
 export function onLocal(listener: Listener): () => void {
   localListeners.add(listener);

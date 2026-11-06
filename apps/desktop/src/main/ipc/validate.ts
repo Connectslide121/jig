@@ -289,6 +289,14 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
       speed: z.number().min(0.5).max(2),
     })
     .strict(),
+  "speech.sayParts": z
+    .object({
+      id: z.number().int().nonnegative(),
+      text: z.string().max(20_000),
+      voice: z.enum(NATURAL_VOICE_IDS),
+      speed: z.number().min(0.5).max(2),
+    })
+    .strict(),
   "app.openPath": z.object({ path }),
   "app.showItemInFolder": z.object({ path }),
   "app.pickFiles": z.object({ title: z.string().max(200).optional(), defaultPath: path.optional() }),

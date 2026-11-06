@@ -643,8 +643,16 @@ With a graphics card the worker uses WebGPU (fp32 encoder, q4 decoder; D-209), e
 (D-243) or the system's voices (`speechSynthesis`), through one API in `features/speech/speak.ts`
 (`speak`, `preloadSpeech`, `stopSpeaking`). The natural voice is Kokoro-82M in an Electron
 utilityProcess (`main/speech/voiceHost.ts` → `voice-host.mjs`, managed by `NaturalVoiceHost`, stopped
-after 10 minutes unused): `speech.say` returns 24 kHz audio, which `features/speech/naturalVoice.ts`
-plays with Web Audio, making the next sentence while one plays and feeding its loudness to the waves.
+after 10 minutes unused, up to 8 onnxruntime threads): `speech.sayParts` makes 24 kHz audio piece by
+piece (split at commas, the first piece at most ~100 characters) and sends each piece to the asking
+window as a `speech.part` event as soon as it is made (D-411); `features/speech/naturalVoice.ts`
+(`makeSpeech` → `Speech`, `playSpeech`) schedules the pieces back to back on the AudioContext clock,
+feeds each piece's loudness to the waves when it plays, and makes the next chunk while one plays.
+`speech.say` returns the whole audio at once (the phone's voice messages). Chunks are a sentence
+each (`speechChunks`); after a silence the first one ends early at a comma, or after 8 words while
+Claude is still writing (`earlyBreak`), so the voice starts after a few words. `warmNaturalVoice`
+loads the voice ahead (Talk, each message in Talk, "Hey Jig", a chat starting work while
+announcements are on; at most once a minute).
 Text becomes phonemes there: English with espeak-ng (`english.ts`, from kokoro-js), Spanish with
 rules (`spanish.ts`). The model is downloaded by `SpeechModels.ensureVoice` into `~/.jig/models`. Chromium's Web Speech recognition doesn't work in Electron and
 Claude Code's own voice mode needs claude.ai, so neither is used.

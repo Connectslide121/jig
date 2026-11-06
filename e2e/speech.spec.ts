@@ -64,6 +64,9 @@ test("speech: settings choose the model and language; only Jig's models can be r
   expect(await hostCall(page, "speech.say", { text: "Hi", voice: "../x", speed: 1 })).toMatchObject({
     ok: false,
   });
+  expect(
+    await hostCall(page, "speech.sayParts", { id: 1, text: "Hi", voice: "../x", speed: 1 }),
+  ).toMatchObject({ ok: false });
   const models = (await hostCall(page, "speech.models")) as { value: Array<{ downloaded: boolean }> };
   expect(models.value.map((m) => m.downloaded)).toEqual([false, false, false]);
   expect(await hostCall(page, "speech.removeModel", { model: "../../etc" })).toMatchObject({ ok: false });

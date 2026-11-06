@@ -85,6 +85,10 @@ going ahead and the transcript.
       while one plays; the waves follow the real audio.
 - [x] Download once (asking first, progress in Settings), Remove; Settings → Speech rows.
 - [ ] Check on a real machine: the first download, talking with it, packaged app.
+- [x] Start sooner (D-411): measured (Kokoro ~0.22× real time, load ~2–3 s, Claude's first text
+      ~0.6 s), a short first chunk (`earlyBreak`) and a sentence per chunk, pieces streamed from the
+      voice process and played back to back, warm-ups for Hey Jig and announcements, 2–8 threads.
+- [ ] Check on a real machine: time to the first word in Talk, no gaps between pieces (D-411).
 
 Later ideas: reading every reply aloud outside talking; a push-to-talk key; more languages for the
 natural voice (French, Italian, Portuguese voices exist; they need their own phoneme rules).

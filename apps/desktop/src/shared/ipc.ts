@@ -462,6 +462,15 @@ export interface HostMethods {
   "speech.prepareVoice": { args: { voice: string }; result: void };
   /** `text` read by a natural voice at `speed` (1 = normal): 24 kHz mono audio. */
   "speech.say": { args: { text: string; voice: string; speed: number }; result: Float32Array };
+  /**
+   * The same, piece by piece (D-411): each piece's audio comes as `speech.part` with this `id` (the
+   * caller's own number), to the calling window only, as soon as it is made; resolves once all are
+   * made, with how many there were.
+   */
+  "speech.sayParts": {
+    args: { id: number; text: string; voice: string; speed: number };
+    result: { parts: number };
+  };
   "speech.removeVoiceModel": { args: void; result: void };
   "window.setTitleBarColors": { args: { symbolColor: string }; result: void };
   "window.minimize": { args: void; result: void };
@@ -989,6 +998,8 @@ export interface HostEvents {
   "usage.changed": UsageByProvider;
   /** Dictation's model is downloading: bytes so far and in all (total grows as files start). */
   "speech.progress": { model: SpeechDownload; loaded: number; total: number };
+  /** A piece of `speech.sayParts`' audio (24 kHz mono), `index` from 0; only to the window that asked. */
+  "speech.part": { id: number; index: number; audio: Float32Array };
   "learning.changed": LearningState;
   /** The profile or the notes from chats changed. */
   "learning.knowledgeChanged": void;

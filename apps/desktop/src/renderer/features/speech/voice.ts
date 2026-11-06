@@ -8,7 +8,7 @@ import { followWork, playCue, unfollowWork, WorkCue } from "./cues";
 import { cancelDictation, type DictationText, useDictation } from "./dictation";
 import { Capture, FRAME, LiveText, prepareSpeech, speechSettings } from "./engine";
 import { amplitude, meters, sliceLevels } from "./meter";
-import { warmNaturalVoice } from "./naturalVoice";
+import { type Speech, warmNaturalVoice } from "./naturalVoice";
 import { cleanSpeech, level, SAMPLE_RATE } from "./protocol";
 import {
   isEnd,
@@ -23,7 +23,16 @@ import {
   toolActivity,
   type VoicePlan,
 } from "./replies";
-import { preloadSpeech, speak, speakableText, speakableUntil, speechParts, stopSpeaking } from "./speak";
+import {
+  earlyBreak,
+  preloadSpeech,
+  speak,
+  speakableText,
+  speakableUntil,
+  speechChunks,
+  speechParts,
+  stopSpeaking,
+} from "./speak";
 
 /**
  * Talking with Claude (D-209, D-210): Jig listens; when you pause, what you said is sent; Claude's
@@ -40,6 +49,8 @@ export interface VoiceLine {
   id: number;
   who: "you" | "claude";
   text: string;
+  /** The chat message Claude's line reads. */
+  key?: string;
 }
 
 export interface VoiceState {
@@ -174,8 +185,14 @@ function off(): void {
   useVoice.setState({ phase: "off", hearing: undefined, activity: undefined, handing: false });
 }
 
-function addLine(who: VoiceLine["who"], text: string): void {
-  useVoice.setState((s) => ({ lines: [...s.lines.slice(1 - MAX_LINES), { id: ++lineId, who, text }] }));
+/** A line of the conversation; Claude's words from the message `key` the last line has go on that line. */
+function addLine(who: VoiceLine["who"], text: string, key?: string): void {
+  useVoice.setState((s) => {
+    const last = s.lines.at(-1);
+    if (key && last?.who === who && last.key === key)
+      return { lines: [...s.lines.slice(0, -1), { ...last, text: `${last.text} ${text}` }] };
+    return { lines: [...s.lines.slice(1 - MAX_LINES), { id: ++lineId, who, text, key }] };
+  });
 }
 
 const BUSY = new Set(["working", "starting"]);
@@ -225,6 +242,8 @@ class Conversation {
   private shown?: VoicePlan;
   /** Keeps the chat's transcript loaded while you talk (D-366). */
   private letGo?: () => void;
+  /** When your last message was sent and Claude's first text came, for `logTiming`. */
+  private timing?: { sent: number; firstText?: number };
 
   constructor(
     private readonly target: string,
@@ -497,6 +516,9 @@ class Conversation {
         await this.goAhead(text);
       } else {
         this.text(text, true);
+        this.timing = { sent: performance.now() };
+        // Keeps the voice loaded through a long conversation (at most once a minute).
+        warmNaturalVoice();
         this.hooks.send();
       }
     } catch (error) {
@@ -613,10 +635,19 @@ class Conversation {
       if (this.before.has(item.id)) continue;
       if (item.kind === "assistant" && !item.parentId && !this.skipped.has(item.id)) {
         const from = this.spoken.get(item.id) ?? 0;
-        const end = speakableUntil(item.text, from, !item.streaming);
+        if (item.text && !this.spoken.has(item.id) && this.timing && this.timing.firstText === undefined)
+          this.timing.firstText = performance.now();
+        const final = !item.streaming;
+        // Nothing is being said: the first chunk ends early, so the voice starts sooner (D-411).
+        const early = this.speaking || this.queue.length ? undefined : earlyBreak(item.text, from, final);
+        const end = Math.max(early ?? from, speakableUntil(item.text, from, final));
         if (end > from) {
           this.spoken.set(item.id, end);
-          this.say(speakableText(item.text.slice(from, end)));
+          const chunks = [
+            ...(early ? speechChunks(speakableText(item.text.slice(from, early))) : []),
+            ...speechChunks(speakableText(item.text.slice(early ?? from, end))),
+          ];
+          this.say(speakableText(item.text.slice(from, end)), chunks, item.id);
         }
       } else if (item.kind === "tool") {
         activity = item.status === "running" ? toolActivity(item.name, item.input) : undefined;
@@ -642,12 +673,18 @@ class Conversation {
     this.settle();
   }
 
-  private say(text: string): void {
+  /**
+   * Says `text`, as one line of the conversation (added to the line `key`'s message already has),
+   * in `chunks` (each sentence alone, so the first is ready quickly).
+   */
+  private say(text: string, chunks = speechChunks(text), key?: string): void {
     if (!text.trim()) return;
-    addLine("claude", text);
-    this.queue.push(text);
-    // Made while the sentence before it plays.
-    if (this.speaking && !this.fake) preloadSpeech(text);
+    addLine("claude", text, key);
+    for (const chunk of chunks) {
+      this.queue.push(chunk);
+      // Made while the sentence before it plays.
+      if (this.speaking && !this.fake) preloadSpeech(chunk);
+    }
     this.pump();
   }
 
@@ -680,11 +717,35 @@ class Conversation {
     if (this.queue[0]) preloadSpeech(this.queue[0]);
     speak(text, {
       // The natural voice's real loudness moves the waves; the system's voices give a pulse per word.
-      onStart: (levels) =>
-        levels ? meters.claude.push(levels, performance.now()) : meters.claude.pulse(0.7),
+      onStart: (levels, speech) => {
+        if (levels) meters.claude.push(levels, performance.now());
+        else meters.claude.pulse(0.7);
+        this.logTiming(text, speech);
+      },
+      onLevels: (levels) => meters.claude.push(levels, performance.now()),
       onWord: () => meters.claude.pulse(0.5 + Math.random() * 0.5),
       onEnd: done,
     });
+  }
+
+  /**
+   * In development, how long the first words of a reply took (D-411), in the console: from your
+   * message to Claude's first text (Claude's own time), to the first chunk asked of the voice, to
+   * its first audio, to it playing. The voice process logs its load and each piece in the main log.
+   */
+  private logTiming(text: string, speech: Speech | undefined): void {
+    const t = this.timing;
+    if (!t || t.firstText === undefined || !import.meta.env.DEV) return;
+    this.timing = undefined;
+    const ms = (from: number, to: number | undefined) => (to === undefined ? "?" : Math.round(to - from));
+    const now = performance.now();
+    console.debug(
+      `[voice timing] Claude's first text +${ms(t.sent, t.firstText)} ms` +
+        (speech
+          ? `, voice asked +${ms(t.firstText, speech.askedAt)} ms, audio +${ms(speech.askedAt, speech.firstAt)} ms, playing +${ms(speech.firstAt ?? speech.askedAt, now)} ms`
+          : ", system voice") +
+        ` = ${ms(t.sent, now)} ms to the first word ("${text.slice(0, 40)}")`,
+    );
   }
 
   /** You started talking: Claude stops speaking, and the rest of what it was saying is skipped. */

@@ -5,6 +5,7 @@ import { useSessions } from "../../sessions/store";
 import { playCue } from "../cues";
 import { useDictation } from "../dictation";
 import { Capture, FRAME, prepareSpeech, speechSettings, transcribe } from "../engine";
+import { warmNaturalVoice } from "../naturalVoice";
 import { cleanSpeech, level, SAMPLE_RATE } from "../protocol";
 import { isNo, isYes } from "../replies";
 import { speak, stopSpeaking } from "../speak";
@@ -215,6 +216,8 @@ class WakeListener {
       if (this.from !== from) return;
       if (rest === undefined) this.ignoring = true;
       else {
+        // The answer is spoken in a moment: the voice loads while you say the command (D-411).
+        warmNaturalVoice();
         this.woke = rest;
         useWake.setState({ phase: "awake" });
       }
@@ -287,6 +290,7 @@ class WakeListener {
     // Woken by the first moments but the whole reads differently: the command is what follows them.
     const rest = match.rest ?? (awake ? text : check === "woke" ? afterGreeting(text) : undefined);
     if (rest === undefined) return;
+    warmNaturalVoice();
     useWake.setState({ heard: rest || undefined });
     if (this.confirm && awake) {
       const confirm = this.confirm;
@@ -397,6 +401,11 @@ function followAnnouncements(): () => void {
       const was = previous[meta.id]?.status;
       if (!was || was === meta.status || meta.kind === "builder") continue;
       if (useVoice.getState().target === meta.id) continue;
+      // A chat started working: its "done" will be said, so the voice is loaded by then (D-411).
+      if (meta.status === "working" || meta.status === "starting") {
+        if (!useWakeVoice.getState().muted) warmNaturalVoice();
+        continue;
+      }
       const name = meta.title || "A chat";
       if (meta.status === "needs_you") sayAsJig(`${name} needs you.`);
       else if (meta.status === "idle" && (was === "working" || was === "starting"))
