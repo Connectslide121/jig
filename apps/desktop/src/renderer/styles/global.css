@@ -352,11 +352,6 @@ html[data-platform="darwin"] .topbar-insets {
   transform-origin: 50% 10%;
   animation: jig-ring 2.4s ease-in-out infinite;
 }
-/* A chat that finished a turn you haven't seen: the dot on its bubble is bright, whatever its colour. */
-.jig-unread circle {
-  fill: var(--jig-fg);
-  stroke: var(--jig-fg);
-}
 @media (prefers-reduced-motion: reduce) {
   .jig-typing > span,
   .jig-ring {
