@@ -4,7 +4,6 @@ import type { TeamsChatSummary } from "../../../shared/meetingChat";
 import { call } from "../../lib/host";
 import { cn, FileIcon } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
-import { workbench } from "../../workbench/store";
 import { PersonPhoto } from "../meetings/photo";
 import { openPreview } from "../preview/actions";
 import type { Mention } from "./composerInput";
@@ -70,7 +69,8 @@ export function ChatMentionIcon({ kind, peerId }: { kind?: TeamsChatSummary["kin
  */
 export function openMention(cwd: string, mention: Mention): void {
   if (mention.kind === "chat") void call("meetings.open").catch(() => undefined);
-  else if (mention.kind === "meeting") workbench.openTab("jig.meetings", { select: mention.value });
+  else if (mention.kind === "meeting")
+    void call("meetings.open", { tab: "meetings", select: mention.value }).catch(() => undefined);
   else if (mention.kind === "folder") void call("app.openPath", { path: mentionPath(cwd, mention.value) });
   else openPreview(mentionPath(cwd, mention.value));
 }

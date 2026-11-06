@@ -204,9 +204,9 @@ export type AddonUiActivate = (ctx: AddonUiContext) => (() => void) | undefined;
 export interface AddonUiContext {
   /**
    * Opens Jig's dedicated Teams meeting window; the call survives project/view switches. `history()`
-   * opens the meeting history as a tab in this window (D-250).
+   * opens the Meetings window on its Meetings tab, the meeting history (D-250, D-376).
    */
-  meetings: { open(): Promise<void>; history(): void };
+  meetings: { open(): Promise<void>; history(): Promise<void> };
   /**
    * People in your organisation (D-291): `photo(email)` is someone's Microsoft profile picture as a
    * data URL, or null (no picture, or the meeting sign-in isn't there). Cached; `PersonAvatar` from

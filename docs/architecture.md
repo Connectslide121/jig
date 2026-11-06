@@ -671,7 +671,7 @@ back to its own mode once it is idle.
 ## Global meeting room (D-217)
 
 The built-in Meetings add-on (global scope, addons/meetings) opens the host's dedicated media window
-through ctx.meetings.open() (and ctx.meetings.history(), the core `jig.meetings` history tab, D-250). main/meetings owns an atomic MeetingStore, public-desktop MSAL sign-in,
+through ctx.meetings.open() (and ctx.meetings.history(): the same window on its Meetings tab, the history, D-250, D-403). main/meetings owns an atomic MeetingStore, public-desktop MSAL sign-in,
 Graph calendar reads and keyless ACS credential exchange using AzureCliCredential. It also owns
 a temporary loopback server for its bundled media page: ACS rejects the workbench's custom
 scheme. Its localhost URL binds only 127.0.0.1 on an ephemeral port, checks Host/method/path, serves with CSP and

@@ -297,9 +297,10 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await room.getByRole("button", { name: "Stop sharing", exact: true }).click();
     await room.getByRole("button", { name: "Leave", exact: true }).click();
     await expect.poll(async () => (await overview()).activeId).toBeUndefined();
-    // The call is over: the lobby shows the meeting's review, and says there is no call.
+    // The call is over: the Meetings tab shows that meeting, and the window says there is no call.
     await expect(liveCall).toHaveCount(0);
-    await expect(lobby.getByRole("heading", { name: "Weekly products" })).toBeVisible();
+    await expect(lobby.getByRole("heading", { name: "Meetings" })).toBeVisible();
+    await expect(lobby.getByTestId("meeting-detail")).toContainText("Weekly products");
     await lobby.getByRole("button", { name: "Generate notes", exact: true }).click();
     await expect.poll(async () => (await overview()).records[0]!.actions.length, { timeout: 30_000 }).toBe(2);
     await expect(lobby.getByRole("button", { name: "Review actions", exact: true })).toBeEnabled();
@@ -343,9 +344,9 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/meetings.png",
     });
-    // Deleting asks first, then removes the meeting and returns to the lobby.
-    await lobby.getByRole("button", { name: "Meeting options", exact: true }).click();
-    await lobby.getByRole("menuitem", { name: "Delete meeting…" }).click();
+    // Deleting asks first, then removes the meeting from the list.
+    await lobby.getByTestId("meeting-more").click();
+    await lobby.getByRole("menuitem", { name: "Delete…" }).click();
     const confirm = lobby.getByRole("dialog", { name: /Delete "Weekly products"/ });
     await lobby.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/delete.png" });
     await confirm.getByRole("button", { name: "Delete meeting", exact: true }).click();
@@ -379,9 +380,12 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
     await expect(room).toHaveTitle("Call with Alex Contoso · Jig Meetings");
     await expect(lobby.getByTestId("lobby-live-call")).toContainText("Call with Alex Contoso");
     await room.getByRole("button", { name: "Hang up", exact: true }).click();
-    // Hung up: the lobby shows the call's review, and a fresh call window replaces the used one.
-    await expect(lobby.getByRole("button", { name: "Call back", exact: true })).toBeVisible();
-    await lobby.getByRole("button", { name: "Back to meetings" }).click();
+    // Hung up: the Meetings tab shows the call (Call back is in its ⋯ menu), and a fresh call window
+    // replaces the used one.
+    await expect(lobby.getByTestId("meeting-detail")).toContainText("Call with Alex Contoso");
+    await lobby.getByTestId("meeting-more").click();
+    await expect(lobby.getByRole("menuitem", { name: "Call back", exact: true })).toBeVisible();
+    await lobby.keyboard.press("Escape");
     room = await renewedRoom(app, room);
 
     // A call rings in the fresh window: answer it; the call is kept like a meeting, and the last
@@ -398,8 +402,10 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
     await incoming.getByRole("button", { name: "Answer", exact: true }).click();
     await expect(room.getByRole("heading", { name: "Call with Sam Fabrikam" })).toBeVisible();
     await room.getByRole("button", { name: "Hang up", exact: true }).click();
-    await expect(lobby.getByRole("button", { name: "Call back", exact: true })).toBeVisible();
-    await lobby.getByRole("button", { name: "Back to meetings" }).click();
+    await expect(lobby.getByTestId("meeting-detail")).toContainText("Call with Sam Fabrikam");
+    await lobby.getByTestId("meeting-more").click();
+    await expect(lobby.getByRole("menuitem", { name: "Call back", exact: true })).toBeVisible();
+    await lobby.keyboard.press("Escape");
     room = await renewedRoom(app, room);
     const ringing = room.getByTestId("incoming-call");
     await lobby.getByRole("button", { name: "Call…", exact: true }).click();
@@ -565,7 +571,7 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     // Call… has a Chat action per person: it opens your one-to-one chat with them.
     await lobby
       .getByRole("navigation", { name: "Sections" })
-      .getByRole("button", { name: "Meetings", exact: true })
+      .getByRole("button", { name: "Calendar", exact: true })
       .click();
     await lobby.getByRole("button", { name: "Call…", exact: true }).click();
     const dialog = lobby.getByTestId("call-dialog");

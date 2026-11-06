@@ -102,8 +102,10 @@ export interface AppInfo {
 
 /** Method name → argument and result types. */
 export interface HostMethods {
-  /** Opens the Meetings lobby window (D-292). */
-  "meetings.open": { args: void; result: void };
+  /** Opens (or focuses) the Meetings window (D-292), on a tab and, for Meetings, a selected meeting (D-376). */
+  "meetings.open": { args: import("./meetings").MeetingsTarget | void; result: void };
+  /** From the Meetings windows: the main window starts a chat in a project with `draft` in its composer. */
+  "meetings.startChat": { args: { projectId: string; draft: string }; result: void };
   /** From the lobby: reveals the call window and has it join, call or just come to the front. */
   "meetings.start": { args: import("./meetings").MeetingStart; result: void };
   /** The call window takes what the lobby asked it to start (once), if anything. */
@@ -935,8 +937,10 @@ export interface HostEvents {
   "meetings.leaveRequested": void;
   /** The lobby asked the call window to start something; it calls `meetings.takeStart`. */
   "meetings.startRequested": void;
-  /** A call ended: the lobby opens that meeting's review. */
-  "meetings.review": { id: string };
+  /** The open Meetings window shows a tab, and a meeting (D-376): a call ended, or a link opened one. */
+  "meetings.show": import("./meetings").MeetingsTarget;
+  /** The main window starts a chat from a meeting (`meetings.startChat`). */
+  "meetings.chatNew": { projectId: string; draft: string };
   "meetings.chatOpen": { sessionId: string };
   "config.changed": JigConfig;
   /** The theme list or a theme file changed; refetch the list and the active theme. */

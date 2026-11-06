@@ -142,7 +142,6 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | tab type | `jig.view` | | a view opened in the main area (`params.viewId`, D-174) |
 | tab type | `jig.project` | | project dashboard: the project's Home (`params.projectId`) |
 | tab type | `jig.chat` | | a chat (`params.sessionId`) |
-| tab type | `jig.meetings` | | the meeting history (singleton; opened from the Meetings add-on, D-250; param `select`: a meeting id prefix to show, from a mention chip, D-253) |
 | tab type | `jig.settings` | | Settings (`params.section`: appearance, layout, engine, terminal, learning, workspaces, about, or an add-on's page) |
 | tab type | `jig.preview` / `jig.image` | | a file in Preview (editable for code and text) / an image |
 | tab type | `jig.skills` | | Skills library, opened from Chats → Skills library; details/project selection in modals |
@@ -232,7 +231,7 @@ resizing do not trigger those animations (D-200).
 ## Meeting window (D-217)
 
 Meetings → Meetings (addon.meetings.open) opens a separate first-party window, not a project view:
-the lobby (agenda, history, reviews). Calls run in a second window, the call window, which waits
+the lobby (Calendar, Chats and Meetings tabs: agenda, Teams chats, history, D-403). Calls run in a second window, the call window, which waits
 hidden and comes forward to join, call or ring (D-292); the lobby stays usable beside it.
 Its agenda and notes use remembered Pane ids addon.meetings.agenda and addon.meetings.notes. Project
 changes do not unmount media or rewrite the meeting. Pre-join/settings/questions/action review/screen

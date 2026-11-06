@@ -310,14 +310,15 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 
 | Method | Purpose |
 |---|---|
-| meetings.open | Open/focus the Meetings lobby window, with the call window waiting hidden beside it (D-292) |
+| meetings.open | `{tab?: calendar\|chats\|meetings, select?}` or nothing: open/focus the Meetings window (on that tab, and meeting), with the call window waiting hidden beside it (D-292, D-403) |
+| meetings.startChat | `{projectId, draft}`: from a Meetings window; the main window opens a chat with `draft` in its composer (D-403) |
 | meetings.start | Lobby or call window: `{kind: "join", url, title}` (empty url asks for a link) / `{kind: "call", peerId, peerName, camera}` / `{kind: "show"}`: reveal the call window and have it check devices and join, place the call, or only come forward (D-292) |
 | meetings.takeStart | Call window only: what `meetings.start` asked for, once (null when nothing) |
 | meetings.callIdle | Call window only: nothing to show (no call, prejoin or ringing); main hides it unless a call is active or a start waits |
 | meetings.overview | Global nonsecret settings/account, active id and saved meeting records |
 | meetings.configure | Save tenant/client/ACS endpoint; lobby or room, no active call |
 | meetings.delete | Delete a saved meeting and its frozen question/notes snapshots; room or main window (meeting history, D-250), never the live one |
-| meetings.history | Past meetings newest first, without the live one (the main window's Meeting history tab, D-250) |
+| meetings.history | Past meetings newest first, without the live one (the Meetings window's Meetings tab, D-250, D-403) |
 | meetings.folders | Your meeting history folders [{id, name}] (D-295); series folders are worked out from the meetings |
 | meetings.saveFolder | `{id?, name}`: makes a folder, or renames one; names are unique ignoring case. Jig's windows |
 | meetings.deleteFolder | `{id}`: deletes a folder; its meetings go back to their series' folder or to none. Jig's windows |
@@ -369,7 +370,8 @@ calling credential.
 
 Events: meetings.changed (refetch), meetings.leaveRequested (gracefully leave/close room),
 meetings.startRequested (the call window takes the request with `meetings.takeStart`),
-meetings.review ({id}: a call ended, the lobby opens its review),
+meetings.show ({tab?, select?}: the open Meetings window shows a tab, and on Meetings a meeting; a call ended, or a link, D-403),
+meetings.chatNew ({projectId, draft}: the main window starts a chat from a meeting),
 meetings.chatOpen ({sessionId}: main workbench reveals the normal chat).
 
 Claude tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset)

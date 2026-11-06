@@ -13,7 +13,6 @@ import { registerGoTo } from "./goto";
 import { registerKnowledge } from "./knowledge";
 import { registerLearning } from "./learning";
 import { registerLinks } from "./links";
-import { registerMeetingHistory } from "./meetings/History";
 import { registerPhone } from "./phone/PhoneButton";
 import { registerPreview } from "./preview";
 import { registerProjects } from "./projects";
@@ -55,7 +54,6 @@ export function registerFeatures(): void {
   registerWorktrees();
   registerGoTo();
   registerGallery();
-  registerMeetingHistory();
   registerSkills();
   registerAbout();
   registerChangelog();

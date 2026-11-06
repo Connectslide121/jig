@@ -6926,3 +6926,24 @@ stopped for good.
   (mean 5.4 s). The warm process saves about 0.6 s (~10%) per batch: the cold start is small next to
   the model's own ~5 s for a batch. So ChatGPT still skips more lines than Claude on a fast talker, and
   the "slower with ChatGPT" note on the Caption translation row stays.
+
+## D-403: Meetings window: Calendar, Chats and Meetings tabs; the top-bar button opens it
+
+- Status: accepted.
+- **Who:**
+- **Who:** Jon asked; the layout details are Claude's.
+- **What:** the Meetings window's rail has three tabs, Calendar (CalendarDays), Chats (MessagesSquare) and
+  Meetings (History, the icon the history already used): Calendar is the upcoming meetings and the week,
+  Chats is unchanged, Meetings is the whole meeting history view (list with folders and search, header
+  with Start a chat and ⋯, notes, transcript), moved out of the main window, which no longer has the
+  `jig.meetings` tab. The top-bar video button has no menu: a click opens or focuses the window.
+- **Opening:** `meetings.open` takes `{ tab?, select? }` and the open window follows `meetings.show`.
+  Everything that opened the history (Tools → Meeting history, `ctx.meetings.history()`, a meeting chip in a
+  chat, a call that ended) opens the Meetings tab with that meeting selected. The last tab is kept in the
+  window's localStorage; the first time it is Calendar.
+- **Because the history now runs in that window:** its host methods accept the Meetings window (`fromJig`);
+  Start a chat goes through `meetings.startChat` and the main window creates the chat (`meetings.chatNew`);
+  the list width is the lobby size `history.list` (replaces `review.notes`); Call back and Open in Teams
+  moved into a meeting's ⋯ menu; the old in-window review header and Ask Claude are gone (Start a chat
+  replaces Ask there; the call window keeps Ask).
+- **Narrow windows:** the list is at most 40% of the window; below ~770 px notes stack over the transcript.

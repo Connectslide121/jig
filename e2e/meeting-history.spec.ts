@@ -1,11 +1,24 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { ElectronApplication, Page } from "@playwright/test";
 import { expect, hostCall, launchJig, test } from "./fixtures";
 
 const OLD = "1a2b3c4d-0000-4000-8000-000000000001";
 const NEW = "5e6f7a8b-0000-4000-8000-000000000002";
 
-/** Two past meetings in JIG_HOME before Jig starts: the history needs no meeting window. */
+/** The Meetings window once it is open (the top-bar button, or `meetings.open`), with motion off. */
+async function meetingsWindow(app: ElectronApplication): Promise<Page> {
+  const find = () => app.windows().find((w) => w.url().includes("meetingLobby=1"));
+  await expect.poll(() => Boolean(find()), { timeout: 30_000 }).toBe(true);
+  const lobby = find()!;
+  await lobby.emulateMedia({ reducedMotion: "reduce" });
+  await expect(lobby.getByTestId("meeting-lobby")).toBeVisible();
+  return lobby;
+}
+const tab = (lobby: Page, name: string) =>
+  lobby.getByRole("navigation", { name: "Sections" }).getByRole("button", { name, exact: true });
+
+/** Two past meetings in JIG_HOME before Jig starts: the history needs no call. */
 async function seed(jigHome: string): Promise<void> {
   const caption = (id: string, speaker: string, at: string, text: string) => ({
     id,
@@ -40,15 +53,20 @@ async function seed(jigHome: string): Promise<void> {
   );
 }
 
-test("Meeting history: open from the top bar, search, rename, copy as Markdown", async ({ jigHome }) => {
+test("Meeting history: the top-bar button opens the Meetings window; search, rename, copy as Markdown", async ({
+  jigHome,
+}) => {
   await seed(jigHome);
   const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
   try {
     const page = await app.firstWindow();
     await page.waitForSelector("[data-testid=app-root]");
+    // One click opens the window, on the Calendar the first time; the history is its Meetings tab.
     await page.getByTestId("topbar-meetings").click();
-    await page.getByTestId("meetings-open-history").click();
-    const history = page.getByTestId("meeting-history");
+    const lobby = await meetingsWindow(app);
+    await expect(tab(lobby, "Calendar")).toHaveAttribute("aria-current", "page");
+    await tab(lobby, "Meetings").click();
+    const history = lobby.getByTestId("meeting-history");
     await expect(history.getByTestId("meeting-row")).toHaveCount(2);
     // Newest first, and the first is shown with its notes and transcript.
     await expect(history.getByTestId("meeting-row").first()).toContainText("Portal review");
@@ -61,10 +79,10 @@ test("Meeting history: open from the top bar, search, rename, copy as Markdown",
     await expect(history.getByTestId("meeting-transcript")).toContainText("Ship the checkout first.");
 
     await history.getByTestId("meeting-more").click();
-    await page.getByTestId("meeting-rename").click();
-    const input = page.getByRole("dialog").getByRole("textbox");
+    await lobby.getByTestId("meeting-rename").click();
+    const input = lobby.getByRole("dialog").getByRole("textbox");
     await input.fill("Shop kickoff");
-    await page.getByTestId("dialog-confirm").click();
+    await lobby.getByTestId("dialog-confirm").click();
     await history.getByPlaceholder("Search meetings").fill("");
     await expect(history.getByTestId("meeting-row").nth(1)).toContainText("Shop kickoff");
 
@@ -95,10 +113,10 @@ test("Meeting history: a chat started from a meeting mentions it, and Claude rea
       "@meeting:portal-review-5e6f7a8b",
     ]);
 
-    await page.getByTestId("topbar-meetings").click();
-    await page.getByTestId("meetings-open-history").click();
-    await page.getByTestId("meeting-start-chat").click();
-    await page.getByTestId(`meeting-chat-${projectId}`).click();
+    await hostCall(page, "meetings.open", { tab: "meetings" });
+    const lobby = await meetingsWindow(app);
+    await lobby.getByTestId("meeting-start-chat").click();
+    await lobby.getByTestId(`meeting-chat-${projectId}`).click();
     const input = page.getByTestId("composer-input");
     await expect(input).toHaveValue("@meeting:portal-review-5e6f7a8b ");
     await input.press("End");
@@ -151,18 +169,17 @@ test("Meeting history: a recurring meeting gets its own folder, and you make fol
   try {
     const page = await app.firstWindow();
     await page.waitForSelector("[data-testid=app-root]");
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.getByTestId("topbar-meetings").click();
-    await page.getByTestId("meetings-open-history").click();
-    const history = page.getByTestId("meeting-history");
+    await hostCall(page, "meetings.open", { tab: "meetings" });
+    const lobby = await meetingsWindow(app);
+    const history = lobby.getByTestId("meeting-history");
     // The two occurrences share a Teams meeting thread: one series folder, opened on the newest.
     const series = history.getByTestId("meeting-folder").filter({ hasText: "Shop daily" });
     await expect(series.getByTestId("meeting-row")).toHaveCount(2);
     await expect(history.getByTestId("meeting-no-folder")).toBeVisible();
 
     await history.getByTestId("meeting-new-folder").click();
-    await page.getByRole("dialog").getByRole("textbox").fill("Customers");
-    await page.getByTestId("dialog-confirm").click();
+    await lobby.getByRole("dialog").getByRole("textbox").fill("Customers");
+    await lobby.getByTestId("dialog-confirm").click();
     const customers = history.getByTestId("meeting-folder").filter({ hasText: "Customers" });
     await expect(customers).toContainText("Drag meetings here");
 
@@ -179,6 +196,39 @@ test("Meeting history: a recurring meeting gets its own folder, and you make fol
       value: Array<{ id: string; folder?: string }>;
     };
     expect(records.value.find((r) => r.id === NEW)?.folder).toBe(folders.value[0]!.id);
+  } finally {
+    await app.close();
+  }
+});
+
+test("Meetings window: three tabs, the last one is remembered, and a link opens a meeting on its tab", async ({
+  jigHome,
+}) => {
+  await seed(jigHome);
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    // A meeting chip in a chat opens the window on Meetings with that meeting selected.
+    await hostCall(page, "meetings.open", { tab: "meetings", select: "1a2b3c4d" });
+    const lobby = await meetingsWindow(app);
+    await expect(tab(lobby, "Meetings")).toHaveAttribute("aria-current", "page");
+    await expect(lobby.getByTestId("meeting-detail")).toContainText("Shop planning");
+    await expect(lobby.getByTestId("meeting-row").first()).toContainText("Portal review");
+    // The window is open: asking again moves it, without a second window.
+    await hostCall(page, "meetings.open", { tab: "calendar" });
+    await expect(tab(lobby, "Calendar")).toHaveAttribute("aria-current", "page");
+    await expect(lobby.getByTestId("meeting-history")).toHaveCount(0);
+    await hostCall(page, "meetings.open", { select: "5e6f7a8b" });
+    await expect(tab(lobby, "Meetings")).toHaveAttribute("aria-current", "page");
+    await expect(lobby.getByTestId("meeting-detail")).toContainText("Portal is ready.");
+    await tab(lobby, "Chats").click();
+    await expect(tab(lobby, "Chats")).toHaveAttribute("aria-current", "page");
+    // Closed and opened again, it opens on the tab you left it on.
+    await lobby.close();
+    await page.getByTestId("topbar-meetings").click();
+    const again = await meetingsWindow(app);
+    await expect(tab(again, "Chats")).toHaveAttribute("aria-current", "page");
   } finally {
     await app.close();
   }

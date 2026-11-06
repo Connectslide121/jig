@@ -1288,8 +1288,15 @@ folder, a meeting) are highlighted in the message box, and each gets a chip abov
 open the file in Preview (a folder in the file manager, a meeting in Meetings), × to take it out of the
 message. Ctrl/Cmd+click on the mention in the text opens it too. Try: type `@` in a chat, pick a file.
 
-Meeting history (2026-11-02, D-250): past meetings open in Jig's main window — the top-bar video
-button → **Meeting history** (or Tools → Meeting history). Search on the left; notes and transcript of
+Meetings window tabs (2026-11-06, D-403): the top-bar video button no longer has a menu: one click opens
+(or focuses) the Meetings window, which has three tabs in its rail — **Calendar** (next up, agenda/week),
+**Chats** and **Meetings** (the meeting history below). It opens on Calendar the first time, then on the
+tab you left it on; a meeting chip in a chat, Tools → Meeting history and a call that ended open it on
+Meetings with that meeting selected. The history is no longer a tab of the main window. To try: click the
+video button, switch tabs, close and reopen.
+
+Meeting history (2026-11-02, D-250; since D-403 the Meetings tab of the Meetings window): past meetings —
+the top-bar video button, then the **Meetings** tab (or Tools → Meeting history). Search on the left; notes and transcript of
 the selected meeting on the right. **Start a chat** opens a chat in a project you pick with the
 meeting mentioned; **Generate notes** and **Review actions** work as in the meeting window; ⋯ copies or
 exports Markdown, copies the chat reference, renames or deletes. In any chat, `@` + a meeting's name

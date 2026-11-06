@@ -42,7 +42,7 @@ import {
   parseChatCursor,
 } from "../../shared/meetingChatMention";
 import { presenceIds, type TeamsPresence, type TeamsPresenceResult } from "../../shared/meetingPresence";
-import type { MeetingEvent, MeetingRecord, MeetingStart } from "../../shared/meetings";
+import type { MeetingEvent, MeetingRecord, MeetingStart, MeetingsTarget } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
 import { addonService } from "../addons";
 import {
@@ -508,9 +508,10 @@ function lobbyOrCall(context: CallContext): void {
   if (!lobby || context.sender.id !== lobby.webContents.id)
     throw new JigError("forbidden", "This operation is only available in the Meetings windows");
 }
-/** The meeting window, or Jig's main window (the meeting history, D-250); never a helper window. */
+/** The call window, the Meetings window (the meeting history lives there, D-376) or Jig's main window; never a helper window. */
 function fromJig(context: CallContext): void {
   if (room && context.sender.id === room.webContents.id) return;
+  if (lobby && context.sender.id === lobby.webContents.id) return;
   if (!appWindows().some((w) => w.webContents.id === context.sender.id))
     throw new JigError("forbidden", "This operation is only available in Jig's windows");
 }
@@ -671,12 +672,12 @@ function renewCall(used: BrowserWindow): void {
 
 /**
  * Opens the Meetings lobby (D-292), or brings it to the front: a normal Jig window beside the call
- * window, usable during a call. `review` opens a saved meeting's review in it.
+ * window, usable during a call. `target` opens a tab, and a saved meeting on the Meetings tab (D-376).
  */
-async function openLobby(review?: string, quiet = false): Promise<void> {
+async function openLobby(target: MeetingsTarget = {}, quiet = false): Promise<void> {
   enabled();
   if (lobby && !lobby.isDestroyed()) {
-    if (review) emit("meetings.review", { id: review });
+    if (target.tab || target.select) emit("meetings.show", target);
     if (quiet) showWindowQuietly(lobby);
     else revealWindow(lobby);
     return;
@@ -710,7 +711,8 @@ async function openLobby(review?: string, quiet = false): Promise<void> {
   });
   const url = new URL(process.env.JIG_RENDERER_URL || "jig-app://app/index.html");
   url.searchParams.set("meetingLobby", "1");
-  if (review) url.searchParams.set("review", review);
+  if (target.tab) url.searchParams.set("tab", target.tab);
+  if (target.select) url.searchParams.set("select", target.select);
   await window.loadURL(url.href);
   if (quiet) showWindowQuietly(window);
   else if (!hiddenMode()) window.show();
@@ -723,7 +725,7 @@ async function openLobby(review?: string, quiet = false): Promise<void> {
 function callEnded(id: string): void {
   if (quitting || appQuitting) return;
   if (room && !room.isDestroyed() && room.isVisible()) room.hide();
-  void openLobby(id, true).catch(() => undefined);
+  void openLobby({ tab: "meetings", select: id }, true).catch(() => undefined);
 }
 
 /** A Teams call is ringing (`name`), or stopped ringing: the meeting window comes to the front. */
@@ -827,9 +829,16 @@ export async function startMeetings(): Promise<void> {
     if (activeId) quitting = true;
   });
   // Meetings opens the lobby; the call window waits hidden beside it, ready to ring and to join (D-292).
-  handle("meetings.open", async () => {
-    await openLobby();
+  handle("meetings.open", async (target) => {
+    await openLobby(target ?? {});
     await openCall({ show: false });
+  });
+  // The Meetings window starts a chat in the main window (a meeting's "Start a chat", D-376).
+  handle("meetings.startChat", async ({ projectId, draft }, ctx) => {
+    lobbyOrCall(ctx);
+    emit("meetings.chatNew", { projectId, draft });
+    const workbench = mainWindow();
+    if (workbench && workbench !== room && workbench !== lobby) revealWindow(workbench);
   });
   handle("meetings.start", async (start, ctx) => {
     lobbyOrCall(ctx);

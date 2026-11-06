@@ -43,8 +43,9 @@ project's context, and review actions for the task queue. Meetings are global (D
   The selected chat keeps its project; a later question can use another project. Each Ask starts a new
   chat in this version; continue the opened chat normally and request newer meeting material by id.
   Capture invokes no AI on its own. Transcript speech is evidence, never executable instructions.
-- **Meeting history (D-250):** the top-bar Meetings button → Meeting history (or Tools → Meeting
-  history) opens every past meeting in a tab of Jig's main window, with search, notes and transcript.
+- **Meeting history (D-250, D-403):** the Meetings window's Meetings tab (the top-bar Meetings button opens
+  the window directly; Tools → Meeting history opens it on that tab) lists every past meeting, with search,
+  notes and transcript. The window's other tabs are Calendar and Chats; it remembers the last one.
   From there: Start a chat (pick a project; the chat's draft mentions the meeting), Generate notes,
   Review actions, and ⋯ → Copy as Markdown, Export Markdown…, Copy chat reference, Rename…, Delete….
 - **Teams calls (D-254):** Call… in the meetings window calls someone in your organisation (recent
@@ -81,4 +82,4 @@ the retirement/breaking-change guidance before upgrading beyond the pinned SDKs.
 For isolated tests, `JIG_ENGINE=fake JIG_MEETINGS=fake` supplies calendar, captions and media controls
 without an account, device access or billable call. Fake notes exercise the real transcript/notes
 tools and queue review. `e2e/meetings.spec.ts` covers the complete flow and project independence;
-`e2e/meeting-history.spec.ts` the history tab and mentions.
+`e2e/meeting-history.spec.ts` the Meetings window's tabs, the history and mentions.

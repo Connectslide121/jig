@@ -112,6 +112,14 @@ export interface MeetingEvent {
   joinUrl?: string;
 }
 export type LobbyView = "agenda" | "week";
+/** The Meetings window's tabs (D-376): the calendar, your Teams chats, and the meeting history. */
+export const MEETINGS_TABS = ["calendar", "chats", "meetings"] as const;
+export type MeetingsTab = (typeof MEETINGS_TABS)[number];
+/** What opens the Meetings window on: a tab, and for Meetings a meeting (its id, or an id's first hex digits). */
+export interface MeetingsTarget {
+  tab?: MeetingsTab;
+  select?: string;
+}
 
 export interface MeetingOverview {
   lobbyView: LobbyView;

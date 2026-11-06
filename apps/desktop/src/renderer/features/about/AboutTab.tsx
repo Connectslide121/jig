@@ -742,7 +742,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           >
             <Bullets
               items={[
-                "Meetings → Meetings: a two-week calendar agenda, Join from link, and the meeting history",
+                "The top-bar video button opens the Meetings window: Calendar (two-week agenda, Join from link), Chats and Meetings (the meeting history), and it opens on the tab you left it on",
                 "Calls in their own window, like Teams: the meetings lobby stays usable beside a running call",
                 "Teams calls: call someone in your organisation, and calls ring in Jig while it runs",
                 "Profile pictures of the people in your meetings and calls",
@@ -753,7 +753,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Live captions in your language (Teams translates, or Claude without Teams Premium), with what was said under each line",
                 "No Teams captions in a meeting? Jig transcribes it on this computer (Whisper), marked Local",
                 "Noise suppression on your microphone, like Teams: typing and background noise are filtered out of your audio",
-                "Meeting history in the main window and the lobby, in folders: make your own and drag meetings in, and each recurring meeting gets its own; start a chat about a meeting, notes, actions, Markdown export",
+                "Meeting history (the Meetings tab of the Meetings window), in folders: make your own and drag meetings in, and each recurring meeting gets its own; start a chat about a meeting, notes, actions, Markdown export",
                 "Mention a meeting in any chat with @ — Claude reads its transcript",
                 "Remembers Agenda/Week and restores your Microsoft sign-in using protected storage",
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",

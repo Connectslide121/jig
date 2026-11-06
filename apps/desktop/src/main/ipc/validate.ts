@@ -103,6 +103,14 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     })
     .strict(),
   "meetings.revealChat": z.object({ sessionId: id }).strict(),
+  "meetings.open": z
+    .object({
+      tab: z.enum(["calendar", "chats", "meetings"]).optional(),
+      select: z.string().max(100).optional(),
+    })
+    .strict()
+    .optional(),
+  "meetings.startChat": z.object({ projectId: id, draft: z.string().max(500) }).strict(),
   "meetings.join": z.object({ url: z.string().max(8192), title: z.string().min(1).max(500) }).strict(),
   "meetings.people": z.object({ query: z.string().max(200) }).strict(),
   "meetings.photo": z.object({ id: z.string().max(300) }).strict(),

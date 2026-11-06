@@ -9,12 +9,13 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
-  Video,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { meetingMention } from "../../../../../../addons/meetings/lib/meeting";
 import type { MeetingFolder } from "../../../shared/meetingFolders";
+import type { MeetingLayout, MeetingSizeKey } from "../../../shared/meetingLayout";
 import type { MeetingRecord } from "../../../shared/meetings";
+import type { ProjectsState } from "../../../shared/projects";
 import { copyText } from "../../lib/clipboard";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import {
@@ -32,50 +33,49 @@ import {
   SearchInput,
   Spinner,
 } from "../../ui";
-import { Pane } from "../../workbench/Pane";
-import { useProjects } from "../../workbench/projects";
-import { registerTabType, type TabProps } from "../../workbench/registry";
-import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { ProjectSwatch } from "../projects/colors";
-import { newSession } from "../sessions/actions";
 import { Review } from "./dialogs";
 import { FolderRow, useMeetingFolders } from "./folders";
 import { dayAndTime, duration } from "./format";
 import { NotesPanel, TranscriptPanel } from "./Panels";
+import { SizedBox } from "./Slots";
 
 /**
- * The meeting history (D-250): every meeting Jig kept, in a tab of the main window, so you don't need
- * the meetings window to read one, start a chat from it, write notes or queue its actions. Opened from
- * the Meetings add-on (its top-bar button and Tools action), so it exists only while that add-on is on.
+ * The meeting history (D-250), the Meetings window's Meetings tab (D-376): every meeting Jig kept, so
+ * you can read one, start a chat from it, write notes or queue its actions. The list keeps a remembered
+ * width; the selected meeting's notes and transcript share the rest.
  */
-export function registerMeetingHistory(): void {
-  registerTabType({
-    type: "jig.meetings",
-    title: () => "Meetings",
-    icon: HistoryIcon,
-    component: MeetingHistory,
-    singleton: true,
-    owner: "core",
-  });
-}
-
-const openChat = (sessionId: string) => workbench.openTab("jig.chat", { sessionId });
-
-function MeetingHistory({ params }: TabProps) {
+export function MeetingHistory({
+  projects,
+  layout,
+  onResize,
+  target,
+  onOpenChat,
+  extraMenu,
+}: {
+  projects: ProjectsState;
+  layout: MeetingLayout;
+  onResize(key: MeetingSizeKey, size: number): void;
+  /** The meeting to show: its id, or an id's first hex digits (a mention's chip). `at` changes with every request. */
+  target?: { select: string; at: number };
+  /** Shows a chat (notes being written) in Jig's main window. */
+  onOpenChat(sessionId: string): Promise<void>;
+  /** More entries for a meeting's ⋯ menu (Call back, Open in Teams). */
+  extraMenu?(record: MeetingRecord): MenuEntry[];
+}) {
   const [records, setRecords] = useState<MeetingRecord[] | undefined>();
   const [failed, setFailed] = useState<string>();
   const [selected, setSelected] = useState<string>();
-  // A mention's chip in a chat opens this tab on its meeting (`select`: the id's first 8 hex digits).
-  const select = typeof params.select === "string" ? params.select : undefined;
+  const select = target?.select.replace(/-/g, "").toLowerCase();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `target.at` asks again for the same meeting.
   useEffect(() => {
     const found = select && records?.find((r) => r.id.replace(/-/g, "").toLowerCase().startsWith(select));
     if (found) setSelected(found.id);
-  }, [select, records]);
+  }, [select, target?.at, records]);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<"notes" | "queue">();
   const [review, setReview] = useState(false);
-  const projects = useProjects();
 
   const load = useCallback(async () => {
     try {
@@ -144,7 +144,10 @@ function MeetingHistory({ params }: TabProps) {
         label: p.name,
         leading: <ProjectSwatch color={p.color} />,
         testId: `meeting-chat-${p.id}`,
-        onSelect: () => void newSession(p.id, undefined, `${meetingMention(r)} `),
+        onSelect: () =>
+          void run("Couldn't start the chat", () =>
+            call("meetings.startChat", { projectId: p.id, draft: `${meetingMention(r)} ` }),
+          ),
       })),
     ]);
   const rename = async (r: MeetingRecord) => {
@@ -188,20 +191,14 @@ function MeetingHistory({ params }: TabProps) {
       onSelect: () => void copyText(meetingMention(r)),
     },
     { label: "Move to folder", icon: Folder, testId: "meeting-move", submenu: moveMenu(r) },
+    ...(extraMenu?.(r) ?? []),
     { separator: true },
     { label: "Rename…", icon: Pencil, testId: "meeting-rename", onSelect: () => void rename(r) },
     { label: "Delete…", icon: Trash2, danger: true, onSelect: () => void remove(r) },
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-col" data-testid="meeting-history">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-4">
-        <HistoryIcon className="size-4 text-muted" />
-        <div className="min-w-0 flex-1 truncate text-sm font-medium">Meeting history</div>
-        <Button size="sm" icon={Video} onClick={() => void call("meetings.open")}>
-          Meetings window
-        </Button>
-      </div>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="meeting-history">
       {failed ? (
         <Empty icon={HistoryIcon} title="Meetings are off" className="h-full">
           {failed}
@@ -210,12 +207,20 @@ function MeetingHistory({ params }: TabProps) {
         <Spinner center />
       ) : !records.length ? (
         <Empty icon={HistoryIcon} title="No meetings yet" className="h-full">
-          Meetings you join from the meetings window are kept here with their captions, notes and actions.
+          Meetings you join are kept here with their captions, notes and actions.
         </Empty>
       ) : (
         <div className="flex min-h-0 flex-1">
-          <Pane id="jig.meetings.list" edge="right" defaultSize={300} min={220} max={520}>
-            <div className="flex h-full min-h-0 flex-col border-r border-line">
+          <SizedBox
+            layout={layout}
+            sizeKey="history.list"
+            edge="right"
+            min={220}
+            onResize={onResize}
+            label="Resize meeting list"
+            className="max-w-2/5 border-r border-line bg-surface"
+          >
+            <div className="flex size-full min-h-0 min-w-0 flex-col">
               <div className="flex h-11 shrink-0 items-center gap-1 pl-3 pr-2">
                 <div className="min-w-0 flex-1">
                   <SearchInput
@@ -303,7 +308,7 @@ function MeetingHistory({ params }: TabProps) {
                 )}
               </div>
             </div>
-          </Pane>
+          </SizedBox>
           {record && (
             <div className="flex min-w-0 flex-1 flex-col" data-testid="meeting-detail">
               <div className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-4">
@@ -339,7 +344,7 @@ function MeetingHistory({ params }: TabProps) {
                         void run(
                           "Couldn't start the notes",
                           async () => {
-                            openChat((await call("meetings.notes", { id: record.id })).sessionId);
+                            await onOpenChat((await call("meetings.notes", { id: record.id })).sessionId);
                           },
                           "notes",
                         )

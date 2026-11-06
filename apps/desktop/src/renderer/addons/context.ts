@@ -111,7 +111,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
     addon: { id, name: addon.name },
     meetings: {
       open: () => call("meetings.open"),
-      history: () => void workbench.openTab("jig.meetings", {}),
+      history: () => call("meetings.open", { tab: "meetings" }),
     },
     people: { photo: personPhoto },
     host: {

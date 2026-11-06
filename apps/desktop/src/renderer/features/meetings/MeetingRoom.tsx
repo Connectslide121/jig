@@ -110,7 +110,7 @@ function Room() {
     setLayout(next);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      // The lobby window's sizes (review notes, chat list) are its own: keep what it saved meanwhile.
+      // The lobby window's sizes (meeting list, chat list) are its own: keep what it saved meanwhile.
       void call("meetings.overview")
         .then((o) => {
           const saved = normalizeMeetingLayout(o.layout).sizes;

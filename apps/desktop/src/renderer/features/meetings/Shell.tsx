@@ -92,7 +92,7 @@ export function useMeetingsData() {
 export function AccountLabel({ overview }: { overview: MeetingOverview }) {
   const connected = Boolean(overview.account || overview.fake);
   return (
-    <span className="flex max-w-64 items-center gap-2 text-xs text-muted">
+    <span className="ml-auto flex min-w-0 max-w-64 items-center gap-2 text-xs text-muted">
       <span className={cn("size-2 shrink-0 rounded-full", connected ? "bg-success" : "bg-hint")} />
       <span className="truncate">
         {overview.fake ? "Test meeting service" : (overview.account ?? "Microsoft not connected")}

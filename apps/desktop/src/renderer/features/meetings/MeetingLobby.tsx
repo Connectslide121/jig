@@ -1,15 +1,11 @@
 import {
-  ArrowLeft,
   CalendarDays,
+  History,
   Link2,
-  MessageSquare,
   MessagesSquare,
-  MoreHorizontal,
   Phone,
   Settings,
   SquareArrowOutUpRight,
-  Trash2,
-  Video,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { setPin } from "../../../shared/meetingChatList";
@@ -19,18 +15,24 @@ import {
   normalizeMeetingLayout,
   resizeSlot,
 } from "../../../shared/meetingLayout";
-import type { MeetingEvent, MeetingPerson, MeetingRecord, MeetingStart } from "../../../shared/meetings";
+import {
+  MEETINGS_TABS,
+  type MeetingEvent,
+  type MeetingPerson,
+  type MeetingRecord,
+  type MeetingStart,
+  type MeetingsTab,
+} from "../../../shared/meetings";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
-import { Badge, Button, CountBadge, cn, confirmDialog, IconButton, openMenuAt, Spinner } from "../../ui";
+import { Button, CountBadge, cn, confirmDialog, type MenuEntry, Spinner } from "../../ui";
+import { ToastHost } from "../../workbench/toasts";
 import { CallDialog } from "./Calls";
 import { type ChatList, ChatsView, type OpenChat } from "./Chats";
-import { Ask, Connection, Review } from "./dialogs";
-import { clock, dayAndTime } from "./format";
-import { Lobby, STATUS } from "./Lobby";
+import { Connection } from "./dialogs";
+import { MeetingHistory } from "./History";
+import { Lobby } from "./Lobby";
 import { NewChatDialog } from "./NewChat";
-import { NotesPanel, TranscriptPanel } from "./Panels";
 import { AccountLabel, MeetingsShell, StatusBar, useMeetingsData } from "./Shell";
-import { SizedBox } from "./Slots";
 
 export function MeetingLobby(): React.JSX.Element {
   return (
@@ -40,41 +42,62 @@ export function MeetingLobby(): React.JSX.Element {
   );
 }
 
+/** The tabs, in the rail's order: icon, title (the header and the rail's label). */
+const TABS: Record<MeetingsTab, { title: string; icon: typeof CalendarDays }> = {
+  calendar: { title: "Calendar", icon: CalendarDays },
+  chats: { title: "Chats", icon: MessagesSquare },
+  meetings: { title: "Meetings", icon: History },
+};
+const TAB_KEY = "jig.meetings.tab";
+
+const asTab = (value: unknown): MeetingsTab | undefined => MEETINGS_TABS.find((tab) => tab === value);
+
 /**
- * The Meetings lobby window (D-292): upcoming meetings, the history and a saved meeting's review. It
- * stays usable beside a running call; joining and calling happen in the call window, which this asks
- * main to bring up. It never receives the calling credential.
+ * The Meetings window (D-292, D-376), three tabs in a rail: the Calendar (upcoming meetings), your
+ * Teams Chats, and the Meetings you have had (the history, with notes and transcript). It stays usable
+ * beside a running call; joining and calling happen in the call window, which this asks main to bring
+ * up. It never receives the calling credential.
  */
 function LobbyWindow() {
   const { overview, setOverview, projects, error, setError, pending, reload, run, connected } =
     useMeetingsData();
   const [events, setEvents] = useState<MeetingEvent[]>();
-  const [opened, setOpened] = useState<string | undefined>(
-    () => new URLSearchParams(window.location.search).get("review") ?? undefined,
-  );
+  // The tab it opened on (a link, a call that ended), else the one you used last, else the Calendar.
+  const [section, setSection] = useState<MeetingsTab>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      asTab(params.get("tab")) ??
+      (params.get("select") ? "meetings" : undefined) ??
+      asTab(localStorage.getItem(TAB_KEY)) ??
+      "calendar"
+    );
+  });
+  /** The meeting to show on the Meetings tab; `at` changes with every request. */
+  const [target, setTarget] = useState<{ select: string; at: number } | undefined>(() => {
+    const select = new URLSearchParams(window.location.search).get("select");
+    return select ? { select, at: Date.now() } : undefined;
+  });
   const [layout, setLayout] = useState<MeetingLayout>();
   const [settings, setSettings] = useState(false);
   const [calling, setCalling] = useState(false);
-  const [ask, setAsk] = useState(false);
-  const [review, setReview] = useState(false);
-  /** The lobby's two sections, from the rail on the left: meetings, or your Teams chats (D-296). */
-  const [section, setSection] = useState<"meetings" | "chats">("meetings");
   const [chatList, setChatList] = useState<ChatList>();
   const [chatsLoading, setChatsLoading] = useState(false);
   const [teamsChat, setTeamsChat] = useState<OpenChat>();
   /** New chat (D-332), open with the people it starts with. */
   const [newChat, setNewChat] = useState<MeetingPerson[]>();
-  // A call that just ended: its review opens here (main brings this window to the front).
-  useHostEvent("meetings.review", ({ id }) => {
-    setSection("meetings");
-    setOpened(id);
-    setAsk(false);
-    setReview(false);
+  // A call that just ended, or a link to a meeting: its tab (main brings this window to the front).
+  useHostEvent("meetings.show", ({ tab, select }) => {
+    const next = tab ?? (select ? "meetings" : undefined);
+    if (next) setSection(next);
+    if (select) setTarget({ select, at: Date.now() });
   });
+  useEffect(() => {
+    localStorage.setItem(TAB_KEY, section);
+  }, [section]);
   useEffect(() => {
     document.title = "Jig Meetings";
   }, []);
-  // The review's notes width; the call window keeps the rest of the layout (it is saved together).
+  // The lists' widths; the call window keeps the rest of the layout (it is saved together).
   useEffect(() => {
     if (overview && !layout) setLayout(normalizeMeetingLayout(overview.layout));
   }, [overview, layout]);
@@ -129,7 +152,6 @@ function LobbyWindow() {
       </div>
     );
   const live = overview.records.find((r) => r.id === overview.activeId);
-  const shown = section === "meetings" ? overview.records.find((r) => r.id === opened) : undefined;
   const unread = chatList?.chats.filter((c) => c.unread).length ?? 0;
   /** Opens your one-to-one chat with someone from Call…; false when you have none yet. */
   const chatWith = async (person: { id: string; name: string }) => {
@@ -156,106 +178,45 @@ function LobbyWindow() {
     await run(() => call("meetings.start", what));
   };
   const openChat = (sessionId: string) => call("meetings.revealChat", { sessionId });
-  const remove = async (r: MeetingRecord) => {
-    const ok = await confirmDialog({
-      title: `Delete "${r.title}"?`,
-      message:
-        "Deletes its transcript, notes and actions from this computer. Chats where you already asked Claude about it keep what Claude read there.",
-      confirmLabel: "Delete meeting",
-      danger: true,
-    });
-    if (!ok) return;
-    await run(async () => {
-      await call("meetings.delete", { id: r.id });
-      if (opened === r.id) setOpened(undefined);
-    });
-  };
+  /** Call back and Open in Teams, in a meeting's ⋯ menu on the Meetings tab. */
+  const meetingMenu = (r: MeetingRecord): MenuEntry[] =>
+    r.call
+      ? [
+          {
+            label: "Call back",
+            icon: Phone,
+            disabled: !r.call.peerId || r.id === overview.activeId,
+            onSelect: () =>
+              void start({ kind: "call", peerId: r.call!.peerId, peerName: r.call!.peerName, camera: false }),
+          },
+        ]
+      : [
+          {
+            label: "Open in Teams",
+            icon: SquareArrowOutUpRight,
+            onSelect: () => void run(() => call("app.openExternal", { url: r.joinUrl })),
+          },
+        ];
+  const Icon = TABS[section].icon;
   return (
     <div data-testid="meeting-lobby" className="flex h-screen flex-col bg-canvas text-fg">
       <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-titlebar px-4">
-        {shown ? (
-          <>
-            <IconButton icon={ArrowLeft} label="Back to meetings" onClick={() => setOpened(undefined)} />
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-sm font-semibold">{shown.title}</h1>
-              <div className="truncate text-xs text-muted">
-                {dayAndTime(shown.startedAt)}
-                {shown.endedAt ? ` – ${clock(shown.endedAt)}` : ""}
-              </div>
-            </div>
-            <Badge tone={STATUS[shown.status].tone}>{STATUS[shown.status].label}</Badge>
-            <Button icon={MessageSquare} onClick={() => setAsk(true)}>
-              Ask Claude
-            </Button>
-            {shown.call ? (
-              <Button
-                icon={Phone}
-                disabled={!shown.call.peerId || shown.id === overview.activeId}
-                onClick={() =>
-                  void start({
-                    kind: "call",
-                    peerId: shown.call!.peerId,
-                    peerName: shown.call!.peerName,
-                    camera: false,
-                  })
-                }
-              >
-                Call back
-              </Button>
-            ) : (
-              <Button
-                icon={SquareArrowOutUpRight}
-                onClick={() => void run(() => call("app.openExternal", { url: shown.joinUrl }))}
-              >
-                Open in Teams
-              </Button>
-            )}
-            <IconButton
-              icon={MoreHorizontal}
-              label="Meeting options"
-              onClick={(e) =>
-                openMenuAt(
-                  e.currentTarget,
-                  [
-                    {
-                      label: "Delete meeting…",
-                      icon: Trash2,
-                      danger: true,
-                      disabled: shown.id === overview.activeId,
-                      onSelect: () => void remove(shown),
-                    },
-                  ],
-                  true,
-                )
-              }
-            />
-          </>
-        ) : (
-          <>
-            {section === "chats" ? (
-              <MessagesSquare className="size-4 shrink-0 text-accent" />
-            ) : (
-              <Video className="size-4 shrink-0 text-accent" />
-            )}
-            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">
-              {section === "chats" ? "Chats" : "Meetings"}
-            </h1>
-            <AccountLabel overview={overview} />
-            <Button icon={Settings} onClick={() => setSettings(true)}>
-              Connection
-            </Button>
-            <Button icon={Phone} disabled={!connected} onClick={() => setCalling(true)}>
-              Call…
-            </Button>
-            <Button
-              variant="primary"
-              icon={Link2}
-              onClick={() => void start({ kind: "join", title: "Teams meeting", url: "" })}
-            >
-              Join from link…
-            </Button>
-          </>
-        )}
+        <Icon className="size-4 shrink-0 text-accent" />
+        <h1 className="shrink-0 text-sm font-semibold">{TABS[section].title}</h1>
+        <AccountLabel overview={overview} />
+        <Button icon={Settings} onClick={() => setSettings(true)}>
+          Connection
+        </Button>
+        <Button icon={Phone} disabled={!connected} onClick={() => setCalling(true)}>
+          Call…
+        </Button>
+        <Button
+          variant="primary"
+          icon={Link2}
+          onClick={() => void start({ kind: "join", title: "Teams meeting", url: "" })}
+        >
+          Join from link…
+        </Button>
       </header>
       <div className="flex min-h-0 flex-1">
         {/* The rail, like Teams': always there, so switching sections moves nothing. */}
@@ -263,28 +224,26 @@ function LobbyWindow() {
           aria-label="Sections"
           className="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-line bg-surface py-2"
         >
-          {(
-            [
-              ["meetings", "Meetings", CalendarDays, 0],
-              ["chats", "Chats", MessagesSquare, unread],
-            ] as const
-          ).map(([id, label, Icon, count]) => (
-            <button
-              key={id}
-              type="button"
-              aria-label={label}
-              aria-current={section === id ? "page" : undefined}
-              onClick={() => setSection(id)}
-              className={cn(
-                "relative flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-md text-2xs",
-                section === id ? "bg-active text-accent" : "text-muted hover:bg-hover hover:text-fg",
-              )}
-            >
-              <Icon className="size-5" />
-              {label}
-              <CountBadge count={count} className="absolute top-1 right-1.5" />
-            </button>
-          ))}
+          {MEETINGS_TABS.map((id) => {
+            const { title, icon: TabIcon } = TABS[id];
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-label={title}
+                aria-current={section === id ? "page" : undefined}
+                onClick={() => setSection(id)}
+                className={cn(
+                  "relative flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-md text-2xs",
+                  section === id ? "bg-active text-accent" : "text-muted hover:bg-hover hover:text-fg",
+                )}
+              >
+                <TabIcon className="size-5" />
+                {title}
+                <CountBadge count={id === "chats" ? unread : 0} className="absolute top-1 right-1.5" />
+              </button>
+            );
+          })}
         </nav>
         {section === "chats" ? (
           <ChatsView
@@ -325,34 +284,15 @@ function LobbyWindow() {
             onSent={() => void loadChats()}
             onError={setError}
           />
-        ) : shown ? (
-          <main className="flex min-h-0 min-w-0 flex-1">
-            {/* The transcript keeps a readable width; the notes give way in a narrow window. */}
-            <div className="flex min-w-72 flex-1">
-              <TranscriptPanel record={shown} live={false} />
-            </div>
-            <SizedBox
-              layout={layout}
-              sizeKey="review.notes"
-              edge="left"
-              min={280}
-              onResize={resize}
-              label="Resize notes"
-              className="border-l border-line bg-surface"
-            >
-              <NotesPanel
-                record={shown}
-                busy={pending === "notes"}
-                onGenerateNotes={() =>
-                  void run(async () => {
-                    const chat = await call("meetings.notes", { id: shown.id });
-                    await openChat(chat.sessionId);
-                  }, "notes")
-                }
-                onReview={() => setReview(true)}
-              />
-            </SizedBox>
-          </main>
+        ) : section === "meetings" ? (
+          <MeetingHistory
+            projects={projects}
+            layout={layout}
+            onResize={resize}
+            target={target}
+            onOpenChat={openChat}
+            extraMenu={meetingMenu}
+          />
         ) : (
           <Lobby
             view={overview.lobbyView}
@@ -364,20 +304,12 @@ function LobbyWindow() {
               });
             }}
             events={events}
-            records={overview.records}
-            folders={overview.folders}
-            onError={setError}
             loading={pending === "calendar"}
             connected={connected}
             onRefresh={() => void refreshCalendar()}
             onConnect={() => setSettings(true)}
             onJoin={(event) => void start({ kind: "join", title: event.title, url: event.joinUrl! })}
             onJoinLink={() => void start({ kind: "join", title: "Teams meeting", url: "" })}
-            onOpen={(id) => (id === overview.activeId ? void start({ kind: "show" }) : setOpened(id))}
-            onDelete={(id) => {
-              const r = overview.records.find((x) => x.id === id);
-              if (r) void remove(r);
-            }}
           />
         )}
       </div>
@@ -467,36 +399,7 @@ function LobbyWindow() {
           }
         />
       )}
-      {ask && shown && (
-        <Ask
-          record={shown}
-          projects={projects}
-          busy={pending === "ask"}
-          onClose={() => setAsk(false)}
-          onAsk={(question, projectId) =>
-            run(async () => {
-              const chat = await call("meetings.ask", { id: shown.id, question, projectId });
-              await openChat(chat.sessionId);
-              setAsk(false);
-            }, "ask")
-          }
-        />
-      )}
-      {review && shown && (
-        <Review
-          record={shown}
-          projects={projects}
-          busy={pending === "queue"}
-          onClose={() => setReview(false)}
-          onQueue={(actions, actionIds) =>
-            run(async () => {
-              await call("meetings.actions", { id: shown.id, actions });
-              await call("meetings.queue", { id: shown.id, actionIds });
-              setReview(false);
-            }, "queue")
-          }
-        />
-      )}
+      <ToastHost />
     </div>
   );
 }

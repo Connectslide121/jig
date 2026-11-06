@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { registerFeatures } from "./features";
 import { startPhone } from "./features/phone/store";
 import { startPhoneVoice } from "./features/phone/voice";
+import { newSession } from "./features/sessions/actions";
 import { followWakeSetting } from "./features/speech/commands/wake";
 import { useHostEvent } from "./lib/host";
 import { useThemeController } from "./lib/theme";
@@ -19,6 +20,10 @@ export function App() {
   useEffect(startPhoneVoice, []);
   useHostEvent("meetings.chatOpen", ({ sessionId }) => {
     workbench.openTab("jig.chat", { sessionId });
+  });
+  // A meeting's "Start a chat" in the Meetings window: the chat opens here, with the meeting mentioned.
+  useHostEvent("meetings.chatNew", ({ projectId, draft }) => {
+    void newSession(projectId, undefined, draft);
   });
   return <Workbench />;
 }
