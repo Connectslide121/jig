@@ -14,6 +14,7 @@ import {
 } from "@jig/sdk/ui";
 import { LayoutDashboard, MessageSquare, MoreHorizontal, Pause, Play, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { CHATGPT_COST_NOTE } from "../../apps/desktop/src/shared/openaiPrices";
 import { progressText, sizeText } from "./lib/counts";
 import {
   cardTime,
@@ -262,6 +263,7 @@ function QueueCardView({
       <div
         className="h-5 truncate text-xs tabular-nums text-muted"
         data-testid={`tasks-dashboard-counts-${name}`}
+        title={card.costEstimated && card.costUsd !== undefined ? CHATGPT_COST_NOTE : undefined}
       >
         {[
           progressText(card.counts),

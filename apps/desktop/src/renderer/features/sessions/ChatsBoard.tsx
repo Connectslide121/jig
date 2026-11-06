@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SessionMeta } from "../../../shared/engine";
+import { costNote } from "../../../shared/openaiPrices";
 import { timeAgo } from "../../lib/time";
 import { cn } from "../../ui";
 import { useProjects } from "../../workbench/projects";
@@ -82,7 +83,7 @@ function BoardCard({ meta, now }: { meta: SessionMeta; now: number }) {
           {project && <ProjectSwatch color={project.color} />}
         </span>
         <span className="min-w-0 flex-1 truncate">{project?.name ?? "No project"}</span>
-        <span className="w-14 shrink-0 text-right tabular-nums">
+        <span className="w-14 shrink-0 text-right tabular-nums" title={costNote(meta)}>
           {meta.costUsd > 0 ? `$${meta.costUsd.toFixed(2)}` : ""}
         </span>
         <span className="w-16 shrink-0 text-right tabular-nums">{timeAgo(meta.updatedAt, now)}</span>

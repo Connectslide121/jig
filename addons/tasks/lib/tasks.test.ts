@@ -282,6 +282,13 @@ describe("finishTask", () => {
     expect(done.chatTitle).toBe("Fix the login");
     expect(done.answer).toBeUndefined();
   });
+  it("has a ChatGPT estimate as its cost, and none on a ChatGPT model without a price (D-414)", () => {
+    const gpt: Task = { ...task, ranOn: "chatgpt" };
+    expect(finishTask(gpt, chat({ provider: "chatgpt", costUsd: 0.25 })).costUsd).toBeCloseTo(0.05);
+    expect(finishTask(gpt, chat({ provider: "chatgpt", costUsd: 0.2 })).costUsd).toBeUndefined();
+    // On Claude nothing spent is still $0.00.
+    expect(finishTask(task, chat({ provider: "claude", costUsd: 0.2 })).costUsd).toBe(0);
+  });
   it("keeps the last answer without a report, and the error of a failed chat", () => {
     expect(finishTask(task, chat({ lastAnswer: "I did it" }))).toMatchObject({
       status: "no_report",

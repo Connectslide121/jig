@@ -146,6 +146,7 @@ import {
   tally,
 } from "./lib/tasks";
 import {
+  costTitle,
   countTextClass,
   money,
   onQueueRequest,
@@ -1662,7 +1663,9 @@ function HistoryPanel({
                 {o.failed || ""}
               </span>
               <span className={cn(COL.time, CELL, "text-xs text-muted")}>{runTime(run)}</span>
-              <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
+              <span className={cn(COL.cost, CELL, "text-xs text-muted")} title={costTitle(run.tasks)}>
+                {money(t.costUsd)}
+              </span>
               <RanOn tasks={run.tasks} className={RAN_ON} testId={`tasks-run-provider-${i}`} />
               {/* The report action: always in this slot, shown on hover, or always once it has a report. */}
               <span
@@ -2060,6 +2063,12 @@ function QueueStats({ tasks, onReveal }: { tasks: Task[]; onReveal: (testId: str
 }
 
 /** The header's quiet size, time and cost of the queue's tasks (the parked ones have none). */
+/** The tooltip of a queue's total cost, with ChatGPT's estimate note when it has ChatGPT tasks (D-414). */
+function sumTitle(tasks: readonly Task[]): string {
+  const note = costTitle(tasks);
+  return note ? `What these tasks cost so far. ${note}` : "What these tasks cost so far";
+}
+
 function QueueSize({ tasks }: { tasks: Task[] }) {
   const c = countTasks(tasks);
   const time = formatMs(c.ms);
@@ -2080,7 +2089,7 @@ function QueueSize({ tasks }: { tasks: Task[] }) {
           {c.costUsd !== undefined && dot}
         </span>
       )}
-      {c.costUsd !== undefined && <span title="What these tasks cost so far">{money(c.costUsd)}</span>}
+      {c.costUsd !== undefined && <span title={sumTitle(tasks)}>{money(c.costUsd)}</span>}
     </span>
   );
 }
@@ -2136,7 +2145,7 @@ function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
               {c.costUsd !== undefined && dot}
             </span>
           )}
-          {c.costUsd !== undefined && <span title="What these tasks cost so far">{money(c.costUsd)}</span>}
+          {c.costUsd !== undefined && <span title={sumTitle(tasks)}>{money(c.costUsd)}</span>}
         </span>
         {!inline && <ProgressLine counts={c} />}
       </div>
@@ -2239,7 +2248,9 @@ function ChatCard({
           </span>
         </div>
         <span className={cn(COL.time, CELL, "text-xs text-muted")}>{formatMs(t.ms)}</span>
-        <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
+        <span className={cn(COL.cost, CELL, "text-xs text-muted")} title={costTitle(tasks)}>
+          {money(t.costUsd)}
+        </span>
         <ProviderSlot on={runsOnOf(tasks[0]!)} testId={`task-group-provider-${number - 1}`} />
         <span className="w-7 shrink-0">
           {canDrag && onChatMenu && (
@@ -2409,7 +2420,9 @@ function TaskRow({
         )}
       </span>
       <span className={cn(COL.time, CELL, "text-xs text-muted")}>{duration(task)}</span>
-      <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(task.costUsd)}</span>
+      <span className={cn(COL.cost, CELL, "text-xs text-muted")} title={costTitle([task])}>
+        {money(task.costUsd)}
+      </span>
       <ProviderSlot on={on} testId={`task-provider-${task.id}`} />
       <span className="w-7 shrink-0">
         <IconButton
@@ -2578,7 +2591,7 @@ function TaskDialog({
       ["Started", when(task.sentAt)],
       ["Finished", when(task.finishedAt)],
       ["Time", duration(task)],
-      ["Cost", money(task.costUsd)],
+      ["Cost", <span title={costTitle([task])}>{money(task.costUsd)}</span>],
       ["Queued by", task.addedBy ? "Jig, from a chat" : "you"],
     ] as Array<[string, ReactNode]>
   ).filter(([, v]) => v);

@@ -62,6 +62,8 @@ export interface QueueCard {
   ms: number;
   /** Cost of the queue's tasks; undefined until one has a cost. */
   costUsd?: number;
+  /** Some of its tasks ran on ChatGPT, whose costs are estimates at OpenAI API prices (D-414). */
+  costEstimated?: boolean;
   /** The task running or waiting for you. */
   current?: DashboardTask & {
     chatTitle: string;
@@ -111,6 +113,7 @@ export function queueCard(
     counts,
     ms: settledMs(queue.tasks),
     ...(counts.costUsd !== undefined ? { costUsd: counts.costUsd } : {}),
+    ...(queue.tasks.some((t) => t.ranOn === "chatgpt") ? { costEstimated: true } : {}),
     ...(active ? { current: current(queue, active) } : {}),
     next: ready.slice(0, 2).map((t) => t.title),
     more: Math.max(0, ready.length - 2),

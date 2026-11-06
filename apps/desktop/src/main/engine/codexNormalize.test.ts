@@ -64,7 +64,7 @@ describe("CodexNormalizer (recorded turns)", () => {
     expect(turns).toHaveLength(5);
   });
 
-  it("streams a text reply into one text block and ends the turn with its usage, no cost", () => {
+  it("streams a text reply into one text block and ends the turn with its usage and estimated cost", () => {
     const [first] = turns;
     const id = "msg_043388d604341902016aeae562b62487d2af44d2b1bc65ff6a";
     expect(first![0]).toEqual({ type: "block_start", id, block: "text" });
@@ -78,6 +78,8 @@ describe("CodexNormalizer (recorded turns)", () => {
     const [result] = ofType(first!, "result");
     expect(result).toMatchObject({ ok: true, numTurns: 1 });
     expect(result?.totalCostUsd).toBeUndefined();
+    // gpt-6.1-sol at API prices (D-414): 24072 input × $2/M + 9 output × $10/M.
+    expect(result?.turnCostUsd).toBeCloseTo((24072 * 2 + 9 * 10) / 1e6, 9);
     expect(result?.usage).toEqual({
       inputTokens: 24072,
       outputTokens: 9,
@@ -95,6 +97,8 @@ describe("CodexNormalizer (recorded turns)", () => {
       cacheReadTokens: 48000,
       cacheWriteTokens: 0,
     });
+    // Cache reads at the cached price: 465 × $2/M + 48000 × $0.10/M + 63 × $10/M.
+    expect(result?.turnCostUsd).toBeCloseTo((465 * 2 + 48000 * 0.1 + 63 * 10) / 1e6, 9);
   });
 
   it("shows a command on the Bash card, without the shell Codex wraps it in, and asks first", () => {
@@ -194,6 +198,40 @@ describe("CodexNormalizer (recorded patch and MCP call)", () => {
 
 describe("CodexNormalizer", () => {
   const item = (method: string, it: Record<string, unknown>) => ({ method, params: { item: it } });
+
+  /** Codex's token update: the thread's running total and the last request's own tokens. */
+  const tokens = (total: Record<string, number>, last: Record<string, number>) => ({
+    method: "thread/tokenUsage/updated",
+    params: { tokenUsage: { total, last, modelContextWindow: 400000 } },
+  });
+  const done = { method: "turn/completed", params: { turn: { id: "t", status: "completed" } } };
+
+  it("prices each request of a turn at its own context rate (D-414)", () => {
+    const n = new CodexNormalizer();
+    n.model = "gpt-6.1-sol";
+    // A short request (1000 in, 200 cached, 100 out), then one over 272K input tokens.
+    n.handle(tokens({ inputTokens: 1000, cachedInputTokens: 200, outputTokens: 100 }, { inputTokens: 1000 }));
+    n.handle(
+      tokens(
+        { inputTokens: 301000, cachedInputTokens: 100200, outputTokens: 200 },
+        { inputTokens: 300000, cachedInputTokens: 100000, outputTokens: 100 },
+      ),
+    );
+    const [result] = ofType(n.handle(done), "result");
+    const short = (800 * 2 + 200 * 0.1 + 100 * 10) / 1e6;
+    const long = (200000 * 4 + 100000 * 0.2 + 100 * 15) / 1e6;
+    expect(result?.turnCostUsd).toBeCloseTo(short + long, 9);
+    expect(result?.totalCostUsd).toBeUndefined();
+  });
+
+  it("gives a turn on a model without a known price no cost, never $0", () => {
+    const n = new CodexNormalizer();
+    n.model = "gpt-reserve";
+    n.handle(tokens({ inputTokens: 1000, outputTokens: 100 }, { inputTokens: 1000 }));
+    const [result] = ofType(n.handle(done), "result");
+    expect(result?.turnCostUsd).toBeNull();
+    expect(result?.usage).toMatchObject({ inputTokens: 1000, outputTokens: 100 });
+  });
 
   it("streams a reasoning summary into a thinking block", () => {
     const n = new CodexNormalizer();

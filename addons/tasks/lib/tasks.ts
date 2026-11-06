@@ -765,11 +765,21 @@ export function finishTask(task: Task, chat: ChatState, at = new Date().toISOStr
     status,
     finishedAt: at,
     chatTitle: chat.title,
-    costUsd: Math.max(0, chat.costUsd - (task.costAtStart ?? 0)),
+    costUsd: taskCost(task, chat),
     ...(!task.report && chat.lastAnswer ? { answer: chat.lastAnswer.slice(0, 4000) } : {}),
     ...(chat.status === "error" && chat.error ? { error: chat.error } : {}),
     ...finishedOn(task, chat),
   };
+}
+
+/**
+ * What a finished task cost: the growth of its chat's cost. On ChatGPT that's an estimate at OpenAI API
+ * prices (D-414); nothing there means its model has no known price, so the task has no cost ("—"),
+ * not $0.00.
+ */
+export function taskCost(task: Task, chat: ChatState): number | undefined {
+  const cost = Math.max(0, chat.costUsd - (task.costAtStart ?? 0));
+  return cost === 0 && (chat.provider ?? task.ranOn) === "chatgpt" ? undefined : cost;
 }
 
 /** The provider that finished a task, when its chat continued with another after a limit (D-338). */

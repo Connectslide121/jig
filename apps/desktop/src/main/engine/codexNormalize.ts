@@ -1,4 +1,5 @@
 import type { AuthSource, EngineEvent, PermissionRequest, Usage } from "../../shared/engine";
+import { openAiCost, openAiPrice } from "../../shared/openaiPrices";
 import { codexToolCardName } from "./codexTools";
 
 /**
@@ -233,6 +234,12 @@ export class CodexNormalizer {
   /** Token totals: the latest, and at the end of the previous turn (a turn's usage is the difference). */
   private total: Usage = ZERO;
   private turnBase: Usage = ZERO;
+  /**
+   * The running turn's estimated cost at OpenAI API prices (D-414), priced per token update with that
+   * request's size and model; `unpriced` once a part of it ran on a model without a known price.
+   */
+  private turnCost = 0;
+  private unpriced = false;
   /** The last request's size and the model's window, for the context meter. */
   lastTokens = 0;
   contextWindow = 0;
@@ -281,7 +288,11 @@ export class CodexNormalizer {
         return [];
       case "thread/tokenUsage/updated": {
         const t = p.tokenUsage;
-        if (t?.total) this.total = usageFrom(t.total);
+        if (t?.total) {
+          const total = usageFrom(t.total);
+          this.price(minus(total, this.total), num(t?.last?.inputTokens));
+          this.total = total;
+        }
         if (t?.last) this.lastTokens = num(t.last.totalTokens);
         if (typeof t?.modelContextWindow === "number") this.contextWindow = t.modelContextWindow;
         return [];
@@ -574,6 +585,14 @@ export class CodexNormalizer {
     }
   }
 
+  /** Adds new tokens' cost to the turn's; a request over 272K input tokens is priced as long context. */
+  private price(tokens: Usage, requestInput: number): void {
+    if (!tokens.inputTokens && !tokens.outputTokens && !tokens.cacheReadTokens) return;
+    const cost = openAiCost(this.model, tokens, requestInput);
+    if (cost === undefined) this.unpriced = true;
+    else this.turnCost += cost;
+  }
+
   private turnCompleted(turn: Msg): EngineEvent[] {
     const events: EngineEvent[] = [];
     // An interrupted turn never completes its open message: it ends with what streamed.
@@ -594,6 +613,9 @@ export class CodexNormalizer {
     const status = str(turn?.status);
     const usage = minus(this.total, this.turnBase);
     this.turnBase = this.total;
+    const cost = this.unpriced || !openAiPrice(this.model) ? undefined : this.turnCost;
+    this.turnCost = 0;
+    this.unpriced = false;
     const durationMs =
       typeof turn?.durationMs === "number"
         ? turn.durationMs
@@ -608,6 +630,7 @@ export class CodexNormalizer {
       ok,
       durationMs,
       usage,
+      turnCostUsd: cost ?? null,
       numTurns: 1,
       ...(stopped ? { stopped: true } : {}),
       ...(!ok && !stopped ? { error: str(turn?.error?.message) ?? "Codex couldn't finish this turn." } : {}),

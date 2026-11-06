@@ -1,5 +1,15 @@
 # Status
 
+ChatGPT runs have a cost estimate (2026-11-06, D-414, Jon): ChatGPT chats and queue tasks no longer show
+$0.00. Each Codex turn's tokens are priced at OpenAI's API prices for its model (`shared/openaiPrices.ts`,
+cache reads at the cached price, long-context rate above 272K input tokens), so the chat overview, the
+turn line, the board, the Tasks queue, History and the dashboard show "≈ $…" like Claude's, with a
+tooltip saying it's an estimate (the ChatGPT plan isn't billed per token). A model without a published
+price shows "—" with a tooltip saying why. Unit tests cover the math (`openaiPrices.test.ts`,
+`codexNormalize.test.ts`, `chat.test.ts`, the Tasks `finishTask`).
+**Check on your machine:** run a ChatGPT chat for a turn: the overview's Cost shows "≈ $…" with the
+estimate tooltip; queue a ChatGPT task: its cost column shows an amount, not $0.00.
+
 Pages: a card you can see (2026-11-06, D-405, Jon): a chat's published page now stands in the chat as a card
 with a picture of the page and buttons (Open in Jig, Open in browser, ⋯), instead of hiding under "Used a
 tool" in the compact view. The slot behind it: a tool renderer can now say `promote`, so its finished card is
@@ -79,7 +89,7 @@ message and the queue goes on.
 
 Calmer chat header (2026-11-05, Jon): the chat's header no longer shows "3380k tokens · ≈ $2.03".
 Tokens and cost are only in the chat overview (the chart button): the "This chat" card has a Tokens
-row and a new Cost row ("≈ $2.03", or "—" when there's no estimate, e.g. ChatGPT chats), and Show
+row and a new Cost row ("≈ $2.03", or "—" when there's no estimate), and Show
 details keeps the cost under Tokens. The API key billing badge stays in the header. Covered by
 `chat.spec.ts`.
 

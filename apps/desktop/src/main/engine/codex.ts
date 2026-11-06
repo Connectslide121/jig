@@ -630,6 +630,8 @@ export class CodexEngine implements Engine {
           summary: "auto",
           ...overrides,
         } satisfies TurnStartParams);
+        // The turn runs on the model just picked: its tokens are priced at that model's rate (D-414).
+        if (overrides.model) normalizer.model = overrides.model;
       } catch (error) {
         next = { ...overrides, ...next };
         throw error;

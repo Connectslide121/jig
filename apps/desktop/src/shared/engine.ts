@@ -307,8 +307,12 @@ export interface SessionMeta {
   engineSessionId?: string;
   status: SessionStatus;
   authSource: AuthSource;
-  /** Cumulative cost estimate reported by Claude Code (USD). */
+  /** Cumulative cost estimate (USD): Claude Code's, plus ChatGPT turns' estimates at API prices (D-414). */
   costUsd: number;
+  /** A ChatGPT turn's estimate is in `costUsd` (at OpenAI API prices; the plan isn't billed per token). */
+  costEstimated?: boolean;
+  /** The latest ChatGPT turn ran on a model without a known API price, so it has no cost (D-414). */
+  costUnpriced?: boolean;
   usage: Usage;
   /** Tokens and cost per model id, from Claude Code's latest result (its running totals). */
   modelUsage?: Record<string, ModelUsage>;
@@ -458,8 +462,12 @@ export type ChatItem =
       at: string;
       ok: boolean;
       durationMs: number;
-      /** Cost of this turn (difference of the cumulative totals). */
+      /** Cost of this turn (difference of the cumulative totals, or a ChatGPT turn's estimate). */
       costUsd?: number;
+      /** `costUsd` is an estimate at OpenAI API prices (a ChatGPT turn, D-414). */
+      costEstimated?: boolean;
+      /** A ChatGPT turn on a model without a known API price: no cost (shown as "—"). */
+      costUnpriced?: boolean;
       usage?: Usage;
       error?: string;
       /** The last Claude Code message of this turn: rewinding to after this turn resumes here. */
@@ -637,6 +645,11 @@ export type EngineEvent =
       ok: boolean;
       durationMs: number;
       totalCostUsd?: number;
+      /**
+       * A ChatGPT turn's own cost, estimated at OpenAI API prices (D-414); `null` when its model has no
+       * known price. Codex reports no cost, so it isn't a running total like `totalCostUsd`.
+       */
+      turnCostUsd?: number | null;
       usage?: Usage;
       modelUsage?: Record<string, ModelUsage>;
       numTurns?: number;

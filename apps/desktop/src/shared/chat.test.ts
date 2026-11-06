@@ -91,6 +91,19 @@ describe("reduceEvent", () => {
     expect(s.items.find((i) => i.id === permissionItemId("t"))).toMatchObject({ status: "allowed" });
   });
 
+  it("adds a ChatGPT turn's estimate to the chat's cost, and gives an unpriced one none (D-414)", () => {
+    const s = state();
+    s.meta.costUsd = 1.5; // Claude's cost before a handover.
+    reduceEvent(s, { type: "result", ok: true, durationMs: 1, turnCostUsd: 0.25 });
+    expect(s.meta).toMatchObject({ costUsd: 1.75, costEstimated: true, costUnpriced: false });
+    expect(s.items.at(-1)).toMatchObject({ kind: "result", costUsd: 0.25, costEstimated: true });
+    reduceEvent(s, { type: "result", ok: true, durationMs: 1, turnCostUsd: null });
+    expect(s.meta).toMatchObject({ costUsd: 1.75, costUnpriced: true });
+    const last = s.items.at(-1);
+    expect(last).toMatchObject({ kind: "result", costUnpriced: true });
+    expect(last && "costUsd" in last ? last.costUsd : undefined).toBeUndefined();
+  });
+
   it("ends a turn: cost delta, usage sum, pending prompts cancelled, failed tools marked", () => {
     const s = state();
     reduceEvent(s, { type: "block_start", id: "b", block: "text" });

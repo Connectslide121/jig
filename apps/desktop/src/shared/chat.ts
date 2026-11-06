@@ -193,9 +193,16 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         if (item.kind === "permission" && item.status === "pending") upsert({ ...item, status: "cancelled" });
       }
       const previous = state.meta.costUsd;
-      const total = event.totalCostUsd ?? previous;
-      const turnCost =
-        event.totalCostUsd !== undefined ? Math.max(0, event.totalCostUsd - previous) : undefined;
+      // A ChatGPT turn brings its own estimate (D-414), added to the chat's total; Claude Code reports
+      // a running total, whose difference is the turn's cost.
+      const estimated = event.turnCostUsd !== undefined;
+      const unpriced = event.turnCostUsd === null;
+      const total = estimated ? previous + (event.turnCostUsd ?? 0) : (event.totalCostUsd ?? previous);
+      const turnCost = estimated
+        ? (event.turnCostUsd ?? undefined)
+        : event.totalCostUsd !== undefined
+          ? Math.max(0, event.totalCostUsd - previous)
+          : undefined;
       upsert({
         kind: "result",
         id: `result-${state.items.length}-${Date.now()}`,
@@ -203,6 +210,8 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         ok: event.ok,
         durationMs: event.durationMs,
         costUsd: turnCost,
+        ...(estimated && !unpriced ? { costEstimated: true } : {}),
+        ...(unpriced ? { costUnpriced: true } : {}),
         usage: event.usage,
         error: event.error,
         ...(event.stopped ? { stopped: true } : {}),
@@ -212,6 +221,8 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
       meta({
         status: event.ok || event.stopped ? "idle" : "error",
         costUsd: total,
+        ...(estimated && !unpriced ? { costEstimated: true } : {}),
+        ...(estimated ? { costUnpriced: unpriced } : {}),
         ...(event.modelUsage ? { modelUsage: event.modelUsage } : {}),
         turns: state.meta.turns + 1,
         lastError: event.ok || event.stopped ? undefined : event.error,

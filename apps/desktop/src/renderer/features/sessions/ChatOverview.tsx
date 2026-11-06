@@ -30,6 +30,7 @@ import {
 } from "../../../shared/chatStats";
 import type { ChatItem, SessionMeta } from "../../../shared/engine";
 import { modelName } from "../../../shared/models";
+import { costNote } from "../../../shared/openaiPrices";
 import { reportedModelName } from "../../../shared/toolModels";
 import { useAddons } from "../../addons/loader";
 import { updateConfig } from "../../stores/config";
@@ -64,18 +65,23 @@ function Row({
   icon: Icon,
   label,
   value,
+  title,
   testId,
 }: {
   icon: typeof Wrench;
   label: string;
   value: ReactNode;
+  /** A tooltip on the value. */
+  title?: string;
   testId?: string;
 }) {
   return (
     <div className="flex h-6 items-center gap-2 px-3 text-xs" data-testid={testId}>
       <Icon className="size-3.5 shrink-0 text-hint" />
       <span className="min-w-0 flex-1 truncate text-muted">{label}</span>
-      <span className="shrink-0 text-right tabular-nums text-fg">{value}</span>
+      <span className="shrink-0 text-right tabular-nums text-fg" title={title}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -156,6 +162,7 @@ export function ChatOverview({
         icon={Coins}
         label="Cost"
         value={meta.costUsd > 0 ? `≈ $${meta.costUsd.toFixed(2)}` : "—"}
+        title={costNote(meta)}
         testId="chat-overview-cost"
       />
       <div className="px-1 pt-1">
@@ -323,7 +330,9 @@ function Details({
         <Tile
           label="Tokens"
           value={formatTokens(totalTokens(meta))}
-          sub={meta.costUsd > 0 ? `≈ $${meta.costUsd.toFixed(2)}` : undefined}
+          sub={
+            meta.costUsd > 0 ? <span title={costNote(meta)}>≈ ${meta.costUsd.toFixed(2)}</span> : undefined
+          }
         />
         <Tile
           label="Context"
@@ -379,7 +388,8 @@ function Details({
       </Section>
       <p className="text-2xs text-hint">
         Replies and tool calls are counted from the chat; tokens and cost are Claude Code's totals (main chat,
-        subagents and compaction) and appear after a turn ends. Cost is an estimate, not a bill.
+        subagents and compaction) and appear after a turn ends. Cost is an estimate, not a bill; a ChatGPT
+        chat's is worked out at OpenAI API prices.
       </p>
 
       <Section title="Tools" count={stats.tools.length} testId="chat-details-tools">

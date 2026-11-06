@@ -10,8 +10,9 @@ import {
   LoaderCircle,
   SkipForward,
 } from "lucide-react";
+import { CHATGPT_COST_NOTE, CHATGPT_NO_PRICE_NOTE } from "../../apps/desktop/src/shared/openaiPrices";
 import { type CountKey, progressParts, type QueueCounts } from "./lib/counts";
-import type { TaskStatus } from "./lib/tasks";
+import type { Task, TaskStatus } from "./lib/tasks";
 
 /** What the queue view and the all-queues dashboard share: status marks, colours, money. */
 
@@ -43,9 +44,20 @@ export function StatusIcon({ status }: { status: TaskStatus }) {
   return <CircleDashed className={cn(c, "text-hint")} />;
 }
 
-/** A cost, $0.00 included; a dash when there's none yet (a task that hasn't finished). */
+/** A cost, $0.00 included; a dash when there's none (yet, or a ChatGPT model without an API price). */
 export function money(usd?: number) {
   return usd === undefined ? "—" : `$${usd.toFixed(2)}`;
+}
+
+/**
+ * The tooltip of a cost cell (D-414): ChatGPT tasks' costs are estimates at OpenAI API prices, and one
+ * that finished on a model without a known price has none.
+ */
+export function costTitle(tasks: readonly Task[]): string | undefined {
+  const chatgpt = tasks.filter((t) => t.ranOn === "chatgpt");
+  if (!chatgpt.length) return undefined;
+  const only = tasks.length === 1 ? tasks[0]! : undefined;
+  return only?.finishedAt && only.costUsd === undefined ? CHATGPT_NO_PRICE_NOTE : CHATGPT_COST_NOTE;
 }
 
 /** A progress bar's segment colour per tone. */

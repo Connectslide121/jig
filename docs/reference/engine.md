@@ -200,7 +200,7 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   | `fileChange` item | `tool_use` Edit (Write for a new file) per file, `tool_result` with the diff |
   | `mcpToolCall`, `dynamicToolCall` | `tool_use` `mcp__<server>__<tool>` (Jig's `exit_plan` / `ask_user` → `ExitPlanMode` / `AskUserQuestion`), result text and images |
   | `webSearch`, `imageView`, `contextCompaction` | WebSearch, Read, `compacted` |
-  | `turn/completed` | open blocks end, then `result` (this turn's tokens, no cost; interrupted → `stopped`) |
+  | `turn/completed` | open blocks end, then `result` (this turn's tokens and `turnCostUsd`, its cost estimated at OpenAI API prices from `shared/openaiPrices.ts`, each token update priced at its request's context rate; `null` for a model without a known price, D-414; interrupted → `stopped`) |
   | `error` | a notice (`willRetry`: "retrying"); login failures → `error` `not_signed_in` |
   | `account/updated` without a sign-in | `error` `not_signed_in`; an API key → billing notice |
   | `mcpServer/startupStatus/updated` | MCP status (failed → a notice) |
@@ -322,7 +322,7 @@ final text, reject with a plain message, and time out after 3 minutes ("... didn
 | `tool_use { id, name, input, parentId? }` / `tool_result { toolUseId, output, isError }` | assistant / user messages; `parentId` = a subagent's Task tool |
 | `tool_result … imageData` → `images` | image blocks in a tool result (an MCP screenshot): the session manager saves them with the chat's attachments (`tool-<id>-n.png`) and the tool card shows thumbnails |
 | `permission { request }` / `permission_resolved { requestId, status }` | `canUseTool` |
-| `result { ok, durationMs, totalCostUsd, usage, error }` | `result` (cost is cumulative; the turn's cost is the difference) |
+| `result { ok, durationMs, totalCostUsd, usage, error }` | `result` (cost is cumulative; the turn's cost is the difference). A Codex result has `turnCostUsd` instead (this turn's own estimate, or `null`), which the reducer adds to `SessionMeta.costUsd` and marks with `costEstimated` / `costUnpriced` (D-414) |
 | `suggestion { text }` | `prompt_suggestion` (with `promptSuggestions: true`, setting `engine.promptSuggestions`): kept as `SessionMeta.suggestion` until the next send; the composer shows it as a chip and as placeholder (Tab takes it). The fake engine suggests from the second turn on |
 | `compacted { trigger: manual \| auto, preTokens, postTokens? }` | `system/compact_boundary` (shown as "Conversation compacted (157k → 21k tokens)") |
 | `tool_result … diff` | an Edit/Write's `tool_use_result.structuredPatch` (or a new file's content) as unified-diff hunks, at most 400 lines |

@@ -4174,8 +4174,9 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
 - **Approvals:** Allow → `accept`, Always → `acceptForSession` (Codex remembers it for the thread;
   Jig writes no rule), Deny → `decline`. Questions and MCP elicitations wait for phase E: elicitations
   are declined, anything else refused, so Codex never hangs on a request Jig can't show.
-- **Usage, no cost:** a turn's `result` carries the tokens of that turn (the difference of Codex's
-  running totals), cache reads apart, and no cost: ChatGPT plans have no per-token price. The context
+- **Usage, no cost** (replaced by D-414: an estimate at OpenAI API prices): a turn's `result` carries
+  the tokens of that turn (the difference of Codex's running totals), cache reads apart, and no cost:
+  ChatGPT plans have no per-token price. The context
   meter is the last request's size against the model's window. Plan usage stays with D-298.
 - **API keys** (plan): `codexSessionEnv` removes `OPENAI_API_KEY` / `CODEX_API_KEY` unless the new,
   protected `engine.codexAllowApiKey` is on (separate from Claude's `engine.allowApiKey`: they bill
@@ -7214,3 +7215,34 @@ the Settings layout are **Claude, on my own**.
   models are chosen" disclosure became the fallback row's description (no inline expander).
 - **Kept on purpose:** the voice command words "ask Claude" / "what did Claude say" (spoken phrases
   the matcher knows; the grammar list shows what works), the fake engine's microphone sample text.
+
+## D-414: ChatGPT turns: an estimated cost at OpenAI API prices
+
+**Jon** (2026-11-04): ChatGPT chats and queue tasks showed $0.00 or nothing while Claude's show the
+API-price cost Claude Code reports, so a ChatGPT queue looked free next to a Claude one. Show an
+API-price estimate for ChatGPT too. Replaces "Usage, no cost" in D-311. The details are **Claude, on my
+own**.
+
+- **One price table:** `shared/openaiPrices.ts` (`OPENAI_PRICES`): USD per 1M input, cached input and
+  output tokens, short and long context, per exact model slug Codex lists (gpt-6.1-sol, gpt-6-astra,
+  gpt-6.1-terra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol/terra/luna), from OpenAI's pricing page (Standard
+  tier; URL and date in the file). A model OpenAI publishes no price for is left out, never guessed.
+  Update the list when OpenAI changes prices or Codex lists a new model.
+- **The math:** Codex reports running totals per token update (`thread/tokenUsage/updated`). Each
+  update's difference is priced at the model the turn runs on: cache reads at the cached price, the
+  rest of the input (cache writes included) at the input price, output at the output price. Codex's
+  output count already holds the reasoning tokens (recorded totals: input + output = total with
+  `reasoningOutputTokens` > 0), so they aren't added again. A request over 272K input tokens (its
+  `last.inputTokens`) uses the long-context rate. Regional/FedRAMP uplifts and Batch/Flex/Fast tiers
+  are ignored: it's an estimate.
+- **Per turn, not a running total:** the result carries `turnCostUsd` (a number, or `null` when part of
+  the turn ran on a model without a price). The chat's reducer adds it to `SessionMeta.costUsd`, so a
+  chat handed over from Claude keeps Claude's cost and adds ChatGPT's, and every view that reads
+  `costUsd` (overview, transcript line, board, Tasks queue, History, dashboard) shows it without
+  per-view code. `SessionMeta.costEstimated` / `costUnpriced` and the result item's flags tell views
+  to explain it. A model picked mid-chat (`setModel`) is priced from the next turn on.
+- **Shown as an estimate:** where a ChatGPT cost shows, its tooltip says "Estimated at OpenAI API
+  prices; your ChatGPT plan isn't billed per token." A turn or task on a model without a price shows
+  "—" (not $0.00) with a tooltip saying why (`taskCost` in the Tasks add-on: a ChatGPT task whose chat
+  cost didn't grow has no cost). No new text in rows, so nothing moves.
+- **One-shot AI features** (`main/providers`) record no cost on either provider; nothing to price.

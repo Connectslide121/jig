@@ -195,7 +195,7 @@ function HandoverDialog({
           )}
           <Line icon={<Info className="size-3.5 text-muted" />}>
             It uses your {to} plan instead of {from}'s
-            {plan.to === "codex" ? "; Jig shows its tokens but no cost estimate" : ""}.
+            {plan.to === "codex" ? "; Jig estimates its cost at OpenAI API prices" : ""}.
           </Line>
           {!plan.room.ok && (
             <Line icon={<CircleAlert className="size-3.5" />} tone="warning">

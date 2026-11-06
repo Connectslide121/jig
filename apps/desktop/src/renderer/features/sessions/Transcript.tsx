@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
+import { costNote } from "../../../shared/openaiPrices";
 import { agentModels } from "../../../shared/toolModels";
 import { Icon } from "../../addons/icons";
 import { copyText } from "../../lib/clipboard";
@@ -327,7 +328,12 @@ const Item = memo(function Item({
               in / {formatTokens(item.usage.outputTokens)} out
             </span>
           )}
-          {item.costUsd !== undefined && item.costUsd > 0 && <span>· ≈ ${item.costUsd.toFixed(3)}</span>}
+          {item.costUnpriced ? (
+            <span title={costNote(item)}>· —</span>
+          ) : (
+            item.costUsd !== undefined &&
+            item.costUsd > 0 && <span title={costNote(item)}>· ≈ ${item.costUsd.toFixed(3)}</span>
+          )}
         </div>
       );
     case "build":
