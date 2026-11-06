@@ -69,7 +69,7 @@ export function WakeStatusItem() {
       onClick={toggleWake}
       onContextMenu={contextMenu(wakeMenu)}
       className={cn(
-        "flex w-24 items-center gap-1 rounded-sm px-1 hover:bg-hover",
+        "flex w-24 items-center justify-center gap-1 rounded-sm px-1 hover:bg-hover",
         active && "text-accent",
         !on && "opacity-60 hover:opacity-100",
       )}
@@ -79,7 +79,7 @@ export function WakeStatusItem() {
       ) : (
         <MicOff className="size-3.5 shrink-0" />
       )}
-      <span className="min-w-0 flex-1 truncate text-left">{LABEL[shown]}</span>
+      <span className="min-w-0 truncate">{LABEL[shown]}</span>
       {on && muted && <VolumeX className="size-3 shrink-0" data-testid="wake-status-muted" />}
     </button>
   );
