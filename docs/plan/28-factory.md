@@ -84,7 +84,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
 - **The demo kit's code:** branch **`demo-kit`** of this GitHub repository (its own history; it is
   meant to become the repository `jig-demo-kit`, D-429, which could not be created from the agent).
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
-  `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it.
+  `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
+  commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
 - **Half done / next step:** nothing half done. Next: session 2's first item (the Conductor).
   Session 2 will need a way for the add-on to read `factory.demoKitPath` (add-ons can't read core
   settings yet, D-441) and to start stage chats with the factory's skills, which start off.

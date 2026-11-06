@@ -8,7 +8,10 @@ You are working on Jig (this repository), building phase 28, "Jig factory": a bu
 that turns an idea into an interview, a polished demo, and a full pack of documents and material.
 
 0. Work on the git branch `factory` (`git fetch && git checkout factory && git pull`; create it
-   from main only if it doesn't exist). Commit there; never push, never force-push, no tags.
+   from main only if it doesn't exist). Commit there and **push `factory` after every commit**
+   (`git push`), so nothing is lost if the session ends; never force-push, no tags. The demo kit
+   (D-429) is on branch `demo-kit`; clone it beside this repo as "Where we are" says, and push its
+   commits back to that branch (`git push origin HEAD:demo-kit` from the kit's folder).
 
 1. Find where the work stopped, before reading anything else:
    - docs/plan/28-factory.md → "Where we are" (the handoff note: current session, what is half
@@ -59,7 +62,7 @@ that turns an idea into an interview, a polished demo, and a full pack of docume
 5. Before every commit: `npm run verify`. At the end of the session (or before handing over):
    `xvfb-run -a npm run e2e:changed` on Linux (add `-- --since origin/main` when it says no passing
    run is recorded) and fix what fails. Small logical commits with clear messages (what and why),
-   no AI attribution. Delete your scratch files in .tmp/.
+   no AI attribution, each pushed. Delete your scratch files in .tmp/.
 
 When you finish, reply with: what you built, what you tested (commands and results), what is left
 in this session and why, decisions you made on your own, and what Jon should try in Jig after
