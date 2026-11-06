@@ -7,6 +7,7 @@ import {
   sortCards,
   summarize,
 } from "./lib/dashboard";
+import { applyProposal, type Placed } from "./lib/reorganize";
 import { saveReport as keepReport, markQueued as markProposals, type RunReport } from "./lib/report";
 import {
   addTasks,
@@ -672,6 +673,24 @@ export async function move(
       : stepTasks(q, ids, args.to ?? 1),
     undefined,
   ]);
+}
+
+/**
+ * Puts the tasks that haven't run in the order and chats a checked proposal gives (D-397). The queue is
+ * checked again, so a queue that changed meanwhile is refused with a sentence. Returns the arrangement it
+ * replaced; giving that back with `restore` puts it back (Undo).
+ */
+export async function reorganize(
+  args: ProjectArgs & { tasks: Placed[]; restore?: boolean },
+  api: AddonHostApi,
+): Promise<{ previous: Placed[] }> {
+  const tasks = (Array.isArray(args?.tasks) ? args.tasks : []).map(
+    (p): Placed => ({ id: String(p?.id), newChat: !!p?.newChat }),
+  );
+  return change(api, await projectArg(api, args?.projectId), (q) => {
+    const { queue, previous } = applyProposal(q, tasks, !args.restore);
+    return [queue, { previous }];
+  });
 }
 
 export async function skip(args: ProjectArgs & { id: string }, api: AddonHostApi): Promise<void> {

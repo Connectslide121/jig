@@ -381,12 +381,12 @@ export interface AddonComponentProps {
 /**
  * `ctx.ai.ask` / `ctx.ai.answer` options. `feature` names one of Jig's own rows in Settings → AI features
  * (the built-in add-ons: Git's `commitMessage` and `commitCheck`, Releases' `releaseNotes`, Tasks'
- * `taskRunReport`).
+ * `taskRunReport` and `taskQueueReorganize`).
  */
 export interface AddonAiOptions {
   cwd?: string;
   quick?: boolean;
-  feature?: "commitMessage" | "commitCheck" | "releaseNotes" | "taskRunReport";
+  feature?: "commitMessage" | "commitCheck" | "releaseNotes" | "taskRunReport" | "taskQueueReorganize";
 }
 
 export interface AddonTabProps extends AddonComponentProps {

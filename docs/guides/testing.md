@@ -103,6 +103,7 @@ in this order:
 | a message whose Jig context names a mentioned meeting (`@meeting:…`, D-250) | reads it with `jig_meeting_read` and answers "From the mentioned meeting:" with the start of its transcript |
 | a message whose Jig context names a mentioned Teams chat (`@chat:…`, D-333) | reads it with `jig_teams_chat_read` and answers "From the mentioned Teams chat:" with the start of what it read |
 | "report the task as done" / "report task tN as failed" (any outcome) | Claude reports again with `addon_tasks_report` (D-353): to the chat's last reported task, or with that `taskId`; summary "Reported again: <outcome>"; the tool's error (another chat's task) is the answer |
+| a one-shot that starts "You organize a queue of prompts" (Tasks → Reorganize, D-397) | each block of its task list reversed, the second task of each block continuing the first's chat, a reason on each (`tasks-reorganize.spec.ts`) |
 | a queued task that says "only partly" | its report is "partial" instead of "done" |
 | "skip the report" / "skip two reports" | Claude ends its turn without reporting ("Waiting for the local server to come up."); with "two" it also answers the queue's first request for the report without one (D-318) |
 | the task queue's request for a report ("The task queue asks for the report of task N … taskId "tN" …") | Claude reports "done" with that `taskId` (late when the task ended already) |

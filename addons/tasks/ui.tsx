@@ -51,13 +51,16 @@ import {
   PencilLine,
   Play,
   Plus,
+  Sparkles,
   Trash2,
   UserCheck,
   X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { DashboardView } from "./Dashboard";
+import { reorganizeBlocked } from "./lib/reorganize";
 import { canReport } from "./lib/report";
+import { ReorganizeDialog } from "./Reorganize";
 import { openReport, REPORT_OPEN_RUN } from "./Report";
 
 export { RunReportTab } from "./Report";
@@ -640,6 +643,7 @@ function QueuePanel({
   const [editing, setEditing] = useState<Task | undefined>();
   const [marking, setMarking] = useState<Task | undefined>();
   const [idea, setIdea] = useState(false);
+  const [reorganizing, setReorganizing] = useState(false);
   const [open, setOpen] = useState<string | undefined>();
   const projects = useProjectList();
   const call = (method: string, args?: Record<string, unknown>) =>
@@ -649,6 +653,7 @@ function QueuePanel({
 
   if (!queue) return error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
   const n = counts(queue);
+  const whyNotReorganize = reorganizeBlocked(queue);
   const projectName = (id?: string) => projects.find((p) => p.id === id)?.name ?? "";
   const openTask = queue.tasks.find((t) => t.id === open);
 
@@ -827,6 +832,20 @@ function QueuePanel({
             >
               <span className="@max-xl:hidden @xl:inline">Add tasks</span>
             </Button>
+            <Button
+              size="sm"
+              icon={Sparkles}
+              disabled={!!whyNotReorganize}
+              onClick={() => setReorganizing(true)}
+              aria-label="Reorganize"
+              title={
+                whyNotReorganize ??
+                "Reorganize: an AI suggests a better order and grouping for the tasks that haven't run"
+              }
+              data-testid="tasks-reorganize"
+            >
+              <span className="@max-xl:hidden @xl:inline">Reorganize</span>
+            </Button>
             {queue.running ? (
               <Button size="sm" icon={Pause} onClick={() => void call("pause")} data-testid="tasks-pause">
                 Pause
@@ -913,6 +932,14 @@ function QueuePanel({
           onTick={(ids, on) => void call("select", { ids, on })}
           onMove={(ids, move) => void call("move", { ids, ...move })}
           onAddIdea={() => setIdea(true)}
+        />
+      )}
+      {reorganizing && (
+        <ReorganizeDialog
+          ctx={ctx}
+          projectId={projectId}
+          queue={queue}
+          onClose={() => setReorganizing(false)}
         />
       )}
       {idea && (

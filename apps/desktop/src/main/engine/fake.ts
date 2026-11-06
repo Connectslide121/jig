@@ -1886,6 +1886,21 @@ ${output.slice(0, 600)}`,
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {
     const scripted = process.env.JIG_FAKE_ONESHOT;
     if (scripted) return scripted;
+    // Reorganize the task queue (D-397): each block reversed, its second task joining the first's chat.
+    if (/You organize a queue of prompts/.test(prompt)) {
+      const fixed = prompt.indexOf("\nOther tasks");
+      const blocks = prompt
+        .slice(prompt.indexOf("BLOCKS:"), fixed < 0 ? undefined : fixed)
+        .split(/^Block \d+:$/m)
+        .slice(1)
+        .map((b) => [...b.matchAll(/^- id (\S+?)[: ]/gm)].map((m) => m[1]!));
+      return JSON.stringify({
+        summary: "Reversed each block (scripted).",
+        order: blocks.flatMap((ids) =>
+          [...ids].reverse().map((id, i) => ({ id, continues: i === 1, reason: "Scripted: reversed." })),
+        ),
+      });
+    }
     // A task run report (D-355): every task in a line, its follow-ups merged into one proposal.
     if (/Write a structured report on this task-queue run/.test(prompt)) {
       const ids = [...prompt.matchAll(/^id: (\S+)$/gm)].map((m) => m[1]!);

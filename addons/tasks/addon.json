@@ -2,7 +2,7 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "tasks",
   "name": "Tasks",
-  "description": "A queue of prompts Claude or ChatGPT does one after another, each in its own chat or continuing the one before. Each queue picks who runs it, and each task can too. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Each project has its own queue, and every run is kept in its history. Claude can queue tasks too, after you review and edit them.",
+  "description": "A queue of prompts Claude or ChatGPT does one after another, each in its own chat or continuing the one before. Each queue picks who runs it, and each task can too. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Each project has its own queue, and every run is kept in its history. Claude can queue tasks too, after you review and edit them. Reorganize lets a small AI suggest a better order and grouping for what hasn't run.",
   "version": "1.0.0",
   "icon": "list-todo",
   "permissions": ["chat", "ai"],

@@ -6814,3 +6814,16 @@ stopped for good.
   Same chat switch works with Park as ideas. Nothing is migrated: old parked tasks are single.
 - **Not there yet:** t156 (stop lines) and t157 hadn't landed when this was built, so unparking still
   leaves tasks out; that task changes it for groups too.
+
+## D-397: Tasks: Reorganize, a small AI regroups and reorders what hasn't run
+
+- Status: accepted.
+- **Who:**
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-06: "a button in the tasks queue to reorganize the queue (only whats not ran yet). should use ai, a small one, probably configurable in ai features, but id use a small one like luna or haiku … grouping together in the same chat when it makes sense, reordering when it makes sense". How: Claude, on my own.
+- **Feature:** AI feature `taskQueueReorganize` ("Reorganize the task queue", Tasks → Reorganize; Haiku by default, ChatGPT's luna; JSON). The view asks it through `ctx.ai.answer`, so the user picks provider and model in Settings → AI features.
+- **What it sees and may change:** only ticked queued tasks, in *blocks*: runs of neighbouring movable tasks. Running, finished, needs-you, left-out and parked tasks are fixed, and so is any task that holds a chat together with a fixed one (one that continues a fixed task, or that a fixed task continues), so a chat that ran or is left out never changes. It may reorder inside a block and change which tasks continue the chat before them; prompts, titles, providers and models never change. While a task runs only blocks after it count. Stop lines (t156) are meant to become one more fixed thing, so a block never crosses one.
+- **Rules the answer must keep** (`lib/reorganize.ts`, checked strictly in the view and again by the host when applying; a bad answer changes nothing and says why): exactly the movable tasks once each; each block keeps its own tasks; a block's first task starts a chat; a task with its own provider or model always starts its chat (stricter than "same provider", which is how `checkProviderChoices` already works); a task never continues a chat of another project.
+- **UX:** a Reorganize button in the queue header (icon only in a narrow place), off with a reason when no block has two movable tasks. It opens a modal: a fixed-size working state, then the proposed order as rows in fixed columns (new place, title, former place, tag) with Moved / Joins the chat / Own chat marks and one line of reason per changed task, and "AI-suggested order · check it before applying". Apply is one change; a toast offers **Undo reorganize**, which restores the previous order and chats (it fails with a message if the queue changed since).
+- **Not done:** a tool for Claude chats (the call needs the UI's AI context; left out as not cheap).

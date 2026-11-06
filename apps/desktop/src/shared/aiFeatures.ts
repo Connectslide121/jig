@@ -38,6 +38,7 @@ export const AI_FEATURE_IDS = [
   "chatSuggestions",
   "learning",
   "meetingTranslation",
+  "taskQueueReorganize",
   "addonQuick",
   "addonHelper",
 ] as const;
@@ -122,6 +123,14 @@ export const AI_FEATURES: AiFeature[] = [
     chatgptNote: "Slower with ChatGPT: more lines are skipped to keep up. Claude keeps up better",
   },
   {
+    id: "taskQueueReorganize",
+    label: "Reorganize the task queue",
+    where: "Tasks → Reorganize",
+    fallback: quick,
+    chatgpt: "luna",
+    json: true,
+  },
+  {
     id: "addonQuick",
     label: "Add-ons: short answers",
     where: "Other add-ons",
@@ -138,7 +147,13 @@ export const AI_FEATURES: AiFeature[] = [
 ];
 
 /** Features an add-on may name in `ctx.ai.ask({ feature })`: the built-in add-ons' own rows. */
-export const ADDON_AI_FEATURES = ["commitMessage", "commitCheck", "releaseNotes", "taskRunReport"] as const;
+export const ADDON_AI_FEATURES = [
+  "commitMessage",
+  "commitCheck",
+  "releaseNotes",
+  "taskRunReport",
+  "taskQueueReorganize",
+] as const;
 export type AddonAiFeature = (typeof ADDON_AI_FEATURES)[number];
 
 export function aiFeature(id: AiFeatureId): AiFeature {

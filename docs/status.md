@@ -720,6 +720,14 @@ Regenerate makes a new one. Pick its provider and model in Settings → AI featu
 Never made for an open run or in the background. Covered by unit tests and `e2e/tasks-report.spec.ts`.
 Needs testing with a real model: the quality of the merged proposals on a big run.
 
+Reorganize the task queue (2026-11-06, D-397): the Tasks queue's header has a **Reorganize** button; a
+small AI (Settings → AI features → "Reorganize the task queue") regroups and reorders the tasks that
+haven't run, within blocks that running, finished, left-out and parked tasks split. A modal shows the
+proposed queue with moved and regrouped tasks marked and a reason each; Apply is one change with an
+**Undo reorganize** toast. A bad answer changes nothing and says why. Stop lines (t156) aren't there
+yet: when they land they become one more thing a block never crosses. Covered by unit tests and
+`e2e/tasks-reorganize.spec.ts`. Needs testing with a real model: how good its groupings are.
+
 History shows each run's provider (2026-11-05, D-354): the Tasks add-on's History list has a "Ran on"
 column with the provider marks of what the run's tasks actually ran on (both marks when a run mixed
 ChatGPT and Claude, e.g. a task on Claude in a ChatGPT queue or a handover; the counts on hover, the

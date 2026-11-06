@@ -75,6 +75,21 @@ went, so you read the results as a table instead of scrolling one long chat.
   the queue goes on. The Tasks view's icon counts the tasks waiting for you, and "needs you", "paused"
   and "finished" are also system notifications when Jig isn't in front, with **Open Tasks** (D-215). With **Stop when a task fails** on (the default) a failed, blocked or broken task
   pauses the queue.
+- **Reorganize (D-397):** the **Reorganize** button in the queue's header (icon only in a narrow place) asks
+  a small AI (Settings → AI features → "Reorganize the task queue": Haiku by default, ChatGPT's luna) to
+  regroup and reorder the tasks that haven't run. It sees only ticked queued tasks in *blocks*: runs of
+  neighbouring ones, split by everything fixed (running, finished, needs-you, left-out and parked tasks,
+  and any task that shares a chat with one of those); while the queue runs only blocks after the running
+  task count. It may reorder inside a block and change which tasks continue the chat before them; it never
+  changes prompts, titles, providers or models (`lib/reorganize.ts`: prompt, strict check, apply). The
+  answer must list exactly those tasks, keep each block's tasks in it, start every block with a new chat,
+  and never make a task with its own provider or model, or from another project, continue a chat; anything
+  else is refused with a sentence and nothing changes. A modal shows the proposed queue (place, chat mark,
+  title with the reason, former place, Moved / Joins chat / Own chat) with "AI-suggested order · check it
+  before applying"; **Apply** is one change and a toast offers **Undo reorganize** (the host's `reorganize`
+  returns the arrangement it replaced; undo fails with a message if the queue changed since). The host
+  checks the proposal again when applying. The button is off, with a reason, without a block of two movable
+  tasks. Covered by `lib/reorganize.test.ts` and `e2e/tasks-reorganize.spec.ts`.
 - **The report:** while a task runs, its chat is told (each turn, `contributes.context`) that it is
   task N of the queue (with its taskId) and to call `addon_tasks_report` when done: outcome (done,
   partial, failed, blocked), a summary, things to know, and follow-up tasks.

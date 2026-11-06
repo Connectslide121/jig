@@ -243,7 +243,12 @@
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
     {
       "files": ["addons/tasks/**"],
-      "specs": ["tasks.spec.ts", "tasks-dashboard.spec.ts", "tasks-report.spec.ts"]
+      "specs": [
+        "tasks.spec.ts",
+        "tasks-dashboard.spec.ts",
+        "tasks-report.spec.ts",
+        "tasks-reorganize.spec.ts"
+      ]
     },
     {
       "files": [
@@ -261,7 +266,7 @@
         "apps/desktop/src/shared/aiFeatures.ts",
         "apps/desktop/src/renderer/addons/context.ts"
       ],
-      "specs": ["tasks-report.spec.ts"]
+      "specs": ["tasks-report.spec.ts", "tasks-reorganize.spec.ts"]
     },
     {
       "files": [
