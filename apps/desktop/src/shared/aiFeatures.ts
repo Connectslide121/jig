@@ -119,7 +119,7 @@ export const AI_FEATURES: AiFeature[] = [
     where: "Meetings",
     fallback: (c) => c.meetings.translationModel,
     chatgpt: "luna",
-    // Each request is a new Codex process, so live captions wait longer (D-384).
+    // The model needs ~5 s per batch even on a warm Codex process, so live captions wait longer (D-384, D-402).
     chatgptNote: "Slower with ChatGPT: more lines are skipped to keep up. Claude keeps up better",
   },
   {

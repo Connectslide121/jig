@@ -6905,5 +6905,24 @@ stopped for good.
   `service_tier`, verbosity and an empty MCP list changed nothing measurable. So ChatGPT works but is
   not as quick as Claude's best case and far from Copilot; the editor waits for the same 0.7 s pause
   as for Claude. Pick Copilot for speed, ChatGPT when its plan is the one you want to spend.
-- **Not done here:** caption translation (t147) still uses `oneShot` per batch for ChatGPT; it can
-  now switch to `getEngine("codex").completer({ appendSystemPrompt: TRANSLATE_INSTRUCTIONS, … })`.
+- Caption translation switched to this completer in D-402.
+
+## D-402: Caption translation with ChatGPT runs on the warm Codex completer
+
+- Status: accepted. Amends D-384 (the "ChatGPT stays one `codex exec` per request" part).
+- **Who:** Jon queued it (t147) as soon as D-401's completer existed; the details are Claude, on my own.
+- **What changed.** With ChatGPT picked for Caption translation, `CaptionTranslator` asks one warm
+  Codex process (`getEngine("codex").completer`, luna family resolved with `resolveCodexModel`,
+  `low` effort, 30 s per ask) instead of starting a `codex exec` per batch. Batching (6 per request),
+  the 20 s skip and **Not translated** are unchanged. Claude's path is unchanged.
+- **Fallback.** If the warm ask fails (process died, timeout, Codex missing), that batch is retried as
+  the old `codex exec`, the warm process is dropped, and `codex exec` serves the next 60 s
+  (`WARM_RETRY_MS`) before a new warm process is tried, so a broken Codex never costs a failed ask
+  plus an exec on every batch. Only when the exec fails too does the batch show Not translated.
+- **Stopping.** `stop()` (language cleared, meeting ended) closes the warm process; a request still
+  waiting is dropped by the generation check as before.
+- **Measured (2026-11-06, real Codex 0.166, `gpt-6-luna`, the same 6-caption batch into sv-se, four
+  runs each):** `codex exec` 6.4 / 5.6 / 5.9 / 6.3 s (mean 6.0 s); warm completer 5.4 / 5.8 / 5.5 / 4.9 s
+  (mean 5.4 s). The warm process saves about 0.6 s (~10%) per batch: the cold start is small next to
+  the model's own ~5 s for a batch. So ChatGPT still skips more lines than Claude on a fast talker, and
+  the "slower with ChatGPT" note on the Caption translation row stays.

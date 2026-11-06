@@ -309,8 +309,9 @@ final text, reject with a plain message, and time out after 3 minutes ("... didn
   Sol for Opus), and switching a row to ChatGPT picks that family. `ai.providers` says whether ChatGPT
   is ready (installed and signed in). `ai.ask` (add-ons) uses its `feature` (Git, Releases) or the
   add-ons' rows. JSON features (tour, compare attempts) name who answered when the reply doesn't
-  parse. Caption translation keeps Claude's warm completer; on ChatGPT it calls `oneShot` per batch of
-  captions (D-384), and the row says so beside it while ChatGPT is picked (`AiFeature.chatgptNote`).
+  parse. Caption translation asks a warm completer on both providers (Claude Code, or Codex since D-402; a
+  failed Codex ask is retried as `codex exec` per batch, which then serves for 60 s), and the row says
+  ChatGPT is slower beside it while ChatGPT is picked (`AiFeature.chatgptNote`).
 
 ## Events (`EngineEvent`)
 

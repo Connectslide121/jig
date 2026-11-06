@@ -1202,7 +1202,8 @@ Transcript header says "AI translation, may be inaccurate" (or why a translation
 Since D-384 waiting captions go together (up to 6 per request), lines that waited over 20 s are
 skipped ("Translation skipped N lines to keep up" in the header), and a line that won't be
 translated says **Not translated** instead of "Translating…" forever. With ChatGPT picked each
-request is still a cold `codex exec`, so it skips more; Settings → AI features says so.
+request goes to one warm Codex process (D-402; a failed ask falls back to `codex exec`), measured
+~0.6 s faster per batch than a cold exec, so it still skips more than Claude; Settings → AI features says so.
 Settings: `meetings.aiTranslation` (on) and `meetings.translationModel` (`haiku`), from a chat
 only with your approval. Untested in a real meeting; the fake meeting covers it in e2e (not yet run
 to the end: run `meetings.spec.ts` at the release and look at `translated-ai.png`).
