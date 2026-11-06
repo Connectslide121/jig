@@ -23,6 +23,7 @@ import {
 } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
+import { recentMeetings } from "../meetings";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
 import { providerStatus } from "../providers";
@@ -269,6 +270,17 @@ export async function startAddons(): Promise<void> {
         if (service?.list().find((a) => a.id === addonId)?.source !== "builtin")
           throw new Error("Only built-in add-ons read Jig's settings.");
         return (getConfig() as Record<string, unknown>)[addonId];
+      } else if (op === "meetings.recent") {
+        // Checked here too (D-460): the host process enforces it, but main doesn't trust it.
+        if (
+          !service
+            ?.list()
+            .find((a) => a.id === addonId)
+            ?.manifest?.permissions.includes("meetings:read")
+        )
+          throw new Error('This add-on needs the "meetings:read" permission in addon.json');
+        const { limit } = args as { limit?: unknown };
+        return recentMeetings(typeof limit === "number" ? limit : undefined);
       } else if (op === "projects") {
         // With the provider of each project's new chats (its own, else Jig's), as the UI's list has it.
         const fallback = getConfig().engine.provider;

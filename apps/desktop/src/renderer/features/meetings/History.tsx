@@ -2,6 +2,7 @@ import {
   Captions,
   Copy,
   Download,
+  Factory,
   FileText,
   Folder,
   FolderPlus,
@@ -53,6 +54,7 @@ import { SizedBox } from "./Slots";
 export function MeetingHistory({
   projects,
   boards,
+  factory,
   layout,
   onResize,
   onTranscript,
@@ -62,6 +64,8 @@ export function MeetingHistory({
   projects: ProjectsState;
   /** The Boards add-on is on: actions offer Create card… (D-425). */
   boards: boolean;
+  /** Jig factory is on: a meeting's ⋯ offers Start Jig factory… (D-460). */
+  factory?: boolean;
   layout: MeetingLayout;
   onResize(key: MeetingSizeKey, size: number): void;
   /** Shows or hides the transcript beside the notes. */
@@ -210,6 +214,17 @@ export function MeetingHistory({
       onSelect: () => void copyText(meetingMention(r)),
     },
     { label: "Move to folder", icon: Folder, testId: "meeting-move", submenu: moveMenu(r) },
+    ...(factory
+      ? [
+          {
+            label: "Start Jig factory…",
+            icon: Factory,
+            testId: "meeting-factory",
+            onSelect: () =>
+              void run("Couldn't start Jig factory", () => call("meetings.startFactory", { id: r.id })),
+          },
+        ]
+      : []),
     ...(extraMenu?.(r) ?? []),
     { separator: true },
     { label: "Rename…", icon: Pencil, testId: "meeting-rename", onSelect: () => void rename(r) },

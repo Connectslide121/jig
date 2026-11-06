@@ -8044,3 +8044,40 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   (D-436); Impeccable's heuristics feed its notes.
 - **Why:** it is the closest thing to a design vocabulary and a reviewer an agent can follow, and
   it targets exactly the generic look Jon wants demos never to have.
+
+## D-460: Jig factory's New idea: meetings for add-ons, dictation in the SDK, a Plan step you confirm
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-08), for phase 28 session 3, while Jon was away.
+- **Meetings for add-ons:** a new host API `api.meetings.recent({ limit? })` with a new permission
+  `meetings:read` returns your ended meetings, newest first, each with its title, times and an
+  excerpt (its notes, then the end of its transcript, cut to 12 000 characters, `meetingExcerpt` in
+  `shared/meetingExcerpt.ts`). Read-only; the host-managed meeting state stays unwritable (D-217).
+  Jig factory uses it for New idea's "From a meeting" picker.
+- **Start Jig factory from a meeting:** the meeting history's ⋯ menu has "Start Jig factory…" while
+  the add-on is on (like Create card…, D-425). Main hands the meeting's excerpt to the factory's
+  export `ideaFrom` and shows the workbench, where the New idea modal opens with it (a click of
+  yours, so it may take the focus, D-374). A chat reply's ⋯ has "Start Jig factory from this"
+  (`context.message`).
+- **Dictation for add-ons:** `@jig/sdk/ui` exports `Dictate` (the composer's microphone, Jig's
+  own speech engine; text arrives through `onText`).
+- **New idea** picks the project the run lives in and whether the idea is for its existing product
+  or a new one; there is no track picker until other tracks exist (sessions 5 and 7), rather than
+  showing choices that do nothing. Files you add are copied into the run's `input/`.
+- **The Plan step** is a person's stage in the track (`S3`, `"person": true`): after G0 the run is
+  `planning` and nothing starts until you press **Start run** in the Plan modal (outputs, level,
+  languages per output group, an owner per gate (me, or a person by name with their board), and
+  how chats ask). A run started from a brief records S3 as done ("planned in the start dialog").
+
+## D-461: Interview coverage is the brief's sections, and Good enough ends the interview
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-08), phase 28 session 3.
+- **Coverage** is how many of the brief's nine content sections (Problem, Value, Users, Main flow,
+  Key screens, Scope, Out of scope, Data, Rules) have text, not how many questions were answered:
+  the brief is what G0 signs. Open points are shown as gaps. Pure in `addons/factory/lib/brief.ts`.
+- The interviewer rewrites `brief.md` after each round, so the Interview tab's brief fills in live.
+- **Answer all suggested** sends every open card's suggested answer; **Good enough** tells the
+  interviewer to stop asking, write the brief with what it has (gaps under Open points) and report.
+- **Looks right** on the Interview tab is G0's Approve; it is there once the scout has reported.
+

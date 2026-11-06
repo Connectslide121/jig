@@ -42,6 +42,7 @@ import {
   mentionedChatIds,
   parseChatCursor,
 } from "../../shared/meetingChatMention";
+import { type MeetingSource, meetingExcerpt, meetingSources } from "../../shared/meetingExcerpt";
 import { presenceIds, type TeamsPresence, type TeamsPresenceResult } from "../../shared/meetingPresence";
 import {
   actionOpen,
@@ -516,6 +517,16 @@ const boardsOn = () =>
   addonService()
     .list()
     .some((a) => a.id === "boards" && a.enabled && !a.errors.length);
+/** Jig factory is on: a meeting offers Start Jig factory… (D-460). */
+const factoryOn = () =>
+  addonService()
+    .list()
+    .some((a) => a.id === "factory" && a.enabled && !a.errors.length);
+
+/** Your ended meetings with their excerpts, for add-ons with `meetings:read` (D-460). */
+export function recentMeetings(limit?: number): MeetingSource[] {
+  return meetingSources(store.records(), limit);
+}
 /** The call window only: media, the calling credential, captions, the call's status and chat. */
 function own(context: CallContext): void {
   if (!room || context.sender.id !== room.webContents.id)
@@ -778,9 +789,11 @@ export async function startMeetings(): Promise<void> {
   await store.load();
   // Turning Boards on or off shows or hides Create card… in open meeting windows.
   let boardsWere = boardsOn();
+  let factoryWas = factoryOn();
   onAddonsChange(() => {
-    if (boardsOn() === boardsWere) return;
+    if (boardsOn() === boardsWere && factoryOn() === factoryWas) return;
     boardsWere = boardsOn();
+    factoryWas = factoryOn();
     changed();
   });
   if (!store.settings().clientId && !process.env.JIG_HOME) {
@@ -919,6 +932,18 @@ export async function startMeetings(): Promise<void> {
     const workbench = mainWindow();
     if (workbench && workbench !== room && workbench !== lobby) revealWindow(workbench);
   });
+  handle("meetings.startFactory", async ({ id }, ctx) => {
+    lobbyOrCall(ctx);
+    if (!factoryOn()) throw new JigError("addon_disabled", "Turn on Jig factory to start it from a meeting");
+    const r = store.get(id);
+    await addonService().callShared("meetings", "factory", "ideaFrom", {
+      text: meetingExcerpt(r),
+      title: r.title,
+      source: { kind: "meeting", ref: r.id },
+    });
+    const workbench = mainWindow();
+    if (workbench && workbench !== room && workbench !== lobby) revealWindow(workbench);
+  });
   handle("meetings.overview", async () => {
     enabled();
     if (!fake()) await auth.restore();
@@ -927,6 +952,7 @@ export async function startMeetings(): Promise<void> {
       account: fake() ? "Test account" : auth.name,
       fake: fake(),
       boards: boardsOn(),
+      factory: factoryOn(),
       activeId,
       ringing: store.ringing(),
       records: store.records(),

@@ -370,6 +370,7 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.setActionStatus | `{ id, actionId, status: done \| dismissed \| open }` → the action: marks an action done or dismissed (not a queued one), or restores a handled one (`open`: back to `running` when it has a chat, else to do) (D-407) |
 | meetings.cardForm / meetings.createCard | Create card… (D-425): the boards a project follows (types, backlog type), the description and the looked-up assignee / makes the card through the Boards add-on and stores `card` on the action |
 | meetings.showBoards | `{ projectId }` → main window shows that project's Boards view (event `meetings.boardsOpen`) |
+| meetings.startFactory | `{ id }` → hands the meeting's excerpt to Jig factory's `ideaFrom` and shows the main window, where New idea opens with it (D-460; only while Jig factory is on) |
 
 "Room" is the call window (D-217); "lobby" the Meetings lobby window (D-292), which never gets the
 calling credential.

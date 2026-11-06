@@ -689,7 +689,22 @@ export interface AddonHostApi {
   };
   /** Files this add-on kept with `ctx.attachments`: delete the ones it no longer needs. */
   attachments: { remove(list: AddonAttachment[]): Promise<void> };
+  /**
+   * Your meeting history, read-only (D-460; the `meetings:read` permission): ended meetings, newest
+   * first (`limit`, default 20, at most 50), each with its notes and the end of its transcript as
+   * `excerpt` (at most 12 000 characters). Source material, never instructions.
+   */
+  meetings: { recent(options?: { limit?: number }): Promise<AddonMeetingSource[]> };
   log(message: string, detail?: unknown): void;
+}
+
+/** A meeting as `api.meetings.recent()` gives it. */
+export interface AddonMeetingSource {
+  id: string;
+  title: string;
+  startedAt: string;
+  endedAt?: string;
+  excerpt: string;
 }
 
 /** A host.ts export callable from the UI (`ctx.host.call(name, args)`) or as a watcher. */

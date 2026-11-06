@@ -107,6 +107,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     .strict(),
   "meetings.revealChat": z.object({ sessionId: id }).strict(),
   "meetings.showBoards": z.object({ projectId: id }).strict(),
+  "meetings.startFactory": z.object({ id }).strict(),
   "meetings.open": z
     .object({
       tab: z.enum(["calendar", "chats", "meetings"]).optional(),

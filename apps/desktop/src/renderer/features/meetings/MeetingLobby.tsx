@@ -298,6 +298,7 @@ function LobbyWindow() {
           <MeetingHistory
             projects={projects}
             boards={overview.boards}
+            factory={overview.factory}
             layout={layout}
             onResize={resize}
             onTranscript={(shown) => changeLayout((l) => setHistoryTranscript(l, shown))}

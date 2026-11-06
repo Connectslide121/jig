@@ -114,6 +114,8 @@ export interface HostMethods {
   "meetings.revealChat": { args: { sessionId: string }; result: void };
   /** Create card…'s way to Boards (D-425): the main window shows the project's Boards view. */
   "meetings.showBoards": { args: { projectId: string }; result: void };
+  /** Hands a meeting to Jig factory's New idea in the main window (D-460). */
+  "meetings.startFactory": { args: { id: string }; result: void };
   "meetings.overview": { args: void; result: import("./meetings").MeetingOverview };
   "meetings.lobbyView": { args: { view: import("./meetings").LobbyView }; result: void };
   "meetings.captionLanguage": { args: { language: string }; result: void };

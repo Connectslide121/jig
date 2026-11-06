@@ -18,6 +18,12 @@ export { ProjectSwatch } from "../features/projects/colors";
 /** A message's files: image thumbnails and document chips that open them; removable with `onRemove`. */
 export { ChatAttachments as Attachments } from "../features/sessions/ChatAttachments";
 /**
+ * The composer's microphone (D-460): click to speak, click again to stop; Jig's own speech engine.
+ * `onText(words, final)` gets the words heard so far (replace the previous ones) and, once, the final
+ * words. `target` is a stable id of the field it fills.
+ */
+export { DictationButton as Dictate } from "../features/speech/DictationButton";
+/**
  * Who runs a chat (D-298, D-314): Claude's or ChatGPT's mark, the same as the usage footer and the chat
  * pickers (`provider`: "claude" | "chatgpt"; `iconOnly` keeps the name for the tooltip).
  */

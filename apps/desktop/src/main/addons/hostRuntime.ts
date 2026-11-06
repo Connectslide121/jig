@@ -59,7 +59,8 @@ export type FromHost =
         | "attachments.remove"
         | "setBadge"
         | "addons.list"
-        | "addons.call";
+        | "addons.call"
+        | "meetings.recent";
       args: unknown;
     };
 
@@ -251,6 +252,12 @@ export function createHostRuntime(send: (message: FromHost) => void) {
       },
       emit: (topic, payload) => void rpc("emit", { topic, payload }),
       config: () => rpc("config", {}) as Promise<never>,
+      meetings: {
+        recent: async (options) => {
+          need("meetings:read");
+          return rpc("meetings.recent", options ?? {}) as Promise<never>;
+        },
+      },
       projects: () => rpc("projects", {}) as Promise<never>,
       workspaces: () => rpc("workspaces", {}) as Promise<never>,
       chats: {

@@ -227,6 +227,8 @@ export interface MeetingOverview {
   fake: boolean;
   /** The Boards add-on is on: meeting actions offer Create card… (D-425). */
   boards: boolean;
+  /** Jig factory is on: a meeting's ⋯ offers Start Jig factory… (D-460). */
+  factory?: boolean;
   activeId?: string;
   /** Jig rings for Teams calls while it runs (the meeting window listens hidden). */
   ringing: boolean;
