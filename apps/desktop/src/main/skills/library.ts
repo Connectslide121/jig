@@ -12,12 +12,14 @@ export class SkillLibrary {
 
   plugins(config: JigConfig, projectId?: string) {
     return this.catalog
-      .filter((skill) => skillEnabled(config, skill.id, projectId))
+      .filter((skill) => skillEnabled(config, skill.id, projectId, skill.defaultEnabled))
       .map((skill) => ({ type: "local" as const, path: join(this.root, skill.id) }));
   }
 
   context(config: JigConfig, projectId?: string): string {
-    const enabled = this.catalog.filter((skill) => skillEnabled(config, skill.id, projectId));
+    const enabled = this.catalog.filter((skill) =>
+      skillEnabled(config, skill.id, projectId, skill.defaultEnabled),
+    );
     return `Jig's bundled skills currently enabled for this chat: ${enabled.map((s) => `jig-${s.id}:${s.skillName}`).join(", ") || "none"}. Use relevant skills through Claude Code's Skill tool, respecting the project's actual stack/version, existing conventions and the user's instructions. Do not apply every skill to every task. Disabled Jig skills are not active guidance, even if they appeared earlier in this conversation. Your personal and project skills remain independent.`;
   }
 

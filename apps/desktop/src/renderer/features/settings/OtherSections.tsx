@@ -518,6 +518,23 @@ export function TerminalSettings() {
   );
 }
 
+/** Jig factory's own settings (D-441); the rest of the factory's settings join here in later sessions. */
+export function FactorySettings() {
+  const config = useConfig((s) => s.config);
+  if (!config) return <Spinner center />;
+  return (
+    <SettingsSection title="Jig factory">
+      <TextSetting
+        label="Demo kit folder"
+        description="The jig-demo-kit folder Jig factory builds and checks demos with (it runs the kit's npm scripts there)."
+        value={config.factory.demoKitPath}
+        placeholder="(not set)"
+        onSave={(demoKitPath) => void updateConfig({ factory: { demoKitPath } })}
+      />
+    </SettingsSection>
+  );
+}
+
 /** Updates from a git clone of Jig: where it is and how it is built. */
 export function UpdatesSettings() {
   const config = useConfig((s) => s.config);

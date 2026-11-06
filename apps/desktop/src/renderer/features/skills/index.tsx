@@ -1,6 +1,6 @@
 import { BookOpen, Check, ExternalLink, FolderCheck, Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { LibrarySkill, SkillDetails } from "../../../shared/skills";
+import { globallyEnabled, type LibrarySkill, type SkillDetails } from "../../../shared/skills";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Button, Dialog, Empty, Markdown, SearchInput, Spinner, Switch } from "../../ui";
@@ -325,7 +325,7 @@ function SkillsLibrary() {
                     <td className="text-right">
                       <span className="inline-flex justify-end">
                         <Switch
-                          checked={policy?.enabled !== false}
+                          checked={globallyEnabled(config, skill.id, skill.defaultEnabled)}
                           label={`Enable ${skill.title} globally`}
                           disabled={busy === skill.id}
                           onChange={(enabled) => void save(skill.id, { enabled }).catch(() => {})}
@@ -348,7 +348,7 @@ function SkillsLibrary() {
           key={picker.id}
           skill={picker}
           excluded={config.skills.overrides[picker.id]?.excludedProjects ?? []}
-          globallyEnabled={config.skills.overrides[picker.id]?.enabled !== false}
+          globallyEnabled={globallyEnabled(config, picker.id, picker.defaultEnabled)}
           save={(patch) => save(picker.id, patch)}
           close={() => setPicker(undefined)}
         />

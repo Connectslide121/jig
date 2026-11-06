@@ -7680,3 +7680,28 @@ graph sketch left implicit: G4m (marketing) after the marketing output, S8 build
 requested, G3 after it and G5 (publish) after G4 or G4m. A looped stage (the critic loop) that runs
 out of rounds goes on to its gate anyway, where a person decides; a fan-out's instances count as
 pending until the fan-out is reached, so the Floor and the inbox never show them as skipped early.
+
+## D-441: Jig factory: the demo kit beside Jig and its setting
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-07, phase 28 session 1).
+
+- **The kit** lives in its own repository `jig-demo-kit`, cloned beside `jig/` (D-429). Its
+  first version: React, TypeScript, Vite, Tailwind v4, shadcn/ui components (MIT, taken from
+  github.com/shadcn-ui/ui at 42f3bb63 because the shadcn registry could not be reached), hash
+  routes, and **one self-contained HTML file** per demo (vite-plugin-singlefile), so a demo opens
+  offline from disk and the check can block every request.
+- **Tokens:** DTCG groups are named `elevation` and `typeface` (not `shadow`/`font`), so the
+  generated Tailwind theme variables never refer to themselves. TanStack Table is pinned to v8.
+- **Demos use a scenario clock** (`scenarioTime(h, m)`, a fixed `NOW`): time-based data never
+  follows the real clock, or a demo checked in the evening shows everything "Done".
+- **`factory.demoKitPath`** is a core setting (`ConfigSchema`), protected (it decides where Jig runs
+  npm), shown on a **Settings → Jig factory** page in core, because add-ons cannot read or write
+  core settings yet. Empty = not set; Jig factory asks before its first demo. The factory's other
+  settings join this page in later sessions.
+- **Skills off by default:** the vendored `web-artifacts`, `theme-factory` and `webapp-testing`
+  rely on upstream scripts and files Jig does not bundle (D-430), so in an ordinary chat they would
+  point at things that aren't there. A catalog entry may say `defaultEnabled: false`: off until you
+  switch it on in Settings → Skills; Jig factory's stage chats ask for them by name. The skill
+  overrides' `enabled` became optional (missing = the catalog's default).
+

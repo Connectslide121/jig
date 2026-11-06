@@ -29,3 +29,22 @@ describe("library skill controls", () => {
     expect(aiTransparencyGuidance(config, "blog")).toBe("");
   });
 });
+
+describe("skills off by default (D-441)", () => {
+  it("stays off until switched on, and follows the switch", () => {
+    const off = { skills: { overrides: {} } };
+    expect(skillEnabled(off, "x", undefined, false)).toBe(false);
+    expect(
+      skillEnabled(
+        { skills: { overrides: { x: { enabled: true, excludedProjects: [] } } } },
+        "x",
+        "p",
+        false,
+      ),
+    ).toBe(true);
+    expect(skillEnabled({ skills: { overrides: { x: { excludedProjects: ["p"] } } } }, "x", "q", false)).toBe(
+      false,
+    );
+    expect(skillEnabled(off, "x")).toBe(true);
+  });
+});

@@ -10,16 +10,38 @@ export interface LibrarySkill {
   source: string;
   revision: string;
   license: string;
+  /**
+   * `false`: off until you turn it on (Settings → Skills); Jig factory's stage chats ask for it by
+   * name (D-441). Missing = on.
+   */
+  defaultEnabled?: boolean;
 }
 
 export interface SkillDetails extends LibrarySkill {
   instructions: string;
 }
 
+/** Whether a skill is switched on for every project: your switch, else the catalog's default. */
+export function globallyEnabled(
+  config: Pick<JigConfig, "skills">,
+  id: string,
+  defaultEnabled = true,
+): boolean {
+  return config.skills.overrides[id]?.enabled ?? defaultEnabled;
+}
+
 /** A global off switch wins; otherwise new projects are included unless explicitly excluded. */
-export function skillEnabled(config: Pick<JigConfig, "skills">, id: string, projectId?: string): boolean {
+export function skillEnabled(
+  config: Pick<JigConfig, "skills">,
+  id: string,
+  projectId?: string,
+  defaultEnabled = true,
+): boolean {
   const policy = config.skills.overrides[id];
-  return policy?.enabled !== false && (!projectId || !policy?.excludedProjects.includes(projectId));
+  return (
+    globallyEnabled(config, id, defaultEnabled) &&
+    (!projectId || !policy?.excludedProjects.includes(projectId))
+  );
 }
 
 /** Default product behavior is small enough to include without relying on skill invocation. */
