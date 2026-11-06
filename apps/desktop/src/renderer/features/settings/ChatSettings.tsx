@@ -40,6 +40,15 @@ function idleLabel(minutes: number): string {
   return `After ${minutes} minutes`;
 }
 
+/* The rows both provider groups have share their names, order and descriptions (D-413). */
+const MODEL_HINT = "For new chats. Their project or the chat itself can pick another.";
+const EFFORT_HINT =
+  "How hard new chats think, unless their project sets its own. A chat can change it; a model without effort levels ignores it.";
+const FALLBACK_HINT = "For helpers without a model of their own.";
+const TESTER_HINT = "For the helper that tests pages in Jig's browser.";
+const SEARCH_HINT =
+  "For code searches the chat hands to its search helper, so the chat's model doesn't read through files itself.";
+
 /** The group that new chats run on gets this badge at the far right of its header. */
 const DefaultBadge = () => (
   <Badge tone="accent" className="uppercase">
@@ -48,8 +57,8 @@ const DefaultBadge = () => (
 );
 
 /**
- * Settings → Chats (D-314): which provider new chats run on, then one fixed group per provider (both
- * always shown, so switching never reshapes the page), then what applies to every chat. A chat keeps
+ * Settings → Chats (D-314, D-413): which provider new chats run on, what applies to every chat whoever
+ * runs it, then one fixed group per provider (both always shown, so switching never reshapes the page). A chat keeps
  * its provider until you hand it over or a limit does (D-339, D-338); projects and the new-chat picker
  * can choose the other one.
  */
@@ -88,28 +97,10 @@ export function ChatSettings() {
             ]}
           />
         </SettingRow>
-        <SettingRow
-          label="When a chat hits its limit"
-          description="Ask me: the chat shows what you can do, and resumes by itself at the reset if you don't choose. Continue: the same chat carries on with the other provider when its plan has room (else it waits for the reset), reading what happened so far. Wait: the chat resumes by itself when the limit resets. A project can choose its own."
-        >
-          <Select
-            className={PICKER}
-            value={e.onLimit}
-            aria-label="When a chat hits its limit"
-            data-testid="settings-on-limit"
-            onChange={(ev) => void updateConfig({ engine: { onLimit: ev.target.value as LimitPolicy } })}
-          >
-            {LIMIT_POLICIES.map((policy) => (
-              <option key={policy} value={policy}>
-                {LIMIT_POLICY_LABELS[policy]}
-              </option>
-            ))}
-          </Select>
-        </SettingRow>
       </SettingsSection>
+      <AllChats />
       <ClaudeChats isDefault={provider === "claude"} />
       <ChatGptChats isDefault={provider === "codex"} />
-      <AllChats />
     </div>
   );
 }
@@ -150,16 +141,9 @@ function ClaudeChats({ isDefault }: { isDefault: boolean }) {
           {info?.engine === "fake" ? "Fake (testing)" : "Claude Code"}
         </Badge>
       </SettingRow>
-      <TextSetting
-        label="Claude Code binary"
-        description="Leave empty to use the Claude Code that ships with Jig, or point to your own `claude`."
-        value={e.claudePath}
-        placeholder="(built in)"
-        onSave={(claudePath) => void updateConfig({ engine: { claudePath } })}
-      />
       <SettingRow
         label="Recommended setup"
-        description="Opus works, Sonnet helps, Haiku searches and tests. Applies to new chats."
+        description="Opus works, Sonnet helps, Haiku searches and tests. Applies to new chats. Smaller models save usage but can't promise the same quality."
       >
         <Button
           variant="primary"
@@ -188,17 +172,14 @@ function ClaudeChats({ isDefault }: { isDefault: boolean }) {
       )}
       <ModelSetting
         label="Default model"
-        description="For new Claude chats. Project and chat selections override this."
+        description={MODEL_HINT}
         value={e.defaultModel}
         models={models}
         className={PICKER}
         hybrid
         onSave={(defaultModel) => void updateConfig({ engine: { defaultModel } })}
       />
-      <SettingRow
-        label="Reasoning effort"
-        description="How hard new Claude chats think, unless their project sets its own. A chat can change it; a model without effort levels ignores it."
-      >
+      <SettingRow label="Reasoning effort" description={EFFORT_HINT}>
         <Select
           className={PICKER}
           aria-label="Claude reasoning effort"
@@ -215,8 +196,8 @@ function ClaudeChats({ isDefault }: { isDefault: boolean }) {
         </Select>
       </SettingRow>
       <ModelSetting
-        label="Subagent fallback model"
-        description="For subagents without an explicit model choice."
+        label="Helper fallback model"
+        description={`${FALLBACK_HINT} A subagent first takes the model its call or its definition asks for; Claude Code's own Explore and Plan follow its rules, and a model forced in your environment wins over all of these.`}
         value={e.subagentModel}
         models={models}
         className={PICKER}
@@ -224,7 +205,7 @@ function ClaudeChats({ isDefault }: { isDefault: boolean }) {
       />
       <ModelSetting
         label="Tester model"
-        description="For the browser-testing helper and Test something…."
+        description={TESTER_HINT}
         value={e.testerModel}
         models={models}
         className={PICKER}
@@ -232,24 +213,13 @@ function ClaudeChats({ isDefault }: { isDefault: boolean }) {
       />
       <ModelSetting
         label="Search model"
-        description="For code searches the chat hands to its search helper, so the chat's model doesn't read through files itself."
+        description={SEARCH_HINT}
         value={e.searchModel}
         models={models}
         className={PICKER}
         emptyLabel="Off (the chat searches itself)"
         onSave={(searchModel) => void updateConfig({ engine: { searchModel } })}
       />
-      <div className="px-4 py-3 text-xs text-muted">
-        <p>Defaults affect new chats. Smaller models save usage but cannot guarantee equal quality.</p>
-        <details className="mt-2">
-          <summary className="cursor-pointer text-fg">How subagent models are chosen</summary>
-          <p className="mt-2">
-            Claude’s choice for the invocation wins, then the agent definition, then your fallback, then the
-            chat model. Built-in Explore and Plan follow Claude Code’s own rules. A forced model in your
-            environment can override these choices.
-          </p>
-        </details>
-      </div>
       <SettingRow
         label="claude.ai connectors"
         description="The connectors of your claude.ai account (Asana, Notion, Linear, Microsoft 365…). Off: none are loaded into chats, so none is flagged as needing sign-in. The MCP servers in your own Claude Code settings are not affected. Applies to new chats."
@@ -258,16 +228,6 @@ function ClaudeChats({ isDefault }: { isDefault: boolean }) {
           label="claude.ai connectors"
           checked={e.claudeAiConnectors}
           onChange={(claudeAiConnectors) => void updateConfig({ engine: { claudeAiConnectors } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Suggest the next message"
-        description="After a turn, Claude Code proposes what you might send next (shown above the message box; Tab takes it). Nearly free: it reuses the conversation's cache."
-      >
-        <Switch
-          label="Suggest the next message"
-          checked={e.promptSuggestions}
-          onChange={(promptSuggestions) => void updateConfig({ engine: { promptSuggestions } })}
         />
       </SettingRow>
       <SettingRow
@@ -280,9 +240,16 @@ function ClaudeChats({ isDefault }: { isDefault: boolean }) {
           onChange={(fileCheckpoints) => void updateConfig({ engine: { fileCheckpoints } })}
         />
       </SettingRow>
+      <TextSetting
+        label="Claude Code binary"
+        description="Leave empty to use the Claude Code that ships with Jig, or point to your own `claude`."
+        value={e.claudePath}
+        placeholder="(built in)"
+        onSave={(claudePath) => void updateConfig({ engine: { claudePath } })}
+      />
       <SettingRow
         label="Allow API keys"
-        description="Off: ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN are removed from chats, so usage always comes from your Claude plan. On: a key in your environment switches chats to pay-as-you-go billing."
+        description="Off: ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN are removed from Claude chats, so usage always comes from your Claude plan. On: a key in your environment switches them to pay-as-you-go billing."
       >
         <Switch
           label="Allow API keys"
@@ -303,7 +270,7 @@ function ChatGptChats({ isDefault }: { isDefault: boolean }) {
   return (
     <SettingsGroup
       title="ChatGPT chats"
-      description="OpenAI's Codex, with your ChatGPT plan. Codex has no subagents, so Jig gives these chats two helpers as tools: one searches the code, one tests pages in Claude's browser. Each is a separate ChatGPT call on its own model."
+      description="OpenAI's Codex, with your ChatGPT plan. Codex has no subagents, so Jig gives these chats two helpers as tools: one searches the code, one tests pages in Jig's browser. Each is a separate ChatGPT call on its own model."
       leading={<ProviderMark provider="codex" iconOnly />}
       badge={isDefault && <DefaultBadge />}
       testId="settings-chatgpt-chats"
@@ -326,7 +293,7 @@ function ChatGptChats({ isDefault }: { isDefault: boolean }) {
       </SettingRow>
       <SettingRow
         label="Default model"
-        description="For new ChatGPT chats. A family always runs on its newest version; pick a version to pin it."
+        description={`${MODEL_HINT} A family always runs on its newest version; pick a version to pin it.`}
       >
         <ChatGptModelSelect
           label="Default ChatGPT model"
@@ -336,46 +303,7 @@ function ChatGptChats({ isDefault }: { isDefault: boolean }) {
           onSave={(codexModel) => void updateConfig({ engine: { codexModel } })}
         />
       </SettingRow>
-      <SettingRow label="Helper fallback model" description="For helpers without a model of their own.">
-        <ChatGptModelSelect
-          label="ChatGPT helper fallback model"
-          testId="settings-codex-helper-model"
-          value={e.codexHelperFallbackModel}
-          models={models}
-          empty="Codex's default model"
-          onSave={(codexHelperFallbackModel) => void updateConfig({ engine: { codexHelperFallbackModel } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Tester model"
-        description="For the browser-testing helper, which tests pages with only Claude's browser."
-      >
-        <ChatGptModelSelect
-          label="ChatGPT tester model"
-          testId="settings-codex-tester-model"
-          value={e.codexTesterModel}
-          models={models}
-          empty="Helper fallback model"
-          onSave={(codexTesterModel) => void updateConfig({ engine: { codexTesterModel } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Search model"
-        description="For code searches the chat hands to its search helper, so the chat's model doesn't read through files itself."
-      >
-        <ChatGptModelSelect
-          label="ChatGPT search model"
-          testId="settings-codex-search-model"
-          value={e.codexSearchModel}
-          models={models}
-          empty="Helper fallback model"
-          onSave={(codexSearchModel) => void updateConfig({ engine: { codexSearchModel } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Reasoning effort"
-        description="How hard new ChatGPT chats think, unless their project sets its own. A chat can change it."
-      >
+      <SettingRow label="Reasoning effort" description={EFFORT_HINT}>
         <Select
           className={PICKER}
           aria-label="ChatGPT reasoning effort"
@@ -393,9 +321,39 @@ function ChatGptChats({ isDefault }: { isDefault: boolean }) {
           ))}
         </Select>
       </SettingRow>
+      <SettingRow label="Helper fallback model" description={FALLBACK_HINT}>
+        <ChatGptModelSelect
+          label="ChatGPT helper fallback model"
+          testId="settings-codex-helper-model"
+          value={e.codexHelperFallbackModel}
+          models={models}
+          empty="Codex's default model"
+          onSave={(codexHelperFallbackModel) => void updateConfig({ engine: { codexHelperFallbackModel } })}
+        />
+      </SettingRow>
+      <SettingRow label="Tester model" description={TESTER_HINT}>
+        <ChatGptModelSelect
+          label="ChatGPT tester model"
+          testId="settings-codex-tester-model"
+          value={e.codexTesterModel}
+          models={models}
+          empty="Helper fallback model"
+          onSave={(codexTesterModel) => void updateConfig({ engine: { codexTesterModel } })}
+        />
+      </SettingRow>
+      <SettingRow label="Search model" description={SEARCH_HINT}>
+        <ChatGptModelSelect
+          label="ChatGPT search model"
+          testId="settings-codex-search-model"
+          value={e.codexSearchModel}
+          models={models}
+          empty="Helper fallback model"
+          onSave={(codexSearchModel) => void updateConfig({ engine: { codexSearchModel } })}
+        />
+      </SettingRow>
       <SettingRow
         label="Your personal instructions"
-        description="ChatGPT chats follow the same personal instructions as Claude: ~/.claude/CLAUDE.md with the files it imports. Off: Codex uses its own ~/.codex/AGENTS.md."
+        description="ChatGPT chats follow the same personal instructions as Claude chats: ~/.claude/CLAUDE.md with the files it imports. Off: Codex uses its own ~/.codex/AGENTS.md."
       >
         <Switch
           label="Your personal instructions"
@@ -440,7 +398,25 @@ function AllChats() {
   if (!config) return null;
   const e = config.engine;
   return (
-    <SettingsGroup title="All chats" testId="settings-all-chats">
+    <SettingsGroup title="All chats" description="Whichever provider runs them." testId="settings-all-chats">
+      <SettingRow
+        label="When a chat hits its limit"
+        description="Ask me: the chat shows what you can do, and resumes by itself at the reset if you don't choose. Continue: the same chat carries on with the other provider when its plan has room (else it waits for the reset), reading what happened so far. Wait: the chat resumes by itself when the limit resets. A project can choose its own."
+      >
+        <Select
+          className={PICKER}
+          value={e.onLimit}
+          aria-label="When a chat hits its limit"
+          data-testid="settings-on-limit"
+          onChange={(ev) => void updateConfig({ engine: { onLimit: ev.target.value as LimitPolicy } })}
+        >
+          {LIMIT_POLICIES.map((policy) => (
+            <option key={policy} value={policy}>
+              {LIMIT_POLICY_LABELS[policy]}
+            </option>
+          ))}
+        </Select>
+      </SettingRow>
       <SettingRow
         label="Default permission mode"
         description="How new chats ask before editing files or running commands. ChatGPT chats have no Plan only: they ask before changes instead."
@@ -464,7 +440,7 @@ function AllChats() {
       </SettingRow>
       <SettingRow
         label="Don't ask: wait for you"
-        description="In Don't ask mode Claude Code still asks about its own safety checks (such as rm -rf on a critical folder). Jig shows them for this long and declines them when you don't answer, so Claude carries on."
+        description="In Don't ask mode a chat can still stop at a safety check of its own (Claude Code does for rm -rf on a critical folder). Jig shows the question for this long and declines it when you don't answer, so the chat carries on."
       >
         <Select
           className={PICKER}
@@ -481,6 +457,16 @@ function AllChats() {
               </option>
             ))}
         </Select>
+      </SettingRow>
+      <SettingRow
+        label="Suggest the next message"
+        description="After a turn, the chat proposes what you might send next (shown above the message box; Tab takes it). Nearly free in Claude chats, which reuse the conversation's cache; ChatGPT chats ask for it in a small separate call."
+      >
+        <Switch
+          label="Suggest the next message"
+          checked={e.promptSuggestions}
+          onChange={(promptSuggestions) => void updateConfig({ engine: { promptSuggestions } })}
+        />
       </SettingRow>
       <SettingRow
         label="Stop idle chats"
@@ -524,21 +510,21 @@ function AllChats() {
         />
       </SettingRow>
       <SettingRow
-        label="Show Claude’s browser when it's used"
-        description="Opens the browser view by itself when Claude opens a new page, so you can watch; later steps on that page leave your panels as they are. The view only shows a picture of the page: Claude resizes the page and takes screenshots at any size whatever the view's size, and no window ever pops up. Turn it off to keep the view closed; you can open it from Tools."
+        label="Show Jig’s browser when it's used"
+        description="Opens the browser view by itself when a chat opens a new page, so you can watch; later steps on that page leave your panels as they are. The view only shows a picture of the page: the chat resizes the page and takes screenshots at any size whatever the view's size, and no window ever pops up. Turn it off to keep the view closed; you can open it from Tools."
       >
         <Switch
-          label="Show Claude’s browser when it's used"
+          label="Show Jig’s browser when it's used"
           checked={config.browser.showWhenUsed}
           onChange={(showWhenUsed) => void updateConfig({ browser: { showWhenUsed } })}
         />
       </SettingRow>
       <SettingRow
-        label="Chats’ pages in Claude’s browser"
+        label="Chats’ pages in Jig’s browser"
         description="Each chat that browses has its own page. Shared: the pages share cookies and logins, so you sign in to your dev server once, and a logout in one chat logs out the others. Separate: each page has its own, gone when the page closes. Applies to pages opened from now on."
       >
         <SegmentedSwitch
-          label="Chats’ pages in Claude’s browser"
+          label="Chats’ pages in Jig’s browser"
           testId="settings-browser-sessions"
           value={config.browser.pageSessions}
           onChange={(pageSessions) => void updateConfig({ browser: { pageSessions } })}

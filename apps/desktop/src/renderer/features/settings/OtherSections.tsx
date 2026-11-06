@@ -695,8 +695,8 @@ function LearningActions() {
         label="Look for patterns now"
         description={
           state?.lastRun
-            ? `Last run ${new Date(state.lastRun).toLocaleString()}. Uses one short Claude Code request only when something repeats.`
-            : "Uses one short Claude Code request only when something repeats."
+            ? `Last run ${new Date(state.lastRun).toLocaleString()}. Uses one short AI request (Settings → AI features) only when something repeats.`
+            : "Uses one short AI request (Settings → AI features) only when something repeats."
         }
       >
         <Button size="sm" icon={Search} busy={state?.running} onClick={() => void lookForPatterns()}>
@@ -705,7 +705,7 @@ function LearningActions() {
       </SettingRow>
       <SettingRow
         label="What Jig knows about me"
-        description="Your profile, notes Claude saved from chats, and the activity: read, edit or delete them."
+        description="Your profile, notes Jig saved from chats, and the activity: read, edit or delete them."
       >
         <Button
           size="sm"
