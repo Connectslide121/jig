@@ -1,7 +1,7 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { expect, hostCall, launchJig, test } from "./fixtures";
+import { expect, hostCall, launchJig, settledBox, test } from "./fixtures";
 
 test("shows the shell with Jig's own top bar and the projects view", async ({ page }) => {
   await expect(page.getByTestId("project-switcher")).toBeVisible();
@@ -89,7 +89,8 @@ test("the bottom panel reaches under the sidebars as chosen; sizes and collapsed
   await page.getByTestId("move-view-right").click();
   await page.keyboard.press("Control+J");
   await expect(bottom).toBeVisible();
-  const box = async (l: Locator) => (await l.boundingBox())!;
+  // After the panels' motion (D-200): Ctrl+B animates the sidebar's width.
+  const box = async (l: Locator) => (await settledBox(l))!;
   const before = {
     left: (await box(left)).width,
     right: (await box(right)).width,
