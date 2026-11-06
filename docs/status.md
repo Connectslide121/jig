@@ -621,6 +621,12 @@ test was run once for its screenshot). **Check in the next daily (Sprinta Daily,
 6. The New Podium Daily (external organiser) may refuse captions for real: its orange line should now
    say so, and the local transcript should cover it.
 
+Claude's browser shows itself only for a new page (2026-11-06, D-410): the view opens by itself when
+a chat opens a page (its first browser call, or the first after its page closed), no longer on every
+click, read or screenshot on a page already open; those leave your panels alone (no switch, no badge).
+Covered by `e2e/browser-reveal.spec.ts`. Needs testing on your machine: let a chat browse, switch the
+sidebar to another tab, and check its next steps don't pull the browser back.
+
 Claude's browser stays out of your way (2026-11-05, D-349): when a chat browses while you work on
 another tab of the panel the browser is in (a sidebar, the bottom panel or a main-area pane), the panel
 no longer switches; the browser's tab gets a badge with the number of chats that browsed, cleared when

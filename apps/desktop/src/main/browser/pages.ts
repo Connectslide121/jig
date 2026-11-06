@@ -85,12 +85,16 @@ export class BrowserPages {
     return page;
   }
 
-  /** A tool call starts on the chat's page: it shows as driving, and the view opens on it. */
+  /**
+   * A tool call starts on the chat's page: it shows as driving. The view opens on it only when
+   * this call opens a new page, not on every call that uses one already open.
+   */
   begin(chatId: string): { page: BrowserPage; notice?: string } {
+    const opened = !this.pages.has(chatId);
     const page = this.page(chatId);
     const entry = this.pages.get(chatId)!;
     entry.calls++;
-    this.events.reveal(chatId);
+    if (opened) this.events.reveal(chatId);
     this.changed();
     const notice = this.closedNotes.get(chatId);
     this.closedNotes.delete(chatId);

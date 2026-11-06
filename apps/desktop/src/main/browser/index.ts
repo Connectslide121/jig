@@ -38,7 +38,7 @@ export function startBrowser(): void {
   const browser = new BrowserPages({
     changed: (list) => emit("browser.pages", list),
     frame: (frame) => emit("browser.frame", frame),
-    // The view opens by itself unless you turned browser.showWhenUsed off.
+    // A new page opens the view by itself (D-410) unless you turned browser.showWhenUsed off.
     reveal: (chatId) => {
       if (getConfig().browser.showWhenUsed) emit("browser.reveal", { chatId });
     },

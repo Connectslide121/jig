@@ -268,7 +268,7 @@ settings, add-on permissions.
 | `userBrowser.address` | — | owner window only: native Ctrl/Cmd+L focuses its address field |
 | `browser.pages` | `BrowserPageInfo[]` | a page opened, closed, loaded, navigated, was resized, logged an error or started/stopped being driven |
 | `browser.frame` | `{ chatId, data, width, height }` | a JPEG of a chat's page (base64), only while a view watches that page |
-| `browser.reveal` | `{ chatId }` | a chat used its page: show the browser view |
+| `browser.reveal` | `{ chatId }` | a chat opened a new page (not on later calls on it, D-410): show the browser view |
 | `scripts.changed` | `ProjectScripts` | a project's script groups changed, or its scripts did (files added, removed, renamed; watched from the first `scripts.list`, D-238) |
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |

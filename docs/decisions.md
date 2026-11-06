@@ -7102,3 +7102,13 @@ as ChatGPT's everywhere, fixed in the mark itself, not per place. The details ar
   `ClaudeAsterisk` with `createLucideIcon`: the same three arms at radius 10 with Lucide's stroke, so
   every place that shows `PROVIDER_MARKS` (footer, pickers, chat list, divider, tasks) changed at
   once. Still a Lucide icon in style and API; no new icon set.
+
+## D-410: Claude's browser shows itself only when a chat opens a new page
+
+**Jon:** the browser view switched to Claude's browser on every browser tool call, which pulled the
+panel away while you were looking at something else. It now shows itself only when a call opens a
+new page for the chat (`BrowserPages.begin` reveals only when the chat had no page yet: its first
+browser call, or the first one after its page was closed as idle or by you). Calls on a page that is
+already open still show it as driving, but never switch the panel or add a badge. The D-349 rule
+still decides how a new page shows itself (show, or a badge while you work on another tab of its
+panel), and `browser.showWhenUsed` off still keeps the view closed.
