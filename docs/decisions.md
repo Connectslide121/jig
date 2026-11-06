@@ -7004,3 +7004,23 @@ stopped for good.
   folder and never over something that exists.
 - **Not done:** sharing pages (no link, no upload); comments or data APIs like claude.ai's; showing old
   versions in the UI (they are kept and `where` can return one).
+
+## D-406: Meeting history: transcript hidden by default, beside the notes in a resizable split
+
+- Status: accepted. Changes the history's fixed two-column notes/transcript grid (D-250, D-376).
+- **Who:** Jon asked for it (2026-11-06): the transcript hidden by default with the notes at full width,
+  a Transcript button with the caption count to show it, and a draggable, remembered split. Where it is
+  stored and the widths are **Claude, on my own**.
+- **What:** the history's header has a **Transcript** toggle (captions icon, count, `aria-pressed`) left
+  of Start a chat; it only changes colour, so nothing in the header moves. Shown, the transcript sits on
+  the right of the notes in a `SizedBox` (the Meetings windows' `Pane`: same `ResizeHandle`, drag,
+  arrow keys, double-click resets) of 420 px by default, at least 280 px, and never so wide that the
+  notes get under 320 px. When the detail area is narrower than both minimums together (600 px, measured
+  on the area itself, not the window), the transcript takes the notes' place instead of squeezing them;
+  the button brings the notes back.
+- **Stored:** in the meetings layout (`addon-data/meetings.json` → `layout`), where the history list's
+  width already lives, not in the workbench's `layout.json`: the Meetings window has no workbench store,
+  so the workbench `Pane` can't run there. `historyTranscript: true` (missing = hidden) and the size key
+  `history.transcript` belong to the lobby, like `history.list` (`LOBBY_SIZES`); the call window keeps
+  the saved values when it saves its own layout. The lobby queues its layout changes and applies them all
+  to the saved layout, so a drag and a toggle within the save delay both stick.

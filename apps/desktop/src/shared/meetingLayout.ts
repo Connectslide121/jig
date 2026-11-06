@@ -8,7 +8,7 @@ export const MEETING_PANELS = ["people", "transcript", "notes", "chat"] as const
 export type MeetingPanelId = (typeof MEETING_PANELS)[number];
 export const MEETING_SLOTS = ["left", "right", "bottom"] as const;
 export type MeetingSlot = (typeof MEETING_SLOTS)[number];
-/** Remembered sizes in px: a slot's width/height, `<slot>.split`/`.split2` the first/second panel's share of a shared slot, the lobby's `chats.list` and `history.list`. */
+/** Remembered sizes in px: a slot's width/height, `<slot>.split`/`.split2` the first/second panel's share of a shared slot, the lobby's `chats.list`, `history.list` and `history.transcript` (the history's transcript beside the notes). */
 export const MEETING_SIZES = [
   "left",
   "right",
@@ -23,15 +23,22 @@ export const MEETING_SIZES = [
   "right.split3",
   "bottom.split3",
   "history.list",
+  "history.transcript",
   "chats.list",
 ] as const;
 /** The sizes the lobby window owns (D-292, D-296); the call window keeps the rest. */
-export const LOBBY_SIZES = ["history.list", "chats.list"] as const satisfies readonly MeetingSizeKey[];
+export const LOBBY_SIZES = [
+  "history.list",
+  "history.transcript",
+  "chats.list",
+] as const satisfies readonly MeetingSizeKey[];
 export type MeetingSizeKey = (typeof MEETING_SIZES)[number];
 
 export interface MeetingLayout {
   panels: Record<MeetingPanelId, { slot: MeetingSlot; hidden?: boolean }>;
   sizes: Partial<Record<MeetingSizeKey, number>>;
+  /** The history shows the selected meeting's transcript beside its notes; hidden unless set. The lobby owns it. */
+  historyTranscript?: true;
 }
 
 export const DEFAULT_SIZES: Record<MeetingSizeKey, number> = {
@@ -48,6 +55,7 @@ export const DEFAULT_SIZES: Record<MeetingSizeKey, number> = {
   "right.split3": 240,
   "bottom.split3": 400,
   "history.list": 300,
+  "history.transcript": 420,
   "chats.list": 340,
 };
 
@@ -85,7 +93,13 @@ export function normalizeMeetingLayout(value: unknown): MeetingLayout {
     const size = input.sizes?.[key];
     if (typeof size === "number" && Number.isFinite(size) && size > 0) sizes[key] = Math.round(size);
   }
-  return { panels, sizes };
+  return input.historyTranscript === true ? { panels, sizes, historyTranscript: true } : { panels, sizes };
+}
+
+/** Shows or hides the history's transcript (hidden is the default, so it isn't stored). */
+export function setHistoryTranscript(layout: MeetingLayout, shown: boolean): MeetingLayout {
+  const { historyTranscript: _, ...rest } = layout;
+  return shown ? { ...rest, historyTranscript: true } : rest;
 }
 
 /** The visible panels in a slot, in their fixed order. */

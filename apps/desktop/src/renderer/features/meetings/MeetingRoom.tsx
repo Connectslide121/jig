@@ -24,6 +24,7 @@ import {
   PANEL_TITLES,
   resizeSlot,
   SLOT_TITLES,
+  setHistoryTranscript,
   setPanelHidden,
 } from "../../../shared/meetingLayout";
 import {
@@ -110,15 +111,19 @@ function Room() {
     setLayout(next);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      // The lobby window's sizes (meeting list, chat list) are its own: keep what it saved meanwhile.
+      // The lobby window's sizes (meeting list, chat list, history transcript) and whether the history
+      // shows its transcript are its own: keep what it saved meanwhile.
       void call("meetings.overview")
         .then((o) => {
-          const saved = normalizeMeetingLayout(o.layout).sizes;
+          const saved = normalizeMeetingLayout(o.layout);
           const sizes = { ...next.sizes };
           for (const key of LOBBY_SIZES)
-            if (saved[key] === undefined) delete sizes[key];
-            else sizes[key] = saved[key];
-          return call("meetings.layout", { ...next, sizes });
+            if (saved.sizes[key] === undefined) delete sizes[key];
+            else sizes[key] = saved.sizes[key];
+          return call("meetings.layout", {
+            ...setHistoryTranscript(next, saved.historyTranscript === true),
+            sizes,
+          });
         })
         .catch((e) => setError(errorMessage(e)));
     }, 300);

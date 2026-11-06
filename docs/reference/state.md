@@ -211,7 +211,7 @@ resources stay until you delete them.
 ## Meetings (D-217)
 
 Global addon-data/meetings.json contains settings {tenantId, clientId, endpoint}, an optional room layout
-(`shared/meetingLayout.ts`: panels {people, transcript, notes, chat} → {slot, hidden?} and sizes in px, D-221) and records
+(`shared/meetingLayout.ts`: panels {people, transcript, notes, chat} → {slot, hidden?}, sizes in px, D-221, and `historyTranscript: true` when the history shows its transcript, D-406) and records
 {id, title, joinUrl, startedAt, endedAt?, status, capture, captions, gaps, notes, actions, call?, chat?, folder?},
 and `folders` [{id, name}]: your meeting history folders (D-295). A record's `folder` is the folder you put it in,
 `null` when you took it out of every folder, or missing to let it go to its recurring meeting's folder (meetings

@@ -5,6 +5,7 @@ import {
   normalizeMeetingLayout,
   panelsIn,
   resizeSlot,
+  setHistoryTranscript,
   setPanelHidden,
   sizeOf,
 } from "./meetingLayout";
@@ -48,6 +49,14 @@ describe("meeting layout", () => {
     expect(hidden.panels.notes).toEqual({ slot: "right", hidden: true });
     expect(setPanelHidden(hidden, "notes", false).panels.notes).toEqual({ slot: "right" });
     expect(movePanel(hidden, "notes", "bottom").panels.notes).toEqual({ slot: "bottom" });
+  });
+
+  it("hides the history's transcript unless it was shown", () => {
+    expect(normalizeMeetingLayout({ historyTranscript: "yes" }).historyTranscript).toBeUndefined();
+    const shown = setHistoryTranscript(DEFAULT_MEETING_LAYOUT, true);
+    expect(normalizeMeetingLayout(shown).historyTranscript).toBe(true);
+    expect(setHistoryTranscript(shown, false)).toEqual(DEFAULT_MEETING_LAYOUT);
+    expect(sizeOf(DEFAULT_MEETING_LAYOUT, "history.transcript")).toBe(420);
   });
 
   it("remembers sizes and falls back to defaults", () => {

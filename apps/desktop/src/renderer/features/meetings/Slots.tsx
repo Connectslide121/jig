@@ -20,6 +20,7 @@ export function SizedBox({
   sizeKey,
   edge,
   min,
+  max,
   onResize,
   className,
   label,
@@ -29,6 +30,8 @@ export function SizedBox({
   sizeKey: MeetingSizeKey;
   edge: ResizeEdge;
   min: number;
+  /** The largest size (default: 60% of the window's width, 70% of its height). */
+  max?: () => number;
   onResize(key: MeetingSizeKey, size: number): void;
   className?: string;
   label: string;
@@ -46,7 +49,7 @@ export function SizedBox({
         edge={edge}
         size={size}
         min={min}
-        max={() => (horizontal ? window.innerWidth * 0.6 : window.innerHeight * 0.7)}
+        max={max ?? (() => (horizontal ? window.innerWidth * 0.6 : window.innerHeight * 0.7))}
         label={label}
         onResize={(next) => onResize(sizeKey, next)}
         onReset={() => onResize(sizeKey, DEFAULT_SIZES[sizeKey])}

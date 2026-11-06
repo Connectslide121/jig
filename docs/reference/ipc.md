@@ -325,7 +325,7 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.chatMentions | Teams chats matching `{query}` (after `chat:` / `chat `) for the chat's `@` picker, from the list main read last: `[{id (8 hex), name, kind, peerId?, at, mention}]`, `mention` = `@chat:<name>-<8 hex>`; empty while Meetings is off or Microsoft/Chat.Read isn't there (D-333) |
 | meetings.rename | `{id, title}`: rename a meeting; room or main window |
 | meetings.markdown / meetings.export | A meeting as Markdown (notes, actions, transcript by speaker) / saved through a save dialog (returns the file or nothing) |
-| meetings.layout | Save where the live room's People, Transcript and Notes sit (left/right/bottom, hidden) and the remembered sizes; lobby or room (D-221, D-292) |
+| meetings.layout | Save where the live room's People, Transcript and Notes sit (left/right/bottom, hidden), the remembered sizes and whether the history shows its transcript; lobby or room (D-221, D-292, D-406) |
 | meetings.lobbyView | Save Agenda/Week preference; lobby or room |
 | meetings.signIn / meetings.signOut | External browser sign-in / clear protected MSAL cache; lobby or room |
 | meetings.calendar | Next 14 days of default calendar; separate delegated consent |

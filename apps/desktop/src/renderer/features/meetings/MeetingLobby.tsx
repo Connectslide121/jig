@@ -14,6 +14,7 @@ import {
   type MeetingSizeKey,
   normalizeMeetingLayout,
   resizeSlot,
+  setHistoryTranscript,
 } from "../../../shared/meetingLayout";
 import {
   MEETINGS_TABS,
@@ -102,17 +103,27 @@ function LobbyWindow() {
     if (overview && !layout) setLayout(normalizeMeetingLayout(overview.layout));
   }, [overview, layout]);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const resize = (key: MeetingSizeKey, size: number) => {
+  /** Changes the lobby's part of the layout at once, and saves it a moment later. */
+  const unsaved = useRef<Array<(layout: MeetingLayout) => MeetingLayout>>([]);
+  const changeLayout = (change: (layout: MeetingLayout) => MeetingLayout) => {
     if (!layout) return;
-    setLayout(resizeSlot(layout, key, size));
+    setLayout(change(layout));
+    unsaved.current.push(change);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      const changes = unsaved.current.splice(0);
       // Starts from the saved layout, so panels the call window moved meanwhile stay where they are.
       void call("meetings.overview")
-        .then((o) => call("meetings.layout", resizeSlot(normalizeMeetingLayout(o.layout), key, size)))
+        .then((o) =>
+          call(
+            "meetings.layout",
+            changes.reduce((l, c) => c(l), normalizeMeetingLayout(o.layout)),
+          ),
+        )
         .catch((e) => setError(errorMessage(e)));
     }, 300);
   };
+  const resize = (key: MeetingSizeKey, size: number) => changeLayout((l) => resizeSlot(l, key, size));
   const refreshCalendar = () =>
     run(async () => {
       setEvents(await call("meetings.calendar"));
@@ -289,6 +300,7 @@ function LobbyWindow() {
             projects={projects}
             layout={layout}
             onResize={resize}
+            onTranscript={(shown) => changeLayout((l) => setHistoryTranscript(l, shown))}
             target={target}
             onOpenChat={openChat}
             extraMenu={meetingMenu}

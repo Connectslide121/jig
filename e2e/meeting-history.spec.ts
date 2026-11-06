@@ -68,10 +68,24 @@ test("Meeting history: the top-bar button opens the Meetings window; search, ren
     await tab(lobby, "Meetings").click();
     const history = lobby.getByTestId("meeting-history");
     await expect(history.getByTestId("meeting-row")).toHaveCount(2);
-    // Newest first, and the first is shown with its notes and transcript.
+    // Newest first, and the first is shown with its notes; the transcript waits behind its button.
     await expect(history.getByTestId("meeting-row").first()).toContainText("Portal review");
     await expect(history.getByTestId("meeting-detail")).toContainText("Portal is ready.");
+    const toggle = history.getByTestId("meeting-transcript-toggle");
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(toggle).toContainText("Transcript1");
+    await expect(history.getByTestId("meeting-transcript")).toHaveCount(0);
+    // Shown beside the notes (with a handle), and remembered.
+    const before = await toggle.boundingBox();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(await toggle.boundingBox()).toEqual(before);
     await expect(history.getByTestId("meeting-transcript")).toContainText("Portal looks good.");
+    await expect(history.getByTestId("meeting-detail")).toContainText("Portal is ready.");
+    await expect(history.getByRole("separator", { name: "Resize the transcript" })).toBeVisible();
+    await expect
+      .poll(async () => (await hostCall(page, "meetings.overview")) as { value: { layout?: unknown } })
+      .toMatchObject({ value: { layout: { historyTranscript: true } } });
 
     await history.getByPlaceholder("Search meetings").fill("shop");
     await expect(history.getByTestId("meeting-row")).toHaveCount(1);

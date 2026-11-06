@@ -100,6 +100,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
         .object({ people: meetingPanel, transcript: meetingPanel, notes: meetingPanel, chat: meetingPanel })
         .strict(),
       sizes: z.partialRecord(z.enum(MEETING_SIZES), z.number().min(0).max(10_000)),
+      historyTranscript: z.literal(true).optional(),
     })
     .strict(),
   "meetings.revealChat": z.object({ sessionId: id }).strict(),

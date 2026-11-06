@@ -1332,6 +1332,13 @@ The meeting window's "Saved meetings" is now "Meeting history". To try: join a m
 `JIG_MEETINGS=fake`, leave, then open the history. Needs real-machine testing: Export Markdown's save
 dialog and how concise real notes come out.
 
+Meeting history transcript toggle (2026-11-06, D-406): the history shows the selected meeting's notes
+at full width; the **Transcript** button in its header (with the caption count) shows the transcript
+beside them and hides it again, and the choice is remembered. Drag the divider to resize it (arrow keys
+on the focused divider too; double-click resets); the width is remembered. When the window or the
+meeting list leaves too little room for both, the transcript takes the notes' place. To try: open the
+Meetings window → Meetings, click Transcript, drag the divider, narrow the window, close and reopen.
+
 Meeting history folders (2026-11-03, D-295): in the history tab and the lobby, meetings sit in folders.
 **New folder** (beside the search, or the lobby's history heading) makes one; drag a meeting onto a
 folder, or use its menu → Move to folder. A recurring meeting (two or more meetings with the same Teams

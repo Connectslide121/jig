@@ -1,4 +1,5 @@
 import {
+  Captions,
   Copy,
   Download,
   FileText,
@@ -10,7 +11,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { meetingMention } from "../../../../../../addons/meetings/lib/meeting";
 import type { MeetingFolder } from "../../../shared/meetingFolders";
 import type { MeetingLayout, MeetingSizeKey } from "../../../shared/meetingLayout";
@@ -44,12 +45,15 @@ import { SizedBox } from "./Slots";
 /**
  * The meeting history (D-250), the Meetings window's Meetings tab (D-376): every meeting Jig kept, so
  * you can read one, start a chat from it, write notes or queue its actions. The list keeps a remembered
- * width; the selected meeting's notes and transcript share the rest.
+ * width; the selected meeting's notes take the rest. Its transcript is hidden until you show it with the
+ * header's Transcript button (remembered); then it sits beside the notes with a remembered width, or
+ * takes their place when there isn't room for both.
  */
 export function MeetingHistory({
   projects,
   layout,
   onResize,
+  onTranscript,
   target,
   onOpenChat,
   extraMenu,
@@ -57,6 +61,8 @@ export function MeetingHistory({
   projects: ProjectsState;
   layout: MeetingLayout;
   onResize(key: MeetingSizeKey, size: number): void;
+  /** Shows or hides the transcript beside the notes. */
+  onTranscript(shown: boolean): void;
   /** The meeting to show: its id, or an id's first hex digits (a mention's chip). `at` changes with every request. */
   target?: { select: string; at: number };
   /** Shows a chat (notes being written) in Jig's main window. */
@@ -76,6 +82,10 @@ export function MeetingHistory({
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<"notes" | "queue">();
   const [review, setReview] = useState(false);
+  const transcript = layout.historyTranscript === true;
+  const [detail, detailWidth] = useWidth();
+  // Side by side only when both keep their minimum; else the transcript takes the notes' place.
+  const beside = detailWidth >= NOTES_MIN + TRANSCRIPT_MIN;
 
   const load = useCallback(async () => {
     try {
@@ -318,6 +328,22 @@ export function MeetingHistory({
                   </div>
                   <div className="truncate text-xs text-muted tabular-nums">{when(record)}</div>
                 </div>
+                <button
+                  type="button"
+                  aria-pressed={transcript}
+                  aria-controls={transcript ? "meeting-history-transcript" : undefined}
+                  title={transcript ? "Hide the transcript" : "Show the transcript"}
+                  onClick={() => onTranscript(!transcript)}
+                  data-testid="meeting-transcript-toggle"
+                  className={cn(
+                    "no-drag inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium whitespace-nowrap transition-colors",
+                    transcript ? "bg-active text-fg" : "text-muted hover:bg-hover hover:text-fg",
+                  )}
+                >
+                  <Captions className="size-4 shrink-0" />
+                  Transcript
+                  <span className="text-xs font-normal text-hint tabular-nums">{record.captions.length}</span>
+                </button>
                 <Button
                   size="sm"
                   icon={MessageSquare}
@@ -334,28 +360,49 @@ export function MeetingHistory({
                   onClick={(e) => openMenuAt(e.currentTarget, more(record), true)}
                 />
               </div>
-              <div className="@container min-h-0 flex-1">
-                <div className="grid h-full grid-rows-2 @3xl:grid-cols-2 @3xl:grid-rows-1">
-                  <div className="min-h-0 border-b border-line @3xl:border-r @3xl:border-b-0">
-                    <NotesPanel
-                      record={record}
-                      busy={busy === "notes"}
-                      onGenerateNotes={() =>
-                        void run(
-                          "Couldn't start the notes",
-                          async () => {
-                            await onOpenChat((await call("meetings.notes", { id: record.id })).sessionId);
-                          },
-                          "notes",
-                        )
-                      }
-                      onReview={() => setReview(true)}
-                    />
-                  </div>
-                  <div className="min-h-0">
-                    <TranscriptPanel record={record} live={false} />
-                  </div>
+              <div ref={detail} className="flex min-h-0 flex-1">
+                <div
+                  className={cn("min-h-0 min-w-0 flex-1", transcript && !beside && "hidden")}
+                  // Beside the transcript the notes keep their minimum (in px, like the handle's limit,
+                  // whatever the density) and the transcript gives way.
+                  style={transcript && beside ? { minWidth: NOTES_MIN } : undefined}
+                >
+                  <NotesPanel
+                    record={record}
+                    busy={busy === "notes"}
+                    onGenerateNotes={() =>
+                      void run(
+                        "Couldn't start the notes",
+                        async () => {
+                          await onOpenChat((await call("meetings.notes", { id: record.id })).sessionId);
+                        },
+                        "notes",
+                      )
+                    }
+                    onReview={() => setReview(true)}
+                  />
                 </div>
+                {transcript &&
+                  (beside ? (
+                    <SizedBox
+                      layout={layout}
+                      sizeKey="history.transcript"
+                      edge="left"
+                      min={TRANSCRIPT_MIN}
+                      max={() => detailWidth - NOTES_MIN}
+                      onResize={onResize}
+                      label="Resize the transcript"
+                      className="border-l border-line"
+                    >
+                      <div id="meeting-history-transcript" className="flex size-full min-h-0 min-w-0">
+                        <TranscriptPanel record={record} live={false} />
+                      </div>
+                    </SizedBox>
+                  ) : (
+                    <div id="meeting-history-transcript" className="flex min-h-0 min-w-0 flex-1">
+                      <TranscriptPanel record={record} live={false} />
+                    </div>
+                  ))}
               </div>
             </div>
           )}
@@ -383,6 +430,24 @@ export function MeetingHistory({
       )}
     </div>
   );
+}
+
+/** The narrowest the notes and the transcript get side by side, in px. */
+const NOTES_MIN = 320;
+const TRANSCRIPT_MIN = 280;
+
+/** A callback ref and the element's width, kept up to date (0 until it is measured, before paint). */
+function useWidth(): [(element: HTMLDivElement | null) => void, number] {
+  const [element, setElement] = useState<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    if (!element) return;
+    setWidth(element.clientWidth);
+    const observer = new ResizeObserver(() => setWidth(element.clientWidth));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return [setElement, width];
 }
 
 const when = (r: MeetingRecord) =>
