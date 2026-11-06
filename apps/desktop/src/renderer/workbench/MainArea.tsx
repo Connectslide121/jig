@@ -1,5 +1,6 @@
 import {
   Columns2,
+  type LucideIcon,
   PanelBottom,
   PanelLeft,
   PanelRight,
@@ -52,6 +53,14 @@ const STATUS_TITLE = {
 };
 
 /** A dot on a tab when something there wants a look (a chat working, waiting for you, done). */
+const noIconClass = () => undefined;
+
+function TabIcon({ tab, Icon }: { tab: LayoutTab; Icon: LucideIcon }) {
+  const def = useRegistry((s) => s.tabTypes[tab.type]);
+  const extra = (def?.useIconClass ?? noIconClass)(tab.params);
+  return <Icon className={cn("size-3.5", extra)} />;
+}
+
 function TabStatusDot({ tab }: { tab: LayoutTab }) {
   const def = useRegistry((s) => s.tabTypes[tab.type]);
   const status = (def?.useStatus ?? noStatus)(tab.params);
@@ -225,7 +234,7 @@ function TabButton({
         <FileIcon path={filePath} className="size-3.5" />
       ) : (
         <span className="relative shrink-0">
-          <Icon className="size-3.5" />
+          <TabIcon tab={tab} Icon={Icon} />
           {viewId && <ViewBadge viewId={viewId} />}
         </span>
       )}

@@ -52,6 +52,8 @@ export interface TabTypeDef {
   icon: LucideIcon;
   /** Icon depending on the tab's params (e.g. a file type); falls back to `icon`. */
   iconFor?: (params: Record<string, unknown>) => LucideIcon | undefined;
+  /** Hook: extra classes for the tab's icon (a chat's icon filled in its project's colour). */
+  useIconClass?: (params: Record<string, unknown>) => string | undefined;
   /** A state worth seeing from the tab bar (a chat that works, needs you or finished unseen). */
   useStatus?: (params: Record<string, unknown>) => TabStatus | undefined;
   /** A file the tab shows: its icon comes from the file icon theme (wins over `icon`). */

@@ -177,6 +177,10 @@ A tab type can report a status with `useStatus(params)`, shown as a dot on the t
 Chat tabs report it from the chat's status and the turns seen while the tab showed
 (`useSeenTurns`, in memory).
 
+A tab type can also colour its icon with `useIconClass(params)` (extra classes, token utilities only).
+Chat tabs fill their speech bubble in the chat's project colour (`projectFillClass`); a chat with no
+project keeps the plain outline.
+
 ## Menus and shortcuts
 
 Every view has a `⋯` menu (and a right-click menu on its tab): Move to left sidebar / right sidebar /

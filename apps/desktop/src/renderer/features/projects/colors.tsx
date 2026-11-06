@@ -18,9 +18,19 @@ const text: Record<ProjectColor, string> = {
   danger: "text-danger",
   muted: "text-muted",
 };
+/** A filled icon (stroke and fill) in the colour. */
+const filled: Record<ProjectColor, string> = {
+  accent: "fill-accent text-accent",
+  info: "fill-info text-info",
+  success: "fill-success text-success",
+  warning: "fill-warning text-warning",
+  danger: "fill-danger text-danger",
+  muted: "fill-muted text-muted",
+};
 
 export const projectDotClass = (color: ProjectColor) => dot[color];
 export const projectTextClass = (color: ProjectColor) => text[color];
+export const projectFillClass = (color: ProjectColor) => filled[color];
 export const projectColorLabel: Record<ProjectColor, string> = {
   accent: "Accent",
   info: "Blue",

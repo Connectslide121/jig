@@ -330,6 +330,11 @@ moves it. Checked in Jig Dark with the fake engine. To try on a real machine: sw
 between two projects with different default models and check the first message runs in the new
 folder.
 
+Chat tabs in the project's colour (2026-11-06, Jon): a chat tab's speech-bubble icon is filled in its
+project's colour, so tabs from different projects tell apart at a glance; moving a chat to another
+project recolours it. Chats with no project keep the outline icon. Checked in Jig Dark with three
+projects (yellow, blue, green) and the fake engine.
+
 No provider in the chat header (2026-11-04, D-340, Jon): the chat tab's top bar no longer shows
 Claude or ChatGPT; the composer's provider picker already says who runs the chat. The header's
 right-hand group (context meter, tokens, buttons) closes up; nothing else moves. Checked in Jig Dark

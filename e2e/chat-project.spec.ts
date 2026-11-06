@@ -23,12 +23,17 @@ test("a new chat moves to another project until its first message", async ({ pag
   const welcome = page.getByTestId("chat-welcome");
   await expect(label).toContainText("shop");
   await expect(label).toHaveAttribute("aria-haspopup", "menu");
+  // The chat's tab icon is filled in its project's colour.
+  await hostCall(page, "projects.update", { id: blog.id, color: "info" });
+  const tabIcon = page.getByTestId("tab-jig.chat").locator("svg").first();
+  await expect(tabIcon).toHaveClass(/fill-accent/);
 
   // From the chat's header: its folder, defaults and starter prompts follow, and so does the top bar.
   const before = await label.boundingBox();
   await label.click();
   await page.getByTestId("chat-project-item-blog").click();
   await expect(label).toContainText("blog");
+  await expect(tabIcon).toHaveClass(/fill-info/);
   await expect(welcome).toContainText(blogDir);
   await expect(welcome).toContainText("Fix the typos in the latest post");
   await expect(page.getByTestId("project-switcher")).toContainText("blog");
