@@ -230,6 +230,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       const tab = useWorkbench.getState().layout?.main.tabs.find((t) => t.id === tabId);
       if (tab?.type.startsWith(addonTabType(id, ""))) updateLayout((l) => updateTabParams(l, tabId, params));
     },
+    saveCopy: (from, options) => call("addons.saveCopy", { id, from, ...options }),
     openImage: (path) => void workbench.openTab("jig.image", { path }),
     openPreview: (path) => void workbench.openTab("jig.preview", { path }),
     // A full id ("addon.git.git", "jig.terminals") shows another view; a short id one of this add-on's.

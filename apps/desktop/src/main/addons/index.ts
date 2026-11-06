@@ -44,6 +44,7 @@ import type { FromHost } from "./hostRuntime";
 import { chatEventFor, type Dispatch, GitEvents } from "./jigEvents";
 import { forgetOriginal, isModified, readOrigin, restoreOriginal, saveOriginal } from "./originals";
 import { commitAll } from "./repo";
+import { saveAddonCopy } from "./saveCopy";
 import { AddonService } from "./service";
 import {
   addonContents,
@@ -405,6 +406,29 @@ export async function startAddons(): Promise<void> {
     })),
   );
   handle("addons.addAttachment", ({ id, ...input }) => addAddonAttachment(paths.attachments(), id, input));
+  handle("addons.saveCopy", ({ id, from, name, title }) => {
+    const w = window();
+    return saveAddonCopy(
+      join(paths.addonData(), id),
+      from,
+      { name },
+      {
+        file: async (defaultName) => {
+          const options = { title: title ?? "Save a copy", defaultPath: defaultName };
+          const result = w ? await dialog.showSaveDialog(w, options) : await dialog.showSaveDialog(options);
+          return result.canceled ? undefined : result.filePath;
+        },
+        folder: async () => {
+          const options = {
+            title: title ?? "Save a copy into…",
+            properties: ["openDirectory" as const, "createDirectory" as const],
+          };
+          const result = w ? await dialog.showOpenDialog(w, options) : await dialog.showOpenDialog(options);
+          return result.canceled ? undefined : result.filePaths[0];
+        },
+      },
+    );
+  });
   handle("addons.storageGet", ({ id, key }) => s.storageGet(id, key));
   handle("addons.storageSet", ({ id, key, value }) => s.storageSet(id, key, value));
   handle("addons.reload", async ({ id }) => {

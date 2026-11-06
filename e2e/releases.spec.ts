@@ -101,6 +101,14 @@ test("Releases: set up a repository, draft with Claude, release, and see the nex
   // Git shows the unreleased count next to the repository.
   await page.keyboard.press("Control+Shift+G");
   await expect(page.getByTestId("git-unreleased").first()).toHaveText("2 unreleased", { timeout: 15000 });
+
+  // The notes of a release can be published as a page from a chat.
+  await page.getByTestId("tab-addon.releases.repo").click();
+  await page.getByTestId("release-publish").click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(
+    /Publish the release notes of shop v0\.1\.0 as a page/,
+    { timeout: 15000 },
+  );
 });
 
 test("Releases: on a continuous project, a deploy by hand is the release", async ({ page, jigHome }) => {

@@ -1102,7 +1102,7 @@ ${output.slice(0, 600)}`,
           }
         } else if (
           toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|close my phone room|my usage limits|any pipelines running)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|close my phone room|my usage limits|any pipelines running|publish a page|update the page)\b/.test(
             lower,
           )
         ) {
@@ -1172,6 +1172,25 @@ ${output.slice(0, 600)}`,
             for (let i = 0; runId && i < 5 && /still running/.test(result); i++)
               result = await call("addon_tests_wait", { id: runId, wait: 10 });
             await stream(`${msg}:text:0`, `The unit tests ran. ${result.split("\n")[0]}`, signal);
+          } else if (/publish a page|update the page/.test(lower)) {
+            // Jig's own artifacts (D-405): a page with an image next to it, then a new version of it.
+            const file = join(options.cwd, "sales.html");
+            const update = /update the page/.test(lower);
+            await writeFile(
+              file,
+              `<!doctype html><title>Sales report</title><style>body{font-family:sans-serif;padding:24px}</style><h1>${update ? "Sales report, updated" : "Sales report"}</h1><p>Revenue grew ${update ? "12" : "8"}%.</p><img id="chart" src="chart.png" width="64" height="64" alt="chart">`,
+            );
+            await writeFile(
+              join(options.cwd, "chart.png"),
+              Buffer.from(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+                "base64",
+              ),
+            );
+            let id: string | undefined;
+            if (update) id = /p_[a-f0-9]{10}/.exec(await call("addon_pages_list", {}))?.[0];
+            await call("addon_pages_publish", { title: "Sales report", file, ...(id ? { id } : {}) });
+            await stream(`${msg}:text:0`, update ? "Updated the page." : "Published the page.", signal);
           } else if (/any pipelines running/.test(lower)) {
             // The Pipelines and Repos tools (D-371): runs going, the newest runs, one run, repo status.
             const running = await call("addon_pipelines_runs", { state: "running" });

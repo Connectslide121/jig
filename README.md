@@ -93,6 +93,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   watch live and can take over. Its
   dev servers run in Jig terminals you can see.
 - **Routines.** Your Claude Code routines in one tab (schedules, runs, logs, Run now).
+- **Pages.** Jig's own artifacts: Claude (or ChatGPT) publishes a report, mockup or release notes as an HTML page into Jig, which keeps it, lists it and previews it, all on this computer.
 - **Configure it by talking.** "Use a darker theme", "move Git to the right": Claude changes Jig's
   settings and layout for you, with an Undo on every change.
 - **Menus for everything.** Claude Code's shortcuts (`/`, `@`, `!`, `#`, Shift+Tab) work, and every

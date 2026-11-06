@@ -1,5 +1,21 @@
 # Status
 
+Pages: Jig's own artifacts (2026-11-06, D-405, Jon): the new built-in add-on **Pages**. Ask a chat (Claude or
+ChatGPT) to show you a report, mockup, dashboard, comparison or the release notes and it publishes one
+self-contained HTML page, with the images and files it loads, into Jig (`addon_pages_publish`; the chat is
+told to do this instead of opening temp files in a browser). A card in the chat has **Open in Jig** (the
+Preview tab: scripts off until you turn them on there, no network, no access to Jig or your files) and ⋯
+(Open in browser, Show in folder, Save as…). Publishing again with the page's id updates the same page
+(new version, the last 5 kept). **Tools → Pages** (also a Home tile) lists them newest first with project,
+chat and time in aligned columns; the whole row opens a page; ⋯ adds Open the chat, Rename and Delete
+(asks first). Everything stays in `~/.jig/addon-data/pages/`; nothing is uploaded. The Releases history's
+"Publish the notes as a page" button is back, pointing at it. New add-on API: `ctx.saveCopy`.
+Unit tests (paths, storage, versions, Save as…, the prompt) and `pages.spec.ts` cover it; screenshots of
+the view in a sidebar and a tab, Jig Dark and Light, were checked.
+**Check on your machine:** with a real Claude chat, ask "show me a comparison of X and Y as a page": the
+card appears, Open in Jig shows it (the page's own images too), ask for a change and see v2 on the same
+page; Save as… into a folder and open it in the browser.
+
 Honest about artifacts (2026-11-06, D-404, Jon): Claude Code offers its Artifact tool only inside the
 Claude desktop app, never to Jig's chats, so Jig stopped promising it. Gone: the Artifacts tab (and its
 Home tile and Go to entry), the claude.ai listing and its guarded calls, and the Releases "Publish the

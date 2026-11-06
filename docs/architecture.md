@@ -271,7 +271,7 @@ Each has a menu entry. Reference: `docs/reference/ai-features.md`.
   Claude desktop app (`CLAUDE_CODE_ENTRYPOINT=claude-desktop`); Jig runs as `sdk-ts` and never
   pretends to be another client. Jig learns which tools Claude Code offers from the `tools` list of its
   init message (`main/engine/offeredTools.ts`) and mentions a tool to Claude only when it's there. The
-  chat keeps the card for old Artifact calls in chats resumed from the desktop app.
+  chat keeps the card for old Artifact calls in chats resumed from the desktop app. The replacement is the **Pages** add-on (D-405, `docs/reference/pages.md`).
 
 References: `docs/reference/routines.md`, `docs/reference/artifacts.md` (why there is no Artifacts tab).
 
@@ -511,7 +511,7 @@ branches, Open in VS Code/Explorer), `addons/pipelines` (Azure DevOps through `a
 `addons/scripts` (scripts view and menu actions), `addons/files` (the project's file tree with git colours), `addons/releases` (versions, changelogs and
 deploys per repository from its `.jig/release.json` policy, D-110; its Claude tools are the first
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated
-lists of steps per project, run by hand, with help or on a schedule, D-112). They use only public slots, so they are
+lists of steps per project, run by hand, with help or on a schedule, D-112) and `addons/pages` (pages Claude publishes into Jig: HTML kept in the add-on's data folder, listed and previewed locally, a `chat.toolRenderer` card in the chat, D-405). They use only public slots, so they are
 also examples for the builder.
 
 ### 11.1 Azure tenants (D-282)

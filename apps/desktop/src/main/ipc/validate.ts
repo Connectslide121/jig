@@ -490,6 +490,12 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
       .regex(/^[A-Za-z_$][\w$]*$/)
       .max(100),
   }),
+  "addons.saveCopy": z.object({
+    id: addonId,
+    from: path,
+    name: z.string().min(1).max(200).optional(),
+    title: z.string().max(200).optional(),
+  }),
   "addons.storageGet": z.object({ id: addonId, key: z.string().max(200) }),
   "addons.storageSet": z.object({ id: addonId, key: z.string().max(200) }),
   "addons.setEnabled": z.object({ id: addonId, enabled: z.boolean() }),

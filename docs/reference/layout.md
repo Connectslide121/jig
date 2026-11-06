@@ -133,6 +133,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | view | `addon.pipelines.pipelines` | right | Azure DevOps pipelines |
 | view | `addon.boards.boards` | left (hidden; Code → Boards) | Azure DevOps boards of the active project |
 | view | `addon.releases.releases` | hidden (right) | releases of every repository (D-110) |
+| view | `addon.pages.pages` | hidden (right) | pages Claude published into Jig (D-405); Tools → Pages, a Home tile |
 | view | `jig.notes` | left | the active project's notes (D-289; saved `addon.notes.notes` places are kept) |
 | view | `jig.suggestions` | hidden (right) | suggestions (Learning) |
 | view | `jig.browser` | right | Claude’s browser |
@@ -160,7 +161,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
   - A box to start a chat: Enter sends the message in a new chat.
   - Starter prompts, and **Try several ways…**.
   - The project's recent chats with their status.
-  - "Next steps" tiles: new chat, Git, scripts, standup, routines, build a tool, What Jig
+  - "Next steps" tiles: new chat, Git, scripts, standup, routines, pages, build a tool, What Jig
     can do.
   - The add-ons' dashboard widgets.
 - **With no project:** the "What Jig can do" page, with Add project….

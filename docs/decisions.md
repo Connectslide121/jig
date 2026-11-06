@@ -6973,4 +6973,34 @@ stopped for good.
   artifacts, and the Releases "Publish the notes as an artifact" button (hidden until Jig's own pages
   exist). **Kept:** the Artifact card in chat (Open in Jig for the local page, Open on claude.ai) because
   a chat resumed from the desktop app can hold old calls.
-- **Next:** Jig's own pages (Claude publishes HTML into Jig) are the replacement for artifacts.
+- **Next:** Jig's own pages, D-405, are the replacement for artifacts.
+
+## D-405: Pages: Jig's own artifacts, a built-in add-on Claude publishes HTML into
+
+- Status: accepted. Follows D-404.
+- **Who:** Jon decided it (2026-11-06): "we could have our own add-on that Jig can use to build its own
+  artifacts, they are just HTML files right?", instead of pretending to be the Claude desktop app
+  (D-404). The shape is **Claude, on my own**.
+- **What:** the built-in add-on `addons/pages` (global storage). Claude (or ChatGPT, the tools are
+  engine-neutral, D-313) publishes a self-contained HTML page with `addon_pages_publish` (an HTML `file`
+  in the chat's folder, its project or the temp folder, or the `html` itself; extra `files`; an `id` to
+  update). Jig copies the page and the files it loads (`src`, `href`, `url()`, found in the HTML) into
+  `~/.jig/addon-data/pages/<id>/v<n>/`, so it outlives the scratch files; an update is a new version of
+  the same page (the files it doesn't bring again carry over; the last 5 versions are kept; limits: 300
+  files, 25 MB). `addon_pages_list` and `addon_pages_read` are read-only. `jigContext` makes it the default
+  way to show visual output while the tool exists, and `publish` is `alwaysLoad` so it is never deferred.
+- **In the app:** a card under the publish call (`toolRenderers`: title, version, Open in Jig, ⋯ with Open
+  in browser, Show in folder, Save as…), and the Pages view (Tools → Pages, a Home tile; hidden by default,
+  sidebar or main tab by container size) with Open the chat, Rename and Delete (asks first) as well.
+- **Security:** a page is untrusted HTML. It opens in the Preview tab as every HTML file does: sandboxed
+  frame, never same-origin, scripts off until turned on there, CSP with no network, no Node or IPC. Source
+  paths must lie inside the chat's folder, its project or the temp folder (real paths, so a symlink can't
+  leave); extra files only inside the page's own folder (`..` and absolute paths refused). Nothing is
+  uploaded: no sharing service, no claude.ai. **Open in browser** hands the file to the user's browser,
+  which has no such sandbox: that is the user's own action. The scripts switch stays Preview's per-tab
+  one (off each time a page is opened), not remembered per page.
+- **Add-on API:** `ctx.saveCopy(from, { name?, title? })` (`addons.saveCopy`) was missing for Save as…: a
+  Save dialog for a file, a folder picker for a folder; it only copies out of the add-on's own data
+  folder and never over something that exists.
+- **Not done:** sharing pages (no link, no upload); comments or data APIs like claude.ai's; showing old
+  versions in the UI (they are kept and `where` can return one).

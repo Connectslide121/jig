@@ -5,6 +5,7 @@ import {
   FolderGit2,
   FolderOpen,
   GitBranch,
+  LayoutTemplate,
   type LucideIcon,
   MessageSquare,
   MoreHorizontal,
@@ -83,6 +84,7 @@ export function Home({ project }: { project: ProjectInfo }) {
   const starters = project.starters?.length ? project.starters : STARTERS;
   const widgets = useDashboardWidgets();
   const hasGit = useRegistry((s) => Boolean(s.views["addon.git.git"]));
+  const hasPages = useRegistry((s) => Boolean(s.actions["addon.pages.show"]));
   const metas = useSessions((s) => s.metas);
   const recent = Object.values(metas)
     .filter((m) => m.projectId === project.id && m.kind !== "builder" && !m.archived)
@@ -238,6 +240,13 @@ export function Home({ project }: { project: ProjectInfo }) {
             />
             <QuickAction icon={FileText} label="Write my standup" onClick={() => runAction("jig.standup")} />
             <QuickAction icon={CalendarClock} label="Routines" onClick={() => runAction("jig.routines")} />
+            {hasPages && (
+              <QuickAction
+                icon={LayoutTemplate}
+                label="Pages"
+                onClick={() => runAction("addon.pages.show")}
+              />
+            )}
             <QuickAction icon={Wand2} label="Build a tool for Jig…" onClick={() => runAction("jig.build")} />
             <QuickAction icon={BookOpen} label="What Jig can do" onClick={() => openAbout()} />
           </div>

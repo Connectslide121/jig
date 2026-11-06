@@ -183,6 +183,7 @@ settings, add-on permissions.
 | `addons.systemNotify` | `{ id, title, message? }` | `boolean` | a system notification for an add-on's toast, only when no Jig window is in front and desktop notifications are on; click brings Jig forward |
 | `addons.search` | `{ query, projectId?, cwd? }` | `AddonSearchGroup[]` | asks every search provider (`contributes.search`) at once: 1.5 s each, up to 8 checked results; `{ addonId, provider, title, icon?, results }` |
 | `addons.addAttachment` | `{ id, data?, mime?, name?, path? }` | `ChatAttachment` | `ctx.attachments.add/pick`: keeps a file for a message the add-on's host sends later, in `attachments/addon-<id>/` (same types and limits as `sessions.addAttachment`); `api.chats.send({ attachments })` copies them into the chat |
+| `addons.saveCopy` | `{ id, from, name?, title? }` | `string \| undefined` | `ctx.saveCopy`: a Save dialog (file) or folder picker (folder) and a copy of something in the add-on's own `addon-data/<id>/` folder; anything else is refused; never over an existing folder (D-405) |
 | `addons.storageGet` / `addons.storageSet` | `{ id, key }` / `{ id, key, value }` | `unknown` / — | per-add-on JSON |
 | `addons.reload` | `{ id? }` | — | rebuild one add-on, or all |
 | `builds.list` | — | `BuildJob[]` | newest first (`docs/reference/builder.md`) |

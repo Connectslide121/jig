@@ -1,0 +1,78 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "pages",
+  "name": "Pages",
+  "description": "Pages Claude (or ChatGPT) publishes into Jig: a report, mockup, dashboard, comparison or release notes as a self-contained HTML page, kept and previewed on this computer. Jig's own artifacts: nothing is uploaded.",
+  "version": "1.0.0",
+  "icon": "layout-template",
+  "permissions": ["fs:read", "fs:write", "chat"],
+  "storage": { "scope": "global" },
+  "contributes": {
+    "views": [
+      {
+        "id": "pages",
+        "title": "Pages",
+        "icon": "layout-template",
+        "region": "right",
+        "hidden": true,
+        "component": "PagesView"
+      }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Pages",
+        "group": "Claude",
+        "icon": "layout-template",
+        "run": "showPages"
+      }
+    ],
+    "toolRenderers": [{ "tool": "mcp__jig__addon_pages_publish", "component": "PageCard" }],
+    "tools": [
+      {
+        "id": "publish",
+        "description": "Show the user something to look at or keep as a page in Jig: a report, mockup, dashboard, release notes, comparison, diagram or any visual result. Publish ONE self-contained HTML page (inline CSS and JS; images and data files next to it) and Jig keeps it, lists it under Pages and opens it in its Preview tab. This is the default way to show visual output: use it instead of writing a temp file and opening it in a browser. Give `file` (an HTML file you wrote in the chat's folder, its project or the temp folder) or `html` (the page itself). Images, CSS, JS and data files the page loads by a relative path (src, href, url()) are copied along automatically; list others (or whole folders) in `files`, relative to the page's folder, never absolute and never with `..`. To change a page you published, pass its `id` again: that updates the same page (older versions are kept). The page runs with scripts off until the user turns them on, with no network and no access to Jig or their files, so build it to read well without scripts and never put secrets in it. Returns the page's id.",
+        "params": {
+          "title": {
+            "description": "A short title for the list (else the page's <title>)",
+            "optional": true
+          },
+          "file": {
+            "description": "Path of the HTML file (absolute, or relative to the chat's folder)",
+            "optional": true
+          },
+          "html": {
+            "description": "The page's HTML itself, instead of `file`. Files in `files` are then relative to the chat's folder",
+            "optional": true
+          },
+          "files": {
+            "type": "array",
+            "description": "Extra files or folders the page needs, relative to its folder (images, data, CSS). Relative src/href/url() references in the HTML are found by themselves",
+            "optional": true
+          },
+          "id": {
+            "description": "The id of a page you published before, to update it instead of making a new one",
+            "optional": true
+          }
+        },
+        "alwaysLoad": true,
+        "run": "publish"
+      },
+      {
+        "id": "list",
+        "description": "The pages published into Jig, newest first, with their ids: use it to find the page to update.",
+        "readOnly": true,
+        "run": "toolList"
+      },
+      {
+        "id": "read",
+        "description": "A published page's HTML and file list, to continue from it when the user asks for a change.",
+        "params": {
+          "id": { "description": "The page's id" }
+        },
+        "readOnly": true,
+        "run": "toolRead"
+      }
+    ]
+  }
+}

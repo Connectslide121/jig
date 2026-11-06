@@ -809,6 +809,11 @@ export interface HostMethods {
     args: { id: string; data?: string; mime?: string; name?: string; path?: string };
     result: ChatAttachment;
   };
+  /** Saves a copy of a file or folder in the add-on's own data folder where the user chooses (`ctx.saveCopy`). */
+  "addons.saveCopy": {
+    args: { id: string; from: string; name?: string; title?: string };
+    result: string | undefined;
+  };
   "addons.storageGet": { args: { id: string; key: string }; result: unknown };
   "addons.storageSet": { args: { id: string; key: string; value: unknown }; result: void };
   /** Rebuilds one add-on, or all when `id` is empty. */

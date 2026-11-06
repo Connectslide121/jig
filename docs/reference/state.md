@@ -26,6 +26,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `addon-data/<id>.json`, `addon-data/<id>/` | JSON / files | per-add-on storage and data folder |
 | `cache/addons/` | bundles | bundled add-on host code (safe to delete) |
 | `cache/galleries/<hash>/` | git clones | add-on gallery sources (D-179), shallow clones made with your git (safe to delete) |
+| `addon-data/pages/<id>/v<n>/` | files | the Pages add-on's pages: each version's HTML and the files it loads (the list is `addon-data/pages.json`, D-405) |
 | `cache/artifacts/<id>.html` | HTML | leftover from the removed claude.ai artifacts loader (D-404; safe to delete) |
 | `builds.json` | JSON `{ jobs: BuildJob[] }` | build jobs (last 200) |
 | `work/<job>/` | git worktree | a build's workspace (branch `build/<job>` of `addons/`), removed on Accept/Discard |

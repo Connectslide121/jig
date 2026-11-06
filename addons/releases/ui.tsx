@@ -21,6 +21,7 @@ import {
   CircleAlert,
   Copy,
   FileCog,
+  LayoutTemplate,
   MessageSquare,
   Plus,
   RefreshCw,
@@ -870,6 +871,18 @@ function HistoryCard({ ctx, data }: { ctx: AddonUiContext; data: RepoDetail }) {
               {body && (
                 <>
                   <IconButton icon={Copy} size="sm" label="Copy the notes" onClick={() => ctx.copy(body)} />
+                  <IconButton
+                    icon={LayoutTemplate}
+                    size="sm"
+                    label="Publish the notes as a page"
+                    data-testid="release-publish"
+                    onClick={() =>
+                      void ctx.openChat({
+                        cwd: data.path,
+                        draft: `Publish the release notes of ${data.path.split(/[\\/]/).pop()} ${r.tag} as a page: a clean page for the people who use it, in the notes' language. Here are the notes:\n\n${body}`,
+                      })
+                    }
+                  />
                 </>
               )}
             </div>

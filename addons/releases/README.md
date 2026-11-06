@@ -23,8 +23,8 @@ Versions, changelogs and release notes per repository, following its **release p
     release pipeline" runs it on the new tag after a successful push (`az pipelines run --branch
     refs/tags/<tag>`).
   - **What's live:** the latest deploy per environment; "Deployed to …" buttons for manual ones.
-  - **Releases:** the history, with the notes to copy. (Publishing the notes as a page is hidden
-    until Jig's own pages exist; Jig chats don't get Claude Code's Artifact tool, D-404.)
+  - **Releases:** the history, with the notes to copy, or **publish as a page** (a chat with the
+    notes and the request, ready to send; the Pages add-on keeps it, D-405).
 - **In the Git panel:** "N unreleased" next to a repository with planned releases (the Git add-on's
   `releaseInfo` reads the same policy); click opens Releases.
 - **Watchers:** `checkDeploys` (5 min) looks at production pipelines in the policy through `az`;

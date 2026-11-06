@@ -115,6 +115,7 @@ in this order:
 | "delete the queued task" | Claude asks to delete queued task `t1` with the Tasks add-on's `addon_tasks_delete` (an approval drawn by the add-on, naming the task); deletes it once allowed ("Deleted the queued task."), else "OK, I didn't delete it." |
 | starts with "Test this in Claude's browser" (Search → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester, jig-search)"); its PASS/FAIL wording doesn't end the turn with an error |
 | contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
+| "publish a page" / "update the page" | writes `sales.html` with `chart.png` next to it and calls `addon_pages_publish` (a new page, then a new version of it with the id from `addon_pages_list`; `e2e/pages.spec.ts`, D-405) |
 | "publish an artifact" | writes `release-notes.html` and shows an old Artifact call (as in a chat resumed from the desktop app; Jig chats never get the tool, D-404) |
 | "use a skill" | Skill `explain-code`, Read `README.md`, the MCP tool `mcp__github__list_issues`, the Releases add-on's tool `mcp__jig__addon_releases_overview`, then a short answer (the chat overview test) |
 | "todo list" | three TodoWrite updates, all done at the end |

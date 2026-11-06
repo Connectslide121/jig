@@ -354,6 +354,13 @@ export interface AddonUiContext {
   };
   openExternal(url: string): void;
   openPath(path: string): void;
+  /**
+   * Saves a copy of a file or folder of this add-on's own data folder (`~/.jig/addon-data/<id>/`; anything
+   * else is refused) where the user chooses: a Save dialog for a file, a folder picker for a folder (copied
+   * into it as `name`, never over something that exists). Resolves with the new path, or undefined when the
+   * user cancels.
+   */
+  saveCopy(from: string, options?: { name?: string; title?: string }): Promise<string | undefined>;
   copy(text: string): void;
   /**
    * Opens a menu at the mouse position (right-click) or below an element. With `target`, entries

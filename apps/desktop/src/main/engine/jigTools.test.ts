@@ -93,3 +93,16 @@ describe("jigContext and the Artifact tool (D-404)", () => {
     resetOfferedTools();
   });
 });
+
+describe("jigContext and Pages (D-405)", () => {
+  it("tells chats to publish visual output as a page only while the Pages tool exists", () => {
+    setAddonTools([]);
+    expect(jigContext(meta, undefined)).not.toContain("addon_pages_publish");
+    setAddonTools([{ name: "addon_pages_publish", description: "d", shape: {}, handler: async () => "ok" }]);
+    for (const provider of ["claude", "codex"] as const)
+      expect(jigContext({ ...meta, provider } as SessionMeta, undefined)).toContain(
+        "publish it with addon_pages_publish",
+      );
+    setAddonTools([]);
+  });
+});

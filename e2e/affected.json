@@ -242,6 +242,10 @@
     { "files": ["addons/boards/**"], "specs": ["boards.spec.ts"] },
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
     {
+      "files": ["addons/pages/**", "apps/desktop/src/main/addons/saveCopy.ts"],
+      "specs": ["pages.spec.ts"]
+    },
+    {
       "files": ["addons/tasks/**"],
       "specs": [
         "tasks.spec.ts",

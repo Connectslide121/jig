@@ -26,6 +26,7 @@ root [`README.md`](../README.md).
 | [ai-features.md](reference/ai-features.md) | AI features around the chats: tours, checks, commit messages, standup, failed scripts, notifications |
 | [attempts.md](reference/attempts.md) | Try several ways: parallel attempts in git worktrees, judged by Claude |
 | [routines.md](reference/routines.md) | Claude Code routines: the Routines tab, chat cards, guarded tool calls |
+| [pages.md](reference/pages.md) | Pages: Jig's own artifacts, tools, storage, security (D-405) |
 | [artifacts.md](reference/artifacts.md) | Why Jig has no Artifacts tab (D-404), and the card for old Artifact calls |
 | [browser.md](reference/browser.md) | Browser: the offscreen page, its tools, the console and network log, and the live view |
 | [terminals.md](reference/terminals.md) | Terminals, scripts, groups, and Claude's terminals |
@@ -55,6 +56,7 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | [Scripts](../addons/scripts/README.md) | Scripts of every workspace folder, started and stopped in one click |
 | [Pipelines](../addons/pipelines/README.md) | Azure DevOps pipelines through `az` |
 | [Releases](../addons/releases/README.md) | Release policy, versions, changelogs, notes and deploys per repository |
+| [Pages](../addons/pages/README.md) | Pages Claude publishes into Jig (reports, mockups, release notes), kept and previewed locally |
 | [Workflows](../addons/workflows/README.md) | Steps you repeat, per project: by hand, with help, or on a schedule |
 | [Tasks](../addons/tasks/README.md) | A task queue: prompts Claude does in order, each reported in a table (outcome, summary, follow-ups) |
 | [Meetings](../addons/meetings/README.md) | Teams meeting room, screen sharing, live named captions, project-aware questions and reviewed actions |
