@@ -511,7 +511,7 @@ branches, Open in VS Code/Explorer), `addons/pipelines` (Azure DevOps through `a
 `addons/scripts` (scripts view and menu actions), `addons/files` (the project's file tree with git colours), `addons/releases` (versions, changelogs and
 deploys per repository from its `.jig/release.json` policy, D-110; its Jig tools are the first
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated
-lists of steps per project, run by hand, with help or on a schedule, D-112) and `addons/pages` (pages Jig publishes into Jig: HTML kept in the add-on's data folder, listed and previewed locally, a `chat.toolRenderer` card in the chat, D-405). They use only public slots, so they are
+lists of steps per project, run by hand, with help or on a schedule, D-112) and `addons/pages` (pages Jig publishes into Jig: HTML kept in the add-on's data folder, listed and previewed locally, a `chat.toolRenderer` card in the chat, D-405) and `addons/chat-time` (where chats' working time goes, read-only from the chat files and Claude Code's transcripts, with `addon_chat_time_*` tools, D-419). They use only public slots, so they are
 also examples for the builder.
 
 ### 11.1 Azure tenants (D-282)

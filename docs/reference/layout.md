@@ -134,6 +134,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | view | `addon.boards.boards` | left (hidden; Code → Boards) | Azure DevOps boards of the active project |
 | view | `addon.releases.releases` | hidden (right) | releases of every repository (D-110) |
 | view | `addon.pages.pages` | hidden (right) | pages Jig published into Jig (D-405); Tools → Pages, a Home tile |
+| view | `addon.chat-time.chat-time` | hidden (right) | where chats' working time goes, a project or all projects (D-419); Chats → Where chat time goes |
 | view | `jig.notes` | left | the active project's notes (D-289; saved `addon.notes.notes` places are kept) |
 | view | `jig.suggestions` | hidden (right) | suggestions (Learning) |
 | view | `jig.browser` | right | Jig’s browser |
@@ -152,6 +153,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | tab type | `jig.routines` | | Claude Code routines |
 | tab type | `addon.git.history` / `commit` / `diff` / `compare` | | Git |
 | tab type | `addon.releases.repo` | | one repository's releases (`params.path`) |
+| tab type | `addon.chat-time.chat` | | one chat's working time (`params.sessionId`, D-419) |
 | tab type | `addon.workflows.workflow` | | a workflow (`params.projectId`, `id`; or `draft`) |
 
 ## The main area with no tab open

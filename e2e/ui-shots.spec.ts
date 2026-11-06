@@ -6,6 +6,7 @@
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { seedChatTime } from "./chatTimeSeed";
 import { AZ_ARGV, expect, hostCall, test } from "./fixtures";
 import { SHOTS_DIR, shootView } from "./shots";
 
@@ -337,4 +338,34 @@ test("Teams setup modal and Settings → Phone, in Dark, Light and an imported t
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(SHOTS_DIR, `phone-settings-${theme.replace(":", "-")}-narrow.png`) });
   }
+});
+
+test("Chat time: a week of a project's chats and a chat's own tab, at all widths and in light and dark", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(180_000);
+  await mkdir(join(jigHome, "shop"), { recursive: true });
+  await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
+  const projects = (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } };
+  const projectId = projects.value.projects[0]!.id;
+  await hostCall(page, "projects.setActive", { id: projectId });
+  const ids = await seedChatTime(jigHome, [projectId], { count: 6 });
+  await seedChatTime(jigHome, ["contoso-project"], { count: 4 });
+
+  const ready = async (panel: import("@playwright/test").Locator) => {
+    await expect(panel.getByTestId("chat-time-chat").first()).toBeVisible({ timeout: 15000 });
+  };
+  for (const theme of ["jig-dark", "jig-light"]) {
+    await hostCall(page, "config.update", { appearance: { themeId: theme } });
+    console.log(
+      (await shootView(page, "addon.chat-time.chat-time", `chat-time-${theme}`, { ready })).join("\n"),
+    );
+  }
+  await page.getByTestId("chat-time-chat").first().click();
+  await expect(page.getByTestId("chat-time-chat-tab")).toContainText("Others at once");
+  await page.waitForTimeout(300);
+  const tab = join(SHOTS_DIR, "chat-time-chat-tab.png");
+  await page.getByTestId("main-area").screenshot({ path: tab });
+  console.log(tab, ids.length);
 });

@@ -933,6 +933,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "How you worked: lines by Jig vs by hand in your commits, and how often each was changed again",
                 "Suggestions use a centered reading column on wide screens and still fit narrow panels",
                 "How Jig worked for you: the skills, subagents, add-ons and MCP servers it used across chats, which suggestions build on",
+                "Chat time (View → Views → Chat time): where chats' working time goes (the model, tests and builds, browser checks, subagents, shell, other tools, waiting for you) for a project or all projects, per day, with the slowest calls and how many chats worked at once; a message's menu shows one chat's",
                 "An empty profile? Jig offers a short interview chat that asks, follows up and fills it in; plus an optional weekly check-in chat (off by default)",
                 "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",

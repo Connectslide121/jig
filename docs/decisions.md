@@ -7335,3 +7335,46 @@ own**.
   the title's room at ~800 px: Jig's root font makes `@4xl` ~784 px); narrow (`@max-md`, a sidebar) the
   status column is the icon alone (word in its tooltip) and the chat header's progress reads "1/4", and
   the gaps tighten, so the title keeps room beside the new code column.
+
+## D-419: Chat time is a built-in add-on: Views entry, project/all scopes, AI tools, concurrency, magenta token
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06): make the builder's "Chat time" preview (build 6dd28f01) a built-in add-on;
+  findable in View → Views as a main panel, never only from the search bar; a project view with a
+  project picker and a total across all projects; the per-chat breakdown from a message's menu stays;
+  "Model thinking & writing" and "Tests & builds" were two oranges, so one gets a new purple/magenta
+  design token; check the categories (browser tools, jig-tester, the Tests add-on, background and
+  parallel calls); tools for chats; and, since times are wall-clock, how many other chats worked at the
+  same time. How it is done is **Claude, on my own**.
+- **Source:** the builder's work folder was gone (the build was discarded), so the code was
+  recovered from the builder chat's Claude Code transcript and reworked in `addons/chat-time`. No
+  user-installed copy existed to remove.
+- **Where it shows:** `contributes.views` `chat-time` (hidden, right; Chats → Where chat time goes
+  shows it), so it is in View → Views and opens as a main-area tab like Tests and Releases. One chat
+  is a tab type `chat` (`params.sessionId`), opened from a message's menu or a chat row. The scope
+  picker is a menu: Active project (default, follows it), All projects, or any project; the period
+  stays today / 7 / 30 / 90 days; both are kept in the add-on's global storage.
+- **Colours:** a new theme token `magenta` (`--jig-magenta`, `bg-magenta`, `magenta-soft`): Jig Dark
+  `#d77ee8`, Jig Light `#a03cb8`, imported VS Code themes `charts.purple` else their ANSI magenta (3:1
+  on the canvas). Named magenta, not violet/purple, because those are Tailwind palette names the token
+  check rejects. Categories: model `accent`, tests `magenta`, browser `info`, subagents `success`,
+  shell `muted`, tools `line-strong`, waiting `danger` (the two greys differ clearly in lightness).
+- **Categories, checked on Jon's chats (last 7 days):** project Jig really spends ~51% in tests and
+  builds (`npm run verify` ~380 times, builds, Biome, Vitest, Playwright, e2e); its browser checks are small
+  because Jig-project chats rarely use the browser. The ~7 h of `jig_browser_*` a manual analysis found
+  is across all projects (mostly chats without a project testing another app): the All projects view
+  shows 7 h 29 m. Fixes: the jig-tester subagent counts as a browser check; a shell command counts
+  as tests only when one of its steps (split at `&&`, `;`, `|`, new lines, heredoc bodies dropped)
+  runs a test or build, not when a path mentions `e2e` or `.test.ts` (that over-counted ~1 800 calls);
+  `sleep`/`until` loops on a test log count as tests; `TaskOutput`/`BashOutput` waits take the
+  category of the background command they wait on. Parallel calls were already counted once (a sweep
+  with a rank), and calls are cut at their turn's end, so background work can't add time.
+- **Concurrency:** one sweep over every chat's turn intervals (`concurrency()` in `lib/analyze.ts`)
+  gives per chat and per day the other chats' working time inside it (any project counts), the share
+  of time shared and the peak; shown as "Others at once" (average other chats), "×n" per day, and a
+  "Wall clock" total next to "Working".
+- **Tools:** `addon_chat_time_breakdown` (scope chat/project/all, id, days, top) and
+  `addon_chat_time_chats`, read-only, compact text. The add-on id stays `chat-time`, so the prefix is
+  `addon_chat_time_` (the SDK turns `-` into `_`), not `addon_chattime_`.
+- **Later:** once Jig records tool-call durations and offers a `chatOverview` slot (queued separately),
+  read those instead of Claude Code's transcripts and show the breakdown in the chat overview.

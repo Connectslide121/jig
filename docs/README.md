@@ -60,6 +60,9 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | [Workflows](../addons/workflows/README.md) | Steps you repeat, per project: by hand, with help, or on a schedule |
 | [Tasks](../addons/tasks/README.md) | A task queue: prompts Jig does in order, each reported in a table (outcome, summary, follow-ups) |
 | [Meetings](../addons/meetings/README.md) | Teams meeting room, screen sharing, live named captions, project-aware questions and reviewed actions |
+| [Boards](../addons/boards/README.md) | Azure DevOps boards per project, laid out like Azure DevOps |
+| [Tests](../addons/tests/README.md) | The project's test suites, run with one click, with results and history; Jig runs them too |
+| [Chat time](../addons/chat-time/README.md) | Where chats' working time goes (model, tests & builds, browser checks…), per chat, project or all projects, with how many chats worked at once (D-419) |
 
 ## Guides (how-tos)
 

@@ -1,0 +1,101 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "chat-time",
+  "name": "Chat time",
+  "description": "Where chats' working time goes: model thinking and writing, tests and builds, browser checks, subagents, other shell commands, other tools and waiting for you, with the slowest calls and how many other chats worked at the same time. Per project or across all projects for today or the last 7, 30 or 90 days, and per chat.",
+  "version": "1.0.0",
+  "icon": "hourglass",
+  "permissions": ["fs:read"],
+  "storage": { "scope": "global" },
+  "contributes": {
+    "views": [
+      {
+        "id": "chat-time",
+        "title": "Chat time",
+        "icon": "hourglass",
+        "region": "right",
+        "hidden": true,
+        "component": "ChatTimeView"
+      }
+    ],
+    "tabs": [{ "type": "chat", "title": "Chat time", "icon": "hourglass", "component": "ChatTimeTab" }],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Where chat time goes",
+        "group": "Chats",
+        "icon": "hourglass",
+        "run": "showChatTime"
+      }
+    ],
+    "menus": [
+      {
+        "slot": "context.message",
+        "id": "chat",
+        "title": "Where this chat's time went",
+        "icon": "hourglass",
+        "run": "openForChat"
+      }
+    ],
+    "tools": [
+      {
+        "id": "breakdown",
+        "description": "Where working time went, read-only: per category (model thinking & writing, tests & builds, browser checks, subagents, other shell, other tools, waiting for the user) its time, share and calls; the slowest calls (chat id, tool, short command); for a project or all projects also per-day totals; and how many other chats worked at the same time (times are wall-clock, so parallel chats inflate them). Use it to see where a chat or project spends time, or whether a change (e.g. faster tests) helped.",
+        "readOnly": true,
+        "params": {
+          "scope": {
+            "type": "string",
+            "enum": ["chat", "project", "all"],
+            "description": "chat (one chat, all its turns), project (default) or all (every project)",
+            "optional": true
+          },
+          "id": {
+            "type": "string",
+            "description": "The chat id (scope chat) or the project's id or name (scope project); default: the calling chat or its project",
+            "optional": true
+          },
+          "days": {
+            "type": "number",
+            "description": "Period for project/all: 1 = today, else the last N days (default 7, max 365)",
+            "optional": true
+          },
+          "top": {
+            "type": "number",
+            "description": "How many slowest calls to list (0-15, default 5)",
+            "optional": true
+          }
+        },
+        "run": "toolBreakdown"
+      },
+      {
+        "id": "chats",
+        "description": "The chats ranked by working time for a project or all projects over a period, read-only: per chat its time, share, average number of other chats working at the same time, biggest category, chat id and title.",
+        "readOnly": true,
+        "params": {
+          "scope": {
+            "type": "string",
+            "enum": ["project", "all"],
+            "description": "project (default: the calling chat's) or all",
+            "optional": true
+          },
+          "id": {
+            "type": "string",
+            "description": "The project's id or name (scope project); default: the calling chat's project",
+            "optional": true
+          },
+          "days": {
+            "type": "number",
+            "description": "1 = today, else the last N days (default 7, max 365)",
+            "optional": true
+          },
+          "top": {
+            "type": "number",
+            "description": "How many chats to list (1-50, default 10)",
+            "optional": true
+          }
+        },
+        "run": "toolChats"
+      }
+    ]
+  }
+}

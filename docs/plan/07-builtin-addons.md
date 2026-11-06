@@ -54,6 +54,16 @@ window.** Rebase, graph and blame are out of scope.
 - [x] The list follows script files and package.json changes without a restart (D-238)
 - [x] `.sh` scripts run through Git Bash on Windows (D-239)
 
+### Chat time (`addons/chat-time`, D-419)
+- [x] Built in from the builder's preview: a view in View → Views (project picker + All projects,
+  period, per day, chats ranked, slowest calls) and a per-chat tab from a message's menu
+- [x] Categories checked on real chats: jig-tester and browser tools are browser checks, the Tests
+  add-on's run/wait are tests, shell commands count as tests only when a step runs a test or build
+- [x] Other chats working at the same time, per chat and per day (wall-clock times are inflated by
+  parallel chats); a `magenta` token so tests and the model's time no longer look alike
+- [x] Tools `addon_chat_time_breakdown` and `addon_chat_time_chats`; unit tests and `e2e/chat-time.spec.ts`
+- [ ] Read tool-call durations from Jig and add a chat overview section once Jig records them (t171)
+
 ## Notes
 
 - All four are ordinary add-ons in `addons/` using only public slots and `ctx`/`api` (each folder is

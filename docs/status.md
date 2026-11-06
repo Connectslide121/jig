@@ -1661,6 +1661,14 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
+- Chat time is built in (D-419): View → Views → Chat time (or Chats → Where chat time goes) shows
+  where chats' working time goes (model, tests & builds, browser checks, subagents, shell, other
+  tools, waiting) for the active project, another project or All projects over today / 7 / 30 / 90
+  days: per day, the chats ranked, the slowest calls, and "Others at once" (how many other chats worked
+  at the same time, since times are wall-clock). A message's menu → Where this chat's time went opens
+  one chat's tab. Tests & builds use the new `magenta` token. Chats can ask with
+  `addon_chat_time_breakdown` / `addon_chat_time_chats`. Needs testing on your machine: the first load
+  of 30/90 days on a busy machine (it reads every chat changed in the period; a week took ~6 s here).
 - Idle chats let go of their process (D-367): a chat unused for 20 minutes (Settings → Chats → All
   chats → Stop idle chats; 5 minutes to 2 hours, or Never) stops its Claude Code or Codex process; the
   next message, or anything else that needs it, resumes the same conversation after a short start.
