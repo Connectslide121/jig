@@ -199,6 +199,7 @@ export class Normalizer {
           permissionMode: m.permissionMode ?? "default",
           authSource: authSourceFrom(m.apiKeySource),
           slashCommands: Array.isArray(m.slash_commands) ? m.slash_commands : [],
+          ...(Array.isArray(m.tools) ? { tools: m.tools.filter((x: unknown) => typeof x === "string") } : {}),
           ...(Array.isArray(m.mcp_servers)
             ? {
                 mcpServers: m.mcp_servers

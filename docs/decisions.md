@@ -654,6 +654,8 @@ Technical choices:
   first open them), so new models and skills appear without a Jig update.
 
 ### D-092 — Routines and artifacts go through Claude Code's own tools
+_Artifacts part superseded by D-404: Jig chats never get the Artifact tool, so the tab and its calls are gone._
+
 **Decided by:** Jon (asked for routines and artifacts in Jig); how, by Claude, on my own · **Date:** 2026-10-28
 
 Claude Code manages routines (`RemoteTrigger`) and artifacts (`Artifact`) with its own claude.ai
@@ -6947,3 +6949,28 @@ stopped for good.
   moved into a meeting's ⋯ menu; the old in-window review header and Ask Claude are gone (Start a chat
   replaces Ask there; the call window keeps Ask).
 - **Narrow windows:** the list is at most 40% of the window; below ~770 px notes stack over the transcript.
+
+## D-404: Jig never pretends to be another client; Artifact tool only when Claude Code offers it
+
+- Status: accepted.
+- **Who:** Jon decided it (2026-11-04, after finding the cause); the shape is **Claude, on my own**.
+  Amends D-092.
+- **Finding:** Claude Code offers `Artifact`, `ArtifactComments` and `ArtifactData` only when
+  `CLAUDE_CODE_ENTRYPOINT=claude-desktop`, i.e. inside Anthropic's Claude desktop app. Jig runs as
+  `sdk-ts`, so no Jig chat (and no hidden `callClaudeTool` call) ever has them. Tested with the bundled
+  Claude Code 2.1.296 and the desktop app's 2.1.317: `ENABLE_CLAUDEAI_MCP_SERVERS` and the version make no
+  difference, and the account does have artifact access. Every artifact in the history came from the
+  desktop app.
+- **Rule: Jig never pretends to be something it isn't.** It never sets `CLAUDE_CODE_ENTRYPOINT` (or any
+  other identity, header or user agent) to another client's value to unlock a feature. In AGENTS.md as a
+  "never do X" rule.
+- **Jig only promises what Claude Code says it has.** `main/engine/offeredTools.ts` keeps the `tools`
+  list of the latest Claude Code init message (`EngineEvent` init `tools`); `jigContext` mentions the
+  Artifact tool only when that list has it (it never does in Jig; before any chat started, nothing is
+  promised). The system prompt is built before a chat's own init, so it reads the last one seen.
+- **Removed:** the Artifacts tab (and its Home tile, action and Go to entry), `artifacts.fromChats` /
+  `artifacts.list` / `artifacts.fetch`, the claude.ai listing and its guarded calls, the fake cloud's
+  artifacts, and the Releases "Publish the notes as an artifact" button (hidden until Jig's own pages
+  exist). **Kept:** the Artifact card in chat (Open in Jig for the local page, Open on claude.ai) because
+  a chat resumed from the desktop app can hold old calls.
+- **Next:** Jig's own pages (Claude publishes HTML into Jig) are the replacement for artifacts.

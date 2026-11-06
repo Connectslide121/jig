@@ -329,9 +329,7 @@
     {
       "files": [
         "apps/desktop/src/renderer/features/routines/**",
-        "apps/desktop/src/renderer/features/artifacts/**",
         "apps/desktop/src/main/routines/**",
-        "apps/desktop/src/main/artifacts/**",
         "apps/desktop/src/main/engine/fakeCloud.ts"
       ],
       "specs": ["routines-artifacts.spec.ts"]

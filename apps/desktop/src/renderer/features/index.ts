@@ -1,7 +1,6 @@
 import { registerCoreActions } from "../workbench/actions";
 import { registerViewTab } from "../workbench/ViewTab";
 import { registerAbout } from "./about";
-import { registerArtifacts } from "./artifacts";
 import { registerAttempts } from "./attempts";
 import { registerBrowser } from "./browser";
 import { registerBuilder } from "./builder";
@@ -46,7 +45,6 @@ export function registerFeatures(): void {
   registerBrowser();
   registerPhone();
   registerRoutines();
-  registerArtifacts();
   registerTour();
   registerDigest();
   registerUsage();

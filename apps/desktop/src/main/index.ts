@@ -6,7 +6,6 @@ import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, star
 import { registerAiHandlers } from "./ai";
 import { registerAppHandlers } from "./app";
 import { appWindows, focusJig, keepHiddenPagesDrawing } from "./appWindows";
-import { registerArtifactHandlers } from "./artifacts";
 import { startAttempts } from "./attempts";
 import { startAzure } from "./azure";
 import { startBrowser, stopBrowser } from "./browser";
@@ -89,7 +88,6 @@ async function start() {
   startTerminals();
   startBrowser();
   registerRoutineHandlers();
-  registerArtifactHandlers();
   registerScriptHandlers();
   registerFileHandlers();
   registerLinkHandlers();

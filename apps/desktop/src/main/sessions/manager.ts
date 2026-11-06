@@ -33,6 +33,7 @@ import {
 import { buildHandoff, editedFiles, ownMessages } from "../../shared/handoff";
 import { JigError } from "../../shared/ipc";
 import { abortJigToolCalls } from "../engine/jigTools";
+import { recordOfferedTools } from "../engine/offeredTools";
 import type { ChatToolServer, Engine, EngineSession } from "../engine/types";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
@@ -583,6 +584,7 @@ export class SessionManager {
     }
     // A fork has its own Claude Code session id from its first start on.
     if (event.type === "init" && live.state.meta.forkPending) this.setMeta(live, { forkPending: undefined });
+    if (event.type === "init" && event.tools) recordOfferedTools(event.tools);
     if (event.type === "result" || event.type === "exit") this.options.onTurnEnd?.(live.state.meta);
     if (event.type === "result") {
       this.scheduleSave(live, true);

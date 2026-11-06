@@ -85,7 +85,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   other one, after a plan limit (D-338) or by you between turns (D-339, always through the handover
   dialog): `continueWith` in the session manager, a divider in the transcript, a handoff built from
   the transcript without AI; never two providers in one turn.
-  Everything else agentic (the builder, attempts, worktree chats, routines, artifacts, Claude's browser) stays on
+  Everything else agentic (the builder, attempts, worktree chats, routines, Claude's browser) stays on
   Claude Code. Never add an agent runtime of Jig's own (each engine drives an official CLI), never call
   the Anthropic or OpenAI API directly, never assemble Claude's system prompt yourself (only `append`
   to the `claude_code` preset). A chat feature a provider lacks is a flag in `ENGINE_CAPABILITIES`
@@ -111,9 +111,11 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   - A tool may return images (`ToolOutput`); they show in the chat.
   - Tell Claude when to use a tool in `jigContext` (`main/engine/jigTools.ts`).
   - Give the fake engine a way to call new tools, so e2e tests cover them.
-- **Claude Code's cloud features** (routines, artifacts) are reached only through Claude Code's own
-  tools: in chats, or with `callClaudeTool` (a guarded single-tool call, D-092). Never call claude.ai
-  APIs or load claude.ai inside Jig.
+- **Claude Code's cloud features** (routines) are reached only through Claude Code's own tools: in
+  chats, or with `callClaudeTool` (a guarded single-tool call, D-092). Never call claude.ai APIs or load
+  claude.ai inside Jig. **Artifacts are not reachable from Jig (D-404):** Claude Code offers the
+  `Artifact` tools only to the Claude desktop app. Tell Claude about a Claude Code tool only when the
+  init message's `tools` list has it (`main/engine/offeredTools.ts`), never from a hard-coded guess.
 - **Jig's windows:** use `appWindows()` (`main/appWindows.ts`), never `BrowserWindow.getAllWindows()`,
   for anything meaning "Jig's windows" (events, focus, notifications, quitting). Hidden helper windows
   (Claude's browser) are marked with `markHelperWindow`. Show or focus a window with
@@ -305,6 +307,9 @@ Tests that fail during a release are the release's to fix, within the skill's "W
 
 - Never give the renderer Node access (`nodeIntegration`, disabling `contextIsolation` or `sandbox`).
 - Never execute anything from a VS Code extension; themes are imported as JSON only.
+- **Never pretend to be something Jig isn't (Jon, D-404).** Never set `CLAUDE_CODE_ENTRYPOINT` (or any
+  other client identity, header or user agent) to another client's value, such as `claude-desktop`, to
+  unlock features. A feature a client doesn't offer Jig is built by Jig itself or left out.
 - Never let an add-on crash the app: every contribution renders inside an error boundary.
 - Never let the in-app builder change Jig's own source code (D-074). It works only through layout,
   settings and add-ons; when no slot can do something, it proposes a new extension point for the user

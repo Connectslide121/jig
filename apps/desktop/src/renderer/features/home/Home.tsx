@@ -5,7 +5,6 @@ import {
   FolderGit2,
   FolderOpen,
   GitBranch,
-  LayoutTemplate,
   type LucideIcon,
   MessageSquare,
   MoreHorizontal,
@@ -239,7 +238,6 @@ export function Home({ project }: { project: ProjectInfo }) {
             />
             <QuickAction icon={FileText} label="Write my standup" onClick={() => runAction("jig.standup")} />
             <QuickAction icon={CalendarClock} label="Routines" onClick={() => runAction("jig.routines")} />
-            <QuickAction icon={LayoutTemplate} label="Artifacts" onClick={() => runAction("jig.artifacts")} />
             <QuickAction icon={Wand2} label="Build a tool for Jig…" onClick={() => runAction("jig.build")} />
             <QuickAction icon={BookOpen} label="What Jig can do" onClick={() => openAbout()} />
           </div>

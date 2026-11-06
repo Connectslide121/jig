@@ -1,11 +1,11 @@
 /**
  * Guarded tool calls: Jig asks a hidden Claude Code session to call one of Claude Code's own tools
- * (routines, artifacts) with an exact input, and allows the call only when it matches. Claude Code does
+ * (routines) with an exact input, and allows the call only when it matches. Claude Code does
  * the work with its own sign-in, so Jig never handles credentials (D-092).
  */
 
 export interface ToolCallRequest {
-  /** Claude Code's tool name, e.g. `RemoteTrigger` or `Artifact`. */
+  /** Claude Code's tool name, e.g. `RemoteTrigger`. */
   tool: string;
   /** The exact input to call it with. */
   input: Record<string, unknown>;

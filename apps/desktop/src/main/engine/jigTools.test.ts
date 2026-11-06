@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SessionMeta } from "../../shared/engine";
 import { findChatTool, isReadOnlyChatTool, toolHandlersOf } from "./chatTools";
 import { fileEditGuidance, jigContext, jigToolServer, setAddonTools } from "./jigTools";
+import { recordOfferedTools, resetOfferedTools } from "./offeredTools";
 import { sdkMcpServers } from "./sdkMcp";
 
 const meta = { id: "s1", cwd: "/repo" } as SessionMeta;
@@ -78,5 +79,17 @@ describe("jigContext's file editing rule (D-360)", () => {
     expect(fileEditGuidance(true, "win32")).toContain("not `&&`");
     expect(fileEditGuidance(true, "linux")).not.toContain("-X utf8");
     expect(jigContext(meta, undefined)).not.toContain("pass long scripts inline");
+  });
+});
+
+describe("jigContext and the Artifact tool (D-404)", () => {
+  it("mentions it only when Claude Code's init listed it", () => {
+    resetOfferedTools();
+    expect(jigContext(meta, undefined)).not.toContain("Artifact");
+    recordOfferedTools(["Read", "Edit"]);
+    expect(jigContext(meta, undefined)).not.toContain("Artifact");
+    recordOfferedTools(["Read", "Artifact"]);
+    expect(jigContext(meta, undefined)).toContain("Pages you publish with the Artifact tool");
+    resetOfferedTools();
   });
 });

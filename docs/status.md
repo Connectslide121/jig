@@ -1,5 +1,16 @@
 # Status
 
+Honest about artifacts (2026-11-06, D-404, Jon): Claude Code offers its Artifact tool only inside the
+Claude desktop app, never to Jig's chats, so Jig stopped promising it. Gone: the Artifacts tab (and its
+Home tile and Go to entry), the claude.ai listing and its guarded calls, and the Releases "Publish the
+notes as an artifact" button (hidden until Jig's own pages exist). Claude is told about the Artifact
+tool only when Claude Code's init message lists it. A chat resumed from the desktop app still shows an
+old Artifact call's card with Open in Jig / Open on claude.ai. Jig never sets another client's identity
+(`CLAUDE_CODE_ENTRYPOINT`) to unlock features (AGENTS.md). Unit tests and `routines-artifacts.spec.ts`
+cover it.
+**Check on your machine:** Home has no Artifacts tile; Releases → a release's notes has only Copy;
+ask a chat "publish an artifact" and Claude says it has no such tool.
+
 ChatGPT completes code too (2026-11-06, D-401, Jon): the editor's status-bar menu (click who
 completes) and **Settings → Editor → Code completion** now choose between **GitHub Copilot**,
 **Claude** and **ChatGPT (uses your ChatGPT plan)**; ChatGPT is greyed out with "sign in first" until
@@ -2019,9 +2030,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - **New routine…** and **Change with Claude…** open a chat; in any chat you can also ask Claude to
     make one.
   - Jig asks Claude Code for them, a small model call each time, so the tab loads on demand.
-- **Artifacts:** when Claude publishes a page in a chat, its card has **Open in Jig** (Preview) and
-  **Open on claude.ai**. Tools → Artifacts lists those, and on request every artifact on your claude.ai
-  account; Claude Code reads one back to open it in Jig.
+- **Artifacts:** not available in Jig chats (D-404): Claude Code offers the Artifact tool only inside the
+  Claude desktop app. An old Artifact call in a chat resumed from there keeps its card (**Open in Jig**
+  for the local page, **Open on claude.ai**).
 - **Browser:** Claude opens your dev server (or any http/https/file page) in a real headless
   browser inside Jig, reads it, clicks and types, takes screenshots that show in the chat (the whole
   page, or phone/tablet/desktop sizes in one go), and reads the console. The view opens by itself
@@ -2327,9 +2338,8 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   Claude subscription".
 - **Routines and artifacts with your real account:** the Routines tab lists your routines (check the
   schedule words and prompts), on/off and Run now work, runs and their logs show, and a routine Claude
-  makes in a chat appears after the reload. Artifacts: Claude's Artifact tool exists in your Claude
-  Code, Open in Jig shows the page, Load from claude.ai lists yours and opens one. If the tools are
-  missing, the tabs should say so clearly.
+  makes in a chat appears after the reload. (There is no Artifacts tab: Claude Code gives the Artifact
+  tool to the Claude desktop app only, D-404.)
 - **The chat with a real Claude Code:**
   - the `/` list shows your skills and plugin commands;
   - `/usage` and custom commands print their output;

@@ -72,7 +72,7 @@ controls a provider doesn't have instead of showing dead buttons:
 | `promptSuggestions` | yes | yes (D-315: a one-shot after each turn) | suggesting the next message after a turn |
 
 Jig's tools (`toolServers`) go to both: in-process for Claude, over a local MCP server for Codex (see
-Jig's tools in Codex chats below, D-313). Routines and Artifacts stay on Claude (Claude's cloud).
+Jig's tools in Codex chats below, D-313). Routines stay on Claude (Claude's cloud).
 
 ### When a chat hits its plan's limit (D-338)
 
@@ -250,7 +250,7 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   caller makes a new completer when the model changes (as `main/completion` does).
 
 - **`callTool(request, options)`** (`toolCall.ts`): has Claude Code call one of its own tools with
-  an exact input, for Jig's routines and artifacts tabs.
+  an exact input, for Jig's routines tab.
   - It runs a hidden session: Haiku, no settings, only that tool, at most 3 turns, not persisted.
   - A `PreToolUse` hook and `canUseTool` both allow only that exact call (`isRequestedCall`).
   - It returns the tool's text and structured result.

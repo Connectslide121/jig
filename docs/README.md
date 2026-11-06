@@ -26,7 +26,7 @@ root [`README.md`](../README.md).
 | [ai-features.md](reference/ai-features.md) | AI features around the chats: tours, checks, commit messages, standup, failed scripts, notifications |
 | [attempts.md](reference/attempts.md) | Try several ways: parallel attempts in git worktrees, judged by Claude |
 | [routines.md](reference/routines.md) | Claude Code routines: the Routines tab, chat cards, guarded tool calls |
-| [artifacts.md](reference/artifacts.md) | Opening Claude's artifacts in Jig, from chats and from claude.ai |
+| [artifacts.md](reference/artifacts.md) | Why Jig has no Artifacts tab (D-404), and the card for old Artifact calls |
 | [browser.md](reference/browser.md) | Browser: the offscreen page, its tools, the console and network log, and the live view |
 | [terminals.md](reference/terminals.md) | Terminals, scripts, groups, and Claude's terminals |
 | [preview.md](reference/preview.md) | File previews, editing in Preview, and the `jig-file:` protocol |

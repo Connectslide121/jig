@@ -33,7 +33,7 @@ import { useConfig } from "../../stores/config";
 import { Button, CodeBlock, cn, FileIcon, IconButton, ImagePreview, Spinner } from "../../ui";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
-import { openArtifactOnline, openLocalArtifact, openRemoteArtifact } from "../artifacts/actions";
+import { openArtifactOnline, openLocalArtifact } from "../artifacts/actions";
 import { openImage, useImageFile } from "../files";
 import { openPreview } from "../preview/actions";
 import { DiffLines } from "../preview/viewers";
@@ -183,7 +183,10 @@ function OutputPeek({ text, error }: { text: string; error: boolean }) {
   );
 }
 
-/** Routines and artifacts Claude made with Claude Code's own tools: open them in Jig. */
+/**
+ * Routines and artifacts Claude made with Claude Code's own tools. Jig chats never get the Artifact tool
+ * (D-404), but a chat resumed from the Claude desktop app may hold old calls: their page still opens.
+ */
 function CloudToolActions({ item }: { item: ToolItem }) {
   if (item.status !== "done") return null;
   if (item.name === "RemoteTrigger")
@@ -203,19 +206,17 @@ function CloudToolActions({ item }: { item: ToolItem }) {
   if (!artifact) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2" data-testid="artifact-actions">
-      <Button
-        size="sm"
-        variant="secondary"
-        icon={Eye}
-        data-testid="artifact-open-jig"
-        onClick={() =>
-          artifact.path
-            ? openLocalArtifact(artifact.path)
-            : void openRemoteArtifact(artifact.url, artifact.title)
-        }
-      >
-        Open in Jig
-      </Button>
+      {artifact.path && (
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={Eye}
+          data-testid="artifact-open-jig"
+          onClick={() => openLocalArtifact(artifact.path!)}
+        >
+          Open in Jig
+        </Button>
+      )}
       <Button size="sm" variant="ghost" icon={ExternalLink} onClick={() => openArtifactOnline(artifact.url)}>
         Open on claude.ai
       </Button>

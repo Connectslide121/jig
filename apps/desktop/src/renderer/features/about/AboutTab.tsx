@@ -691,7 +691,6 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Ask Claude about a failed script or any previewed file",
                 "Jig on your phone (Settings → Phone): your own Telegram bot, or your own Teams bot with a channel per project and a thread per chat (Jig sets up its relay in your Azure), tells you when a chat needs you, finishes or stops while you're away; tap Allow or an answer, or reply to talk to the chat",
                 "Routines (Search → Routines): your Claude Code routines with their schedules, runs and logs; Run now, on/off, or ask Claude to make one",
-                "Artifacts: pages Claude publishes open in Jig's Preview, from a chat or from your claude.ai account",
               ]}
             />
           </Section>

@@ -302,7 +302,7 @@ what already works** where there is one, and then **keeps the discipline**, proa
   - the history of releases with their notes;
   - "What's live": which version each environment runs, from pipeline runs, and which changes aren't
     in prod yet;
-  - notes copied as Markdown or text, or published as an artifact.
+  - notes copied as Markdown or text (publishing as an artifact dropped, D-404).
 - **Ties to the rest of the plan:** Claude gets tools ("what changed since the last release?", "write
   the notes for 2.5.0"); a "Release" workflow (4d) uses these steps; Learning suggests it when it sees
   manual releases.

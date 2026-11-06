@@ -115,7 +115,7 @@ in this order:
 | "delete the queued task" | Claude asks to delete queued task `t1` with the Tasks add-on's `addon_tasks_delete` (an approval drawn by the add-on, naming the task); deletes it once allowed ("Deleted the queued task."), else "OK, I didn't delete it." |
 | starts with "Test this in Claude's browser" (Search → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester, jig-search)"); its PASS/FAIL wording doesn't end the turn with an error |
 | contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
-| "publish an artifact" | writes `release-notes.html` and publishes it (Artifact tool, a fake claude.ai link) |
+| "publish an artifact" | writes `release-notes.html` and shows an old Artifact call (as in a chat resumed from the desktop app; Jig chats never get the tool, D-404) |
 | "use a skill" | Skill `explain-code`, Read `README.md`, the MCP tool `mcp__github__list_issues`, the Releases add-on's tool `mcp__jig__addon_releases_overview`, then a short answer (the chat overview test) |
 | "todo list" | three TodoWrite updates, all done at the end |
 | "make a plan" (or a message starting "go ahead") | a plan to approve (ExitPlanMode); the reply says the mode after approval. In a Codex chat the plan goes through Jig's `exit_plan` tool over the chat's local MCP server, which raises the same card (D-315) |
@@ -185,8 +185,8 @@ More behaviour:
   in for the relay's deployment package. `e2e/phone-teams.spec.ts` runs Teams setup's Create against a
   fake `az` in the test's `fake-bin` (it logs every command and hands the relay key to the fake relay);
   no real Azure is touched.
-- **Guarded tool calls (Routines and Artifacts tabs):** answered by a scripted "cloud"
-  (`fakeCloud.ts`) with two routines, one past run and two artifacts.
+- **Guarded tool calls (Routines tab):** answered by a scripted "cloud"
+  (`fakeCloud.ts`) with two routines and one past run.
 
 `JIG_MAIL_OUT=<folder>` makes **Email to developers** save the zip there (instead of Downloads) and
 write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and

@@ -69,6 +69,41 @@ infrastructure, not people: the AI smart assistant, e-learning and business supp
 this is the last stage of tracks 1 and 2 ("operate pack": knowledge for the assistant, FAQ,
 runbook), not a track with runs of its own. Designed later (slice 6).
 
+## Added by the next day's meeting (2026-11-06)
+
+A third meeting (the product team's daily) confirmed and sharpened the plan:
+
+- **Order of work:** build the factory first, then use it for the first real run. The idea owner
+  wants the first run to *test the process* (what the salespeople do, which steps, where it
+  sticks), not to launch anything yet. A factory "is a workflow" that only needs to be defined:
+  the design is the work, the machinery already exists.
+- **A name.** The strategy lead wants one name for this, so everyone means the same thing every time.
+  Open decision 8.
+- **Why:** AI is used today in "isolated islands" (one person for code, one for marketing, one for
+  mails); the aim is one **control process** over all of it.
+- **An existing product enters too.** A module that exists but was never tested or described needs
+  a *description, process description, test cases for structured testing, and e-learning*, with no
+  new demo (the real screens are the demo). So track 1 has a second entry, **"existing product"**,
+  that skips G0/G1 and the build and runs the pack stages (recipes: product description, process
+  description, test cases, e-learning, pitch). Same for a tool that has no sales or marketing
+  material yet.
+- **Avoid two products for one need.** The pre-check at G0 must say which existing product or module
+  already covers the idea (and what is reusable), so that a new product isn't built where one exists.
+- **Value, not features.** Every sales and marketing recipe is told: a customer buys on *value for
+  the customer*, not functionality; keep it simple, clear and focused; show enough to carry the
+  message and not so much of the system that it exposes details.
+- **Teasers are an output.** A short teaser film per module (calm, ~35–50 s, the product's branding
+  and logo, text slow enough to read for someone who doesn't know the context, value copy,
+  no screenshots where they would expose too much) joins the pack: recipe `teaser`, built on the
+  existing teaser skill, status like any output.
+- **E-learning recipe:** a course is generated from a **list of sources**; changing the sources
+  means generating a **new** course (the platform's AI edits page by page and cannot re-base a
+  finished course), and later corrections are made with the editor's AI per page, not by hand. The
+  recipe keeps the source list with the course so a bad source can be dropped and the course remade.
+- **Board states:** the product board runs New → In progress → Resolved → **Closed**. A factory card
+  is *Resolved* when the output is drafted and the work done; a person **verifies and closes**. The
+  factory never closes a card itself, so Resolved stays "waiting for a check" and Closed is trusted.
+
 ## Rules that apply everywhere
 
 - **Every output has a status:** `draft` → `reviewed` → `approved` → `published` (and `rejected` /
@@ -84,7 +119,7 @@ runbook), not a track with runs of its own. Designed later (slice 6).
   every recipe: terms the AI mistranslates or invents (a Swedish word it keeps substituting, product
   and module names, what a "baseline" is). The outputs' review step adds terms; one source for
   speech-to-text, e-learning, marketing and code.
-- **A cap on AI iterations** at each gate, then a human steps in (decision 6).
+- **A cap on AI iterations** at each gate, then a human steps in (question 6 below).
 - **Prototype data is invented.** A shareable demo never contains real customer data; the demo recipe
   and a check before Publish enforce it.
 - **Nothing outward-facing runs by itself:** publishing a demo, sending a letter or a newsletter,
@@ -128,7 +163,6 @@ readable without Jig. The add-on reads the folder. (Alternative, Jig's storage, 
 | **Phone / Teams bot** | the paired person gets "what waits for you" cards: *Demo v2 of "…" is ready · Open · Approve · Ask for changes*. Limit: it is **one paired account** (D-350/D-370), so it carries Jon's gates only |
 | **Releases add-on** | track 2's release-package day is a release of the product with the batch's notes; the factory feeds it release notes and letters |
 | **Learning / notes (`jig_note_evidence`, project notes)** | the glossary's seed; recurring gaps (tenders) as project knowledge |
-| **Usage limits (`jig_usage_limits`)** | a run shows its measured cost; the queue pauses stages when limits are tight, the way queues already pause |
 
 ### 3. What a "clickable demo" is technically
 
@@ -169,37 +203,16 @@ Proposed owners (by role; Jon confirms the people):
 | G4m marketing approved | marketing owner | articles, plan, newsletter | board card state |
 | G5 publish | an administrator | posting (LinkedIn can't be automated), sending | by hand |
 | T1 bid / no-bid | tender lead | go or not | board |
-| T2 each drafted tender answer | tender lead | reviewed before it is sent; *spot-check policy* is a decision (question 7) | board |
+| T2 each drafted tender answer | tender lead | reviewed before it is sent; *spot-check policy* is a decision (open decision 6) | board |
 
 Because Jig has one paired account, the other owners' approvals are **card states and comments in
 Azure DevOps** (which they use or can), polled by the add-on, with a Jig card for Jon's own gates.
-Later, a cloud Jig could take approvals over Teams (question 5).
 
-### 5. Cloud Jig, Teams, and the cost problem
+### 5. Where it runs
 
-What was said: a Jig in the cloud (a VM or container) would let everyone talk to it from Teams,
-start the factory by a message ("after a meeting, tell it to look at the transcript"), and run when
-Jon's computer is off. Blockers named: it needs its own subscription seat; Jon already hits Claude's
-limits on a premium seat (and ChatGPT at 50% after a day); a second premium seat or a $200 tier was
-discussed; paying API prices (extra usage) was about $70 and $150 on two days, roughly 30–35 000 SEK
-a month, "doesn't make sense to consider". From the project notes: Teams lives in a tenant Jon
-doesn't administer; the bot's app registration must be in that tenant; a bot in another tenant's
-subscription is unproven (`27-teams-phone.md` tenant check). The Teams bot is single-user.
-
-Recommendation:
-
-1. **Run on Jon's computer first.** Slice 1–3 need no cloud. The factory's value is the demo and
-   the pack, not where it runs.
-2. **Measure before buying.** Every run records its stages' measured usage and duration (the data
-   Jig already has per chat). After the first real run there is a number per run and per output type.
-3. **Spread the load by provider.** A recipe names its provider: drafts of articles, newsletters and
-   letters go to the second engine (ChatGPT/Codex, one-shot, no tools), demo, spec and code stay on
-   Claude. This uses the plan limits that exist before any extra purchase.
-4. **Then decide the seat** (a dedicated premium seat for "factory" work, as Joakim suggested, is
-   the likely answer) and whether a cloud host is worth it, with real numbers. A cloud Jig is its own
-   later phase: multi-user, per-person approvals, a seat that isn't Jon's, and Jig's rule that it
-   never copies credentials (the headless Claude sign-in is the official CLI's).
-5. **Cap per run:** a run has a spend budget; a stage that would exceed it stops and asks.
+On Jon's computer, in Jig as it is used today: no cloud, no extra seat, no usage design. Usage
+limits and a cloud Jig were only an idea in a meeting and are not part of the factory (Jon,
+2026-11-06). A recipe may name its provider (Claude or ChatGPT) like any queued task, nothing more.
 
 ### 6. A cap on AI iterations
 
@@ -212,7 +225,7 @@ Stages that fail their own check (the demo doesn't open, a spec misses a screen 
 
 ## Open decisions for Jon
 
-Questions 1, 3 and 5 above change what is built. Answers are asked in chat; each becomes a decision
+Questions 1, 2 and 3 change what is built. Answers are asked in chat; each becomes a decision
 entry (`npm run decision`) once given.
 
 | # | Question | Recommendation |
@@ -221,10 +234,11 @@ entry (`npm run decision`) once given.
 | 2 | First slice | Factory core + the demo (track 1), proving it on the first real product; tenders as slice 4 |
 | 3 | Demo | static click-through from a per-product design kit, hosted on Azure Static Web Apps, Publish by hand |
 | 4 | Approvals by others | ADO card states and comments, polled; Jon's gates as cards and phone buttons |
-| 5 | Cloud and seat | local first, measure per run, provider split, decide the seat after the first run's numbers |
-| 6 | Iteration cap | 3 revisions per gate, 1 automatic retry per stage |
-| 7 | Trust policy for tenders and sales material | everything starts as "review all"; loosen per output type by measured edit rate, by the gate's owner |
-| 8 | Where outputs live | the product's repository, `docs/factory/<run>/`, front-matter status |
+| 5 | Iteration cap | 3 revisions per gate, 1 automatic retry per stage |
+| 6 | Trust policy for tenders and sales material | everything starts as "review all"; loosen per output type by measured edit rate, by the gate's owner |
+| 7 | Where outputs live | the product's repository, `docs/factory/<run>/`, front-matter status |
+| 8 | A name for it | "Factory" as the working name in Jig; the team name is yours to pick (the word "jig", a carpenter's custom-made tool, is Jig's own and would confuse: the product would be "the Jig's factory") |
+| 9 | "Existing product" entry (pack without a demo) | yes, as the second entry of track 1, in slice 2 |
 
 ## Slices (each its own queued task, in this order unless Jon changes it)
 
@@ -237,14 +251,15 @@ entry (`npm run decision`) once given.
    engine.
 2. **The pack from a confirmed demo.** Recipes for spec, user stories, test cases, release notes,
    customer letter, glossary delta; then sales: pitch and presentation, e-learning for salespeople
-   and customers (the `elearning-course` skill), marketing plan, articles, newsletter. Status
+   and customers (the `elearning-course` skill), marketing plan, articles, newsletter, teaser film;
+   and the "existing product" entry (description, process description, test cases). Status
    transitions and the trust numbers (edit rate, review time).
 3. **Track 2: change requests.** The intake agent and template, the customer's confirm page, quote
    draft with calibrated estimates, the release-package day.
 4. **Track 3: tenders.** The requirement matrix, company-must-be checks, the recurring-gap report;
    hands off to the procurement knowledge that already exists; no sales or marketing stages.
 5. **Approvals by others** (ADO polling), the cap and budget enforcement, calibrated estimates.
-6. **Operate pack** (assistant knowledge, FAQ, runbooks) and the cloud question with real numbers.
+6. **Operate pack** (assistant knowledge, FAQ, runbooks).
 
 ## Heard in the meetings, not part of the factory (for the backlog)
 
@@ -264,7 +279,6 @@ entry (`npm run decision`) once given.
 - **Demo drift.** A demo that looks like the product but isn't it can promise what the code won't do.
   Hence the confirmed demo is the scope, the spec lists every screen and state of it, and the
   build's e2e/tests derive from the test cases.
-- **Usage and cost.** One run is many chats. Measured, capped, and spread over two providers.
 - **Wrong audience.** E-learning, letters and articles go to real customers: all outward steps are
   human clicks.
 - **Names and secrets in shareable demos.** Invented sample data and a pre-Publish scan.

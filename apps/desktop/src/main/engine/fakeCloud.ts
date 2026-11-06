@@ -1,8 +1,8 @@
 import type { ToolCallRequest, ToolCallResult } from "./toolCall";
 
 /**
- * The fake engine's stand-in for Claude Code's cloud tools: two routines and two artifacts that the
- * RemoteTrigger and Artifact tools list, run, toggle and read. Shapes follow what those tools return.
+ * The fake engine's stand-in for Claude Code's cloud tools: two routines that the
+ * RemoteTrigger tool lists, runs, toggles and reads. Shapes follow what those tools return.
  */
 interface FakeRoutine {
   id: string;
@@ -72,7 +72,6 @@ export class FakeCloud {
 
   call(request: ToolCallRequest): ToolCallResult {
     if (request.tool === "RemoteTrigger") return this.remoteTrigger(request.input);
-    if (request.tool === "Artifact") return this.artifact(request.input);
     return { ok: false, text: `No such tool: ${request.tool}` };
   }
 
@@ -139,49 +138,5 @@ export class FakeCloud {
       default:
         return this.reply(400, { error: `unsupported action ${String(input.action)}` });
     }
-  }
-
-  private artifact(input: Record<string, unknown>): ToolCallResult {
-    const list = [
-      {
-        title: "Release notes",
-        url: "https://claude.ai/artifact/fakeReleaseNotes",
-        updatedAt: at(-86_400_000),
-        rel: "mine",
-      },
-      {
-        title: "Sprint dashboard",
-        url: "https://claude.ai/artifact/fakeSprintBoard",
-        updatedAt: at(-3 * 86_400_000),
-        rel: "mine",
-      },
-    ];
-    if (input.action === "list")
-      return {
-        ok: true,
-        text: list.map((a) => `${a.title} ${a.url}`).join("\n"),
-        structured: { artifacts: list },
-      };
-    if (input.action === "read") {
-      const found = list.find((a) => a.url === input.url);
-      if (!found) return { ok: false, text: "Not found" };
-      const result = `<title>${found.title}</title><style>body{font-family:sans-serif;padding:24px}</style><h1>${found.title}</h1><p>Read from claude.ai by the fake engine.</p>`;
-      return {
-        ok: true,
-        text: result,
-        structured: {
-          read: {
-            url: found.url,
-            bytes: result.length,
-            code: 200,
-            codeText: "OK",
-            result,
-            durationMs: 5,
-            title: found.title,
-          },
-        },
-      };
-    }
-    return { ok: false, text: `unsupported action ${String(input.action)}` };
   }
 }

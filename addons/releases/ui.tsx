@@ -25,7 +25,6 @@ import {
   Plus,
   RefreshCw,
   Rocket,
-  Share2,
   Sparkles,
   Tag,
   TriangleAlert,
@@ -871,18 +870,6 @@ function HistoryCard({ ctx, data }: { ctx: AddonUiContext; data: RepoDetail }) {
               {body && (
                 <>
                   <IconButton icon={Copy} size="sm" label="Copy the notes" onClick={() => ctx.copy(body)} />
-                  <IconButton
-                    icon={Share2}
-                    size="sm"
-                    label="Publish the notes as an artifact"
-                    data-testid="release-publish"
-                    onClick={() =>
-                      void ctx.openChat({
-                        cwd: data.path,
-                        draft: `Publish the release notes of ${data.path.split(/[\\/]/).pop()} ${r.tag} as an artifact: a clean page for the people who use it, in the notes' language. Here are the notes:\n\n${body}`,
-                      })
-                    }
-                  />
                 </>
               )}
             </div>

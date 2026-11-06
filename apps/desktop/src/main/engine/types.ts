@@ -192,7 +192,7 @@ export interface Engine {
   /** A warm process for many short answers in a row (code completion, D-255). */
   completer(options: CompleterOptions): Completer;
   /**
-   * Has Claude Code call one of its own tools (routines, artifacts) with an exact input, in a hidden
+   * Has Claude Code call one of its own tools (routines) with an exact input, in a hidden
    * session where only that call is allowed (D-092). Claude Code uses its own sign-in.
    */
   callTool(request: ToolCallRequest, options: ToolCallOptions): Promise<ToolCallResult>;

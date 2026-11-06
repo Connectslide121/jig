@@ -147,9 +147,6 @@ settings, add-on permissions.
 | `routines.list` | `{ refresh? }` | `{ at, routines: Routine[] }` | Claude Code routines via its RemoteTrigger tool (cached 5 min; `docs/reference/routines.md`) |
 | `routines.run` / `routines.setEnabled` | `{ id }` / `{ id, enabled }` | — | run now; switch on or off |
 | `routines.runs` / `routines.runLog` | `{ id }` / `{ sessionId }` | `RoutineRun[]` / `RoutineLogEntry[]` | a routine's runs; a run's messages |
-| `artifacts.fromChats` | — | `ChatArtifact[]` | artifacts your chats published, from the transcripts (`docs/reference/artifacts.md`) |
-| `artifacts.list` | `{ refresh? }` | `{ at, artifacts: RemoteArtifact[] }` | your claude.ai artifacts via Claude Code's Artifact tool (cached 5 min) |
-| `artifacts.fetch` | `{ url }` | `{ path }` | reads a claude.ai artifact through Claude Code into `~/.jig/cache/artifacts/` for Preview |
 | `terminals.list` | — | `TerminalInfo[]` | see `docs/reference/terminals.md` |
 | `terminals.create` | `{ projectId?, cwd?, command?, shell?, title?, cols?, rows? }` | `TerminalInfo` | a shell in the project folder (or `cwd`), or a shell running `command`; `shell` runs that shell once instead of the default, accepted only when it is a detected shell or the configured one (D-241) |
 | `terminals.shells` | — | `ShellChoices` | shells installed on this machine (`{ name, path }`) and the one an empty `terminal.shell` starts (D-240) |

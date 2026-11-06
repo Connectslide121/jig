@@ -9,7 +9,7 @@
 - [x] Routines tab: list with schedules in words, on/off, Run now, runs and their messages; new and
       change through a chat; reloads when a chat changes a routine
 - [x] Chat cards: Open Routines on RemoteTrigger calls; Open in Jig / Open on claude.ai on artifacts
-- [x] Artifacts tab: from your chats (no model call) and from claude.ai (on request); open in Preview
+- [x] ~~Artifacts tab: from your chats (no model call) and from claude.ai (on request); open in Preview~~ removed (D-404): Claude Code only gives the Artifact tool to the Claude desktop app; the Artifact card stays for old calls
 - [x] Tests: unit (guard, parsers, schedules, artifact links), e2e (`e2e/routines-artifacts.spec.ts`)
 
 ## Later

@@ -82,6 +82,7 @@ describe("Normalizer", () => {
         apiKeySource: "none",
         permissionMode: "default",
         slash_commands: ["/compact"],
+        tools: ["Read", "Edit", 7],
       }),
     ).toEqual([
       {
@@ -91,6 +92,7 @@ describe("Normalizer", () => {
         permissionMode: "default",
         authSource: "subscription",
         slashCommands: ["/compact"],
+        tools: ["Read", "Edit"],
       },
     ]);
     expect(authSourceFrom("ANTHROPIC_API_KEY")).toBe("api_key");

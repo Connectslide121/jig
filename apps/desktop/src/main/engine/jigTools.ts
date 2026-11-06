@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { SessionMeta } from "../../shared/engine";
 import { CODEX_TESTER_GUIDANCE } from "../../shared/tester";
 import { azureContext } from "../azure/env";
+import { claudeOffers } from "./offeredTools";
 import type { ChatToolServer, ToolOutput } from "./types";
 
 /**
@@ -219,7 +220,11 @@ export function jigContext(
     tenantContext(azureContext().tenant),
     ...(claude
       ? [
-          "For work that should run on a schedule, use Claude Code routines (the RemoteTrigger tool); the user sees and manages them in Jig's Routines tab. Pages you publish with the Artifact tool can be opened in Jig from the chat.",
+          "For work that should run on a schedule, use Claude Code routines (the RemoteTrigger tool); the user sees and manages them in Jig's Routines tab.",
+          // Only when Claude Code's init really listed it (it does inside the Claude desktop app only, D-404).
+          ...(claudeOffers("Artifact")
+            ? ["Pages you publish with the Artifact tool can be opened in Jig from the chat."]
+            : []),
         ]
       : []),
     ...(addonSummary() ? [`The user's Jig add-ons (switched on):\n${addonSummary()}`] : []),

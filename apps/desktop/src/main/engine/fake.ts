@@ -710,7 +710,7 @@ ${output.slice(0, 600)}`,
             await stream(`${msg}:text:0`, "OK, no routine.", signal);
           }
         } else if (lower.includes("publish an artifact")) {
-          // Claude writes a page and publishes it with Claude Code's Artifact tool.
+          // Stands in for an old Artifact call in a chat resumed from the Claude desktop app (Jig chats never get the tool, D-404).
           const path = join(options.cwd, "release-notes.html");
           await writeFile(
             path,

@@ -12,7 +12,6 @@ import type { AddonSearchQuery, AddonSearchResult, AddonTarget, JigEventName } f
 import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo, AddonOriginInfo, GallerySource } from "./addons";
 import type { AddonAiFeature } from "./aiFeatures";
-import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type { SignInMethod, TenantsState } from "./azure";
 import type {
@@ -775,12 +774,6 @@ export interface HostMethods {
   "routines.setEnabled": { args: { id: string; enabled: boolean }; result: void };
   "routines.runs": { args: { id: string }; result: RoutineRun[] };
   "routines.runLog": { args: { sessionId: string }; result: RoutineLogEntry[] };
-  /** Artifacts your chats published (from the transcripts; no model call). */
-  "artifacts.fromChats": { args: void; result: ChatArtifact[] };
-  /** Your artifacts on claude.ai (through Claude Code's Artifact tool; a small model call). */
-  "artifacts.list": { args: { refresh?: boolean }; result: { at: string; artifacts: RemoteArtifact[] } };
-  /** Reads a claude.ai artifact through Claude Code and saves a copy to open in Preview. */
-  "artifacts.fetch": { args: { url: string }; result: { path: string } };
   "scripts.list": { args: { projectId: string }; result: ProjectScripts };
   "scripts.run": { args: { projectId: string; scriptId: string }; result: TerminalInfo };
   "scripts.stop": { args: { projectId: string; scriptId: string }; result: void };

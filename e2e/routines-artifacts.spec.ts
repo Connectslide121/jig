@@ -55,7 +55,7 @@ test("Routines: list, switch off, run now, runs and their log; Claude makes one 
   await expect(tab).toContainText("Daily standup notes");
 });
 
-test("Artifacts: a chat's artifact opens in Jig; claude.ai artifacts load and open too", async ({
+test("An Artifact call in a chat (resumed from the desktop app) still opens its page in Jig", async ({
   page,
   jigHome,
 }) => {
@@ -72,20 +72,6 @@ test("Artifacts: a chat's artifact opens in Jig; claude.ai artifacts load and op
   await expect(
     page.locator("[data-tab-id]:not(.hidden)").frameLocator('[data-testid="preview-html"]').locator("h1"),
   ).toHaveText("Release notes", {
-    timeout: 10000,
-  });
-
-  await openTool(page, "Artifacts");
-  const tab = page.getByTestId("artifacts");
-  await expect(tab.getByTestId("artifact-row")).toHaveCount(1);
-  await expect(tab.getByTestId("artifact-row").first()).toContainText("release-notes");
-  await tab.getByTestId("artifacts-load").click();
-  await expect(tab.getByTestId("artifact-row")).toHaveCount(3, { timeout: 15000 });
-  await expect(tab).toContainText("from a Jig chat");
-  await tab.getByTestId("artifact-row").nth(2).getByTestId("artifact-open").click();
-  await expect(
-    page.locator("[data-tab-id]:not(.hidden)").frameLocator('[data-testid="preview-html"]').locator("h1"),
-  ).toHaveText("Sprint dashboard", {
     timeout: 10000,
   });
 });

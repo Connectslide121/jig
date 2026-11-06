@@ -148,7 +148,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | tab type | `jig.knowledge` | | What Jig knows about me (D-111) |
 | tab type | `jig.about`, `jig.setup`, `jig.changelog` | | What Jig can do; Get started; What's new (D-393) |
 | tab type | `jig.attempts`, `jig.tour`, `jig.build` | | Try several ways; a change tour; a build |
-| tab type | `jig.routines`, `jig.artifacts` | | Claude Code routines and artifacts |
+| tab type | `jig.routines` | | Claude Code routines |
 | tab type | `addon.git.history` / `commit` / `diff` / `compare` | | Git |
 | tab type | `addon.releases.repo` | | one repository's releases (`params.path`) |
 | tab type | `addon.workflows.workflow` | | a workflow (`params.projectId`, `id`; or `draft`) |
@@ -160,7 +160,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
   - A box to start a chat: Enter sends the message in a new chat.
   - Starter prompts, and **Try several ways…**.
   - The project's recent chats with their status.
-  - "Next steps" tiles: new chat, Git, scripts, standup, routines, artifacts, build a tool, What Jig
+  - "Next steps" tiles: new chat, Git, scripts, standup, routines, build a tool, What Jig
     can do.
   - The add-ons' dashboard widgets.
 - **With no project:** the "What Jig can do" page, with Add project….

@@ -582,6 +582,8 @@ export type EngineEvent =
       authSource: AuthSource;
       slashCommands: string[];
       mcpServers?: Array<{ name: string; status: string }>;
+      /** Names of the tools Claude Code offers this chat (its init message); Claude chats only. */
+      tools?: string[];
     }
   | {
       type: "block_start";
