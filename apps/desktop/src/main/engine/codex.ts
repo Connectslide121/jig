@@ -16,7 +16,7 @@ import { resolveChatGptModel } from "../../shared/providers";
 import type { RawUsage } from "../../shared/usage";
 import { resolveCommand } from "../addons/winCommand";
 import { logger } from "../log";
-import { findCodex } from "../providers/codex";
+import { codexAppServerTextArgs, findCodex } from "../providers/codex";
 import { makeWhich } from "../terminals/shell";
 import { killProcess } from "../updates/run";
 import { isReadOnlyChatTool } from "./chatTools";
@@ -60,6 +60,7 @@ import { type LocalMcp, newMcpToken, startLocalMcp } from "./localMcp";
 import { projectMcpConfig } from "./projectMcp";
 import {
   type Completer,
+  type CompleterOptions,
   codexSessionEnv,
   type Engine,
   type EngineSession,
@@ -172,8 +173,14 @@ class CodexRpc {
       request: (message: { id: string | number; method: string; params?: unknown }) => void;
       exit: (error: string | undefined) => void;
     },
+    extraArgs: string[] = [],
   ) {
-    const r = resolveCommand(binary, ["app-server"], process.platform, env as NodeJS.ProcessEnv);
+    const r = resolveCommand(
+      binary,
+      ["app-server", ...extraArgs],
+      process.platform,
+      env as NodeJS.ProcessEnv,
+    );
     this.child = spawn(r.file, r.args, {
       cwd,
       env: env as NodeJS.ProcessEnv,
@@ -802,8 +809,8 @@ export class CodexEngine implements Engine {
   oneShot(_prompt: string, _options: OneShotOptions): Promise<string> {
     return Promise.reject(new Error("Codex answers one-shots through main/providers."));
   }
-  completer(): Completer {
-    throw new Error("Code completion runs on Claude Code.");
+  completer(options: CompleterOptions): Completer {
+    return codexCompleter(options);
   }
   callTool(_request: unknown, _options: ToolCallOptions): never {
     throw new Error("Claude Code's own tools run on Claude Code.");
@@ -859,6 +866,216 @@ async function oneOff<T>(
     clearTimeout(timer);
     rpc?.kill();
   }
+}
+
+type CompleterTurn = {
+  text: string;
+  resolve: (text: string) => void;
+  reject: (error: Error) => void;
+};
+
+type CompleterAsk = { cancelled: boolean; settled: boolean; threadId?: string; turnId?: string };
+
+/**
+ * One warm `codex app-server` for short text answers (code completion, caption translation; D-401):
+ * no tools, a read-only sandbox, no approvals. Every ask is its own ephemeral thread, so nothing
+ * piles up across asks; the next thread is opened right after an ask ends, which takes its start off
+ * the next ask's wait. Asks run one at a time in order. An abort or the timeout rejects that ask and
+ * interrupts its turn, leaving the process for the next one; the process starts again after it dies.
+ */
+class CodexCompleter implements Completer {
+  private rpc?: CodexRpc;
+  private starting?: Promise<CodexRpc>;
+  private spare?: Promise<string>;
+  private readonly turns = new Map<string, CompleterTurn>();
+  private chain: Promise<unknown> = Promise.resolve();
+  private closed = false;
+
+  constructor(private readonly options: CompleterOptions) {
+    // Start now, so the first ask doesn't wait for the process; a failure shows on the first ask.
+    void this.connect()
+      .then((rpc) => this.prepare(rpc))
+      .catch(() => {});
+  }
+
+  private connect(): Promise<CodexRpc> {
+    if (this.rpc && !this.rpc.closed) return Promise.resolve(this.rpc);
+    this.starting ??= (async () => {
+      if (this.closed) throw new Error("Closed");
+      const env = codexSessionEnv(this.options.env, false);
+      const binary = codexBinary(this.options.codexPath, env);
+      if (!binary) throw new Error(NO_CODEX);
+      const rpc: CodexRpc = new CodexRpc(
+        binary,
+        this.options.cwd,
+        env,
+        {
+          notification: (message) => this.notification(message),
+          request: (message) => rpc.fail(message.id, "Not now"),
+          exit: (error) => {
+            if (this.rpc === rpc) {
+              this.rpc = undefined;
+              this.spare = undefined;
+            }
+            for (const turn of this.turns.values()) turn.reject(new Error(error ?? "Codex stopped"));
+          },
+        },
+        codexAppServerTextArgs(),
+      );
+      try {
+        await rpc.initialize();
+      } catch (error) {
+        rpc.kill();
+        throw error;
+      }
+      if (this.closed) {
+        rpc.kill();
+        throw new Error("Closed");
+      }
+      this.rpc = rpc;
+      return rpc;
+    })().finally(() => {
+      this.starting = undefined;
+    });
+    return this.starting;
+  }
+
+  private newThread(rpc: CodexRpc): Promise<string> {
+    return rpc
+      .request<ThreadStartResponse>("thread/start", {
+        model: this.options.model || null,
+        cwd: this.options.cwd,
+        approvalPolicy: "never",
+        sandbox: "read-only",
+        developerInstructions: this.options.appendSystemPrompt || null,
+        ephemeral: true,
+      } satisfies ThreadStartParams)
+      .then((r) => r.thread.id);
+  }
+
+  /** Opens the thread the next ask will use. */
+  private prepare(rpc: CodexRpc): void {
+    if (this.closed || rpc.closed || this.rpc !== rpc || this.spare) return;
+    this.spare = this.newThread(rpc);
+    this.spare.catch(() => {});
+  }
+
+  private takeThread(rpc: CodexRpc): Promise<string> {
+    const spare = this.spare;
+    this.spare = undefined;
+    return (spare ?? this.newThread(rpc)).catch(() => this.newThread(rpc));
+  }
+
+  private notification(message: { method: string; params?: unknown }): void {
+    const p = (message.params ?? {}) as {
+      threadId?: string;
+      item?: { type?: string; text?: string };
+      turn?: { status?: string; error?: { message?: string } | null };
+    };
+    const turn = p.threadId ? this.turns.get(p.threadId) : undefined;
+    if (!turn) return;
+    if (message.method === "item/completed" && p.item?.type === "agentMessage")
+      turn.text = p.item.text ?? turn.text;
+    else if (message.method === "turn/completed") {
+      if (p.turn?.status === "failed") turn.reject(new Error(p.turn.error?.message || "Codex failed"));
+      else if (p.turn?.status === "interrupted") turn.reject(new Error("Cancelled"));
+      else turn.resolve(turn.text);
+    }
+  }
+
+  private async turn(prompt: string, state: CompleterAsk): Promise<string> {
+    const rpc = await this.connect();
+    const threadId = await this.takeThread(rpc);
+    state.threadId = threadId;
+    try {
+      if (state.cancelled) throw new Error("Cancelled");
+      const answer = new Promise<string>((resolve, reject) => {
+        this.turns.set(threadId, { text: "", resolve, reject });
+      });
+      answer.catch(() => {});
+      const started = await rpc.request<TurnStartResponse>("turn/start", {
+        threadId,
+        input: [{ type: "text", text: prompt, text_elements: [] }],
+        summary: "none",
+        ...(this.options.effort ? { effort: this.options.effort } : {}),
+      } satisfies TurnStartParams);
+      state.turnId = started.turn.id;
+      if (state.cancelled) {
+        this.interrupt(rpc, state);
+        throw new Error("Cancelled");
+      }
+      return await answer;
+    } finally {
+      state.settled = true;
+      this.turns.delete(threadId);
+      void rpc.request("thread/unsubscribe", { threadId }).catch(() => {});
+      this.prepare(rpc);
+    }
+  }
+
+  /** Stops an abandoned turn in Codex and settles its waiting entry. */
+  private interrupt(rpc: CodexRpc, state: CompleterAsk): void {
+    if (!state.threadId) return;
+    if (state.turnId)
+      void rpc.request("turn/interrupt", { threadId: state.threadId, turnId: state.turnId }).catch(() => {});
+    this.turns.get(state.threadId)?.reject(new Error("Cancelled"));
+  }
+
+  private async run(prompt: string, signal?: AbortSignal): Promise<string> {
+    if (signal?.aborted) throw new Error("Cancelled");
+    if (this.closed) throw new Error("Closed");
+    const state: CompleterAsk = { cancelled: false, settled: false };
+    let timer: NodeJS.Timeout | undefined;
+    let onAbort: (() => void) | undefined;
+    const stop = new Promise<never>((_, reject) => {
+      onAbort = () => reject(new Error("Cancelled"));
+      signal?.addEventListener("abort", onAbort, { once: true });
+      timer = setTimeout(
+        () => reject(new Error("Codex didn't answer in time")),
+        this.options.timeoutMs ?? 60_000,
+      );
+    });
+    stop.catch(() => {});
+    const work = this.turn(prompt, state);
+    work.catch(() => {});
+    try {
+      return await Promise.race([work, stop]);
+    } finally {
+      clearTimeout(timer);
+      if (onAbort) signal?.removeEventListener("abort", onAbort);
+      // An ask that gave up (abort, timeout) stops its turn; the process stays for the next one.
+      if (!state.settled) {
+        state.cancelled = true;
+        if (this.rpc) this.interrupt(this.rpc, state);
+      }
+    }
+  }
+
+  ask(prompt: string, signal?: AbortSignal): Promise<string> {
+    const answer = this.chain.then(() => this.run(prompt, signal));
+    this.chain = answer.then(
+      () => undefined,
+      () => undefined,
+    );
+    return answer;
+  }
+
+  close(): void {
+    this.closed = true;
+    this.rpc?.kill();
+    this.rpc = undefined;
+    this.spare = undefined;
+    for (const turn of this.turns.values()) turn.reject(new Error("Closed"));
+  }
+}
+
+/**
+ * A warm ChatGPT (Codex) completer (D-401): `options.model` is an exact Codex model (resolve a family
+ * with `resolveCodexModel` first), `options.appendSystemPrompt` its developer instructions. Reach it
+ * as `getEngine("codex").completer(options)` so the fake engine answers in tests.
+ */
+export function codexCompleter(options: CompleterOptions): Completer {
+  return new CodexCompleter(options);
 }
 
 /** Waits up to a second for a value another message brings (Codex announces a tool call before making it). */

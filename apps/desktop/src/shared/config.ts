@@ -22,6 +22,18 @@ const aiChoices = Object.fromEntries(
  * User settings, stored in `~/.jig/config.json`. Every field has a default so a missing or partial
  * file is always valid. Documented in docs/reference/state.md — update it when adding a field.
  */
+/** The `editor.completionProvider` values (D-401). */
+export const COMPLETION_SETTINGS = ["copilot", "claude", "chatgpt"] as const;
+
+/** Older configs: `editor.claudeCompletion: true` is now `editor.completionProvider: "claude"`. */
+export function migrateEditorConfig(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || !("claudeCompletion" in raw)) return raw;
+  const { claudeCompletion, ...rest } = raw as Record<string, unknown>;
+  return claudeCompletion === true && rest.completionProvider === undefined
+    ? { ...rest, completionProvider: "claude" }
+    : rest;
+}
+
 export const ConfigSchema = z.object({
   appearance: z
     .object({
@@ -147,30 +159,36 @@ export const ConfigSchema = z.object({
         .default({}),
     })
     .prefault({}),
-  editor: z
-    .object({
-      /** Long lines wrap in the Preview editor instead of scrolling sideways. */
-      wordWrap: z.boolean().default(false),
-      /** Spaces and tabs show as faint dots and arrows. */
-      showWhitespace: z.boolean().default(false),
-      /** Typing ( [ { " ' adds the closing one. */
-      closeBrackets: z.boolean().default(true),
-      /** Indentation for a file that doesn't show its own yet (Jig follows the file's otherwise). */
-      tabSize: z.number().int().min(1).max(8).default(4),
-      /**
-       * Code completion with Claude (D-255): Claude Code suggests the code at the caret after a typing
-       * pause, instead of GitHub Copilot. Off by default: it spends your Claude plan's usage.
-       */
-      claudeCompletion: z.boolean().default(false),
-      /** The model Claude completes with (a value from Claude Code's model list); Haiku is quickest. */
-      claudeCompletionModel: z.string().default("haiku"),
-      /**
-       * Language servers you installed (TypeScript, Python, C#…) give the editor errors, hover, go to
-       * definition, references, rename and formatting (D-259). On by default; Jig only runs ones on PATH.
-       */
-      languageServers: z.boolean().default(true),
-    })
-    .prefault({}),
+  editor: z.preprocess(
+    migrateEditorConfig,
+    z
+      .object({
+        /** Long lines wrap in the Preview editor instead of scrolling sideways. */
+        wordWrap: z.boolean().default(false),
+        /** Spaces and tabs show as faint dots and arrows. */
+        showWhitespace: z.boolean().default(false),
+        /** Typing ( [ { " ' adds the closing one. */
+        closeBrackets: z.boolean().default(true),
+        /** Indentation for a file that doesn't show its own yet (Jig follows the file's otherwise). */
+        tabSize: z.number().int().min(1).max(8).default(4),
+        /**
+         * Who completes code at the caret after a typing pause (D-255, D-401): GitHub Copilot (when
+         * signed in), Claude Code or ChatGPT (Codex). The last two spend your plan's usage; Copilot is
+         * the default. Older configs' `claudeCompletion: true` became `claude`.
+         */
+        completionProvider: z.enum(COMPLETION_SETTINGS).default("copilot"),
+        /** The model Claude completes with (a value from Claude Code's model list); Haiku is quickest. */
+        claudeCompletionModel: z.string().default("haiku"),
+        /** The model ChatGPT completes with: a family (sol, terra, luna) or an exact version; Luna is quickest. */
+        chatgptCompletionModel: z.string().max(100).default("luna"),
+        /**
+         * Language servers you installed (TypeScript, Python, C#…) give the editor errors, hover, go to
+         * definition, references, rename and formatting (D-259). On by default; Jig only runs ones on PATH.
+         */
+        languageServers: z.boolean().default(true),
+      })
+      .prefault({}),
+  ),
   chat: z
     .object({
       /**
@@ -422,8 +440,9 @@ export const PROTECTED_SETTINGS = [
   "engine.provider",
   "engine.onLimit",
   "engine.allowApiKey",
-  "editor.claudeCompletion",
+  "editor.completionProvider",
   "editor.claudeCompletionModel",
+  "editor.chatgptCompletionModel",
   "engine.aiTitles",
   "meetings.aiTranslation",
   "meetings.translationModel",

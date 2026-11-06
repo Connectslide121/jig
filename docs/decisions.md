@@ -6871,3 +6871,39 @@ stopped for good.
   moved to a sidebar.
 - **UI:** a pinned tab shows an accent pin button (unpins) instead of the x and is narrower (max-w-40); an
   unpinned tab has a pin slot beside the x, both fixed 20 px slots, so hovering never moves the title.
+
+## D-401: ChatGPT (Codex) completes code too, on a warm app-server completer
+
+- Status: accepted. Amends D-255.
+- **Who:** Jon asked for ChatGPT as a third completion provider next to Copilot and Claude, and for the
+  warm Codex completer to serve other features too (caption translation, D-384). The shape is
+  **Claude, on my own**.
+- **One provider setting:** `editor.completionProvider` (`copilot` | `claude` | `chatgpt`, default
+  `copilot`) replaces the boolean `editor.claudeCompletion`; a config with `claudeCompletion: true`
+  becomes `claude` when it loads (`migrateEditorConfig`; an explicit provider wins). Copilot without
+  its GitHub sign-in is still "off". The status-bar menu and Settings → Editor both choose it;
+  ChatGPT is disabled with "sign in first" until Codex is ready (`useChatGptStatus`, as in AI
+  features). `editor.chatgptCompletionModel` (default family `luna`, the fastest; a family follows its
+  newest version through `resolveCodexModel`, or pin a version) sits beside
+  `editor.claudeCompletionModel`. The provider and both models are protected (D-077): they spend plan
+  usage.
+- **A warm `codex app-server`, never a process per suggestion:** `codexCompleter(options)` /
+  `getEngine("codex").completer(options)` (`Completer`, the same shape as Claude's) keeps one
+  app-server with no tools (shell and the other features off, no approvals, no web search, no
+  AGENTS.md), a read-only sandbox and the caller's developer instructions. **Each ask is its own
+  ephemeral thread** (no growing conversation, so nothing piles up across a meeting or a coding
+  session); the next thread is opened as soon as an ask ends, which takes its ~0.2 s start off the
+  next ask. Asks run one at a time; an abort or the 60 s timeout rejects that ask and interrupts its
+  turn without killing the process; the process restarts when it dies; the completion code recycles
+  it when the resolved model changes. `OPENAI_API_KEY`/`CODEX_API_KEY` are stripped
+  (`codexSessionEnv`). The prompt and cleanup (`completionPrompt`, `cleanCompletion`) are the same
+  for every provider.
+- **Speed, measured honestly (2026-11-06; same file, five caret spots, ten warm asks each):** Claude
+  (haiku) 0.9-8.4 s, median 3.2 s (D-255 measured ~0.9 s on a quiet day); ChatGPT (luna, `low`
+  reasoning effort, the lowest those models offer) 2.3-8.2 s, median 3.8 s. Luna's time is nearly all
+  the model (~3-4 s after the turn starts; the thread start is 0.2 s and hidden by the spare thread);
+  `service_tier`, verbosity and an empty MCP list changed nothing measurable. So ChatGPT works but is
+  not as quick as Claude's best case and far from Copilot; the editor waits for the same 0.7 s pause
+  as for Claude. Pick Copilot for speed, ChatGPT when its plan is the one you want to spend.
+- **Not done here:** caption translation (t147) still uses `oneShot` per batch for ChatGPT; it can
+  now switch to `getEngine("codex").completer({ appendSystemPrompt: TRANSLATE_INSTRUCTIONS, … })`.

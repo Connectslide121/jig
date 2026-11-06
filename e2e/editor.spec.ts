@@ -139,7 +139,7 @@ test("Code completion: Claude suggests ghost text after a pause and Tab takes it
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "cart.ts"), "export function total() {\n  \n}\n");
   await hostCall(page, "projects.add", { path: dir });
-  await hostCall(page, "config.update", { editor: { claudeCompletion: true } });
+  await hostCall(page, "config.update", { editor: { completionProvider: "claude" } });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.keyboard.press("Control+Shift+E");
   await page.getByTestId("files-view").getByTestId("files-entry-cart.ts").click();
@@ -158,14 +158,22 @@ test("Code completion: Claude suggests ghost text after a pause and Tab takes it
   await expect(ghost).toHaveCount(0);
   await expect(editor).toContainText("return total;");
 
-  // Esc drops a suggestion; the status line's menu switches completion off again.
+  // Esc drops a suggestion; the status line's menu switches the provider to ChatGPT (D-401).
   await page.keyboard.type(" ");
   await expect(ghost).toHaveCount(1, { timeout: 10000 });
   await page.keyboard.press("Escape");
   await expect(ghost).toHaveCount(0);
   await tab.getByTestId("editor-completion").click();
-  await page.getByTestId("completion-claude").click();
-  await expect(tab.getByTestId("editor-completion")).toContainText("No completion");
+  await expect(page.getByTestId("completion-claude")).toBeVisible();
+  await expect(page.getByTestId("completion-chatgpt")).toContainText("ChatGPT (uses your ChatGPT plan)");
+  await page.screenshot({ path: test.info().outputPath("menu.png") });
+  await page.getByTestId("completion-chatgpt").click();
+  await expect(tab.getByTestId("editor-completion")).toContainText("ChatGPT Luna");
+  await editor.locator(".cm-line").nth(1).click();
+  await page.keyboard.press("End");
+  await page.keyboard.type("x");
+  await expect(ghost).toHaveText("// suggested by the fake engine", { timeout: 10000 });
+  await page.keyboard.press("Escape");
 
   // Copilot is optional: its setup dialog downloads the server and then signs in to GitHub.
   await tab.getByTestId("editor-completion").click();
@@ -174,4 +182,35 @@ test("Code completion: Claude suggests ghost text after a pause and Tab takes it
   await expect(dialog).toContainText("Download (about 28 MB)");
   await page.screenshot({ path: test.info().outputPath("copilot.png") });
   await dialog.getByRole("button", { name: "Close", exact: true }).last().click();
+});
+
+test("Settings → Editor: one provider choice and a model row each for Claude and ChatGPT, in aligned columns", async ({
+  page,
+}) => {
+  await page.keyboard.press("Control+Comma");
+  await page.getByTestId("settings-nav-editor").click();
+  const provider = page.getByTestId("settings-completion-provider");
+  const chatgpt = page.getByTestId("settings-chatgpt-completion-model");
+  const claude = page.getByLabel("Claude model for completion");
+  await expect(provider).toHaveValue("copilot");
+  // Only the chosen provider's model is editable.
+  await expect(claude).toBeDisabled();
+  await expect(chatgpt).toBeDisabled();
+  await expect(chatgpt).toHaveValue("luna");
+  await provider.selectOption("chatgpt");
+  await expect(chatgpt).toBeEnabled();
+  await chatgpt.selectOption("terra");
+  await expect
+    .poll(async () => {
+      const r = await hostCall(page, "config.get");
+      return r.ok
+        ? (r.value as { editor: { chatgptCompletionModel: string } }).editor.chatgptCompletionModel
+        : "";
+    })
+    .toBe("terra");
+  // The three selects share one left edge and width, and enabling one moves nothing.
+  const boxes = await Promise.all([provider, claude, chatgpt].map((s) => s.boundingBox()));
+  expect(new Set(boxes.map((b) => Math.round(b!.x))).size).toBe(1);
+  expect(new Set(boxes.map((b) => Math.round(b!.width))).size).toBe(1);
+  await page.screenshot({ path: test.info().outputPath("settings-editor.png") });
 });

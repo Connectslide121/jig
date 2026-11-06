@@ -61,7 +61,7 @@ settings, add-on permissions.
 | `claudeImport.open` | `{ path? }` | `ClaudeExportSummary \| undefined` | read `projects.json` from claude.ai's export zip (a picker without `path`) |
 | `claudeImport.apply` | `{ token, uuids, path }` | `{ projectIds }` | make Jig projects (default workspace `path`) with instructions and knowledge |
 | `claudeImport.openSettings` | — | — | claude.ai's settings in the system browser |
-| `completion.state` | — | `CompletionState` | who completes code (copilot, claude, off), Copilot's setup (D-255); event `completion.changed` |
+| `completion.state` | — | `CompletionState` | who completes code (copilot, claude, chatgpt, off) and the Claude and ChatGPT models, Copilot's setup (D-255); event `completion.changed` |
 | `completion.request` | `{ path, text, offset, tabSize, insertSpaces }` | `CompletionSuggestion \| null` | one inline suggestion at the caret; a newer request drops an older one |
 | `completion.accepted` | `{ id }` | — | Tab took a Copilot suggestion (its acceptance command) |
 | `completion.closeFile` | `{ path }` | — | the editor closed a file (Copilot forgets it) |

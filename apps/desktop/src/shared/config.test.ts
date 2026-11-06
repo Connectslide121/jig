@@ -39,3 +39,41 @@ it("starts new chats on Opus with smaller helper, tester and search models, pres
     }).engine,
   ).toMatchObject({ defaultModel: "", defaultPermissionMode: "default" });
 });
+
+describe("editor completion provider (D-401)", () => {
+  it("defaults to Copilot, with Luna as ChatGPT's model", () => {
+    expect(defaultConfig().editor).toMatchObject({
+      completionProvider: "copilot",
+      claudeCompletionModel: "haiku",
+      chatgptCompletionModel: "luna",
+    });
+  });
+
+  it("turns an older claudeCompletion: true into the claude provider and drops the old key", () => {
+    const editor = ConfigSchema.parse({ editor: { claudeCompletion: true } }).editor;
+    expect(editor.completionProvider).toBe("claude");
+    expect(editor).not.toHaveProperty("claudeCompletion");
+  });
+
+  it("leaves claudeCompletion: false on Copilot, and an explicit provider wins", () => {
+    expect(ConfigSchema.parse({ editor: { claudeCompletion: false } }).editor.completionProvider).toBe(
+      "copilot",
+    );
+    expect(
+      ConfigSchema.parse({ editor: { claudeCompletion: true, completionProvider: "chatgpt" } }).editor
+        .completionProvider,
+    ).toBe("chatgpt");
+  });
+
+  it("protects the provider and both models (they spend plan usage)", () => {
+    expect(
+      protectedIn({
+        editor: {
+          completionProvider: "chatgpt",
+          claudeCompletionModel: "opus",
+          chatgptCompletionModel: "sol",
+        },
+      }),
+    ).toEqual(["editor.completionProvider", "editor.claudeCompletionModel", "editor.chatgptCompletionModel"]);
+  });
+});

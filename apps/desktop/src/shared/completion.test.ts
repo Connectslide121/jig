@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { claudePrompt, cleanClaudeCompletion, offsetAt, positionAt } from "./completion";
+import {
+  activeCompletionProvider,
+  cleanCompletion,
+  completionPrompt,
+  offsetAt,
+  positionAt,
+} from "./completion";
 
 describe("positions", () => {
   it("turns offsets into LSP line/character and back", () => {
@@ -15,17 +21,26 @@ describe("positions", () => {
 
 describe("Claude completions", () => {
   it("marks the caret in the code around it", () => {
-    const prompt = claudePrompt({ path: "src/cart.ts", text: "const a = 1;\nconst b", offset: 20 });
+    const prompt = completionPrompt({ path: "src/cart.ts", text: "const a = 1;\nconst b", offset: 20 });
     expect(prompt).toContain("in cart.ts");
     expect(prompt.endsWith("const a = 1;\nconst b<CURSOR>")).toBe(true);
   });
   it("keeps only the text to insert", () => {
     const text = "function total(items) {\n  return \n}";
     const at = text.indexOf("return ") + 7;
-    expect(cleanClaudeCompletion("```ts\nitems.length;\n```", text, at)).toBe("items.length;");
-    expect(cleanClaudeCompletion("  return items.length;", text, at)).toBe("items.length;");
-    expect(cleanClaudeCompletion("   \n", text, at)).toBe("");
+    expect(cleanCompletion("```ts\nitems.length;\n```", text, at)).toBe("items.length;");
+    expect(cleanCompletion("  return items.length;", text, at)).toBe("items.length;");
+    expect(cleanCompletion("   \n", text, at)).toBe("");
     const mid = "call(a, )";
-    expect(cleanClaudeCompletion("b)", mid, 8)).toBe("b");
+    expect(cleanCompletion("b)", mid, 8)).toBe("b");
+  });
+});
+
+describe("the provider that completes", () => {
+  it("is the chosen one; Copilot without its sign-in is off", () => {
+    expect(activeCompletionProvider("copilot", true)).toBe("copilot");
+    expect(activeCompletionProvider("copilot", false)).toBe("off");
+    expect(activeCompletionProvider("claude", false)).toBe("claude");
+    expect(activeCompletionProvider("chatgpt", false)).toBe("chatgpt");
   });
 });

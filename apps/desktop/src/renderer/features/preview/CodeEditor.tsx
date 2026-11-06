@@ -44,6 +44,7 @@ import { isAngularTemplate } from "../../../shared/preview";
 import { call } from "../../lib/host";
 import { useAppearance } from "../../stores/appearance";
 import { updateConfig, useConfig } from "../../stores/config";
+import { useChatGptStatus } from "../../stores/providers";
 import { cn, IconButton, openMenuAt, Spinner } from "../../ui";
 import { openSettings } from "../../workbench/actions";
 import { formatShortcut } from "../../workbench/shortcuts";
@@ -213,6 +214,7 @@ export function CodeEditor({
   const angular = useRef(false);
   // Inline completions (D-255): who completes, read by the editor extension on each pause.
   const completion = useCompletion((s) => s.state);
+  const chatgpt = useChatGptStatus();
   const [suggesting, setSuggesting] = useState(false);
   const [server, setServer] = useState<LanguageServerStatus>();
   const live = useRef({ completion, indent });
@@ -260,10 +262,14 @@ export function CodeEditor({
           p.lsp.of([]),
           ghostText({
             path,
-            // Copilot answers quickly; Claude Code waits for a longer pause (each ask is a model call).
+            // Copilot answers quickly; Claude Code and ChatGPT wait for a longer pause (each ask is a model call).
             pause: () => {
               const provider = live.current.completion?.provider;
-              return provider === "copilot" ? 150 : provider === "claude" ? 700 : undefined;
+              return provider === "copilot"
+                ? 150
+                : provider === "claude" || provider === "chatgpt"
+                  ? 700
+                  : undefined;
             },
             request: (request) => call("completion.request", request),
             accepted: (id) => void call("completion.accepted", { id }).catch(() => {}),
@@ -455,10 +461,11 @@ export function CodeEditor({
       ? "Copilot"
       : provider === "claude"
         ? `Claude ${modelName(completion?.claudeModel)}`
-        : "No completion";
+        : provider === "chatgpt"
+          ? `ChatGPT ${chatGptName(completion?.chatgptModel)}`
+          : "No completion";
   const completionMenu = (anchor: HTMLElement) => {
     const copilot = completion?.copilot;
-    const claudeOn = provider === "claude";
     openMenuAt(
       anchor,
       [
@@ -469,16 +476,23 @@ export function CodeEditor({
             : "Set up GitHub Copilot…",
           checked: provider === "copilot",
           onSelect: () => {
-            if (claudeOn) void updateConfig({ editor: { claudeCompletion: false } });
+            void updateConfig({ editor: { completionProvider: "copilot" } });
             if (!copilot?.signedIn) openCopilotDialog();
           },
           testId: "completion-copilot",
         },
         {
           label: "Claude (uses your Claude plan)",
-          checked: claudeOn,
-          onSelect: () => void updateConfig({ editor: { claudeCompletion: !claudeOn } }),
+          checked: provider === "claude",
+          onSelect: () => void updateConfig({ editor: { completionProvider: "claude" } }),
           testId: "completion-claude",
+        },
+        {
+          label: chatgpt?.ready ? "ChatGPT (uses your ChatGPT plan)" : "ChatGPT (sign in first)",
+          checked: provider === "chatgpt",
+          disabled: !chatgpt?.ready,
+          onSelect: () => void updateConfig({ editor: { completionProvider: "chatgpt" } }),
+          testId: "completion-chatgpt",
         },
         { separator: true },
         ...(copilot?.signedIn
@@ -593,4 +607,10 @@ function modelName(model = "haiku"): string {
   if (!m) return model;
   const name = m[1]!.charAt(0).toUpperCase() + m[1]!.slice(1).toLowerCase();
   return m[2] ? `${name} ${m[2]}${m[3] ? `.${m[3]}` : ""}` : name;
+}
+
+/** "luna" or "gpt-6-luna" → "Luna": a short name for the status line (other slugs as they are). */
+function chatGptName(model = "luna"): string {
+  const m = /(sol|terra|luna)/i.exec(model);
+  return m ? m[1]!.charAt(0).toUpperCase() + m[1]!.slice(1).toLowerCase() : model;
 }

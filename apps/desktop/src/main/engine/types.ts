@@ -158,10 +158,18 @@ export interface Completer {
 
 export interface CompleterOptions {
   cwd: string;
+  /** Claude: a Claude Code model. ChatGPT: an exact Codex model ("" = Codex's default); resolve families first. */
   model: string;
+  /** The completer's own instructions: appended to Claude's preset, or Codex's developer instructions. */
   appendSystemPrompt: string;
   env: Record<string, string | undefined>;
   claudePath: string;
+  /** ChatGPT (D-401): the Codex CLI to run (`engine.codexPath`), else the one on PATH. */
+  codexPath?: string;
+  /** ChatGPT: reasoning effort for each ask ("low" completes fastest); unset = the model's own. */
+  effort?: string;
+  /** ChatGPT: an ask that takes longer rejects (default 60 s); the warm process stays. */
+  timeoutMs?: number;
 }
 
 export interface ToolCallOptions {

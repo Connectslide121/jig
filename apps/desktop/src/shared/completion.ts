@@ -1,6 +1,19 @@
-/** Inline code completion in the editor (D-255): GitHub Copilot's language server, or Claude Code. */
+import type { COMPLETION_SETTINGS } from "./config";
 
-export type CompletionProvider = "copilot" | "claude" | "off";
+/** Inline code completion in the editor (D-255, D-401): GitHub Copilot's language server, Claude Code or ChatGPT (Codex). */
+
+/** What `editor.completionProvider` can be set to. */
+export type CompletionSetting = (typeof COMPLETION_SETTINGS)[number];
+
+/** Who completes now: the setting, except that Copilot needs its GitHub sign-in ("off" without it). */
+export type CompletionProvider = CompletionSetting | "off";
+
+export function activeCompletionProvider(
+  setting: CompletionSetting,
+  copilotSignedIn: boolean,
+): CompletionProvider {
+  return setting === "copilot" && !copilotSignedIn ? "off" : setting;
+}
 
 export interface CopilotState {
   /** The language server is downloaded (Jig fetches it the first time you set Copilot up). */
@@ -16,11 +29,13 @@ export interface CopilotState {
 }
 
 export interface CompletionState {
-  /** Who completes now: Claude when its setting is on, else Copilot when signed in, else nobody. */
+  /** Who completes now: the chosen provider; Copilot without its sign-in is "off". */
   provider: CompletionProvider;
   copilot: CopilotState;
   /** The Claude model completions use (Settings → Editor). */
   claudeModel: string;
+  /** The ChatGPT model choice (a family or exact version) completions use (Settings → Editor). */
+  chatgptModel: string;
 }
 
 export interface CompletionRequest {
@@ -63,8 +78,8 @@ export function offsetAt(text: string, position: { line: number; character: numb
 const PREFIX_CHARS = 6000;
 const SUFFIX_CHARS = 2000;
 
-/** What Claude is asked for one completion: the code around the caret, marked. */
-export function claudePrompt(request: Pick<CompletionRequest, "path" | "text" | "offset">): string {
+/** What the model is asked for one completion: the code around the caret, marked. */
+export function completionPrompt(request: Pick<CompletionRequest, "path" | "text" | "offset">): string {
   const prefix = request.text.slice(Math.max(0, request.offset - PREFIX_CHARS), request.offset);
   const suffix = request.text.slice(request.offset, request.offset + SUFFIX_CHARS);
   const name = request.path.split(/[\\/]/).pop() ?? request.path;
@@ -76,14 +91,14 @@ export function claudePrompt(request: Pick<CompletionRequest, "path" | "text" | 
   ].join("\n");
 }
 
-/** Claude's answer as text to insert: fences and an echoed line start removed, the rest kept. */
-export function cleanClaudeCompletion(answer: string, text: string, offset: number): string {
+/** The model's answer as text to insert: fences and an echoed line start removed, the rest kept. */
+export function cleanCompletion(answer: string, text: string, offset: number): string {
   let out = answer.replace(/\r\n/g, "\n");
   const fenced = /^\s*```[^\n]*\n([\s\S]*?)\n?```\s*$/.exec(out);
   if (fenced) out = fenced[1]!;
   out = out.replace(/<CURSOR>/g, "");
   if (!out.trim()) return "";
-  // Claude sometimes repeats the start of the line: keep only what comes after it.
+  // The model sometimes repeats the start of the line: keep only what comes after it.
   const lineStart = text.slice(text.lastIndexOf("\n", offset - 1) + 1, offset);
   if (lineStart.trim() && out.startsWith(lineStart)) out = out.slice(lineStart.length);
   // Nor what already follows the caret on its line.

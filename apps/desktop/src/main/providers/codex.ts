@@ -127,6 +127,23 @@ function scopedExecArgs(
   ];
 }
 
+/**
+ * The flags of a warm `codex app-server` that only answers text (completions, caption translation):
+ * no approvals, no web search, no shell and none of the features above, no AGENTS.md. The read-only
+ * sandbox and the developer instructions go in with each thread (`thread/start`).
+ */
+export function codexAppServerTextArgs(): string[] {
+  return [
+    "-c",
+    'approval_policy="never"',
+    "-c",
+    'web_search="disabled"',
+    "-c",
+    "project_doc_max_bytes=0",
+    ...[...SHELL_FEATURES, ...OFF_FEATURES].flatMap((f) => ["--disable", f]),
+  ];
+}
+
 /** `codex exec` for one text answer: no shell and no tools at all. */
 export function codexExecArgs(model: string, cwd: string): string[] {
   return scopedExecArgs(model, cwd);

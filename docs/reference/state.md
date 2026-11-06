@@ -103,9 +103,10 @@ A new state file is documented here in the same commit that adds it.
 | `editor.showWhitespace` | `false` | spaces and tabs show as faint dots and arrows in the editor |
 | `editor.closeBrackets` | `true` | typing `(` `[` `{` `"` `'` adds the closing one |
 | `editor.tabSize` | `4` | indentation for a file that doesn't show its own; otherwise the editor follows the file |
-| `editor.claudeCompletion` | `false` | code completion with Claude instead of GitHub Copilot (D-255); protected, it spends plan usage |
+| `editor.completionProvider` | `"copilot"` | who completes code: `copilot` (when signed in), `claude` or `chatgpt` (D-255, D-401); protected, the last two spend plan usage. An older `claudeCompletion: true` loads as `claude` |
 | `editor.languageServers` | `true` | run the language servers found on PATH for files in the editor (D-259) |
 | `editor.claudeCompletionModel` | `"haiku"` | the model Claude completes with (from Claude Code's model list); protected |
+| `editor.chatgptCompletionModel` | `"luna"` | the model ChatGPT completes with: a family (sol, terra, luna: its newest version) or an exact version (D-401); protected |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
 | `phone.channel` | `"telegram"` | where Jig reaches your phone (D-377): `telegram` (your own Telegram bot, D-350) or `teams` (your own Teams bot through a relay in your Azure, D-370, D-379; set up in Settings → Phone → Set up Teams, D-381). One at a time: switching parks the other (polling stops) and keeps its saved state, so switching back is connected again (D-399); protected |
 | `phone.enabled` | `false` | Jig on your phone (D-350): message your paired bot and read your replies; turned on by pairing; protected |

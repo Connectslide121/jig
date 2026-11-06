@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { CompletionSetting } from "../../../shared/completion";
 import type { ModelInfo } from "../../../shared/engine";
 import { BOTTOM_SPANS, DEFAULT_BOTTOM_SPAN } from "../../../shared/layout";
 import type { LanguageServerInfo } from "../../../shared/lsp";
@@ -18,6 +19,7 @@ import { modelOptions } from "../../../shared/models";
 import { shellName } from "../../../shared/shellNames";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
+import { useChatGptStatus, useProviderModels } from "../../stores/providers";
 import {
   Button,
   cn,
@@ -44,6 +46,7 @@ import { lookForPatterns, useLearning } from "../learning/store";
 import { newTerminal } from "../terminals/actions";
 import { shellEntries } from "../terminals/shellEntries";
 import { useShellChoices } from "../terminals/shells";
+import { ChatGptModelSelect } from "./ChatGptModelSelect";
 import { SegmentedSwitch, SettingRow, SettingsSection } from "./parts";
 
 export function LayoutSettings() {
@@ -314,10 +317,15 @@ function LanguageServerRows({ enabled }: { enabled: boolean }) {
   );
 }
 
+/** One width for the completion selects, so the provider and both model rows line up. */
+const COMPLETION_WIDTH = "w-80";
+
 export function EditorSettings() {
   const config = useConfig((s) => s.config);
   const completion = useCompletion((s) => s.state);
   const [models, setModels] = useState<ModelInfo[]>([]);
+  const chatgpt = useChatGptStatus();
+  const chatgptModels = useProviderModels("codex") ?? [];
   useEffect(() => {
     watchCompletion();
     // The model list comes from the running Claude Code (never a list of Jig's own).
@@ -378,7 +386,7 @@ export function EditorSettings() {
       </SettingRow>
       <SettingRow
         label="GitHub Copilot"
-        description="Optional: suggests code as you type; Tab takes it. Needs a GitHub account with Copilot. Used when completion with Claude is off."
+        description="Optional: suggests code as you type; Tab takes it. Needs a GitHub account with Copilot. Used when code completion is set to GitHub Copilot."
       >
         <div className="flex items-center gap-2" data-testid="settings-copilot">
           <span className="max-w-48 truncate text-xs text-muted">
@@ -400,27 +408,54 @@ export function EditorSettings() {
         </div>
       </SettingRow>
       <SettingRow
-        label="Code completion with Claude"
-        description="Claude Code suggests the code instead of Copilot, after you pause typing. Slower than Copilot: about 1 second after the pause (the first suggestion takes about 5 seconds while Claude Code starts). Each suggestion uses your Claude plan."
+        label="Code completion"
+        description="Who suggests code at the caret after you pause typing. Claude and ChatGPT are slower than Copilot (about a second after the pause; the first suggestion waits while their process starts) and every suggestion uses your Claude or ChatGPT plan. Suggestions are AI-generated: check them before you accept."
       >
-        <Switch
-          label="Code completion with Claude"
-          checked={e.claudeCompletion}
-          onChange={(claudeCompletion) => void updateConfig({ editor: { claudeCompletion } })}
-        />
+        <Select
+          className={COMPLETION_WIDTH}
+          aria-label="Code completion"
+          data-testid="settings-completion-provider"
+          value={e.completionProvider}
+          onChange={(ev) =>
+            void updateConfig({ editor: { completionProvider: ev.target.value as CompletionSetting } })
+          }
+        >
+          <option value="copilot">GitHub Copilot</option>
+          <option value="claude">Claude (uses your Claude plan)</option>
+          <option value="chatgpt" disabled={!chatgpt?.ready && e.completionProvider !== "chatgpt"}>
+            {chatgpt?.ready ? "ChatGPT (uses your ChatGPT plan)" : "ChatGPT (sign in first)"}
+          </option>
+        </Select>
       </SettingRow>
-      <LanguageServerRows enabled={e.languageServers} />
       <ModelSetting
-        label="Model for completion"
+        label="Claude model for completion"
         description="For completion with Claude. Haiku is the quickest; larger models are slower and use more of your plan."
         value={e.claudeCompletionModel}
         models={models}
         emptyLabel="Haiku (default)"
-        disabled={!e.claudeCompletion}
+        className={COMPLETION_WIDTH}
+        disabled={e.completionProvider !== "claude"}
         onSave={(claudeCompletionModel) =>
           void updateConfig({ editor: { claudeCompletionModel: claudeCompletionModel || "haiku" } })
         }
       />
+      <SettingRow
+        label="ChatGPT model for completion"
+        description="For completion with ChatGPT. Luna is the quickest and always its newest version; pick an exact version to pin one."
+      >
+        <ChatGptModelSelect
+          className={COMPLETION_WIDTH}
+          label="ChatGPT model for completion"
+          testId="settings-chatgpt-completion-model"
+          value={e.chatgptCompletionModel}
+          models={chatgptModels}
+          disabled={e.completionProvider !== "chatgpt"}
+          onSave={(chatgptCompletionModel) =>
+            void updateConfig({ editor: { chatgptCompletionModel: chatgptCompletionModel || "luna" } })
+          }
+        />
+      </SettingRow>
+      <LanguageServerRows enabled={e.languageServers} />
     </SettingsSection>
   );
 }

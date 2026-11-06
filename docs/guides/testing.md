@@ -194,7 +194,7 @@ write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAK
 (`signedout` or JSON; default a Plus plan at 27 % / 64 %). `signedout` also makes ChatGPT not signed in
 for chats (`ai.providers`), so a ChatGPT chat can't be started (D-330).
 
-Code completion with Claude (D-255) uses the fake engine's `completer`: after `return ` at the caret it
+Code completion with Claude or ChatGPT (D-255, D-401) uses the fake engine's `completer` (the same for both): after `return ` at the caret it
 suggests `total;`, anywhere else `// suggested by the fake engine`. Captions to translate (D-277, a
 batch since D-384) come back as `<t n="…">[<language>] <caption></t>` each. The meetings test service rings for
 a Teams call when a test calls `window.jigTestRing(name)` in the meetings window (D-254). It has three

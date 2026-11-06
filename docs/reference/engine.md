@@ -234,8 +234,20 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   text, replies, reasoning, commands, file changes with a structured patch for the diff, MCP calls),
   so `savedChatItems` builds the chat. The session manager lists both providers' saved chats
   together and opens one on its own provider.
-- **Not in chats:** the Codex engine's `oneShot`, `completer`, `callTool` and `planUsage` refuse;
-  those run on Claude's engine or through `main/providers` (D-294, D-298).
+- **Not in chats:** the Codex engine's `oneShot`, `callTool` and `planUsage` refuse; those run on
+  Claude's engine or through `main/providers` (D-294, D-298).
+- **`completer(options)` (D-401):** a warm Codex for short answers one after another (code completion
+  now, caption translation next), the same `Completer` as Claude's: `ask(prompt, signal?)` and
+  `close()`. Get one with `getEngine("codex").completer(options)` (the fake engine answers in tests;
+  `codexCompleter(options)` in `engine/codex.ts` is the real one). Options (`CompleterOptions`):
+  `model` (an exact Codex model, "" for Codex's default; resolve a family with `resolveCodexModel`
+  first), `appendSystemPrompt` (its developer instructions: completion's, or
+  `TRANSLATE_INSTRUCTIONS`), `cwd` (`homedir()` is fine), `env` (the OpenAI keys are stripped),
+  `codexPath` (`engine.codexPath`), `effort` (`"low"` is the fastest) and `timeoutMs` (default 60 s);
+  `claudePath` is ignored. One `codex app-server` with no tools, a read-only sandbox and no approvals;
+  each ask is a fresh ephemeral thread (nothing carries over); asks run in order; an abort or the
+  timeout rejects that ask and leaves the process for the next; it restarts after it dies, and the
+  caller makes a new completer when the model changes (as `main/completion` does).
 
 - **`callTool(request, options)`** (`toolCall.ts`): has Claude Code call one of its own tools with
   an exact input, for Jig's routines and artifacts tabs.
