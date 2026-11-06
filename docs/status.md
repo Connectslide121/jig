@@ -1956,7 +1956,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     developers**, only for the confirmed version, saves the package zip in your Downloads folder
     (SPEC.md, PROMPT.md to paste into Claude Code in the Jig repository, mockup.html, context.json),
     shows it there and opens a new email to support@sprinta.se (fixed in Jig, not a setting) in your
-    mail app; you attach the zip and send (D-123). Also Copy prompt and Show package.
+    mail app; you attach the zip and send (D-123). Also Copy prompt and Show package. The same steps
+    work on an add-on build whose missing part became a request (D-303, D-422); without a mockup,
+    Try it says the add-on is what you can try.
   - Starting a build opens its chat beside the Build tab (split view), so you see the builder work.
   - With `JIG_ENGINE=fake` a scripted builder runs the real pipeline (try "move the terminals",
     "compact", "a pomodoro timer").

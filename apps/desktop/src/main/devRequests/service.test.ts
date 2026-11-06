@@ -86,4 +86,29 @@ describe("DevRequestService", () => {
     expect(await s.prompt(job.id)).toContain("Read AGENTS.md");
     await expect(s.create("other")).rejects.toMatchObject({ code: "not_found" });
   });
+
+  it("packs the request of an add-on build whose missing part needs a change in Jig (D-303)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "jig-devreq-"));
+    const addonJob = {
+      id: "addon12345678",
+      goal: "Time per tool call",
+      kind: "new-addon",
+      addonId: "chat-time",
+      worktree: join(dir, "work"),
+      proposal: { title: "Tool timings", reason: "No slot has them.", proposal: "Add `toolTimings`." },
+    } as unknown as BuildJob;
+    const s = new DevRequestService({
+      dir,
+      job: () => addonJob,
+      context: () => ({ jigVersion: "0.1.0", os: "linux", addons: [], createdAt: "2026-11-06T10:00:00Z" }),
+      downloads: () => join(dir, "Downloads"),
+      openEmail: async () => {},
+      showFile: () => {},
+    });
+    const info = await s.create(addonJob.id);
+    expect(info).toMatchObject({ title: "Tool timings", hasMockup: false });
+    expect(await s.prompt(addonJob.id)).toContain("Add `toolTimings`.");
+    expect((await s.approve(addonJob.id)).approved).toBe(true);
+    expect((await s.email(addonJob.id)).to).toBe("support@sprinta.se");
+  });
 });

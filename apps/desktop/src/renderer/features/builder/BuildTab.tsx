@@ -298,7 +298,11 @@ function DevRequestPanel({ job }: { job: BuildJob }) {
         {p.mockupHtml ? (
           <RequestDemo job={job} />
         ) : (
-          <div className="text-muted">This request has no demo; read what it asks for below.</div>
+          <div className="text-muted" data-testid="dev-no-demo">
+            {job.addonId && job.worktree
+              ? "This part has no demo: the add-on below is what you can try now. Read what the change in Jig would add below."
+              : "This request has no demo; read what it asks for below."}
+          </div>
         )}
         <details className="rounded-md border border-line p-2" data-testid="dev-spec">
           <summary className="cursor-pointer text-muted">What will be requested</summary>
@@ -382,7 +386,7 @@ function DevRequestPanel({ job }: { job: BuildJob }) {
           </Button>
           <span className="text-xs text-muted">
             {status?.approved
-              ? `Saves the package (spec, prompt for Claude Code, demo) in your Downloads folder and opens a new email to ${to}: attach the package, then send.`
+              ? `Saves the package (spec, prompt for Claude Code${p.mockupHtml ? ", demo" : ""}) in your Downloads folder and opens a new email to ${to}: attach the package, then send.`
               : "Confirm the request first (step 2)."}
           </span>
         </div>

@@ -7486,3 +7486,20 @@ own**.
   A warm project still costs its program build (web: ~4.3 s of reading and parsing 1830 files), which
   `tsc` can't skip; the stamp is what makes unchanged projects free.
 - **Not changed:** what verify checks, the tsconfigs, Biome's settings.
+
+## D-422: Development requests work on any build that carries one
+
+- Status: accepted.
+- **Who:** Jon (the bug, 2026-11-06); the details **Claude, on my own**.
+
+Jon, 2026-11-06: an add-on build that also carried a development request (D-303) showed the request
+card, but every action on it (the demo, Copy prompt, This is what I want, Show package, Email to
+developers) failed with "This build doesn't need a change in Jig": `DevRequestService.create` still
+accepted only builds of kind `app`.
+
+- The dev-request service (package, prompt, confirm, email) accepts any build with a `proposal`,
+  whatever its kind; the card already showed for any build with one, so card and actions agree.
+- A combined build's request without a mockup says in **1. Try it** that the add-on below is what you
+  can try now, instead of an empty demo slot. With a mockup the demo shows as for kind `app`.
+- The fake builder has a combined case ("partly" in the goal: a new add-on plus a request without a
+  mockup), covered by an e2e test.

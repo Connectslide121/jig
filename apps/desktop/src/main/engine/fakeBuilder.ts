@@ -14,6 +14,7 @@ import { outputText, type ToolOutput } from "./types";
  * - "broken" → writes an add-on with a design-token problem first, then fixes it after validation
  * - "jig itself" / "source" → a development request: proposes a new extension point, with a mockup
  * - "…wants changes: <feedback>… Revise the request" → a new version of the development request
+ * - "partly" → a new add-on that also carries a development request (no mockup) for the part it can't do
  * - a target add-on → changes that add-on (adds a line to its README and a label)
  * - anything else → a new add-on with a view and a Tools-menu action
  */
@@ -158,6 +159,15 @@ export function hello(ctx: AddonUiContext) {
     say("Validation found a problem; fixing it.");
     await writeFile(join(folder, "ui.tsx"), view(' className="text-accent"'));
     await call("validate", { id });
+  }
+  if (lower.includes("partly")) {
+    // The add-on does the rest; one part needs a change in Jig (D-303). No mockup: the add-on is the demo.
+    await call("propose_extension_point", {
+      title: "Tool timings for add-ons",
+      reason: "No add-on API reports how long a tool call took.",
+      proposal: "Add `ctx.sessions.toolTimings(chatId)`: each tool call's name and duration.",
+      acceptance: ["An add-on can read the duration of each tool call"],
+    });
   }
   await call("finish", {
     summary: `A new add-on "${id}" with a view in the right sidebar and a Tools-menu action.`,

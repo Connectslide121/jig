@@ -101,6 +101,26 @@ test("Change this with AI on an add-on view starts a build about that add-on", a
   await expect(page.getByTestId("addon-repos")).toContainText("your copy");
 });
 
+test("an add-on build that also needs a change in Jig: its request's actions work", async ({ page }) => {
+  await page.keyboard.press("Control+Shift+B");
+  await page.getByTestId("build-goal").fill("Timer partly needs Jig");
+  await page.getByTestId("build-submit").click();
+  await expect(page.getByTestId("build-tab")).toContainText("Ready to review", { timeout: 20000 });
+  const request = page.getByTestId("build-proposal");
+  await expect(request).toContainText("Tool timings for add-ons");
+  // No mockup: the add-on is what you try, said plainly instead of an error.
+  await expect(page.getByTestId("dev-no-demo")).toContainText("the add-on below is what you can try");
+  await expect(page.getByTestId("build-accept")).toBeVisible();
+
+  await page.getByTestId("build-copy-proposal").click();
+  await expect(page.getByTestId("toast").last()).toContainText("Prompt copied");
+  await page.getByTestId("build-show-request").click();
+  await page.getByTestId("dev-approve").click();
+  await expect(page.getByTestId("dev-approved")).toBeVisible();
+  await expect(page.getByTestId("build-email-request")).toBeEnabled();
+  await expect(page.getByTestId("toast").filter({ hasText: "doesn't need a change" })).toHaveCount(0);
+});
+
 test("when no add-on can do it, you try the request's demo, change it, confirm it and email it", async ({
   jigHome,
 }) => {

@@ -54,7 +54,8 @@ export class DevRequestService {
   async create(buildId: string): Promise<DevRequestInfo> {
     const job = this.deps.job(buildId);
     const p = job.proposal;
-    if (job.kind !== "app" || !p) throw new JigError("not_found", "This build doesn't need a change in Jig");
+    // Any build with a proposal: kind "app", or an add-on whose missing part became a request (D-303).
+    if (!p) throw new JigError("not_found", "This build doesn't need a change in Jig");
     const folder = join(this.deps.dir, buildId);
     const infoFile = join(folder, "request.json");
     const before = await readJson(infoFile, InfoSchema).catch(() => ({
