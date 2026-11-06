@@ -13,7 +13,8 @@
 ```bash
 npm install          # once, and after pulling dependency changes
 npm run dev          # Electron + Vite dev server; UI hot-reloads, main/preload changes restart Electron
-npm run verify       # typecheck + lint + design-token check (once before each commit; tests run at release, D-258)
+npm run verify       # typecheck + lint + design-token check, in parallel (2-8 s on a small change, D-421; once before each commit; tests run at release, D-258)
+npm run typecheck -- web   # only the named TypeScript projects (web, node, addons, e2e, sdk…), for iterating on one file
 npm run check        # verify + unit tests (releases)
 npm run build        # production build into apps/desktop/dist
 npm start            # run the production build

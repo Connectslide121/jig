@@ -7,7 +7,7 @@
 | End-to-end, everything (releases) | Playwright + Electron | `e2e/*.spec.ts` | `npm run e2e` |
 | Design tokens | `scripts/check-tokens.ts` | renderer + add-ons | `npm run check:tokens` |
 | Add-on imports stay in `addons/` (D-415) | `scripts/check-addon-imports.ts` | add-ons | `npm run check:addon-imports` |
-| Before each commit (no tests, D-258) | — | — | `npm run verify` |
+| Before each commit (no tests, D-258) | — | — | `npm run verify` (2-8 s on a small change, D-421) |
 | Everything fast (releases) | — | — | `npm run check` |
 
 ## End-to-end tests
@@ -56,7 +56,22 @@ memory.
   release runs) then reruns only those and the specs the commits since need (D-325).
 
 Both build first only when the build is stale (`scripts/build-if-stale.ts` keeps a stamp of the
-inputs in `apps/desktop/dist/.build-stamp`; `--force` rebuilds). Tests run side by side: one Electron
+inputs in `apps/desktop/dist/.build-stamp`; `--force` rebuilds), and so does a plain `npx playwright
+test` (its `globalSetup`, D-421): about 0.4 s when the build is fresh, a build (~8 s) when sources changed.
+
+**Rerunning one failing spec while you fix it** (the fastest correct way, D-421):
+
+```bash
+npx playwright test e2e/files.spec.ts -g "opens a file"   # one test, by (part of) its title
+npx playwright test e2e/files.spec.ts                      # the whole spec
+npx playwright test e2e/files.spec.ts:42 --retries=0       # the test at that line, failing on the first try
+```
+
+It takes the e2e lock and builds only when stale, like the runs above; `--retries=0` skips the second
+try of a failing test. It records nothing, so it's for the fix loop only: the task's `npm run
+e2e:changed` at the end still runs (in Jig through the Tests add-on).
+
+Tests run side by side: one Electron
 per worker, a fifth of the cores that are free when the run starts (2–8, D-420; each Electron keeps
 about three cores busy, and more workers only made every test slower: on 40 cores a 19-spec run took
 161 s with 8 workers, 180 s with 13, 186 s with 5; `JIG_E2E_WORKERS=n` to change), every test in its
@@ -97,7 +112,7 @@ themselves. A test that commits sets `git config user.name` / `user.email` in it
 folder first on `PATH` (`e2e/workflows.spec.ts` fakes a finished pipeline this way). Add-on watchers
 can be run at once with `hostCall(page, "addons.call", { id, method, args })`.
 
-On Linux without a display, run under Xvfb: `xvfb-run -a npx playwright test` (after `npm run build`).
+On Linux without a display, run under Xvfb: `xvfb-run -a npx playwright test`.
 On Linux as root, Electron needs `--no-sandbox` (the fixture adds it on Linux).
 
 ## The fake engine

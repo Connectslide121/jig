@@ -48,7 +48,8 @@ npm install            # once
 npm run dev            # Electron + Vite dev server with hot reload
 npm run build          # production build into apps/desktop/dist
 npm start              # run the production build
-npm run verify         # typecheck + lint + design-token check + add-on imports (D-415) + no duplicate decision numbers (no tests) — run before every commit
+npm run verify         # typecheck + lint + design-token check + add-on imports (D-415) + no duplicate decision numbers (no tests), in parallel, unchanged projects skipped (D-421): 2-8 s on a small change — once before every commit
+npm run typecheck -- web   # only the named TypeScript projects (web, node, addons, e2e, sdk, azure, themes, learning, documents, teams-relay), same cache: for iterating on one file
 npm run decision -- "Title"   # reserve the next D-xxx: appends its heading to docs/decisions.md and prints the number (D-361)
 npm run check          # verify + unit tests — when releasing
 npm run e2e:changed    # the e2e specs the changes since the last passing e2e run need (else uncommitted only) — once per task, at the end, when it touched the app or a spec (D-331, D-357, D-420); -- --since origin/main for the old base, -- --list to only print the choice
@@ -270,8 +271,13 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - Never use real Claude credentials in tests.
 - **A task runs the e2e specs it affects once, at the end; the whole suite runs only when releasing
   (Jon, D-258, D-331, D-420).** Write and update unit and e2e tests with each change.
-  - **Before each commit:** `npm run verify` (typecheck, lint, tokens; seconds), once per commit, not
-    after every edit.
+  - **Before each commit:** `npm run verify` (typecheck, lint, tokens; 2-8 s on a small change, ~17 s
+    cold or after a change to `shared/`, D-421), once per commit, not after every edit. While
+    iterating on one file, `npm run typecheck -- <project>` (`web` for the renderer, `node` for main,
+    preload and scripts, `addons`, `e2e`…) is enough.
+  - **Rerunning one failing spec while fixing it:** `npx playwright test e2e/<name>.spec.ts -g "<test
+    title>"` (it builds first only when the sources changed since the last build, ~0.4 s otherwise,
+    D-421). It's for the fix loop only: the task's `npm run e2e:changed` at the end still runs.
   - **Once per task, at the end:** when the task touched the app or an e2e spec, `npm run
     e2e:changed` before the task's last commit or its report. It covers everything since the last
     passing run (D-357), so the commits before it need no run of their own. Fix what fails in a

@@ -597,6 +597,8 @@ and installing an update (`updates.apply` calls `requestQuit(then, "update")`).
 - **End-to-end** (Playwright driving Electron, under Xvfb on Linux): `JIG_ENGINE=fake`, temp
   `JIG_HOME`, real UI.
 - **Checks:** `npm run check` = typecheck + lint (Biome) + unit tests + design-token check.
+  `npm run verify` (the same without tests) runs them in parallel through `scripts/verify.ts`, each
+  TypeScript project incremental from `.cache/tsc`, skipping projects unchanged since they passed (D-421).
 
 ### Model defaults and desktop menus (D-129)
 

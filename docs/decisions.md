@@ -7439,3 +7439,50 @@ own**.
     48 → 17 s.
 - **Not changed:** the data-testid mapping (it is what covers a change); tightening it further would
   drop specs that render what the change touches.
+
+## D-421: Fast verify: parallel, incremental typecheck that skips unchanged projects
+
+- Status: accepted.
+- **Who:**
+
+- **Who/why:** Jon asked for it (task "Make npm run verify fast", 2026-11-06); how it's done: Claude, on
+  my own. Over the last 7 days of chats, `npm run
+  verify` ran 579 times for 8.8 h (avg 55 s, 4.4 per chat), while the docs called it "seconds": the
+  `typecheck` script ran 10 `tsc -p` projects one after another, each from scratch. Chats also ran
+  `npx playwright test <spec>` directly ~690 times (6.8 h), mostly to rerun one spec while fixing it.
+- **What changed:** `npm run verify` / `npm run typecheck` are `scripts/verify.ts`. Same checks, same
+  tsconfigs and strictness, only how they run:
+  - **Parallel:** the 10 TypeScript projects, Biome, the token, add-on-import and decision checks all
+    start at once (a pool of cores - 1). Each check's output is collected and printed whole, grouped
+    under its name, only for the ones that failed; the exit code is 1 when any failed.
+  - **Incremental:** every project runs with `--incremental --tsBuildInfoFile .cache/tsc/<name>.tsbuildinfo`
+    (git-ignored). Passed on the command line, not in the tsconfigs, so editors, electron-vite and
+    Vitest see the same configs as before; `noEmit` stays on, nothing is emitted, `dist`/`out` are
+    untouched. TypeScript keeps a failing file's errors in the build info, so a warm run still reports them.
+  - **Skip unchanged projects** (`scripts/verify-lib.ts`): after a pass, each project stores a stamp
+    of its inputs: every file its program read (from the build info: sources, node_modules typings,
+    TypeScript's libs) by path, size and modification time, plus its tsconfig text, the base config,
+    the tsc arguments and the repository's file list by name (`git ls-files`, untracked included), so
+    a new or removed file anywhere checks every project again. Same stamp next time: the project is
+    "same" and isn't run. A failed run, or a file saved while tsc ran, leaves no stamp. `--full`
+    checks every project anyway (`npm run check`, the release, uses it).
+  - `npm run typecheck -- web` (or `node`, `addons`, `e2e`, `sdk`…) checks only the named projects, with
+    the same cache: the fastest way to iterate on one file.
+  - **Single e2e specs:** a plain `npx playwright test` didn't build at all, so after a change it tested
+    the old build. Its `globalSetup` now runs `build-if-stale` (when not under `npm run e2e`/`e2e:changed`,
+    which build themselves): 0.4 s when the build is fresh, a build (~8 s) when sources changed.
+- **Measured** (Windows, 40 cores, 2026-11-06):
+
+  | Run | Before | After |
+  |---|---|---|
+  | Cold (no `.cache/tsc`) | 54 s | 17 s |
+  | Nothing changed | 54 s | 2.5 s |
+  | One line in the renderer (`App.tsx`) | 54 s | 6.3 s (web) |
+  | One line in main (`main/index.ts`) | 54 s | 7.3 s (node) |
+  | One line in an add-on (`addons/boards/ui.tsx`) | 54 s | 5.4 s (addons) |
+  | A new export in `shared/ipc.ts` | 54 s | 17 s (web, node, addons, e2e) |
+  | `npm run typecheck -- web`, unchanged | 18 s | 0.3 s |
+
+  A warm project still costs its program build (web: ~4.3 s of reading and parsing 1830 files), which
+  `tsc` can't skip; the stamp is what makes unchanged projects free.
+- **Not changed:** what verify checks, the tsconfigs, Biome's settings.
