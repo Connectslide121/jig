@@ -431,6 +431,12 @@ export type ChatItem =
       /** A subagent's progress (Task/Agent tools). */
       task?: TaskInfo;
       at: string;
+      /**
+       * When its result came back (D-423), and the time from `at` to it. Missing on calls from before
+       * D-423, on ones still running and in chats opened from a saved conversation.
+       */
+      endedAt?: string;
+      durationMs?: number;
       parentId?: string;
     }
   | {

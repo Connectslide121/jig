@@ -173,6 +173,11 @@ export async function startAddons(): Promise<void> {
         ?.list()
         .find((a) => a.id === id)
         ?.manifest?.permissions.includes("chat"),
+    canRead: (id) => {
+      const granted = service?.list().find((a) => a.id === id)?.manifest?.permissions ?? [];
+      return granted.includes("chat:read") || granted.includes("chat");
+    },
+    list: () => sessionManager().list(),
     isBuiltin: (id) => service?.list().find((a) => a.id === id)?.source === "builtin",
     create: (input) => createChat(input),
     chatGptReady: async () =>
@@ -279,6 +284,10 @@ export async function startAddons(): Promise<void> {
           addonId,
           list.map((a) => a?.path).filter((p): p is string => typeof p === "string"),
         );
+      } else if (op === "chats.list") {
+        return chats.list(addonId, args as never);
+      } else if (op === "chats.timeline") {
+        return chats.timeline(addonId, (args as { sessionId: string }).sessionId);
       } else if (op === "chats.get") {
         return chats.get(addonId, (args as { sessionId: string }).sessionId);
       } else if (op === "log") {

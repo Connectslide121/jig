@@ -2,6 +2,7 @@ import { addonToolName } from "@jig/sdk";
 import {
   Brain,
   ChartColumn,
+  ChevronDown,
   Clock,
   Coins,
   FilePen,
@@ -18,7 +19,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import {
   type ChatStats,
   chatStats,
@@ -28,13 +29,15 @@ import {
   toolLabel,
   totalTokens,
 } from "../../../shared/chatStats";
-import type { ChatItem, SessionMeta } from "../../../shared/engine";
+import { type ChatItem, chatProvider, type SessionMeta } from "../../../shared/engine";
 import { modelName } from "../../../shared/models";
 import { costNote } from "../../../shared/openaiPrices";
 import { reportedModelName } from "../../../shared/toolModels";
+import { iconByName } from "../../addons/icons";
 import { useAddons } from "../../addons/loader";
 import { updateConfig } from "../../stores/config";
-import { Badge, type BadgeTone, Button, cn, Dialog, FileIcon, IconButton } from "../../ui";
+import { Badge, type BadgeTone, Button, Collapse, cn, Dialog, FileIcon, IconButton } from "../../ui";
+import { type ChatOverviewSectionDef, useRegistry } from "../../workbench/registry";
 import { openPreview } from "../preview/actions";
 import { formatTokens } from "./Transcript";
 
@@ -177,6 +180,100 @@ export function ChatOverview({
           Show details
         </Button>
       </div>
+      <AddonSections meta={meta} />
+    </div>
+  );
+}
+
+/** Which add-on sections of the overview you folded (all open by default). */
+const FOLDED_KEY = "jig.chatOverview.folded";
+
+function readFolded(): Set<string> {
+  try {
+    const value = JSON.parse(localStorage.getItem(FOLDED_KEY) ?? "[]");
+    return new Set(Array.isArray(value) ? value.filter((v) => typeof v === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Add-ons' sections (`chat.overview`, D-423), below Jig's own numbers, each one folding. */
+function AddonSections({ meta }: { meta: SessionMeta }) {
+  const defs = useRegistry((s) => s.chatOverview);
+  const sections = useMemo(
+    () => Object.values(defs).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title)),
+    [defs],
+  );
+  const [folded, setFolded] = useState(readFolded);
+  if (!sections.length) return null;
+  const toggle = (id: string) => {
+    const next = new Set(folded);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setFolded(next);
+    localStorage.setItem(FOLDED_KEY, JSON.stringify([...next]));
+  };
+  return (
+    <>
+      {sections.map((def) => (
+        <AddonSection
+          key={def.id}
+          def={def}
+          meta={meta}
+          open={!folded.has(def.id)}
+          onToggle={() => toggle(def.id)}
+        />
+      ))}
+    </>
+  );
+}
+
+function AddonSection({
+  def,
+  meta,
+  open,
+  onToggle,
+}: {
+  def: ChatOverviewSectionDef;
+  meta: SessionMeta;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  // Mounted once first opened, so a folded section loads nothing.
+  const [seen, setSeen] = useState(open);
+  if (open && !seen) setSeen(true);
+  const Icon = iconByName(def.icon) ?? Puzzle;
+  const Component = def.component;
+  return (
+    <div className="mt-1 flex flex-col border-t border-line pt-1" data-testid="chat-overview-section">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex h-7 items-center gap-2 px-3 text-left text-xs hover:bg-hover"
+        data-testid="chat-overview-section-toggle"
+      >
+        <Icon className="size-3.5 shrink-0 text-hint" />
+        <span className="min-w-0 flex-1 truncate font-medium text-fg">{def.title}</span>
+        <ChevronDown
+          className={cn(
+            "size-3.5 shrink-0 text-hint transition-transform motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      <Collapse open={open}>
+        <div className="px-3 pt-1 pb-2">
+          {seen && (
+            <Component
+              sessionId={meta.id}
+              projectId={meta.projectId}
+              provider={chatProvider(meta) === "codex" ? "chatgpt" : "claude"}
+              turns={meta.turns}
+            />
+          )}
+        </div>
+      </Collapse>
     </div>
   );
 }

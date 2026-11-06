@@ -83,6 +83,10 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
     idea: "A button that adds the staged diff to the chat",
     snippet: '"chatToolbar": [{ "id": "diff", "component": "AddDiffButton" }]',
   },
+  "chat.overview": {
+    idea: "Where a chat's time went, in its overview card",
+    snippet: '"chatOverview": [{ "id": "time", "title": "Where the time went", "component": "TimeSection" }]',
+  },
   "chat.toolRenderer": {
     idea: "A nicer card for an MCP tool's result",
     snippet: '"toolRenderers": [{ "tool": "mcp__ado__get_run", "component": "RunCard" }]',

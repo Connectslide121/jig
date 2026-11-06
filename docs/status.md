@@ -1,5 +1,17 @@
 # Status
 
+See where a chat's time goes (2026-11-06, D-423, Jon): with Show times on (the clock button in a
+chat's header), every tool card shows how long the call took, right-aligned before its check mark,
+counting live while it runs; Jig now records when each tool call ends, for Claude and ChatGPT chats.
+The chat overview card has a new section from the Chat time add-on, **Where the time went** (the
+bar, the biggest categories, the three slowest calls, More in Chat time); it folds from its header.
+Add-ons get a `chat.overview` slot and a read-only chat API (`api.chats.list`, `api.chats.timeline`,
+permission `chat:read`); Chat time uses them instead of reading files, so ChatGPT calls are exact (no
+≈). Older calls have no recorded end: their cards show no time, and Chat time still estimates them.
+**Check on your machine:** turn on Show times in a chat and run a command: its card counts up, then
+keeps its duration; open the overview (chart button): Where the time went fills in when the turn
+finishes; fold it and open another chat: it stays folded.
+
 Jig's own e2e tests run once per task and one at a time (2026-11-06, D-420, Jon): chats working on
 Jig run `npm run e2e:changed` once, at the end of a task, instead of before every commit. Two chats'
 e2e runs no longer fight over the CPU: the second waits ("Waiting for another e2e run" with an

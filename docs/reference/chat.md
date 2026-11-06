@@ -99,7 +99,12 @@ resolved active model is recorded separately and never replaces the selected ali
 - **Times** (clock button in the header, setting `chat.times`, D-306): every message and step gets its
   time in a fixed column at the left, with the day when it changes; a turn's "Done" line has none. The
   tooltip gives the time to the second and how long after the previous step. Off, the time shows in a
-  message's hover toolbar and in a steps line's tooltip.
+  message's hover toolbar and in a steps line's tooltip. On, every tool card also shows how long the
+  call took (D-423), right-aligned before its status mark in a fixed `w-16` slot that is there from the
+  first render: a live counter while it runs, then its duration (`0.4 s`, `12 s`, `4 m 05 s`; tooltip:
+  when it ended). Calls without a recorded end (older chats, chats opened from a saved conversation, one
+  waiting for your approval) leave the slot empty. Off, a running call shows its elapsed time after 3 s,
+  as before.
 - **Chat overview** (chart button in the header, setting `chat.overview`, D-184): a small card at the
   top right of the chat, in its own reserved column beside the conversation (D-189). The transcript,
   queue and composer share a column and matching content edges. The overview's space stays reserved
@@ -111,7 +116,10 @@ resolved active model is recorded separately and never replaces the selected ali
   tables of tools (calls, failed), skills and commands, subagents (tools, tokens, time, status),
   add-ons, MCP servers, files changed (click to preview), activity (commands, `!` commands, web,
   thinking, permissions) and tokens. The counting is `chatStats()` in `shared/chatStats.ts`, computed
-  from the transcript, nothing extra recorded.
+  from the transcript, nothing extra recorded. Below **Show details**, add-ons add folding sections
+  (slot `chat.overview`, D-423), e.g. Chat time's "Where the time went"; each opens or folds from its
+  header (remembered per section on this computer), mounts only once opened, and re-renders when a
+  turn finishes. The card's column scrolls when the sections make it taller than the chat.
 
   ![The chat overview card](../../apps/desktop/src/renderer/features/about/shots/chat-overview.jpg)
   ![The chat details modal](../../apps/desktop/src/renderer/features/about/shots/chat-details.jpg)

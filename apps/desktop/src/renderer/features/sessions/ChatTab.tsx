@@ -241,7 +241,10 @@ export function ChatTab({ params, active, focused }: TabProps) {
           />
         </div>
         <div
-          className={cn("jig-side-slide box-content shrink-0 pt-3", showOverview ? "w-52 pr-3" : "w-0 pr-0")}
+          className={cn(
+            "jig-side-slide box-content min-h-0 shrink-0 overflow-y-auto pt-3 pb-3",
+            showOverview ? "w-52 pr-3" : "w-0 pr-0",
+          )}
           aria-hidden={!showOverview}
           inert={!showOverview}
           data-testid="chat-overview-slot"

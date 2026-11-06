@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ChatAttachment, SessionMeta, SessionSnapshot } from "../../shared/engine";
-import { addonChats, chatInfo } from "./chats";
+import { addonChats, chatInfo, chatTimeline } from "./chats";
 
 const meta = (over: Partial<SessionMeta> = {}): SessionMeta =>
   ({
@@ -34,6 +34,13 @@ function setup(permitted = true, chatGptReady = true, builtin = true) {
   const deps = {
     chatGptReady: vi.fn(async () => chatGptReady),
     hasPermission: vi.fn(() => permitted),
+    canRead: vi.fn(() => permitted),
+    list: vi.fn(async () => [
+      meta({ id: "old", projectId: "p1", updatedAt: "2025-01-01T00:00:00Z" }),
+      meta({ id: "new", projectId: "p1", updatedAt: "2025-03-01T00:00:00Z" }),
+      meta({ id: "other", projectId: "p2", updatedAt: "2025-03-01T00:00:00Z", provider: "codex" }),
+      meta({ id: "draft", projectId: "p1", updatedAt: "2025-03-01T00:00:00Z", draft: true }),
+    ]),
     isBuiltin: vi.fn(() => builtin),
     create: vi.fn(async (input: { title?: string }) => meta({ id: "new", title: input.title ?? "New chat" })),
     send: vi.fn(async () => {}),
@@ -269,5 +276,66 @@ describe("chatInfo: a limit (D-338)", () => {
       parked: [],
     });
     expect(info.limit).toEqual({ provider: "chatgpt", state: "waiting", resetsAt: "2026-11-04T14:00:00Z" });
+  });
+});
+
+describe("chats read API (D-423)", () => {
+  it("lists chats by project and time, without following them", async () => {
+    const { chats, deps } = setup();
+    expect((await chats.list("chat-time")).map((c) => c.sessionId)).toEqual(["old", "new", "other"]);
+    const recent = await chats.list("chat-time", { projectId: "p1", since: "2025-02-01T00:00:00Z" });
+    expect(recent.map((c) => c.sessionId)).toEqual(["new"]);
+    expect((await chats.list("chat-time", { since: Date.parse("2025-02-01") }))[1]).toMatchObject({
+      sessionId: "other",
+      provider: "chatgpt",
+    });
+    await expect(chats.list("chat-time", { since: "soon" })).rejects.toThrow(/since/);
+    chats.statusChanged(meta({ id: "new" }));
+    expect(deps.notify).not.toHaveBeenCalled();
+  });
+
+  it("is refused without chat:read", async () => {
+    const { chats } = setup(false);
+    await expect(chats.list("x")).rejects.toThrow(/chat:read/);
+    await expect(chats.timeline("x", "s1")).rejects.toThrow(/chat:read/);
+  });
+
+  it("gives turns, tool calls with their ends and steps, with long text cut", () => {
+    const long = "x".repeat(1000);
+    const timeline = chatTimeline([
+      { kind: "user", id: "u", text: "hi", at: "2025-01-01T10:00:00Z" },
+      {
+        kind: "tool",
+        id: "t",
+        name: "Bash",
+        input: { command: long, nested: { a: long } },
+        status: "done",
+        output: long,
+        at: "2025-01-01T10:00:01Z",
+        endedAt: "2025-01-01T10:00:05Z",
+        durationMs: 4000,
+      },
+      {
+        kind: "permission",
+        id: "permission:t2",
+        request: { requestId: "t2", toolName: "Bash", input: {}, canAlwaysAllow: false },
+        status: "allowed",
+        at: "2025-01-01T10:00:06Z",
+      },
+      { kind: "tool", id: "t2", name: "Bash", input: {}, status: "running", at: "2025-01-01T10:00:06Z" },
+      { kind: "assistant", id: "a", text: "done", at: "2025-01-01T10:00:09Z", parentId: "t" },
+      { kind: "result", id: "r", ok: true, durationMs: 10_000, at: "2025-01-01T10:00:10Z" },
+    ]);
+    expect(timeline.map((e) => e.kind)).toEqual(["step", "tool", "tool", "step", "turn"]);
+    const tool = timeline[1] as Extract<(typeof timeline)[number], { kind: "tool" }>;
+    expect(tool).toMatchObject({ endedAt: "2025-01-01T10:00:05Z", durationMs: 4000 });
+    expect(String(tool.input.command).length).toBe(301);
+    expect(String((tool.input.nested as { a: string }).a).length).toBe(301);
+    expect(tool.outputStart?.length).toBe(300);
+    expect(timeline[2]).toMatchObject({ askedPermission: true, status: "running" });
+    expect(timeline[2]).not.toHaveProperty("endedAt");
+    expect(timeline[3]).toMatchObject({ what: "assistant", parentId: "t" });
+    expect(timeline[4]).toMatchObject({ durationMs: 10_000, ok: true });
+    expect(JSON.stringify(timeline)).not.toContain('"hi"');
   });
 });

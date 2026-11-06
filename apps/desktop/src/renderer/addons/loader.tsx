@@ -12,6 +12,7 @@ import type { MenuEntry } from "../ui";
 import { contributeMenu } from "../workbench/contextMenus";
 import {
   registerAction,
+  registerChatOverviewSection,
   registerChatToolbarItem,
   registerMenuGroup,
   registerStatusItem,
@@ -218,6 +219,18 @@ async function mount(addon: AddonInfo): Promise<void> {
   for (const t of c.chatToolbar) {
     const Component = component(t.component, "chat toolbar button");
     if (Component) registerChatToolbarItem({ id: `${owner}.${t.id}`, component: Component, owner });
+  }
+  for (const o of c.chatOverview) {
+    const Component = component(o.component, `chat overview section ${o.title}`);
+    if (Component)
+      registerChatOverviewSection({
+        id: `${owner}.${o.id}`,
+        title: o.title,
+        icon: manifest.icon,
+        order: o.order,
+        component: Component,
+        owner,
+      });
   }
   for (const r of c.toolRenderers) {
     const Component = component(r.component, `card for ${r.tool}`);

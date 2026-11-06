@@ -11,10 +11,12 @@ export const PERMISSIONS = {
   net: "Make network requests.",
   terminal: "Open terminals and run commands in them.",
   chat: "Start chats, send them messages and read their answers.",
+  "chat:read":
+    "Read your chats' list and timelines: when each turn and tool call ran, and what it ran (D-423).",
   ai: "Ask Jig's AI questions (uses your plan; answers only, no tools).",
 } as const;
 
-const PATTERN = /^(exec|exec:[\w.+-]+|fs:read|fs:write|net|terminal|chat|ai)$/;
+const PATTERN = /^(exec|exec:[\w.+-]+|fs:read|fs:write|net|terminal|chat|chat:read|ai)$/;
 
 export function isPermission(value: string): boolean {
   return PATTERN.test(value);

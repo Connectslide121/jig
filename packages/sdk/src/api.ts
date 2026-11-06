@@ -424,6 +424,18 @@ export interface AddonPermissionProps extends AddonComponentProps {
   ): Promise<void>;
 }
 
+/**
+ * What a chat overview section (`chat.overview`, D-423) receives besides `ctx`. `turns` changes when a
+ * turn finishes, so the section re-renders then (reload what it shows on a change of `turns`).
+ */
+export interface AddonChatOverviewProps extends AddonComponentProps {
+  sessionId: string;
+  projectId?: string;
+  provider: AddonChatProvider;
+  /** Finished turns so far. */
+  turns: number;
+}
+
 /** What a context-menu handler receives: the thing that was right-clicked. */
 export type MenuTarget =
   | { slot: "context.project"; project: AddonProject }
@@ -517,6 +529,46 @@ export interface AddonChatInfo {
    */
   limit?: { provider: AddonChatProvider; state: "ask" | "waiting" | "continuing"; resetsAt?: string };
 }
+
+/** A chat in `api.chats.list` (D-423). */
+export interface AddonChatListItem {
+  sessionId: string;
+  title: string;
+  provider: AddonChatProvider;
+  projectId?: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Finished turns. */
+  turns: number;
+}
+
+/**
+ * One entry of a chat's timeline (`api.chats.timeline`, D-423), in the chat's order:
+ * - `turn`: a turn finished at `at`, after `durationMs` of work (from your message to the answer);
+ * - `tool`: a tool call that started at `at`. `endedAt` and `durationMs` say when its result came back
+ *   (missing on calls from before Jig recorded them, on ones still running and in chats opened from a
+ *   saved conversation). `askedPermission`: it waited for your approval first. `input` holds its
+ *   arguments with long strings cut to 300 characters; `outputStart` its result's first 300;
+ *   `parentId` the subagent call it ran in;
+ * - `step`: anything else that happened (your message, an answer, thinking), so a call without an end
+ *   can be estimated from the next step.
+ */
+export type AddonChatTimelineEntry =
+  | { kind: "turn"; id: string; at: string; durationMs: number; ok: boolean; stopped?: boolean }
+  | {
+      kind: "tool";
+      id: string;
+      at: string;
+      name: string;
+      input: Record<string, unknown>;
+      status: "running" | "done" | "error";
+      endedAt?: string;
+      durationMs?: number;
+      parentId?: string;
+      askedPermission?: boolean;
+      outputStart?: string;
+    }
+  | { kind: "step"; id: string; at: string; what: "user" | "assistant" | "thinking"; parentId?: string };
 
 /** The Azure tenant every `az` Jig runs uses (D-282): `default` is your own az login. */
 export type AddonAzureTenant = JigEventPayloads["azure.tenant"];
@@ -621,6 +673,14 @@ export interface AddonHostApi {
     ): Promise<{ sessionId: string; provider: AddonChatProvider }>;
     send(input: AddonChatSend): Promise<{ sessionId: string; sentAt: string }>;
     get(sessionId: string): Promise<AddonChatInfo>;
+    /**
+     * Your chats, newest first (D-423; the `chat:read` permission, or `chat`): those of `projectId`,
+     * and with `since` (ISO time or epoch ms) only those changed since then. Read-only: listing a chat
+     * doesn't follow it (no `chatChanged`).
+     */
+    list(filter?: { projectId?: string; since?: string | number }): Promise<AddonChatListItem[]>;
+    /** A chat's turns, tool calls and steps with their times (D-423; `chat:read` or `chat`). */
+    timeline(sessionId: string): Promise<AddonChatTimelineEntry[]>;
   };
   /** Files this add-on kept with `ctx.attachments`: delete the ones it no longer needs. */
   attachments: { remove(list: AddonAttachment[]): Promise<void> };

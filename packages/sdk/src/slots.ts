@@ -17,6 +17,8 @@ export const SLOTS = {
   "context.repo": "An entry in the right-click menu of a repository (Repos overview).",
   "context.message": "An entry in the menu of a chat message.",
   "chat.toolbar": "A button above the chat composer.",
+  "chat.overview":
+    "A collapsible section in a chat's overview card, below Jig's own numbers; re-rendered when a turn finishes.",
   "chat.toolRenderer": "A custom card for a tool's result in the chat.",
   "chat.permissionRenderer":
     "A custom approval card for one of the add-on's tools in the chat: the user can change what Jig asked before allowing it.",
@@ -49,6 +51,7 @@ export const MANIFEST_KEY: Record<SlotId, string> = {
   "context.repo": "menus",
   "context.message": "menus",
   "chat.toolbar": "chatToolbar",
+  "chat.overview": "chatOverview",
   "chat.toolRenderer": "toolRenderers",
   "chat.permissionRenderer": "permissionRenderers",
   prompt: "prompts",

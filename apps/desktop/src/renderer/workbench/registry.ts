@@ -102,6 +102,22 @@ export interface ChatToolbarItemDef {
   owner?: string;
 }
 
+/** An add-on's section in a chat's overview card (`chat.overview`, D-423). */
+export interface ChatOverviewSectionDef {
+  id: string;
+  title: string;
+  /** The add-on's icon (a Lucide name). */
+  icon?: string;
+  order: number;
+  component: ComponentType<{
+    sessionId: string;
+    projectId?: string;
+    provider: "claude" | "chatgpt";
+    turns: number;
+  }>;
+  owner?: string;
+}
+
 /**
  * Live entries of a top bar menu group (an add-on's `menuGroups`, D-305), computed each time the menu
  * opens and shown above the group's actions.
@@ -119,6 +135,7 @@ export interface MenuGroupDef {
 interface RegistryState {
   topbarItems: Record<string, TopbarItemDef>;
   chatToolbar: Record<string, ChatToolbarItemDef>;
+  chatOverview: Record<string, ChatOverviewSectionDef>;
   views: Record<string, ViewDef>;
   tabTypes: Record<string, TabTypeDef>;
   actions: Record<string, ActionDef>;
@@ -129,6 +146,7 @@ interface RegistryState {
 export const useRegistry = create<RegistryState>(() => ({
   topbarItems: {},
   chatToolbar: {},
+  chatOverview: {},
   views: {},
   tabTypes: {},
   actions: {},
@@ -153,6 +171,8 @@ export const registerStatusItem = (def: StatusItemDef) => register("statusItems"
 export const registerTopbarItem = (def: TopbarItemDef) => register("topbarItems", def.id, def);
 export const registerMenuGroup = (def: MenuGroupDef) => register("menuGroups", def.id, def);
 export const registerChatToolbarItem = (def: ChatToolbarItemDef) => register("chatToolbar", def.id, def);
+export const registerChatOverviewSection = (def: ChatOverviewSectionDef) =>
+  register("chatOverview", def.id, def);
 
 /** Removes everything an owner (an add-on) registered. */
 export function unregisterOwner(owner: string): void {
@@ -162,6 +182,7 @@ export function unregisterOwner(owner: string): void {
     return {
       topbarItems: keep(s.topbarItems),
       chatToolbar: keep(s.chatToolbar),
+      chatOverview: keep(s.chatOverview),
       views: keep(s.views),
       tabTypes: keep(s.tabTypes),
       actions: keep(s.actions),

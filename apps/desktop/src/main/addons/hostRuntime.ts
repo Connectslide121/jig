@@ -53,6 +53,8 @@ export type FromHost =
         | "chats.create"
         | "chats.send"
         | "chats.get"
+        | "chats.list"
+        | "chats.timeline"
         | "attachments.remove"
         | "setBadge"
         | "addons.list"
@@ -261,6 +263,14 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         get: async (sessionId) => {
           need("chat");
           return rpc("chats.get", { sessionId }) as Promise<never>;
+        },
+        list: async (filter) => {
+          if (!has("chat:read") && !has("chat")) need("chat:read");
+          return rpc("chats.list", filter ?? {}) as Promise<never>;
+        },
+        timeline: async (sessionId) => {
+          if (!has("chat:read") && !has("chat")) need("chat:read");
+          return rpc("chats.timeline", { sessionId }) as Promise<never>;
         },
       },
       attachments: {

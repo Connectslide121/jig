@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { applyUpdate, type ChatState, permissionItemId, reduceEvent } from "./chat";
+import { describe, expect, it, vi } from "vitest";
+import { applyUpdate, type ChatState, permissionItemId, reduceEvent, toolDuration } from "./chat";
 import type { SessionMeta } from "./engine";
 
 const meta = (): SessionMeta => ({
@@ -19,6 +19,43 @@ const meta = (): SessionMeta => ({
 });
 
 const state = (): ChatState => ({ meta: meta(), items: [] });
+
+describe("tool call end times (D-423)", () => {
+  it("sets endedAt and durationMs when the result arrives, and keeps the first end", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-01-01T10:00:00.000Z"));
+      const s = state();
+      reduceEvent(s, { type: "tool_use", id: "t", name: "Bash", input: { command: "npm test" } });
+      expect(s.items[0]).not.toHaveProperty("endedAt");
+      vi.setSystemTime(new Date("2026-01-01T10:00:12.400Z"));
+      reduceEvent(s, { type: "tool_result", toolUseId: "t", output: "ok", isError: false });
+      expect(s.items[0]).toMatchObject({ endedAt: "2026-01-01T10:00:12.400Z", durationMs: 12_400 });
+      vi.setSystemTime(new Date("2026-01-01T10:01:00.000Z"));
+      reduceEvent(s, { type: "tool_result", toolUseId: "t", output: "again", isError: false });
+      expect(s.items[0]).toMatchObject({ durationMs: 12_400, output: "again" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ends a call a failed turn cut off", () => {
+    const s = state();
+    reduceEvent(s, { type: "tool_use", id: "t", name: "Bash", input: {} });
+    reduceEvent(s, { type: "result", ok: false, durationMs: 5, error: "x" });
+    const tool = s.items.find((i) => i.id === "t");
+    expect(tool).toMatchObject({ status: "error" });
+    expect(tool && "durationMs" in tool && typeof tool.durationMs).toBe("number");
+  });
+
+  it("formats durations for people", () => {
+    expect(toolDuration(400)).toBe("0.4 s");
+    expect(toolDuration(9_960)).toBe("10 s");
+    expect(toolDuration(12_400)).toBe("12 s");
+    expect(toolDuration(245_000)).toBe("4 m 05 s");
+    expect(toolDuration(3_900_000)).toBe("1 h 05 m");
+  });
+});
 
 describe("reduceEvent", () => {
   it("persists reported caller models through tool results and assistant completion", () => {

@@ -154,6 +154,12 @@ Chat transcript assistant/thinking/tool items may include optional `model` (the 
 assistant model). This stays with the historical call across model changes and restarts. Existing
 cache files without it remain readable and display Not reported; no current-model backfill is made.
 
+Tool items also get optional `endedAt` (ISO) and `durationMs` when their result arrives (D-423): Claude's
+`tool_result` and Codex's completed item go through the same `tool_result` event in `shared/chat.ts`;
+a failed turn ends the calls still running. A second result for the same call keeps the first end.
+Items from before D-423, running ones and those of chats opened from a saved conversation (whose replay
+times mean nothing) have neither; readers fall back to `at` alone.
+
 Regular chats start with optional `SessionMeta.draft: true` in memory only. The first sent prompt
 (including attachment-only messages) clears it to false and enables session-file persistence.
 Unsent drafts are hidden from history/search and omitted from disk layouts; startup ignores legacy

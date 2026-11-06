@@ -68,8 +68,11 @@ export function savedChatItems(messages: SavedClaudeMessage[], meta: SessionMeta
     }))
       reduceEvent(state, event);
   }
-  // Every item gets the conversation's time; a tool cut off without a result reads as done.
-  return state.items.map((item) =>
-    item.kind === "tool" && item.status === "running" ? { ...item, status: "done", at } : { ...item, at },
-  );
+  // Every item gets the conversation's time; a tool cut off without a result reads as done. The
+  // replay's end times measure the replay, not the call: left out (D-423).
+  return state.items.map((item) => {
+    if (item.kind !== "tool") return { ...item, at };
+    const { endedAt: _endedAt, durationMs: _durationMs, ...tool } = item;
+    return { ...tool, at, ...(tool.status === "running" ? { status: "done" as const } : {}) };
+  });
 }

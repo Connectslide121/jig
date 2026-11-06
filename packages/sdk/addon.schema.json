@@ -278,6 +278,32 @@
             "required": ["id", "component"]
           }
         },
+        "chatOverview": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              },
+              "order": {
+                "default": 50,
+                "type": "number"
+              }
+            },
+            "required": ["id", "title", "component"]
+          }
+        },
         "toolRenderers": {
           "default": [],
           "type": "array",

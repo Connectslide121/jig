@@ -38,6 +38,28 @@ export function applyUpdate(items: ChatItem[], update: ChatUpdate): ChatItem[] {
   return items;
 }
 
+/**
+ * When a tool call ended (D-423): now, with its time since it started. A second result for the same
+ * call (a background command's) keeps the first end.
+ */
+function ended(tool: Extract<ChatItem, { kind: "tool" }>): { endedAt?: string; durationMs?: number } {
+  if (tool.endedAt) return {};
+  const endedAt = now();
+  const durationMs = Date.parse(endedAt) - Date.parse(tool.at);
+  return Number.isFinite(durationMs) ? { endedAt, durationMs: Math.max(0, durationMs) } : { endedAt };
+}
+
+/** A tool call's time for people (D-423): `0.4 s`, `12 s`, `4 m 05 s`, `1 h 05 m`. */
+export function toolDuration(ms: number): string {
+  const tenths = Math.round(Math.max(0, ms) / 100);
+  if (tenths < 100) return `${(tenths / 10).toFixed(1)} s`;
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} m ${String(s % 60).padStart(2, "0")} s`;
+  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} m`;
+}
+
 export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] {
   const updates: ChatUpdate[] = [];
   const meta = (patch: Partial<SessionMeta>) => {
@@ -132,6 +154,7 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
       if (tool?.kind === "tool")
         upsert({
           ...tool,
+          ...ended(tool),
           status: event.isError ? "error" : "done",
           output: event.output,
           ...(event.images?.length ? { images: event.images } : {}),
@@ -189,7 +212,7 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         if ((item.kind === "assistant" || item.kind === "thinking") && item.streaming)
           upsert({ ...item, streaming: false });
         if (item.kind === "tool" && item.status === "running" && !event.ok)
-          upsert({ ...item, status: "error" });
+          upsert({ ...item, ...ended(item), status: "error" });
         if (item.kind === "permission" && item.status === "pending") upsert({ ...item, status: "cancelled" });
       }
       const previous = state.meta.costUsd;

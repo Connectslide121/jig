@@ -1,4 +1,4 @@
-import type { AddonChatInfo, AddonChatSend } from "@jig/sdk";
+import type { AddonChatInfo, AddonChatListItem, AddonChatSend, AddonChatTimelineEntry } from "@jig/sdk";
 import {
   type ChatAttachment,
   type ChatProvider,
@@ -16,6 +16,10 @@ import { JigError } from "../../shared/ipc";
  */
 export interface ChatsDeps {
   hasPermission(addonId: string): boolean;
+  /** Whether the add-on may read chats (`chat:read`, or `chat`, D-423). */
+  canRead(addonId: string): boolean;
+  /** Every chat's meta. */
+  list(): Promise<SessionMeta[]>;
   /** Whether the add-on is the one Jig ships (not one of yours, nor yours overriding it). */
   isBuiltin(addonId: string): boolean;
   create(input: {
@@ -109,6 +113,72 @@ export function chatInfo({ meta, items, queue }: SessionSnapshot): AddonChatInfo
   };
 }
 
+/** Long strings in a timeline are cut to this (D-423). */
+const CLIP = 300;
+
+function clip(value: unknown, depth = 0): unknown {
+  if (typeof value === "string") return value.length > CLIP ? `${value.slice(0, CLIP)}…` : value;
+  if (depth > 3 || value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.slice(0, 20).map((v) => clip(v, depth + 1));
+  return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, clip(v, depth + 1)]));
+}
+
+/** A chat for `api.chats.list` (D-423). */
+export function chatListItem(meta: SessionMeta): AddonChatListItem {
+  return {
+    sessionId: meta.id,
+    title: meta.title,
+    provider: chatProvider(meta) === "codex" ? "chatgpt" : "claude",
+    ...(meta.projectId ? { projectId: meta.projectId } : {}),
+    createdAt: meta.createdAt,
+    updatedAt: meta.updatedAt,
+    turns: meta.turns,
+  };
+}
+
+/**
+ * A chat's timeline for `api.chats.timeline` (D-423): its turns, tool calls (with their ends) and the
+ * other steps, in order. Tool inputs and outputs are cut short; text and files are left out.
+ */
+export function chatTimeline(items: SessionSnapshot["items"]): AddonChatTimelineEntry[] {
+  const asked = new Set(items.flatMap((i) => (i.kind === "permission" ? [i.request.requestId] : [])));
+  const out: AddonChatTimelineEntry[] = [];
+  for (const item of items) {
+    if (item.kind === "result")
+      out.push({
+        kind: "turn",
+        id: item.id,
+        at: item.at,
+        durationMs: item.durationMs,
+        ok: item.ok,
+        ...(item.stopped ? { stopped: true } : {}),
+      });
+    else if (item.kind === "tool")
+      out.push({
+        kind: "tool",
+        id: item.id,
+        at: item.at,
+        name: item.name,
+        input: clip(item.input) as Record<string, unknown>,
+        status: item.status,
+        ...(item.endedAt ? { endedAt: item.endedAt } : {}),
+        ...(item.durationMs !== undefined ? { durationMs: item.durationMs } : {}),
+        ...(item.parentId ? { parentId: item.parentId } : {}),
+        ...(asked.has(item.id) ? { askedPermission: true } : {}),
+        ...(item.output ? { outputStart: item.output.slice(0, CLIP) } : {}),
+      });
+    else if (item.kind === "user" || item.kind === "assistant" || item.kind === "thinking")
+      out.push({
+        kind: "step",
+        id: item.id,
+        at: item.at,
+        what: item.kind,
+        ...("parentId" in item && item.parentId ? { parentId: item.parentId } : {}),
+      });
+  }
+  return out;
+}
+
 export function addonChats(deps: ChatsDeps) {
   const owners = new Map<string, Set<string>>();
   const watch = (addonId: string, sessionId: string) => {
@@ -119,6 +189,11 @@ export function addonChats(deps: ChatsDeps) {
   const check = (addonId: string) => {
     if (!deps.hasPermission(addonId))
       throw new JigError("permission", `This add-on needs the "chat" permission in addon.json`);
+  };
+
+  const checkRead = (addonId: string) => {
+    if (!deps.canRead(addonId))
+      throw new JigError("permission", `This add-on needs the "chat:read" permission in addon.json`);
   };
 
   const create = async (addonId: string, input: Omit<AddonChatSend, "text" | "sessionId">) => {
@@ -201,6 +276,32 @@ export function addonChats(deps: ChatsDeps) {
       const info = chatInfo(await deps.snapshot(String(sessionId)));
       watch(addonId, info.id);
       return info;
+    },
+    /** Chats, newest first, of a project and changed since a time (D-423). Doesn't follow them. */
+    async list(
+      addonId: string,
+      filter?: { projectId?: unknown; since?: unknown },
+    ): Promise<AddonChatListItem[]> {
+      checkRead(addonId);
+      const projectId =
+        typeof filter?.projectId === "string" && filter.projectId ? filter.projectId : undefined;
+      const since =
+        typeof filter?.since === "number"
+          ? filter.since
+          : typeof filter?.since === "string"
+            ? Date.parse(filter.since)
+            : undefined;
+      if (since !== undefined && !Number.isFinite(since))
+        throw new JigError("invalid_args", "since must be an ISO time or epoch milliseconds");
+      return (await deps.list())
+        .filter((m) => !m.draft && (!projectId || m.projectId === projectId))
+        .filter((m) => since === undefined || Date.parse(m.updatedAt) >= since)
+        .map(chatListItem);
+    },
+    /** A chat's timeline (D-423). Doesn't follow the chat. */
+    async timeline(addonId: string, sessionId: string): Promise<AddonChatTimelineEntry[]> {
+      checkRead(addonId);
+      return chatTimeline((await deps.snapshot(String(sessionId))).items);
     },
     /** A chat's status changed: the add-ons following it hear about it. */
     statusChanged(meta: SessionMeta) {

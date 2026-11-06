@@ -97,6 +97,20 @@ export const ManifestSchema = z.object({
         )
         .default([]),
       chatToolbar: z.array(z.object({ id: Id, component: ExportName })).default([]),
+      /**
+       * Sections of a chat's overview card (D-423): `title` heads the collapsible section, `order` sorts
+       * the sections (lower first). The component gets `AddonChatOverviewProps`.
+       */
+      chatOverview: z
+        .array(
+          z.object({
+            id: Id,
+            title: z.string().min(1),
+            component: ExportName,
+            order: z.number().default(50),
+          }),
+        )
+        .default([]),
       toolRenderers: z
         .array(
           z.object({
@@ -272,6 +286,7 @@ export function uiExports(m: AddonManifest): string[] {
     ...c.actions.map((a) => a.run),
     ...c.menus.map((a) => a.run),
     ...c.chatToolbar.map((t) => t.component),
+    ...c.chatOverview.map((t) => t.component),
     ...c.toolRenderers.map((t) => t.component),
     ...c.permissionRenderers.map((t) => t.component),
     ...(c.settings ? [c.settings.component] : []),

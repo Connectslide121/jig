@@ -7503,3 +7503,42 @@ accepted only builds of kind `app`.
   can try now, instead of an empty demo slot. With a mockup the demo shows as for kind `app`.
 - The fake builder has a combined case ("partly" in the goal: a new add-on plus a request without a
   mockup), covered by an e2e test.
+
+## D-423: Tool call end times, the chat.overview slot and the chats read API
+
+- Status: accepted.
+- **Who:** Jon (the goal: see where chat time goes, after the 2026-11-06 analysis that ~26% of Jig chat time
+  went to tests and builds; the builder's proposal in build 6dd28f01, queued as task t171); the
+  details **Claude, on my own**.
+
+The Chat time add-on (D-419) could only estimate a tool call's end (ChatGPT chats, chats without a
+Claude Code transcript), had nowhere to put a duration next to a call, and no place in the chat
+overview; it read Jig's and Claude Code's files directly. An add-on can't fix any of that, so Jig
+records the data and opens two extension points:
+
+- **Tool items record their end.** `ChatItem` (`kind: "tool"`) gets optional `endedAt` and
+  `durationMs`, set in `shared/chat.ts` when the `tool_result` event arrives, the one event both
+  engines' results go through (Claude's `tool_result`, Codex's completed item), and when a failed turn
+  ends calls still running. A second result for the same call keeps the first end. Chats opened from a
+  saved conversation drop them: the replay's times aren't the calls'. Old items have neither.
+- **The transcript shows it with Show times (`chat.times`).** A tool card gets a `w-16` right-aligned
+  slot before its status mark, present from the first render: a live counter while it runs, then
+  `0.4 s` / `12 s` / `4 m 05 s` (`toolDuration`). Empty without an end, so nothing shifts. With Show
+  times off, cards stay as before (the elapsed time after 3 s while running). Tying it to the existing
+  setting, not a new one, keeps the transcript's time display one switch.
+- **Slot `chat.overview` (`contributes.chatOverview: [{ id, title, component, order? }]`).** A folding
+  section below the overview card's own numbers, headed by the add-on's icon and `title`, open by
+  default (folded ones remembered per section in the renderer's localStorage: a view preference, not a
+  setting), mounted only once opened. Props: `sessionId`, `projectId`, `provider`, `turns` (changes
+  when a turn finishes, so sections reload then). The card's column scrolls when sections make it
+  taller than the chat. Sections reserve their own height (the no-layout-shift rule).
+- **`api.chats.list({ projectId?, since? })` and `api.chats.timeline(sessionId)`, permission
+  `chat:read`** (the broader `chat` includes it; checked in the host process and again in main). The
+  timeline has turns, tool calls (with their ends, whether they asked permission, inputs and the
+  output's start cut to 300 characters) and the other steps' times, but no message text: enough to
+  measure, not to read the conversation. Reading doesn't follow a chat (no `chatChanged`). Add-ons
+  must not parse Jig's or Claude Code's chat files instead.
+- **Chat time uses them:** permission `chat:read` instead of `fs:read`; it no longer reads Claude
+  Code's transcripts, so calls from before this change are estimated (≈) for Claude chats too, and new
+  calls are exact for both providers. It adds the "Where the time went" section (bar, top four
+  categories, three slowest calls, More in Chat time) in a fixed `h-60`.

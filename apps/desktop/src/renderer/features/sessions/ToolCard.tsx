@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { artifactFromTool } from "../../../shared/artifacts";
+import { toolDuration } from "../../../shared/chat";
 import type { ChatItem } from "../../../shared/engine";
 import { isImagePath } from "../../../shared/files";
 import { modelName } from "../../../shared/models";
@@ -243,18 +244,53 @@ function ImageThumb({ path }: { path: string }) {
   );
 }
 
-/** Seconds since a tool started, while it runs (shown after a few seconds). */
-function Elapsed({ since }: { since: string }) {
+/** Seconds since `since`, ticking every second. */
+function useSecondsSince(since: string, live: boolean): number {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
+    if (!live) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
-  const seconds = Math.floor((now - new Date(since).getTime()) / 1000);
+  }, [live]);
+  return Math.max(0, Math.floor((now - new Date(since).getTime()) / 1000));
+}
+
+/** Seconds since a tool started, while it runs (shown after a few seconds; Show times off). */
+function Elapsed({ since }: { since: string }) {
+  const seconds = useSecondsSince(since, true);
   if (seconds < 3) return null;
   return (
     <span className="shrink-0 text-2xs text-hint tabular-nums">
       {seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`}
+    </span>
+  );
+}
+
+/**
+ * A tool call's time (Show times, D-423): a live counter while it runs, its duration once its result
+ * came back. The slot is there from the first render, empty for calls without an end (older chats,
+ * one waiting for you), so nothing moves when the time appears.
+ */
+function ToolTime({ item, live }: { item: ToolItem; live: boolean }) {
+  const seconds = useSecondsSince(item.at, live);
+  const text = live
+    ? seconds < 10
+      ? `${seconds} s`
+      : toolDuration(seconds * 1000)
+    : item.durationMs !== undefined
+      ? toolDuration(item.durationMs)
+      : "";
+  return (
+    <span
+      className="w-16 shrink-0 truncate text-right font-mono text-2xs text-hint tabular-nums"
+      title={
+        item.endedAt
+          ? `Ran ${toolDuration(item.durationMs ?? 0)}, ended ${new Date(item.endedAt).toLocaleTimeString()}`
+          : undefined
+      }
+      data-testid="tool-duration"
+    >
+      {text}
     </span>
   );
 }
@@ -346,6 +382,7 @@ export function ToolCard({
   agentModels?: string[];
 }) {
   const detailed = useConfig((s) => s.config?.chat.view === "detailed");
+  const times = useConfig((s) => s.config?.chat.times ?? false);
   const [open, setOpen] = useState(false);
   const [allDiff, setAllDiff] = useState(false);
   const custom = useToolRenderers()[item.name];
@@ -398,7 +435,11 @@ export function ToolCard({
             </span>
           )}
           {item.diff && <DiffCount diff={item.diff} />}
-          {item.status === "running" && !waiting && <Elapsed since={item.at} />}
+          {times ? (
+            <ToolTime item={item} live={item.status === "running" && !waiting} />
+          ) : (
+            item.status === "running" && !waiting && <Elapsed since={item.at} />
+          )}
           {item.status === "running" &&
             (waiting ? (
               <span className="text-2xs text-warning">waiting for you</span>
