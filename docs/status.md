@@ -1039,6 +1039,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.16.0 being prepared (2026-11-06): Jig 0.16.0 adds Pages (HTML pages Claude publishes inside Jig), an in-app What's new tab, pinned tabs, runnable meeting actions, a Meetings window with Calendar, Chats and Meetings tabs, and a more controllable task queue (stop lines, Reorganize, a model per queue). Publication not yet verified.
+
 Jig 0.15.0 published (2026-11-05): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.15.0),
 source/tag `d4b0f6ab02a84bb97eef65bac4e9c9a26e0cf74e`. Installer: 389,210,429 bytes;
 SHA-256 `4e3889f49b778f849468a14ecf272a828b883182b48f3ca813c8c5a2dc9d35cd`.
