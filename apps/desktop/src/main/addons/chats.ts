@@ -47,11 +47,12 @@ export interface ChatsDeps {
 
 const MODES = new Set(["default", "acceptEdits", "plan"]);
 /**
- * The add-ons that may start a chat in "Don't ask" (bypassPermissions, D-363): only the built-in Tasks
- * add-on, for a task you set to Don't ask yourself in its dialog. Any other add-on, and one of yours that
- * takes the id "tasks", is refused: a chat that asks nothing runs whatever its prompt says.
+ * The add-ons that may start a chat in "Don't ask" (bypassPermissions, D-363, D-447): only the built-in
+ * Tasks add-on, for a task you set to Don't ask yourself in its dialog, and the built-in Jig factory, for
+ * a run you started in Don't ask. Any other add-on, and one of yours that takes one of these ids, is
+ * refused: a chat that asks nothing runs whatever its prompt says.
  */
-const BYPASS_ADDONS = new Set(["tasks"]);
+const BYPASS_ADDONS = new Set(["tasks", "factory"]);
 /** An add-on names providers as people do; Codex chats run on ChatGPT. */
 const PROVIDERS: Record<string, ChatProvider> = { claude: "claude", chatgpt: "codex" };
 /** A model alias (`opus`, `sol`) or an exact id (`claude-opus-5-5[1m]`, `gpt-6.1-sol`). */
@@ -201,7 +202,7 @@ export function addonChats(deps: ChatsDeps) {
       if (!BYPASS_ADDONS.has(addonId) || !deps.isBuiltin(addonId))
         throw new JigError(
           "permission",
-          `Only the built-in Tasks add-on may start a chat in Don't ask (bypassPermissions) mode`,
+          `Only the built-in Tasks and Jig factory add-ons may start a chat in Don't ask (bypassPermissions) mode`,
         );
     } else if (input?.permissionMode && !MODES.has(input.permissionMode))
       throw new JigError("invalid_args", `Unknown permission mode ${input.permissionMode}`);

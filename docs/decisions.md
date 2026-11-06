@@ -7797,3 +7797,68 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   text on screen long enough to read).
 - **Remotion** is not used (React-only authoring, paid company licence). HyperFrames' agent
   skills may be vendored as text later under D-430's rules.
+
+## D-447: Jig factory may start stage chats in Don't ask
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-07), widening D-363; the plan (28-factory.md, session 2)
+  asked for unattended runs.
+
+- **The built-in Jig factory add-on joins the Tasks add-on** in `BYPASS_ADDONS`
+  (`main/addons/chats.ts`): it may create its stage chats with `permissionMode: "bypassPermissions"`.
+  Still only for built-in add-ons; installed or user add-ons named `factory` are refused.
+- **Only when you picked it:** a run's permission mode is chosen when you start the run (Accept
+  edits by default, Don't ask on request) and kept in the run's plan. Tools and chats can't set it:
+  the factory's tools never take a permission mode, and Jig's tool-argument guard (claudeTools.ts)
+  still strips it from anything a chat passes.
+- **Why:** a run is a dozen stage chats; asking for every file write defeats a pipeline that is meant
+  to run while you do something else. The chats work in the run's own worktree (D-449), not your
+  checkout.
+
+## D-448: Built-in add-ons read their own settings
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-07); D-441 left add-ons without any way to read core settings.
+
+- **`api.config()`** in an add-on's host returns `getConfig()[addonId]`, the add-on's own namespace
+  of Jig's settings (`factory.*` for the factory), or `undefined`. Built-in add-ons only: for any
+  other add-on the call fails. No add-on reads another namespace or the whole config.
+- **Why:** the factory's settings (`factory.concurrency`, `factory.demoKitPath`) are in Settings and
+  configurable from chats (`ConfigSchema`, `SETTINGS_GUIDE`), so they must live in Jig's config, and
+  the add-on's Conductor must read them. Add-on storage would hide them from Settings and chats.
+
+## D-449: A factory run works in a git worktree on factory/<slug>
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-07); the plan said "on branch factory/<slug>" without saying
+  where the branch is checked out.
+
+- **Each run gets a worktree** at `<add-on data>/worktrees/<runId>` on a new branch `factory/<slug>`
+  from the repository's `HEAD` (`git worktree add -b`). Every stage chat runs there (cwd), and the
+  run's files are `docs/factory/<slug>/` inside it. Your checkout, its branch and its uncommitted
+  work are never touched; merging the branch is yours.
+- **A repository with no commits** can't have a worktree: the run then works in the repository
+  itself, on the current branch (the run records `worktree: null`).
+- **Fork** makes a new worktree from the forked run's branch. Stopping or deleting a run leaves the
+  worktree and branch (your files); removing them is a later session's clean-up action.
+- **Why:** stages run in parallel and unattended; writing into the checkout you work in would mix
+  their files with yours and switch your branch.
+
+## D-450: Factory runs start from a golden brief until New idea; gates are decided on the Run tab
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-07), for session 2, which builds the Conductor before the New
+  idea flow (session 3).
+
+- **Start:** until New idea exists, ⋯ → "Start from a brief…" opens a modal: pick one of the
+  golden briefs (`addons/factory/fixtures/briefs/`, neutral sample ideas) or paste your own, the
+  project, and how stage chats ask (Accept edits / Don't ask). A run started with a brief records
+  the interview stage done ("brief given") and writes `brief.md`. Session 3's New idea replaces
+  the modal's entry; the host's `startRun` stays.
+- **Gates:** clicking a gate in the Run tab's graph opens a sheet with its outputs and Approve /
+  Ask for changes (with a note) / Reject. Approving a gate approves its draft outputs. Asking for
+  changes reruns the stage the gate names (`changes` in the track, e.g. G1 → S5) with the note,
+  and everything after it waits again. Session 3's Inbox reuses the same host calls.
+- **Questions** a stage asks (`factory_questions`, `factory_ask`) are kept on the run and the
+  stage shows "needs you"; until the Interview tab (session 3) you answer them in the stage's chat
+  (Open chat in the stage's sheet).

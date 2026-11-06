@@ -350,6 +350,8 @@ export const ConfigSchema = z.object({
        * Empty = not set: Jig factory asks for it before its first demo.
        */
       demoKitPath: z.string().default(""),
+      /** How many stage chats Jig factory runs at once, across all runs (D-448). */
+      concurrency: z.number().int().min(1).max(6).default(3),
     })
     .prefault({}),
   updates: z

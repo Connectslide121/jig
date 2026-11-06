@@ -47,6 +47,7 @@ export type FromHost =
         | "storage.set"
         | "notify"
         | "emit"
+        | "config"
         | "projects"
         | "workspaces"
         | "log"
@@ -249,6 +250,7 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         call: (addonId, method, args) => rpc("addons.call", { id: addonId, method, args }) as Promise<never>,
       },
       emit: (topic, payload) => void rpc("emit", { topic, payload }),
+      config: () => rpc("config", {}) as Promise<never>,
       projects: () => rpc("projects", {}) as Promise<never>,
       workspaces: () => rpc("workspaces", {}) as Promise<never>,
       chats: {

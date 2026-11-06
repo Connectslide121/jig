@@ -531,6 +531,27 @@ export function FactorySettings() {
         placeholder="(not set)"
         onSave={(demoKitPath) => void updateConfig({ factory: { demoKitPath } })}
       />
+      <SettingRow
+        label="Stage chats at once"
+        description="How many stage chats run at the same time, across all runs. More stages wait until one finishes."
+      >
+        <MenuButton
+          entries={() =>
+            [1, 2, 3, 4, 5, 6].map((n) => ({
+              label: String(n),
+              checked: config.factory.concurrency === n,
+              onSelect: () => void updateConfig({ factory: { concurrency: n } }),
+            }))
+          }
+          alignRight
+          label="Stage chats at once"
+          testId="settings-factory-concurrency"
+          className="flex h-7 w-24 items-center gap-2 rounded-md border border-line-strong bg-raised px-2 text-sm text-fg hover:bg-hover"
+        >
+          <span className="min-w-0 flex-1 text-left tabular-nums">{config.factory.concurrency}</span>
+          <ChevronDown className="size-4 shrink-0 text-muted" />
+        </MenuButton>
+      </SettingRow>
     </SettingsSection>
   );
 }

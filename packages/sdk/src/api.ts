@@ -653,6 +653,11 @@ export interface AddonHostApi {
   };
   /** Sends an event to this add-on's UI (`ctx.on(topic, …)`). */
   emit(topic: string, payload?: unknown): void;
+  /**
+   * Built-in add-ons only (D-448): the add-on's own namespace of Jig's settings (`getConfig()[addonId]`,
+   * e.g. `factory.*` for Jig factory), or `undefined` when Jig has none. Fails for any other add-on.
+   */
+  config<T = unknown>(): Promise<T | undefined>;
   projects(): Promise<AddonProject[]>;
   /** Every folder the user added, with its repositories. */
   workspaces(): Promise<AddonWorkspace[]>;

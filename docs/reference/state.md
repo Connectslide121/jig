@@ -145,6 +145,7 @@ A new state file is documented here in the same commit that adds it.
 | `projects.repoScanDepth` | `3` | how many folder levels a workspace project is searched for repositories (1–5) |
 | `setup.firstRunDone` | `false` | Get started was closed (an installed Jig opens it until then) |
 | `factory.demoKitPath` | `""` | the demo kit's folder Jig factory builds and checks demos with (`npm run build`/`check` in it, D-429, D-441); empty = not set (Jig factory asks for it before its first demo). Protected (it runs programs) |
+| `factory.concurrency` | `3` | how many stage chats Jig factory runs at once, across all runs (1–6); the Conductor reads it through `api.config()` (D-448) |
 | `updates.sourcePath` | `""` | Jig's git clone for "Pull, build and restart"; empty = the repo Jig runs from |
 | `updates.buildCommand` / `installCommand` | `npm run build` / `npm install` | commands an update runs (`docs/reference/setup.md`) |
 | `addonGallery.sources` | `[]` | add-on gallery sources: git URLs (https/ssh) or folders (D-179); protected, Settings and the gallery only |
