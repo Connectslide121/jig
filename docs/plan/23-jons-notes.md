@@ -69,6 +69,12 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 - [x] **A handed-over task shows both provider marks; Claude's mark as big as ChatGPT's** (added
       2026-11-06, D-409): `runsOn().startedOn`, `handoverOrder`, one `ProviderMarks` slot for task
       rows and "Mixed", `ClaudeAsterisk` in `ProviderMark.tsx`; unit tests, `e2e/limit-handoff.spec.ts`.
+- [x] **Workflows: provider and model per AI step** (added 2026-11-06, D-412): `Step.provider`/`model`
+      (none = the defaults), the Tasks picker shared from `addons/shared/RunsOn.tsx`, a mark + model chip
+      on the step, `startStepChat`, `addon_workflows_save`/`get`/`run` with the fields; unit tests,
+      `e2e/workflows.spec.ts`.
+- [ ] Run a workflow's AI step on ChatGPT and on Claude · Haiku with both signed in, and once with
+      ChatGPT signed out (the step fails with the sign-in message) (D-412).
 - [x] **A limit nobody answers resumes by itself at the reset** (added 2026-11-05, D-376): `ask`
       waits automatically (`ChatLimit.auto`), the card keeps its choices and gets Don't resume, the
       header says when it resumes, `SessionManager.wake` on resume/unlock, stale resets ignored,

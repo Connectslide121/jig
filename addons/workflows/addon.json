@@ -70,7 +70,7 @@
       },
       {
         "id": "get",
-        "description": "One workflow's steps (who does each: Jig, ask first, or the user) and its last runs.",
+        "description": "One workflow's steps (who does each: Jig, ask first, or the user; an AI step's own provider and model, shown as 'on ChatGPT · Sol', else it runs on the default) and its last runs.",
         "params": {
           "project": {
             "description": "The project's name; leave out for this chat's project",
@@ -85,7 +85,7 @@
       },
       {
         "id": "save",
-        "description": "Save a repeatable multi-step process as a workflow in the project (or update the one with that name). Offer this when the user asks for something step by step that they'll do again (check the code, write release notes, user stories, test cases, a release or deploy). Steps: strings, or {title, kind: check|command|script|pipeline|claude|wait, mode: auto|ask|manual, command?, prompt?}; a 'claude' step is a message for Claude.",
+        "description": "Save a repeatable multi-step process as a workflow in the project (or update the one with that name). Offer this when the user asks for something step by step that they'll do again (check the code, write release notes, user stories, test cases, a release or deploy). Steps: strings, or {title, kind: check|command|script|pipeline|claude|wait, mode: auto|ask|manual, command?, prompt?, provider?, model?}; a 'claude' step is a message for the AI in a new chat. Its provider ('claude' or 'chatgpt') and model (opus, sonnet, haiku, sol, terra, luna or an exact id; a model alone names its provider) are optional: leave them out (or 'default') so it follows the user's default, and set them only when the user asks for one.",
         "params": {
           "project": {
             "description": "The project's name; leave out for this chat's project",
@@ -126,7 +126,7 @@
       },
       {
         "id": "run",
-        "description": "Run a workflow: Jig's automatic command and pipeline steps run now with their output; it stops at the first step that is the user's, asks first, or is a message for you, and says what comes next so you can guide the user through it.",
+        "description": "Run a workflow: Jig's automatic command and pipeline steps, and automatic AI steps with their own provider or model (a new chat on it), run now with their output; it stops at the first step that is the user's, asks first, or is a message for you (an AI step on the default: do it in this chat), and says what comes next so you can guide the user through it.",
         "params": {
           "project": {
             "description": "The project's name; leave out for this chat's project",

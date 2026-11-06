@@ -66,6 +66,14 @@ import { openReport, REPORT_OPEN_RUN } from "./Report";
 export { RunReportTab } from "./Report";
 
 import {
+  modelShort,
+  type ProviderChoice,
+  RunsOnButton,
+  runsOnShort,
+  runsOnText,
+  SOURCE_TEXT,
+} from "../shared/RunsOn";
+import {
   COUNT_LABEL,
   COUNT_ORDER,
   type CountKey,
@@ -146,14 +154,6 @@ import {
   StatusIcon,
   takeRequestedQueue,
 } from "./parts";
-import {
-  modelShort,
-  type ProviderChoice,
-  RunsOnButton,
-  runsOnShort,
-  runsOnText,
-  SOURCE_TEXT,
-} from "./RunsOn";
 
 /**
  * The permission modes a task can run in, in the add and edit dialogs. Don't ask comes last, named as in

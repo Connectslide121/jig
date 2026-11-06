@@ -2,19 +2,21 @@ import type { AddonUiContext, MenuInput } from "@jig/sdk";
 import { cn, ProviderMark, useChatGptReady } from "@jig/sdk/ui";
 import { ChevronDown } from "lucide-react";
 import {
-  modelLabel,
+  modelShort,
   PROVIDER_LABEL,
+  type ProviderChoice,
   providerOfModel,
-  type RunsOn,
   type RunsOnSource,
+  runsOnShort,
+  runsOnText,
   TASK_MODELS,
   TASK_PROVIDERS,
   type TaskProvider,
-} from "./lib/tasks";
+} from "./providers";
 
 /**
- * Who runs a queue's or a task's chats (D-330): a compact button with the provider's mark that opens a
- * menu through Jig's menus. The default entry (the project's, or the queue's choice) shows the mark it
+ * Who runs a queue's or a task's chats (D-330), or a workflow's AI step: a compact button with the
+ * provider's mark that opens a menu through Jig's menus. The default entry (the project's, or the queue's choice) shows the mark it
  * stands for; ChatGPT is greyed out with "Sign in on Get Started" while Codex isn't signed in.
  */
 
@@ -25,22 +27,16 @@ export const SOURCE_TEXT: Record<RunsOnSource, string> = {
   project: "the project's default",
   chat: "the chat it continues",
   ran: "its chat's",
+  step: "this step's",
 };
 
-/** "ChatGPT · Sol (latest)", "Claude". */
-export const runsOnText = (on: { provider: TaskProvider; model?: string }) =>
-  `${PROVIDER_LABEL[on.provider]}${on.model ? ` · ${modelLabel(on.model)}` : ""}`;
+export { modelShort, type ProviderChoice, runsOnShort, runsOnText } from "./providers";
 
-/** A model's short name for tight places: "Opus", "Sol", else the id as given. */
-export const modelShort = (model: string) => modelLabel(model).replace(/ \(latest\)$/, "");
-
-/** "Claude · Opus", "ChatGPT": for buttons and defaults that have little room. */
-export const runsOnShort = (on: { provider: TaskProvider; model?: string }) =>
-  `${PROVIDER_LABEL[on.provider]}${on.model ? ` · ${modelShort(on.model)}` : ""}`;
-
-export interface ProviderChoice {
-  provider?: TaskProvider;
+/** What the button shows: the provider and model it runs on now, and where that came from. */
+export interface ShownRunsOn {
+  provider: TaskProvider;
   model?: string;
+  from: RunsOnSource;
 }
 
 /**
@@ -57,6 +53,7 @@ export function providerEntries({
   fallbackModel,
   defaultLabel,
   models,
+  testPrefix = "tasks",
   onPick,
 }: {
   ctx: AddonUiContext;
@@ -66,6 +63,8 @@ export function providerEntries({
   fallbackModel?: string;
   defaultLabel: string;
   models: boolean;
+  /** The menu entries' test ids start with it (`tasks-runs-on-claude`). */
+  testPrefix?: string;
   onPick: (choice: ProviderChoice) => void;
 }): MenuInput[] {
   const defaultModel = (provider: TaskProvider) =>
@@ -81,7 +80,7 @@ export function providerEntries({
       checked,
       disabled: off,
       detail: off ? "Sign in on Get Started" : undefined,
-      testId: `tasks-runs-on-${provider}`,
+      testId: `${testPrefix}-runs-on-${provider}`,
       // A greyed-out entry gets no models either: Jig's menus open a submenu on hover regardless.
       ...(off
         ? {}
@@ -91,13 +90,13 @@ export function providerEntries({
                 {
                   label: defaultModel(provider),
                   checked: checked && !value.model,
-                  testId: `tasks-model-${provider}-default`,
+                  testId: `${testPrefix}-model-${provider}-default`,
                   onSelect: () => onPick({ provider }),
                 },
                 ...TASK_MODELS[provider].map((m) => ({
                   label: m.label,
                   checked: checked && value.model === m.value,
-                  testId: `tasks-model-${m.value}`,
+                  testId: `${testPrefix}-model-${m.value}`,
                   onSelect: () => onPick({ provider, model: m.value }),
                 })),
               ],
@@ -111,7 +110,7 @@ export function providerEntries({
       label: `${defaultLabel} (${runsOnShort({ provider: fallback, model: fallbackModel })})`,
       provider: fallback,
       checked: !value.provider,
-      testId: "tasks-runs-on-default",
+      testId: `${testPrefix}-runs-on-default`,
       onSelect: () => onPick({}),
     },
     { separator: true },
@@ -123,7 +122,7 @@ export function providerEntries({
           {
             label: "Sign in to ChatGPT on Get Started…",
             icon: "log-in",
-            testId: "tasks-runs-on-get-started",
+            testId: `${testPrefix}-runs-on-get-started`,
             onSelect: () => ctx.openGetStarted(),
           },
         ]),
@@ -148,12 +147,13 @@ export function RunsOnButton({
   className,
   labelClassName,
   testId,
+  testPrefix,
   onPick,
 }: {
   ctx: AddonUiContext;
   value: ProviderChoice;
   /** What it runs on now (the choice, else the default). */
-  shown: RunsOn;
+  shown: ShownRunsOn;
   fallback: TaskProvider;
   /** The default's model (the queue's, D-408). */
   fallbackModel?: string;
@@ -166,6 +166,7 @@ export function RunsOnButton({
   /** E.g. hide the words in a narrow container (the mark stays). */
   labelClassName?: string;
   testId: string;
+  testPrefix?: string;
   onPick: (choice: ProviderChoice) => void;
 }) {
   const chatgpt = useChatGptReady();
@@ -196,6 +197,7 @@ export function RunsOnButton({
             fallbackModel,
             defaultLabel,
             models,
+            testPrefix,
             onPick,
           }),
           e.currentTarget,

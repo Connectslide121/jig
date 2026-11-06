@@ -15,9 +15,11 @@ import {
   pushMark,
   runsUnattended,
   stepFromText,
+  stepRunsOn,
   toSkill,
   triggerLabel,
   type Workflow,
+  withRunsOn,
   workflowFromInput,
 } from "./workflow";
 
@@ -148,5 +150,57 @@ describe("workflows from Claude", () => {
     expect(again.steps[0]!.id).toBe(wf.steps[0]!.id);
     expect(again.goal).toBe("Check a pull request before merging");
     expect(describeWorkflow(wf)).toContain("3. [command, Jig does it] Run the tests `npm test`");
+  });
+});
+
+describe("an AI step's provider and model (D-412)", () => {
+  const save = (step: Record<string, unknown>) =>
+    workflowFromInput({ name: "Review", steps: [{ title: "Review", kind: "claude", ...step }] }, "p1")
+      .steps[0]!;
+
+  it("keeps none by default, so the step follows the default", () => {
+    const step = save({});
+    expect(step.provider).toBeUndefined();
+    expect(step.model).toBeUndefined();
+    expect(stepRunsOn(step)).toBeUndefined();
+    expect(save({ provider: "default", model: "default" }).provider).toBeUndefined();
+  });
+
+  it("takes a provider and model; a model alone names its provider", () => {
+    expect(stepRunsOn(save({ provider: "chatgpt", model: "sol" }))).toEqual({
+      provider: "chatgpt",
+      model: "sol",
+    });
+    expect(stepRunsOn(save({ model: "opus" }))).toEqual({ provider: "claude", model: "opus" });
+    expect(stepRunsOn(save({ model: "terra" }))).toEqual({ provider: "chatgpt", model: "terra" });
+    expect(() => save({ provider: "claude", model: "sol" })).toThrow(/isn't a Claude model/);
+    expect(() => save({ provider: "gemini" })).toThrow(/must be "claude" or "chatgpt"/);
+  });
+
+  it("drops a provider on other kinds of steps", () => {
+    const wf = workflowFromInput(
+      { name: "X", steps: [{ title: "npm test", kind: "command", provider: "chatgpt" }] },
+      "p1",
+    );
+    expect(wf.steps[0]!.provider).toBeUndefined();
+  });
+
+  it("changes from the picker: back to the default, and a provider change drops the other's model", () => {
+    const step = save({ provider: "chatgpt", model: "sol" });
+    expect(stepRunsOn(withRunsOn(step, {}))).toBeUndefined();
+    expect("provider" in withRunsOn(step, {})).toBe(false);
+    expect(stepRunsOn(withRunsOn(step, { provider: "claude", model: "sol" }))).toEqual({
+      provider: "claude",
+    });
+    expect(stepRunsOn(withRunsOn(step, { model: "haiku" }))).toEqual({ provider: "claude", model: "haiku" });
+  });
+
+  it("says where it runs to Claude and in the skill", () => {
+    const wf = workflowFromInput(
+      { name: "Review", steps: [{ title: "Review", kind: "claude", model: "sol", prompt: "Review it" }] },
+      "p1",
+    );
+    expect(describeWorkflow(wf)).toContain("[claude, ask first on ChatGPT · Sol] Review");
+    expect(toSkill(wf)).toContain("(in a new chat on ChatGPT · Sol, not this one)");
   });
 });

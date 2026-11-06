@@ -307,6 +307,7 @@
       "specs": ["handover.spec.ts", "chat-provider.spec.ts"]
     },
     { "files": ["addons/workflows/**"], "specs": ["workflows.spec.ts", "pipelines.spec.ts"] },
+    { "files": ["addons/shared/**"], "specs": ["workflows.spec.ts", "tasks.spec.ts"] },
     { "files": ["addons/tests/**"], "specs": ["tests-addon.spec.ts"] },
     {
       "files": [

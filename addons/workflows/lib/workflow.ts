@@ -3,6 +3,17 @@
  * schedule or after an event (a push, a pipeline finishing; D-177) while Jig is open. Each step is manual (you tick it), auto (Jig or Claude does it) or "ask
  * me" (Jig asks before doing it).
  */
+import {
+  PROVIDER_LABEL,
+  type ProviderChoice,
+  parseModel,
+  parseProvider,
+  providerFields,
+  providerOfModel,
+  runsOnShort,
+  type TaskProvider,
+} from "../../shared/providers";
+
 export type StepKind = "check" | "command" | "script" | "pipeline" | "claude" | "wait";
 export type StepMode = "manual" | "auto" | "ask";
 
@@ -18,8 +29,15 @@ export interface Step {
   scriptId?: string;
   /** pipeline: an Azure DevOps pipeline to start. */
   pipeline?: { org: string; project: string; id: number; branch?: string };
-  /** claude: what to ask Claude (a new chat in the project). */
+  /** claude: what to ask the AI (a new chat in the project). */
   prompt?: string;
+  /**
+   * claude: who runs the new chat (D-412). Left out: the new chat's own defaults (the project's, then
+   * Jig's), never a copy of them, so a later change to the default still applies. A model alone names
+   * its provider.
+   */
+  provider?: TaskProvider;
+  model?: string;
 }
 
 export type Trigger =
@@ -93,9 +111,33 @@ export const STEP_KINDS: Array<{ kind: StepKind; label: string; canRun: boolean 
   { kind: "command", label: "A command (git, dotnet, npm…)", canRun: true },
   { kind: "script", label: "A script of the project", canRun: true },
   { kind: "pipeline", label: "An Azure DevOps pipeline", canRun: true },
-  { kind: "claude", label: "A message to Claude", canRun: true },
+  { kind: "claude", label: "A message to the AI", canRun: true },
   { kind: "wait", label: "Wait for your OK", canRun: false },
 ];
+
+/** An AI step's own provider and model, when it has one (else its chat takes the defaults). */
+export function stepRunsOn(step: Step): { provider: TaskProvider; model?: string } | undefined {
+  if (step.kind !== "claude") return undefined;
+  const choice = providerFields(step.provider, step.model);
+  return choice.provider
+    ? { provider: choice.provider, ...(choice.model ? { model: choice.model } : {}) }
+    : undefined;
+}
+
+/**
+ * A step's provider choice after a change from the editor's picker: none goes back to the default, a
+ * model alone names its provider, and another provider's model is dropped.
+ */
+export function withRunsOn(step: Step, choice: ProviderChoice): Step {
+  const { provider: _p, model: _m, ...rest } = step;
+  return { ...rest, ...providerFields(choice.provider, choice.model) };
+}
+
+/** " on ChatGPT · Sol" for an AI step with its own choice, else nothing. */
+const onText = (step: Step) => {
+  const on = stepRunsOn(step);
+  return on ? ` on ${runsOnShort(on)}` : "";
+};
 
 /** Steps Jig can't do itself are always yours (a check, waiting for your OK). */
 export function effectiveMode(step: Step): StepMode {
@@ -260,7 +302,11 @@ export function toSkill(wf: Workflow): string {
       return `${n} ${s.title || s.command}: run \`${s.command}\`${s.cwd ? ` in \`${s.cwd}\`` : ""}${ask}.`;
     if (s.kind === "pipeline" && s.pipeline)
       return `${n} ${s.title}: start Azure DevOps pipeline ${s.pipeline.id} in ${s.pipeline.project} (\`az pipelines run --id ${s.pipeline.id} --org ${s.pipeline.org} --project "${s.pipeline.project}"${s.pipeline.branch ? ` --branch ${s.pipeline.branch}` : ""}\`)${ask}.`;
-    if (s.kind === "claude") return `${n} ${s.title || "Ask Claude"}: ${s.prompt ?? ""}${ask}.`;
+    if (s.kind === "claude") {
+      const on = stepRunsOn(s);
+      const where = on ? ` (in a new chat on ${runsOnShort(on)}, not this one)` : "";
+      return `${n} ${s.title || "Ask the AI"}: ${s.prompt ?? ""}${where}${ask}.`;
+    }
     if (s.kind === "wait") return `${n} ${s.title || "Wait for my OK"}: stop and wait until I confirm.`;
     if (s.kind === "script") return `${n} ${s.title}: run the project's script ${s.scriptId ?? ""}${ask}.`;
     return `${n} ${s.title}: ask me to do this and wait until I confirm.`;
@@ -291,7 +337,7 @@ export function cloudPrompt(wf: Workflow): string {
     "Steps:",
     ...wf.steps.map(
       (s, i) =>
-        `${i + 1}. [${s.kind}, ${effectiveMode(s)}] ${s.title}${s.command ? ` — \`${s.command}\`` : ""}${s.prompt ? ` — ${s.prompt}` : ""}`,
+        `${i + 1}. [${s.kind}, ${effectiveMode(s)}${onText(s)}] ${s.title}${s.command ? ` — \`${s.command}\`` : ""}${s.prompt ? ` — ${s.prompt}` : ""}`,
     ),
     "",
     "Propose the better fit and do it after I agree: a Claude Code routine (RemoteTrigger) when the steps need judgement, or an Azure DevOps pipeline (YAML in the repository) when they are builds and deployments. Steps I do by hand stay mine: say how they fit.",
@@ -309,6 +355,20 @@ export interface StepInput {
   cwd?: string;
   prompt?: string;
   scriptId?: string;
+  /** claude: "claude" or "chatgpt"; left out (or "default") = the new chat's defaults. */
+  provider?: string;
+  /** claude: a model alias or id (opus, sonnet, sol…); alone it names its provider. */
+  model?: string;
+}
+
+/** An AI step's provider and model as Claude gave them: checked against each other; "default" = none. */
+function stepChoice(given: StepInput, title: string): ProviderChoice {
+  const where = `step "${title}"`;
+  const provider = given.provider === "default" ? undefined : parseProvider(given.provider, where);
+  const model = given.model === "default" ? undefined : parseModel(given.model, where);
+  if (provider && model && providerOfModel(model) !== provider)
+    throw new Error(`model ${model} for ${where} isn't a ${PROVIDER_LABEL[provider]} model`);
+  return providerFields(provider, model);
 }
 
 /**
@@ -337,6 +397,7 @@ export function workflowFromInput(
       cwd: given.cwd,
       prompt: kind === "claude" ? (given.prompt ?? given.title) : undefined,
       scriptId: kind === "script" ? given.scriptId : undefined,
+      ...(kind === "claude" ? stepChoice(given, given.title) : {}),
     };
     const same = existing?.steps.find((x) => x.title === step.title && x.kind === step.kind);
     return same ? { ...step, id: same.id } : step;
@@ -361,7 +422,7 @@ export function describeWorkflow(wf: Workflow): string {
       const mode = effectiveMode(s);
       const who = mode === "auto" ? "Jig does it" : mode === "ask" ? "ask first" : "the user does it";
       const what = s.command ? ` \`${s.command}\`` : s.prompt && s.prompt !== s.title ? `: ${s.prompt}` : "";
-      return `${i + 1}. [${s.kind}, ${who}] ${s.title}${what}`;
+      return `${i + 1}. [${s.kind}, ${who}${onText(s)}] ${s.title}${what}`;
     }),
   ].join("\n");
 }

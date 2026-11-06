@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
+import { runsOnShort } from "../shared/providers";
 import {
   describeWorkflow,
   type EventTrigger,
@@ -17,6 +18,7 @@ import {
   type Step,
   type StepInput,
   skillName,
+  stepRunsOn,
   type Trigger,
   toSkill,
   triggerLabel,
@@ -120,6 +122,31 @@ export async function runPipeline(
       ok: true,
       output: run ? `Started run ${run.buildNumber ?? run.id}${where}.` : `Started${where}.`,
     };
+  } catch (error) {
+    return { ok: false, output: (error as Error).message.slice(-2000) };
+  }
+}
+
+/**
+ * An AI step with its own provider or model (D-412): a new chat in the project on that provider and
+ * model, with the step's message sent. Steps without one go through `sendToChat` in the view instead,
+ * so their chat takes the defaults exactly like any new chat.
+ */
+export async function startStepChat(
+  { step, projectId }: { step: Step; projectId: string },
+  api: AddonHostApi,
+): Promise<{ ok: boolean; output: string; sessionId?: string }> {
+  const on = stepRunsOn(step);
+  if (!on) return { ok: false, output: "This step runs on the default: send it from the view." };
+  try {
+    const { sessionId } = await api.chats.create({
+      projectId,
+      title: step.title || undefined,
+      provider: on.provider,
+      ...(on.model ? { model: on.model } : {}),
+    });
+    await api.chats.send({ sessionId, text: step.prompt?.trim() || step.title });
+    return { ok: true, output: `Sent to a new chat on ${runsOnShort(on)}.`, sessionId };
   } catch (error) {
     return { ok: false, output: (error as Error).message.slice(-2000) };
   }
@@ -351,8 +378,10 @@ export async function toolDelete(args: ToolArgs & { workflow: string }, api: Add
 }
 
 /**
- * Runs a workflow from a chat: Jig's automatic steps (commands, pipelines) run here; it stops at the
- * first step that is the user's, asks first, or is for Claude, and says what comes next.
+ * Runs a workflow from a chat: Jig's automatic steps (commands, pipelines, and AI steps with their own
+ * provider or model: a new chat on it, D-412) run here; it stops at the first step that is the user's,
+ * asks first, or is for the agent itself (an AI step on the defaults is done in this chat), and says
+ * what comes next.
  */
 export async function toolRun(args: ToolArgs & { workflow: string }, api: AddonHostApi): Promise<string> {
   const { project, wf } = await resolveWorkflow(args, api);
@@ -360,26 +389,33 @@ export async function toolRun(args: ToolArgs & { workflow: string }, api: AddonH
   const out: string[] = [];
   for (let next = nextStep(wf, run); next; next = nextStep(wf, run)) {
     const s = next.step;
-    const runnable = next.mode === "auto" && (s.kind === "command" || s.kind === "pipeline");
+    const on = stepRunsOn(s);
+    const runnable =
+      next.mode === "auto" &&
+      (s.kind === "command" || s.kind === "pipeline" || (s.kind === "claude" && !!on));
     if (!runnable) {
       const n = wf.steps.indexOf(s) + 1;
       const rest = wf.steps.slice(n);
       out.push(
         `Stopped at step ${n}, "${s.title}" (${s.kind}, ${next.mode === "ask" ? "ask the user first" : next.mode === "manual" ? "the user does it" : "for you"}).`,
-        s.kind === "claude"
-          ? `It's a message for you: ${s.prompt ?? s.title}. Do it in this chat.`
-          : s.kind === "command"
-            ? `Ask the user, then run \`${s.command}\` yourself if they agree.`
-            : "Ask the user to do it and tell you when it's done.",
+        s.kind === "claude" && on
+          ? `It runs in a new chat of its own on ${runsOnShort(on)}, not in this one: tell the user, who starts it from the workflow's tab (Workflows). Its message: ${s.prompt ?? s.title}`
+          : s.kind === "claude"
+            ? `It's a message for you: ${s.prompt ?? s.title}. Do it in this chat.`
+            : s.kind === "command"
+              ? `Ask the user, then run \`${s.command}\` yourself if they agree.`
+              : "Ask the user to do it and tell you when it's done.",
         rest.length ? `Then: ${rest.map((x) => x.title).join(" → ")}` : "That's the last step.",
         "The user can also run it step by step in the Workflows tab.",
       );
       break;
     }
     const result =
-      s.kind === "pipeline" && s.pipeline
-        ? await runPipeline({ pipeline: s.pipeline }, api)
-        : await runCommand({ command: s.command ?? "", cwd: s.cwd || project.path }, api);
+      s.kind === "claude"
+        ? await startStepChat({ step: s, projectId: project.id }, api)
+        : s.kind === "pipeline" && s.pipeline
+          ? await runPipeline({ pipeline: s.pipeline }, api)
+          : await runCommand({ command: s.command ?? "", cwd: s.cwd || project.path }, api);
     run = markStep(run, s.id, result.ok ? "done" : "failed", result.output);
     out.push(`${result.ok ? "✓" : "✗"} ${s.title}\n${result.output.slice(-1500)}`);
     if (!result.ok) break;

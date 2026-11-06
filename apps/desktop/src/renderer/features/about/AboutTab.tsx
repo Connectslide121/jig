@@ -947,7 +947,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="workflows"
             title="Workflows"
-            lead="The things you repeat — a release, a deploy, a Monday routine — as steps per project. Jig does the steps it can (commands, scripts, pipelines, a message to Claude), asks before others, and leaves the rest to you."
+            lead="The things you repeat — a release, a deploy, a Monday routine — as steps per project. Jig does the steps it can (commands, scripts, pipelines, a message to the AI on the provider and model you pick), asks before others, and leaves the rest to you."
             shot={{
               src: workflowsShot,
               alt: "A release workflow half-way: two steps done by Jig, one waiting for you",

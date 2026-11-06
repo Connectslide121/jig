@@ -51,6 +51,76 @@ test("Workflows: make one with a check and a command, run it step by step, expor
   expect(skill).toContain("2. Say hello: run `echo hello-from-jig`.");
 });
 
+test("Workflows: an AI step runs on the provider and model you pick, else the default (D-412)", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show workflows");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("workflows-view")).toBeVisible({ timeout: 15000 });
+  await page.getByTestId("workflow-new").click();
+
+  const editor = page.getByTestId("workflow-editor");
+  await editor.getByTestId("workflow-name").fill("Review");
+  await editor.getByTestId("workflow-add-step").click();
+  const step = editor.getByTestId("workflow-edit-step").first();
+  await step.getByLabel("Kind").selectOption("claude");
+  await step.getByTestId("step-title").fill("Review the cart");
+  await step.getByLabel("Message to the AI").fill("Review the cart code");
+  // Unset, it says Default; picking a model doesn't move the step's other fields.
+  const runsOn = step.getByTestId("step-runs-on");
+  await expect(runsOn).toContainText("Default");
+  const titleBefore = await step.getByTestId("step-title").boundingBox();
+  await runsOn.click();
+  await page.getByTestId("workflow-runs-on-chatgpt").hover();
+  await page.getByTestId("workflow-model-sol").click();
+  await expect(runsOn).toContainText("ChatGPT · Sol");
+  expect(await step.getByTestId("step-title").boundingBox()).toEqual(titleBefore);
+  if (process.env.JIG_UI_SHOTS)
+    await page.screenshot({ path: ".tmp/shots/workflow-step-runs-on-editor.png" });
+  await editor.getByTestId("workflow-save").click();
+
+  // The read view marks the step with the provider and model; Run it starts a chat on them.
+  await expect(page.getByTestId("step-runs-on-badge")).toContainText("Sol");
+  if (process.env.JIG_UI_SHOTS) await page.screenshot({ path: ".tmp/shots/workflow-step-runs-on-read.png" });
+  await page.getByTestId("workflow-run").click();
+  await page.getByTestId("step-run").click();
+  await expect(page.getByTestId("step-output")).toContainText("Sent to a new chat on ChatGPT · Sol", {
+    timeout: 15000,
+  });
+  type Meta = { id: string; provider?: string; model?: string; title?: string };
+  await expect
+    .poll(async () => {
+      const list = ((await hostCall(page, "sessions.list")) as { value: Meta[] }).value;
+      const chat = list.find((m) => m.provider === "codex" || m.provider === "chatgpt");
+      return chat ? `${chat.provider} ${chat.model}` : "";
+    })
+    .toMatch(/sol$/);
+
+  // Back to the default (the chat it started opened in front): nothing is stored, so later default
+  // changes still apply.
+  await page.getByTestId("tab-addon.workflows.workflow").click();
+  await page.getByTestId("workflow-edit").click();
+  await page.getByTestId("step-runs-on").click();
+  await page.getByTestId("workflow-runs-on-default").click();
+  await expect(page.getByTestId("step-runs-on")).toContainText("Default");
+  await page.getByTestId("workflow-save").click();
+  await expect(page.getByTestId("step-runs-on-badge")).toHaveCount(0);
+  const projects = (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } };
+  const project = projects.value.projects[0]!;
+  const saved = (await hostCall(page, "addons.call", {
+    id: "workflows",
+    method: "list",
+    args: { projectId: project.id },
+  })) as { value: Array<{ steps: Array<Record<string, unknown>> }> };
+  expect(saved.value[0]!.steps[0]!.provider).toBeUndefined();
+  expect(saved.value[0]!.steps[0]!.model).toBeUndefined();
+});
+
 test("Claude saves a process as a workflow from a chat, and runs it", async ({ page, jigHome }) => {
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });

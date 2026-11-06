@@ -7,6 +7,7 @@ import {
   Empty,
   IconButton,
   Input,
+  ProviderMark,
   Select,
   Spinner,
   Textarea,
@@ -42,6 +43,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { modelShort, runsOnText } from "../shared/providers";
+import { RunsOnButton } from "../shared/RunsOn";
 import {
   cloudPrompt,
   draftWorkflow,
@@ -56,9 +59,11 @@ import {
   type StepKind,
   type StepMode,
   type StepStatus,
+  stepRunsOn,
   type Trigger,
   triggerLabel,
   type Workflow,
+  withRunsOn,
 } from "./lib/workflow";
 
 const MODE_LABEL: Record<StepMode, string> = {
@@ -264,6 +269,25 @@ function StepDetail({ step, scriptName }: { step: Step; scriptName: (id?: string
   return null;
 }
 
+/**
+ * An AI step's own provider and model (D-412), before who does it: the provider's mark and the model's
+ * short name. Nothing for the default, so a step that follows Jig's default reads as before.
+ */
+function StepRunsOnBadge({ step }: { step: Step }) {
+  const on = stepRunsOn(step);
+  if (!on) return null;
+  return (
+    <span
+      className="flex h-5 shrink-0 items-center gap-1 rounded-md border border-line px-1.5 text-xs text-muted"
+      title={`Runs in a new chat on ${runsOnText(on)}`}
+      data-testid="step-runs-on-badge"
+    >
+      <ProviderMark provider={on.provider} iconOnly />
+      {on.model ? modelShort(on.model) : null}
+    </span>
+  );
+}
+
 function anchor() {
   return document.querySelector<HTMLElement>("[data-testid=goto-button]") ?? document.body;
 }
@@ -435,6 +459,7 @@ export function WorkflowTab({ params, tabId }: AddonTabProps) {
         {editing ? (
           <Editor
             ctx={ctx}
+            project={project}
             initial={wf}
             scripts={scripts}
             onSaved={(saved) => {
@@ -510,6 +535,14 @@ function Runner({
       else if (step.kind === "script" && step.scriptId && project) {
         await ctx.scripts.run(project.id, step.scriptId);
         result = { ok: true, output: "Started in a terminal." };
+      } else if (step.kind === "claude" && stepRunsOn(step) && project) {
+        // Its own provider or model (D-412): the host starts the chat on it; open it like sendToChat does.
+        const r = await ctx.host.call<{ ok: boolean; output: string; sessionId?: string }>("startStepChat", {
+          step,
+          projectId: project.id,
+        });
+        if (r.sessionId) await ctx.openChat({ sessionId: r.sessionId });
+        result = r;
       } else if (step.kind === "claude") {
         await ctx.sendToChat(step.prompt ?? step.title, { send: true });
         result = { ok: true, output: "Sent to a new chat." };
@@ -562,6 +595,7 @@ function Runner({
                 <span className="min-w-0 flex-1 truncate text-sm text-fg">
                   {s.title || STEP_KINDS.find((k) => k.kind === s.kind)?.label}
                 </span>
+                <StepRunsOnBadge step={s} />
                 <Badge tone={mode === "auto" ? "accent" : mode === "ask" ? "info" : "neutral"}>
                   {MODE_LABEL[mode]}
                 </Badge>
@@ -704,12 +738,14 @@ function Runner({
 
 function Editor({
   ctx,
+  project,
   initial,
   scripts,
   onSaved,
   onCancel,
 }: {
   ctx: AddonUiContext;
+  project?: AddonProject;
   initial: Workflow;
   scripts: AddonScript[];
   onSaved: (wf: Workflow) => void;
@@ -756,6 +792,8 @@ function Editor({
                 setStep(s.id, {
                   kind,
                   mode: kind === "check" || kind === "wait" ? "manual" : s.mode === "manual" ? "ask" : s.mode,
+                  // Only an AI step has a provider of its own.
+                  ...(kind === "claude" ? {} : { provider: undefined, model: undefined }),
                 });
               }}
             >
@@ -777,6 +815,27 @@ function Editor({
                 <option value="auto">Jig does it</option>
                 <option value="manual">I do it</option>
               </Select>
+            )}
+            {s.kind === "claude" && (
+              <RunsOnButton
+                ctx={ctx}
+                value={{ provider: s.provider, model: s.model }}
+                shown={
+                  stepRunsOn(s)
+                    ? { ...stepRunsOn(s)!, from: "step" }
+                    : { provider: project?.provider ?? "claude", from: "project" }
+                }
+                fallback={project?.provider ?? "claude"}
+                defaultLabel="Default"
+                models
+                label={stepRunsOn(s) ? undefined : "Default"}
+                className="w-44 border-line-strong bg-raised"
+                testId="step-runs-on"
+                testPrefix="workflow"
+                onPick={(choice) =>
+                  set({ steps: wf.steps.map((x) => (x.id === s.id ? withRunsOn(x, choice) : x)) })
+                }
+              />
             )}
             <span className="flex-1" />
             <IconButton icon={ArrowUp} size="sm" label="Up" disabled={i === 0} onClick={() => move(i, -1)} />
@@ -848,10 +907,10 @@ function Editor({
             <Textarea
               rows={10}
               className="resize-y"
-              placeholder="What to ask Claude"
+              placeholder="What to ask"
               value={s.prompt ?? ""}
               onChange={(e) => setStep(s.id, { prompt: e.target.value })}
-              aria-label="Message to Claude"
+              aria-label="Message to the AI"
             />
           )}
         </Card>

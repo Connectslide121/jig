@@ -826,6 +826,15 @@ ChatGPT, then Claude), in a fixed two-mark slot so every row's marks line up; it
 everywhere (footer, pickers, chat list, the handover divider, tasks). Unit tests and
 `e2e/limit-handoff.spec.ts` cover it; `e2e/ui-shots.spec.ts` shoots the queue, History and the chat.
 
+A workflow's AI step picks its provider and model (2026-11-06, D-412): in a workflow's editor, a
+"message to the AI" step has a Runs on button beside "Who does it" (the same picker as Tasks): Claude
+or ChatGPT and a model, or **Default**, which stores nothing so the step follows Jig's default (the
+project's, then Jig's) whenever it runs. A picked one shows as the provider's mark and the model beside
+the step's badge, and Run it starts the chat on it. Claude's `addon_workflows_save` takes `provider`
+and `model` per step; `addon_workflows_run` starts an automatic step with its own choice in a new chat
+and leaves one on the default to the chat that ran it. Unit tests and `e2e/workflows.spec.ts` cover
+it. Needs a real try with ChatGPT signed in and signed out.
+
 A chat can revise its task's report (2026-11-05, D-353): when you follow up in a task's chat after it
 reported (say it reported Partly done and you cleared up a misunderstanding), ask it to report the
 task again: `addon_tasks_report` with the task's id replaces the report, the status follows the new

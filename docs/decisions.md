@@ -7152,5 +7152,28 @@ panel), and `browser.showWhenUsed` off still keeps the view closed.
 
 ## D-412: Workflows: provider and model per AI step
 
-- Status: accepted.
-- **Who:**
+**Jon:** "i wanna be able to select what provider and model does an ai step in workflows, default to
+global default". The details are **Claude, on my own**.
+
+- **Stored on the step, only when chosen:** `Step.provider` / `Step.model` (kind `claude` only). Left
+  out = the new chat's normal defaults (`shared/chatDefaults.ts`: the project's, then
+  `engine.provider` with `engine.defaultModel`/`engine.codexModel`); the current default is never
+  written into the step, so a later change of the default still applies. A model alone names its
+  provider and a provider change drops the other's model (`providerFields`, as `setQueueRunsOn`).
+  `addon_workflows_save` takes `provider`/`model` per step ("default" or left out = none; a model of
+  the other provider than the one given is refused); `get`/`describeWorkflow` show "on ChatGPT · Sol".
+- **One picker:** the Tasks "Runs on" button (D-330, D-408) moved to `addons/shared/RunsOn.tsx`, with
+  the pure provider/model helpers in `addons/shared/providers.ts` (re-exported by the Tasks lib); its
+  menu test ids take a prefix (`workflow-runs-on-*`). In the step editor it sits beside "Who does it"
+  in a fixed `w-44` slot and says "Default" when unset; the read view shows a small mark + model chip
+  before the "who does it" badge (nothing for the default, so the badges stay one right-aligned line).
+- **Running it:** with no choice the view keeps `sendToChat` (a new chat with the defaults, as before).
+  With one, the host's `startStepChat` calls `api.chats.create({ projectId, provider, model })` then
+  `chats.send`, and the view opens that chat. No SDK change was needed.
+- **A workflow run by an agent (`addon_workflows_run`):** an AI step on the default stays the agent's
+  to do in its own chat (as before). One with its own provider/model doesn't belong in that chat: when
+  it's automatic, Jig starts the chat on that provider/model itself and goes on with the next steps;
+  when it asks first or is the user's, the run stops and the agent tells the user it runs in a chat of
+  its own, started from the workflow's tab.
+- **Wording:** the kind is "A message to the AI" and the box "Message to the AI" (provider-neutral,
+  as D-409 and the "say Jig, not Claude" direction).
