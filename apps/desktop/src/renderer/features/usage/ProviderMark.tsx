@@ -1,8 +1,18 @@
-import { Aperture, Asterisk } from "lucide-react";
+import { Aperture, createLucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import type { ChatProvider } from "../../../shared/engine";
 import type { AiProvider } from "../../../shared/providers";
 import { cn } from "../../ui";
+
+/**
+ * Claude's mark: Lucide's asterisk drawn to the whole 24-unit box (arms of radius 10, like Aperture's
+ * circle), so both marks look the same size wherever they show. Lucide's own reaches only radius 7.
+ */
+const ClaudeAsterisk = createLucideIcon("claude-asterisk", [
+  ["path", { d: "M12 2v20", key: "vertical" }],
+  ["path", { d: "M20.66 7 3.34 17", key: "rising" }],
+  ["path", { d: "m3.34 7 17.32 10", key: "falling" }],
+]);
 
 /**
  * Who answers (D-298): a small icon and a short name in the provider's own colour, the same in the
@@ -13,7 +23,7 @@ export const PROVIDER_MARKS: Record<
   AiProvider,
   { label: string; icon: ComponentType<{ className?: string }>; text: string; source: string }
 > = {
-  claude: { label: "Claude", icon: Asterisk, text: "text-provider-claude", source: "Claude Code" },
+  claude: { label: "Claude", icon: ClaudeAsterisk, text: "text-provider-claude", source: "Claude Code" },
   chatgpt: { label: "ChatGPT", icon: Aperture, text: "text-provider-chatgpt", source: "Codex" },
 };
 
