@@ -6,7 +6,7 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
 - **Tenants (D-282, D-284):** a board remembers the tenant it was followed in (boards from before
   tenants: your own az login). While another tenant is active its tab shows one card, "In tenant X",
   and clicking it switches; the board shows that tenant's cached cards (never another tenant's) and
-  refreshes. Claude's board tools say so too.
+  refreshes. Jig's board tools say so too.
 - **Loaded at startup, refreshed in the background (D-302):** a few seconds after Jig starts, every
   followed board of every project in the active tenant is fetched, two at a time (and again every
   30 minutes, and for the new tenant after a switch); the host keeps the cards per tenant + board and
@@ -69,7 +69,7 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
 - **Images through your az login:** `attachment({ board, url })` downloads an attachment of the board's
   organisation with `az rest --output-file` into the add-on's data folder (`attachment-<id>`, reused)
   and answers a data URL; images only (by their bytes), up to 20 MB. Needs `fs:read`.
-- **Claude keeps it up to date:** tools `addon_boards_boards`, `_cards` (by column or text), `_card`
+- **Jig keeps it up to date:** tools `addon_boards_boards`, `_cards` (by column or text), `_card`
   (everything on one, as plain text: images as `[image: name]`, the HTML only when it holds images), `_update` (fields, state, column, area, iteration, comment; `descriptionHtml` / `acceptanceHtml` keep images), `_create` (every field at once) and `_delete`, for the
   chat's project. `_cards` reads the cache when it's under a minute old. Changes ask your permission like other edits. A slider in the header sets one width for every column (kept for all projects, across restarts).
 - **How:** `GET {team}/_apis/work/boards/{id}` (columns, state mappings, column field) and

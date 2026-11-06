@@ -65,7 +65,7 @@ test("a risky practice becomes a suggestion that opens a chat to fix it", async 
   await page.getByTestId("look-for-patterns").click();
   const card = page.getByTestId("suggestion").filter({ hasText: "Keep keys out of your messages" });
   await expect(card).toContainText("better practice", { timeout: 15000 });
-  await expect(card.getByTestId("suggestion-build")).toHaveText("Fix it with Claude");
+  await expect(card.getByTestId("suggestion-build")).toHaveText("Fix it with Jig");
   await card.getByTestId("suggestion-build").click();
   await expect(page.getByTestId("composer-input")).toHaveValue(/Help me change this practice/, {
     timeout: 15000,
@@ -111,7 +111,7 @@ test("asking piece by piece becomes a prompting tip comparing your prompt with a
   await expect(compare.getByTestId("prompt-before")).toContainText("now write an endpoint for it");
   await expect(compare.getByTestId("prompt-after")).toContainText("Add order validation to the Shop API");
   await expect(compare).toContainText("Why yours fell short");
-  await expect(compare.getByTestId("prompt-changes")).toContainText("Claude checks its own work");
+  await expect(compare.getByTestId("prompt-changes")).toContainText("Jig checks its own work");
   await compare.getByTestId("prompt-try").click();
   await expect(page.getByTestId("composer-input")).toHaveValue(/Add order validation to the Shop API/, {
     timeout: 15000,

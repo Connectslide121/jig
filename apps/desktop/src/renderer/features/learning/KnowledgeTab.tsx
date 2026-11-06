@@ -20,8 +20,8 @@ const CATEGORY: Record<EvidenceNote["category"], string> = {
 };
 
 const KIND: Record<string, string> = {
-  prompt: "Messages to Claude",
-  "session.tool": "Claude's tool calls",
+  prompt: "Messages to Jig",
+  "session.tool": "Jig's tool calls",
   "terminal.command": "Terminal commands",
   "script.run": "Scripts started",
   "addon.action": "Add-on actions",
@@ -29,7 +29,7 @@ const KIND: Record<string, string> = {
   "project.switch": "Project switches",
   friction: "Friction (stops, rewinds, denials, corrections, failing scripts)",
   evidence: "Notes from chats",
-  "ai.lines": "Files Claude wrote in",
+  "ai.lines": "Files Jig wrote in",
   ui: "Menus and views in Jig",
 };
 
@@ -85,7 +85,8 @@ export function KnowledgeTab() {
           <h1 className="text-lg font-semibold text-fg">What Jig knows about me</h1>
           <p className="text-sm text-muted">
             Everything Jig uses to suggest tools, workflows and tips. It stays on this computer; only the
-            weekly reflection and check-ins send a summary to Claude. Edit or delete anything.
+            weekly reflection and check-ins send a summary to the AI model that runs them. Edit or delete
+            anything.
           </p>
         </div>
 
@@ -100,9 +101,9 @@ export function KnowledgeTab() {
                 icon={MessageSquare}
                 onClick={() => void startProfileInterview()}
                 data-testid="profile-interview"
-                title="A chat where Claude asks you questions and fills in your profile"
+                title="A chat where Jig asks you questions and fills in your profile"
               >
-                Fill it in with Claude
+                Fill it in with Jig
               </Button>
             )}
             <Button
@@ -155,7 +156,7 @@ export function KnowledgeTab() {
           </div>
           {data.notes.length === 0 && (
             <p className="text-sm text-muted">
-              When you mention work you do by hand or outside Jig, Claude notes it here (you see a card in the
+              When you mention work you do by hand or outside Jig, Jig notes it here (you see a card in the
               chat).
             </p>
           )}
@@ -221,7 +222,7 @@ export function KnowledgeTab() {
           </div>
           <p className="text-sm text-muted">
             {worked?.text ||
-              "No commits of yours in the last 7 days. Lines Claude writes are told apart from lines you write when you commit."}
+              "No commits of yours in the last 7 days. Lines Jig writes are told apart from lines you write when you commit."}
           </p>
         </Card>
 
@@ -232,7 +233,7 @@ export function KnowledgeTab() {
 }
 
 /**
- * "How Claude worked for you" (D-185): the chat overview's counts summed over the last 4 weeks, which
+ * "How Jig worked for you" (D-185): the chat overview's counts summed over the last 4 weeks, which
  * the weekly reflection also reads.
  */
 function ClaudeUsage({ usage }: { usage?: UsageSummary }) {
@@ -249,7 +250,7 @@ function ClaudeUsage({ usage }: { usage?: UsageSummary }) {
       : [];
   return (
     <Card className="flex flex-col gap-1 p-4" data-testid="knowledge-usage">
-      <h2 className="mb-1 text-sm font-semibold text-fg">How Claude worked for you (last 4 weeks)</h2>
+      <h2 className="mb-1 text-sm font-semibold text-fg">How Jig worked for you (last 4 weeks)</h2>
       {!usage ? (
         <p className="text-sm text-muted">Nothing recorded yet.</p>
       ) : (

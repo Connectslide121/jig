@@ -183,8 +183,8 @@ export function Review({
       }
     >
       <p className="mb-2 shrink-0 text-sm text-muted">
-        Claude drafted these from the transcript — check them first. Tick tasks to add them to the queue, each
-        to its own project, or run one in a new chat now. Mark ones you did yourself as done, and dismiss the
+        Jig drafted these from the transcript — check them first. Tick tasks to add them to the queue, each to
+        its own project, or run one in a new chat now. Mark ones you did yourself as done, and dismiss the
         rest.
       </p>
       <Tabs

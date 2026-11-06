@@ -291,7 +291,7 @@ function Details({
           }
         />
         <Tile
-          label="Claude worked"
+          label="Jig worked"
           value={stats.workingMs ? formatDuration(stats.workingMs) : "—"}
           sub={`${stats.replies} answers`}
         />
@@ -423,7 +423,7 @@ function Details({
             <Line
               key={`s:${s.name}`}
               leading={<Sparkles className="size-3.5 text-hint" />}
-              name={`${s.name} (Claude used it)`}
+              name={`${s.name} (Jig used it)`}
               cells={[s.count]}
             />
           ))}
@@ -525,7 +525,7 @@ function Details({
       <Section title="Activity">
         <Line
           leading={<SquareTerminal className="size-3.5 text-hint" />}
-          name="Commands Claude ran"
+          name="Commands Jig ran"
           cells={[num(stats.bash)]}
         />
         <Line

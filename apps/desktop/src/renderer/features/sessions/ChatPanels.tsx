@@ -240,8 +240,7 @@ export function ChatWelcome({
           <div className="text-base font-medium text-fg">{title}</div>
           {/* About as long for both, so switching the provider of an empty chat moves nothing. */}
           <div className="mt-1 text-sm text-muted">
-            {provider === "codex" ? "Codex" : "Claude Code"} runs in{" "}
-            <span className="font-mono text-xs">{cwd}</span>
+            Works in <span className="font-mono text-xs">{cwd}</span>
             {provider === "codex"
               ? " with your personal instructions, Jig's tools and MCP servers."
               : " with your CLAUDE.md files, skills and MCP servers."}

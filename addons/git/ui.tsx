@@ -254,7 +254,7 @@ function FileRow({
         ]
       : []),
     {
-      label: "Explain this change with Claude",
+      label: "Explain this change with Jig",
       icon: "sparkles",
       onSelect: () =>
         void ctx.openChat({
@@ -628,7 +628,7 @@ function CommitBox({
           busy={writing}
           disabled={changes === 0 || writing}
           onClick={() => void write()}
-          title="Claude writes the message from your changes (through your Claude Code)"
+          title="Jig writes the message from your changes"
           data-testid="git-write-message"
         >
           Write
@@ -640,8 +640,8 @@ function CommitBox({
           busy={checking}
           disabled={changes === 0 || checking}
           onClick={(e) => claudeMenu(e.currentTarget)}
-          title="More from Claude: check before committing, a tour of the changes, a review"
-          aria-label="More from Claude"
+          title="More from Jig: check before committing, a tour of the changes, a review"
+          aria-label="More from Jig"
           data-testid="git-claude-menu"
         />
         <Button
@@ -666,8 +666,8 @@ function CommitBox({
             <ShieldCheck className={cn("size-3.5", findings.length ? "text-warning" : "text-success")} />
             <span className="flex-1 font-medium text-fg">
               {findings.length
-                ? `Claude found ${findings.length} thing${findings.length === 1 ? "" : "s"} to look at`
-                : "Claude found nothing to worry about"}
+                ? `Jig found ${findings.length} thing${findings.length === 1 ? "" : "s"} to look at`
+                : "Jig found nothing to worry about"}
             </span>
             <button
               type="button"
@@ -1100,7 +1100,7 @@ function repoMenu(
       onSelect: () => void ctx.ai.tour(cwd).catch(() => {}),
     },
     {
-      label: "Review changes with Claude",
+      label: "Review changes with Jig",
       icon: "sparkles",
       onSelect: () =>
         void ctx.openChat({

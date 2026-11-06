@@ -107,7 +107,7 @@ export function permissionPrompt(request: PermissionRequest): string {
       })
       .join(" ");
   }
-  return `${request.title ?? `Claude wants to use ${request.toolName}`}. Allow it?`;
+  return `${request.title ?? `Jig wants to use ${request.toolName}`}. Allow it?`;
 }
 
 const fileName = (path: unknown) => (typeof path === "string" ? path.split(/[\\/]/).pop() : undefined);

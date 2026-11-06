@@ -201,7 +201,7 @@ function RunDetails({
         <>
           {last?.status === "failed" && (
             <Button variant="ghost" onClick={askClaude} data-testid="tests-ask-claude">
-              Ask Claude to fix
+              Ask Jig to fix
             </Button>
           )}
           <Button
@@ -293,9 +293,7 @@ function RunDetails({
                     minute: "2-digit",
                   })}
                 </span>
-                <span className="w-14 shrink-0 text-xs text-muted">
-                  {r.by === "claude" ? "Claude" : "You"}
-                </span>
+                <span className="w-14 shrink-0 text-xs text-muted">{r.by === "claude" ? "Jig" : "You"}</span>
                 <span
                   className={cn(
                     "min-w-0 flex-1 truncate tabular-nums",

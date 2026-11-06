@@ -1,6 +1,6 @@
 # Meetings
 
-Join Teams meetings in a separate Jig window, capture named live captions, ask Claude with any
+Join Teams meetings in a separate Jig window, capture named live captions, ask Jig with any
 project's context, and review actions for the task queue. Meetings are global (D-217).
 
 - **Open:** Chats → Meetings, or search for Meetings. The call stays in its own window while
@@ -38,7 +38,7 @@ project's context, and review actions for the task queue. Meetings are global (D
   When they still aren't available, the call window transcribes the call's audio and your microphone on
   this computer with Whisper (Settings → Speech's model) and marks those lines **Local**; audio stays in
   memory until transcribed. Teams captions take over again when they start. Off in the transcript's ⋯ menu.
-- **Ask Claude:** explicit Meeting only, Current Jig project or a selected project; the normal chat
+- **Ask Jig:** explicit Meeting only, Current Jig project or a selected project; the normal chat
   opens in Plan mode. It receives a frozen snapshot via `jig_meeting_read`, paginated at 40k characters.
   The selected chat keeps its project; a later question can use another project. Each Ask starts a new
   chat in this version; continue the opened chat normally and request newer meeting material by id.
@@ -53,9 +53,9 @@ project's context, and review actions for the task queue. Meetings are global (D
   Jig for Teams calls). Calls are kept with meetings, with Call back. Finding people needs Graph
   User.ReadBasic.All and People.Read.
 - **Mention a meeting in a chat:** type `@` and a meeting's name (or `@meeting`) in any chat; the
-  picker lists meetings after files. `@meeting:<name>-<id>` tells Claude to read that meeting with
+  picker lists meetings after files. `@meeting:<name>-<id>` tells Jig to read that meeting with
   `jig_meeting_read`.
-- **Generate notes:** opens a normal Claude Code chat. Concise notes (a short summary, decisions, open
+- **Generate notes:** opens a normal chat. Concise notes (a short summary, decisions, open
   questions, one line per action) and owner/project/evidence-bearing actions are saved through `jig_meeting_save_notes` after its normal
   tool approval. Regenerating notes retains already queued actions. Review actions opens a modal to
   edit prompts/owners and choose each task's project. Select explicitly; nothing is preselected.

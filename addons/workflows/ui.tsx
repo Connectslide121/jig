@@ -678,7 +678,7 @@ function Runner({
         <Button
           variant="ghost"
           icon={FileCode}
-          title="Write it as a Claude Code skill in the project (.claude/skills), so Claude can do it from any chat"
+          title="Write it as a Claude Code skill in the project (.claude/skills), so Jig can do it from any chat"
           onClick={async () => {
             try {
               const file = await ctx.host.call<string>("exportSkill", {

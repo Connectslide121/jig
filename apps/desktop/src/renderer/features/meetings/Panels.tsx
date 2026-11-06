@@ -319,8 +319,7 @@ export function NotesPanel({
           <Markdown text={record.notes} />
         ) : (
           <Empty icon={Sparkles} title="No notes yet" className="h-full">
-            Claude reads the transcript and drafts a summary, decisions and actions. It only runs when you
-            ask.
+            Jig reads the transcript and drafts a summary, decisions and actions. It only runs when you ask.
           </Empty>
         )}
       </div>

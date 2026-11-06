@@ -236,7 +236,7 @@ export function PhoneSettings() {
       </SettingRow>
       <SettingRow
         label="When a chat finishes"
-        description="Also when a chat finishes or stops with an error, with the end of Claude's reply. Questions and permission requests are always sent."
+        description="Also when a chat finishes or stops with an error, with the end of Jig's reply. Questions and permission requests are always sent."
       >
         <Switch
           label="When a chat finishes"
@@ -246,7 +246,7 @@ export function PhoneSettings() {
       </SettingRow>
       <SettingRow
         label="Screenshots"
-        description="When a chat that used Claude's browser finishes, a screenshot of its page comes with the message. /screen on your phone sends Jig's window any time."
+        description="When a chat that used Jig's browser finishes, a screenshot of its page comes with the message. /screen on your phone sends Jig's window any time."
       >
         <Switch
           label="Screenshots"

@@ -37,7 +37,7 @@ const TOPBAR_MENU = "topbar";
  * get a menu of their own. Search (Ctrl+P or Ctrl+K) also finds registered actions.
  */
 const TOPBAR_MENUS: Array<{ menu: string; groups: string[] }> = [
-  { menu: "Chats", groups: ["Chats", "Claude", "Workflows", "Meetings"] },
+  { menu: "Chats", groups: ["Chats", "Assistant", "Workflows", "Meetings"] },
   { menu: "Code", groups: ["Git", "Files", "Terminals", "Pipelines", "Boards"] },
   { menu: "Build", groups: ["Build"] },
   { menu: "View", groups: ["Layout", "Appearance"] },

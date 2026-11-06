@@ -4,7 +4,6 @@ import type { ChatItem, PermissionDecision, PermissionMode } from "../../../shar
 import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, CodeBlock, cn, Markdown } from "../../ui";
 import { notify } from "../../workbench/toasts";
-import { providerName } from "./provider";
 import { QuestionCard } from "./QuestionCard";
 import { useSessions } from "./store";
 import { toolLabel, toolSummary } from "./ToolCard";
@@ -31,8 +30,7 @@ function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string
   const pending = item.status === "pending";
   const [feedback, setFeedback] = useState("");
   const notes = useSessions((s) => Boolean(s.metas[sessionId]?.meetingNotes));
-  // ChatGPT chats' plans come through Jig's exit_plan (D-315): the card names who wrote it.
-  const who = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
+  const who = "Jig";
   const approve = async (mode: PermissionMode) => {
     await call("sessions.setPermissionMode", { id: sessionId, mode }).catch(() => {});
     await answer(sessionId, item.request.requestId, { behavior: "allow" });
@@ -245,7 +243,7 @@ export function PermissionCard({ item, sessionId }: { item: PermissionItem; sess
 }
 
 function ToolPermissionCard({ item, sessionId }: { item: PermissionItem; sessionId: string }) {
-  const who = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
+  const who = "Jig";
   const { request } = item;
   const pending = item.status === "pending";
   const summary = toolSummary(request.toolName, request.input);

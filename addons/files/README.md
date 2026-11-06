@@ -13,7 +13,7 @@ The project's files as a tree (phase 18, D-101/D-102: it follows the active proj
   - folders with changes inside get a dot;
   - large trees are virtualised.
 - **Click** a file: Preview. **Right-click:** Preview, Open in VS Code (your `code`), Show in the file
-  manager, Ask Claude about this file / New chat in this folder, Copy path, Copy name, plus other
+  manager, Ask Jig about this file / New chat in this folder, Copy path, Copy name, plus other
   add-ons' `context.file` entries.
 - **Filter:** every word appears in the path; name matches come first. It uses `git ls-files -co
   --exclude-standard`, so ignored files are left out. Enter opens the first match.

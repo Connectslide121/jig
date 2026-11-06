@@ -133,7 +133,7 @@ test("Claude's browser: the network log shows requests, errors and their bodies"
     expect(detail).not.toContain("session=secret");
 
     await page.keyboard.press("Control+K");
-    await page.getByTestId("goto-input").fill("Open Claude’s browser");
+    await page.getByTestId("goto-input").fill("Open Jig’s browser");
     await page.getByTestId("goto-action-jig.openClaudeBrowser").click();
     const view = page.getByTestId("browser-view");
     await view.getByTestId("browser-network-toggle").click();

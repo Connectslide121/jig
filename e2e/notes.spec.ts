@@ -38,7 +38,7 @@ test("Project notes: shared across chats, isolated across projects, edited in st
     "Pipeline improvements are deferred until the Jenkins-to-Azure-DevOps migration is complete",
     { timeout: 15000 },
   );
-  await expect(view).toContainText("by Claude");
+  await expect(view).toContainText("by Jig");
   await expect(view).toContainText("1 open");
 
   // Ticking the wait off clears it.
@@ -103,7 +103,7 @@ test("Notes the Notes add-on kept move into the project's knowledge on the next 
     const knowledge = page.getByTestId("knowledge-notes").first();
     await expect(knowledge).toContainText("Totals include VAT");
     await expect(knowledge).toContainText("Waiting on the API review");
-    await expect(knowledge).toContainText("by Claude");
+    await expect(knowledge).toContainText("by Jig");
     await page.screenshot({ path: test.info().outputPath("project-knowledge.png") });
     await page.getByTestId("goto-button").click();
     await page.getByTestId("goto-input").fill("this project's notes");

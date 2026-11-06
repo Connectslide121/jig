@@ -42,7 +42,7 @@ test("the chat header shows the context window; Compact frees it", async ({ page
 
 test("the welcome screen is the What Jig can do page; the Jig menu opens it any time", async ({ page }) => {
   const welcome = page.getByTestId("main-empty");
-  await expect(welcome).toContainText("Your workbench around Claude Code");
+  await expect(welcome).toContainText("Your workbench for AI-assisted work");
   await expect(welcome.getByTestId("about-add-project")).toBeVisible();
   await expect(welcome.getByTestId("about-slots")).toBeVisible();
 

@@ -90,5 +90,5 @@ test("Tests: finds a repository's suites, runs them, shows failures and history;
   await unit.click();
   await details.getByRole("tab", { name: /History/ }).click();
   await expect(details.getByTestId("tests-history-row")).toHaveCount(2);
-  await expect(details.getByTestId("tests-history-row").first()).toContainText("Claude");
+  await expect(details.getByTestId("tests-history-row").first()).toContainText("Jig");
 });

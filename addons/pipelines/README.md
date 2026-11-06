@@ -55,7 +55,7 @@ the pipelines plugin (D-148). Jig stores no tokens (D-018).
 - **Settings → Pipelines:** Check Azure CLI; the organisations for More pipelines (every one you
   belong to by default, added by URL, narrowed to projects).
 
-- **Claude's tools (D-371), read only:** `addon_pipelines_pipelines` (each pipeline with its newest
+- **Jig's tools (D-371), read only:** `addon_pipelines_pipelines` (each pipeline with its newest
   run, per repository; `everywhere: true` for every organisation and project of More pipelines),
   `addon_pipelines_runs` (`state` running / recent / failed, filters pipeline, branch, repo, org,
   project, `top`; running asks for `inProgress` and `notStarted` apart; the stages of runs going) and

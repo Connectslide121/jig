@@ -1,6 +1,6 @@
 # Tasks
 
-A queue of prompts Claude works through one after another (D-182). Each task reports back how it
+A queue of prompts Jig works through one after another (D-182). Each task reports back how it
 went, so you read the results as a table instead of scrolling one long chat.
 
 - **Open it:** Chats → Task queue (it opens as a tab in the main area).
@@ -14,7 +14,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   for a task you trust to run unattended. On Claude it still stops on Claude Code's own safety checks
   (e.g. "Dangerous rm operation on critical path"), which wait a minute for you and are then declined
   (D-336); on ChatGPT Codex runs without its sandbox and never asks (D-334). Only you can pick it, in
-  Add tasks or Edit: Claude's `addon_tasks_add`/`addon_tasks_edit` take no mode, `jig_set_addon_data`
+  Add tasks or Edit: Jig's `addon_tasks_add`/`addon_tasks_edit` take no mode, `jig_set_addon_data`
   refuses to add it, and main lets only this built-in add-on start a chat in it. A task's ⋯:
   Start a new chat from here, Move up/down, Remove; a chat's ⋯: Continue the chat before, Move
   up/down, Remove. Pasting a list (`-`, `1.`, `[ ]` …) into an empty task makes one task per item.
@@ -45,7 +45,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   of History.
 - **Parked ideas** (D-369): a pool at the very end of the queue, under a "Parked · N" divider, faded,
   in a dashed card. Parked tasks never run, whatever the stop lines say;
-  nothing that isn't parked ever comes after them (`poolLast`: new tasks, Claude's too, land before
+  nothing that isn't parked ever comes after them (`poolLast`: new tasks, Jig's too, land before
   the pool). A parked task may continue the parked one before it, so **a parked chat stays a group**
   (D-396): a card of its own in the pool, with the queue's header (grip, title, ⋯, "Parked"); the
   pool's first task always starts a chat and nothing in the queue continues a parked chat. ⋯ → **Park: keep as an idea** / **Unpark: back to the queue**
@@ -53,7 +53,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   (or right-click) has **Park this chat** / **Unpark this chat**: the whole chat goes together, order and
   joins kept, and dragging the card's header into or out of the pool does the same; dragging one task
   out of a parked chat splits it like in the queue, and a single idea is never joined by a drop (make
-  a parked chat by parking one, by the edit dialog's "Continue the chat" switch, or with Claude). **Add idea** in
+  a parked chat by parking one, by the edit dialog's "Continue the chat" switch, or with Jig). **Add idea** in
   the divider (also the view's ⋯ and the empty queue) writes ideas straight into it. Same word and
   icons as the composer's parked prompts (D-365), but a separate pool.
 - **The header's counts** (D-369): six fixed segments, done (of what will run), running, not done, to
@@ -77,7 +77,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   the queue's, the project's default; the queue's model applies only to a chat on the queue's
   provider (a task with its own provider of the other kind gets that one's default model); the chat's real provider and model are kept on the task
   (`ranOn`, `ranModel`). A task for ChatGPT while it isn't signed in ends **Blocked** ("ChatGPT isn't
-  signed in") and pauses the queue with "Stop when a task fails" (`startFailed`). Claude's tools:
+  signed in") and pauses the queue with "Stop when a task fails" (`startFailed`). Jig's tools:
   `addon_tasks_add` tasks take `provider` and `model` (a model alone names its provider; refused on a
   task that continues a chat), `addon_tasks_edit` takes them per task (`"default"`/`null` back to the
   queue's choice) and `runsOn` / `runsOnModel` for the queue; `addon_tasks_list` says who runs each task
@@ -113,7 +113,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   ends without a report gets one request from the queue (`nudgeText`, shown in the chat as "Task
   queue: asked for the report of task N" with the add-on's icon, not as your message): report it, or
   report partial/blocked with where it stands, and don't go on with the work. Only when that turn
-  also ends without a report is the task "No report" (with Claude's last answer). No request when you
+  also ends without a report is the task "No report" (with the chat's last answer). No request when you
   stopped the turn or rejected a tool call in it (`chats.get`'s `userStoppedAt`): it stays No report,
   so nothing restarts work you stopped. The rules are `chatFinished`/`afterTurn` in `lib/tasks.ts`.
 - **When Jig closed in the middle of a task (D-394):** a quit, an update's restart or a crash cuts the
@@ -149,7 +149,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   and chat, and `markedDone: { at, was, error?, report? }` (`markDone`, host `markDone`); `report` is
   the chat's own report (Partly done, Failed, Blocked). The row shows a quiet hand-set mark left of
   the status badge, the details "Marked done by you …, was Partly done" with the chat's report in a
-  section of its own under the summary (its follow-ups still queueable), Claude's list "marked done
+  section of its own under the summary (its follow-ups still queueable), Jig's list "marked done
   by the user (was partly done)"; the counts and History count it as done. Its chat's later failed or
   blocked revision replaces it but never pauses the queue (`applyReport`). Remove and Run again stay.
   From a chat, when you ask ("mark t33 done"): `addon_tasks_mark_done` (`taskId`, `note?`,
@@ -163,13 +163,13 @@ went, so you read the results as a table instead of scrolling one long chat.
   the old one; the status follows the new outcome and the times and cost stay. The task keeps the
   report it replaced in `revised: { at, from }` (only the last one). The row shows a quiet pencil
   mark left of its status badge ("Reported again: was Partly done"), the details say "Revised …, was
-  …", and Claude's list says "revised from …". A revision to failed or blocked pauses like a late
+  …", and Jig's list says "revised from …". A revision to failed or blocked pauses like a late
   report; no report ever starts or un-pauses the queue. A chat whose task ended keeps one line of
   context telling it it may report again (`taskContext`).
 - **The results** (D-186): a bar and counts per status with the total time and cost, then a card per
   chat: its link (opens the chat), number of tasks, project, time, cost and "n of m finished". In it,
-  a row per task: #, title (with "same chat", "queued by Claude", "a follow-up", non-default
-  permissions), Claude's summary on two lines (or the error, or its last answer), started, notes,
+  a row per task: #, title (with "same chat", "queued by Jig", "a follow-up", non-default
+  permissions), the report's summary on two lines (or the error, or its last answer), started, notes,
   follow-ups, files, time, cost, and the status at the far right. Click a row for the details: project,
   chat, permissions, started, finished, time, cost and who queued it; summary, things to know,
   follow-ups each with **Add to queue** (or all), the prompt, Open chat and Run again. Right-click or
@@ -181,14 +181,14 @@ went, so you read the results as a table instead of scrolling one long chat.
   above or between tasks that ran. A chat whose first task moves away is started by its next task.
   The rules are `dropSlots`/`moveTasks`/`stepTasks` in `lib/tasks.ts`; the host's `move` takes
   `{ ids, slot }` (a drop) or `{ ids, to: -1 | 1 | "top" | "bottom" }` (a step).
-- **Claude can queue tasks** (`addon_tasks_add`): "make a task for each spec in docs/specs" in any
+- **Jig can queue tasks** (`addon_tasks_add`): "make a task for each spec in docs/specs" in any
   chat. They land before the parked pool; with `parked` (when you ask for ideas) at its end, and the
-  review card's **Park as ideas** switch does the same; with `sameChat` they stay one parked chat. Each prompt must stand alone. Claude starts the queue only when you say so, and you review
+  review card's **Park as ideas** switch does the same; with `sameChat` they stay one parked chat. Each prompt must stand alone. Jig starts the queue only when you say so, and you review
   the tasks first (it isn't read-only). `addon_tasks_list` shows the queue: this chat's project's,
   another's with `project` (name or id), or with `all` every project's, one line per task (id, status,
   title) under the project's name and id (D-326), so a chat anywhere finds a task and changes it with
   `addon_tasks_edit` and its `project`.
-- **Claude can change queued tasks** (`addon_tasks_edit`, D-287): title, prompt, a paragraph appended
+- **Jig can change queued tasks** (`addon_tasks_edit`, D-287): title, prompt, a paragraph appended
   to the prompt, a stop line after it (`stopAfter`, D-398: true or false, at the end of its chat, also
   on the running task; `addon_tasks_list` shows `--- stop ---` where a line is), or parked (`parked`,
   D-369: unparked goes last before the pool; with `wholeChat` the task's whole chat goes together, D-396). Also (D-317) whether a task continues the previous task's chat
@@ -198,9 +198,9 @@ went, so you read the results as a table instead of scrolling one long chat.
   chats it starts its own unless `newChat` is false; a whole chat only between chats; nothing above
   tasks that ran. Edits apply in order, all or nothing, and a refused one says why
   (`editTasks`/`setNewChat`/`moveTo` in `lib/tasks.ts`). Only queued tasks, and nothing else in the
-  queue changes, so it is safe while the queue runs. Claude uses it instead of rewriting the queue with `jig_set_addon_data`,
+  queue changes, so it is safe while the queue runs. Jig uses it instead of rewriting the queue with `jig_set_addon_data`,
   which now refuses to replace a key that changed since the chat read it.
-- **Claude can delete queued tasks** (`addon_tasks_delete`, D-362): `ids` (several at once, all or
+- **Jig can delete queued tasks** (`addon_tasks_delete`, D-362): `ids` (several at once, all or
   nothing) and `project`, for a task queued by mistake or no longer needed. Only queued tasks: running
   ones, ones that need you and finished ones are refused with the reason (finished ones stay as the
   queue's history). It isn't read-only: its approval card (`DeleteTasks`) lists each task by id and
@@ -260,7 +260,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   a run opens read-only (details, files, open chat, Run again, Queue every task again, Remove from
   history once finished). Clearing finished tasks keeps them in the history; the last 200 runs are
   kept, and their files stay until the run is removed.
-- **Reviewing Claude's tasks** (D-248): `addon_tasks_add` shows `ReviewTasks` (the
+- **Reviewing Jig's tasks** (D-248): `addon_tasks_add` shows `ReviewTasks` (the
   `chat.permissionRenderer` slot) instead of the plain approval: edit titles and prompts, remove
   tasks, pick the project, start now or not, then "Queue N tasks" or "Don't queue".
 - Kept in the add-on's project storage as `queue` and `history` (`lib/tasks.ts` has the logic and its

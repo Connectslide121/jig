@@ -41,7 +41,7 @@ export async function newWorktreeChat(): Promise<void> {
   const name = await promptDialog({
     title: `New chat in a worktree of ${base(repo)}`,
     message:
-      "Claude works on its own copy of the repository, on a new branch; your working copy isn't touched. What is it for?",
+      "Jig works on its own copy of the repository, on a new branch; your working copy isn't touched. What is it for?",
     placeholder: "Try the new checkout",
     confirmLabel: "Start",
   });

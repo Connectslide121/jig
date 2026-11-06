@@ -22,7 +22,7 @@ export async function newSession(
   if (!id) {
     notify({
       title: "Add a project first",
-      message: "A chat runs Claude Code in a project folder.",
+      message: "A chat works in a project folder.",
       tone: "warning",
     });
     return undefined;

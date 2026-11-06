@@ -2,7 +2,7 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "tasks",
   "name": "Tasks",
-  "description": "A queue of prompts Claude or ChatGPT does one after another, each in its own chat or continuing the one before. Each queue picks who runs it, and each task can too. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Each project has its own queue, and every run is kept in its history. Claude can queue tasks too, after you review and edit them. Reorganize lets a small AI suggest a better order and grouping for what hasn't run.",
+  "description": "A queue of prompts Jig does one after another, each in its own chat or continuing the one before. Each queue picks who runs it, and each task can too. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Each project has its own queue, and every run is kept in its history. Jig can queue tasks too, after you review and edit them. Reorganize lets a small AI suggest a better order and grouping for what hasn't run.",
   "version": "1.0.0",
   "icon": "list-todo",
   "permissions": ["chat", "ai"],
@@ -107,7 +107,7 @@
       },
       {
         "id": "add",
-        "description": "Adds tasks to the user's task queue, which Claude works through one after another, each reporting back. Use it when the user asks to queue work, e.g. one task per spec, document, issue or item of a list. Each prompt must stand alone (it usually runs in a new chat): say what to do and where the material is (file paths). It returns the queue.",
+        "description": "Adds tasks to the user's task queue, which Jig works through one after another, each reporting back. Use it when the user asks to queue work, e.g. one task per spec, document, issue or item of a list. Each prompt must stand alone (it usually runs in a new chat): say what to do and where the material is (file paths). It returns the queue.",
         "params": {
           "tasks": {
             "type": "array",

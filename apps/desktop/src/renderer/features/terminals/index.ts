@@ -71,7 +71,7 @@ export function useTerminalsSync(): void {
         message: `Exit code ${t.exitCode}.`,
         tone: "danger",
         actions: [
-          { label: "Ask Claude", run: () => void askClaudeAboutTerminal(t) },
+          { label: "Ask Jig", run: () => void askClaudeAboutTerminal(t) },
           { label: "Show output", run: () => showTerminal(t.id) },
         ],
       });

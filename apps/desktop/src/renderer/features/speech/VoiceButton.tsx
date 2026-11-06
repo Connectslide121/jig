@@ -5,12 +5,12 @@ import { useCues } from "./cues";
 import { stopVoice, toggleVoice, useVoice, type VoiceHooks, type VoicePhase } from "./voice";
 
 const LABELS: Record<VoicePhase, string> = {
-  off: "Talk with Claude: plan out loud together, then say “go ahead” and it starts working",
+  off: "Talk with Jig: plan out loud together, then say “go ahead” and it starts working",
   starting: "Getting ready to listen…",
   listening: "Listening. Click to stop talking",
   hearing: "Hearing you. Click to stop talking",
-  thinking: "Claude is answering. Click to stop talking",
-  speaking: "Claude is speaking; talk to interrupt. Click to stop talking",
+  thinking: "Jig is answering. Click to stop talking",
+  speaking: "Jig is speaking; talk to interrupt. Click to stop talking",
 };
 
 /**

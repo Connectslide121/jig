@@ -28,7 +28,7 @@ describe("chat to tool", () => {
     const goal = chatRecipe("Release", items);
     expect(goal).toContain('in the chat "Release"');
     expect(goal).toContain(
-      "- I asked: Bump the version and tag it\n- Claude ran: npm version patch\n- Claude changed /repo/CHANGELOG.md",
+      "- I asked: Bump the version and tag it\n- Jig ran: npm version patch\n- Jig changed /repo/CHANGELOG.md",
     );
     expect(goal).not.toContain("x.ts");
   });

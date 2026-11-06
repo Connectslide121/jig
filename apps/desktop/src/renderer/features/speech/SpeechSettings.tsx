@@ -52,9 +52,7 @@ function tryVoice(): void {
   const spanish = speech?.engine !== "system" && naturalVoice(speech?.naturalVoice).language === "es";
   stopSpeaking();
   speak(
-    spanish
-      ? "Hola, soy Claude. Así sueno cuando hablamos."
-      : "Hi, I'm Claude. This is how I sound when we talk.",
+    spanish ? "Hola, soy Jig. Así sueno cuando hablamos." : "Hi, I'm Jig. This is how I sound when we talk.",
     { onEnd: () => undefined },
   );
 }
@@ -140,7 +138,7 @@ export function SpeechSettings() {
     <div className="flex flex-col gap-6">
       <SettingsSection
         title="Microphone and speaker"
-        description="The devices dictation, talking with Claude and reading aloud use. While talking, the headphones button changes them too."
+        description="The devices dictation, talking with Jig and reading aloud use. While talking, the headphones button changes them too."
       >
         <AudioDeviceRows />
       </SettingsSection>
@@ -187,11 +185,11 @@ export function SpeechSettings() {
           />
         </SettingRow>
         <SettingRow
-          label="Sound while Claude works"
-          description="While you talk: a soft note every few seconds while Claude thinks. After you hand it a task by voice: a chime when it finishes or needs you."
+          label="Sound while Jig works"
+          description="While you talk: a soft note every few seconds while Jig thinks. After you hand it a task by voice: a chime when it finishes or needs you."
         >
           <Switch
-            label="Sound while Claude works"
+            label="Sound while Jig works"
             checked={s.workSound}
             onChange={(v) => void updateConfig({ speech: { workSound: v } })}
           />
@@ -244,12 +242,12 @@ export function SpeechSettings() {
         })}
       </SettingsSection>
       <SettingsSection
-        title="Talking with Claude"
-        description="Click the Talk button (sound waves) in a chat's message box to talk: Claude answers out loud, asks what it needs, and when you agree to its plan (say “yes, go ahead”) it starts working. Click again to stop. Headphones keep Claude from hearing itself."
+        title="Talking with Jig"
+        description="Click the Talk button (sound waves) in a chat's message box to talk: Jig answers out loud, asks what it needs, and when you agree to its plan (say “yes, go ahead”) it starts working. Click again to stop. Headphones keep Jig from hearing itself."
       >
         <SettingRow
           label="Pause that ends your turn"
-          description="How long you stay quiet before Claude answers."
+          description="How long you stay quiet before Jig answers."
         >
           <Select
             value={String(s.pause)}
@@ -266,7 +264,7 @@ export function SpeechSettings() {
         </SettingRow>
         <SettingRow
           label="Ignore background noise"
-          description="Only a voice starts your turn or interrupts Claude: dishes, typing or a sniff don't. Checked on this computer."
+          description="Only a voice starts your turn or interrupts Jig: dishes, typing or a sniff don't. Checked on this computer."
         >
           <Select
             value={s.noiseFilter}
@@ -282,31 +280,31 @@ export function SpeechSettings() {
           </Select>
         </SettingRow>
         <div className="px-4 py-3" data-testid="settings-speech-how-to-talk">
-          <div className="text-sm text-fg">How to talk with Claude</div>
+          <div className="text-sm text-fg">How to talk with Jig</div>
           <ol className="mt-1 flex list-decimal flex-col gap-0.5 pl-4 text-xs text-muted">
             <li>
-              In a chat, click the Talk button (sound waves, beside the microphone) or + → Talk with Claude.
-              The talking window opens over the chat.
+              In a chat, click the Talk button (sound waves, beside the microphone) or + → Talk with Jig. The
+              talking window opens over the chat.
             </li>
             <li>
               Speak; the waves follow your voice and the sentence shows as you say it. Stay quiet for the
               pause above and it is sent.
             </li>
             <li>
-              Claude answers out loud and can look at the code to help you plan. Start talking to interrupt
-              it; Conversation shows everything said so far.
+              Jig answers out loud and can look at the code to help you plan. Start talking to interrupt it;
+              Conversation shows everything said so far.
             </li>
             <li>
-              The chat is in plan mode: Claude asks what it needs, then shows its plan. Say “yes, go ahead” or
-              press Go ahead: Claude starts working, talking ends, and a chime plays when it's done.
+              The chat is in plan mode: Jig asks what it needs, then shows its plan. Say “yes, go ahead” or
+              press Go ahead: Jig starts working, talking ends, and a chime plays when it's done.
             </li>
-            <li>Say “bye” or press End talking to stop talking; the chat and Claude's work go on.</li>
+            <li>Say “bye” or press End talking to stop talking; the chat and Jig's work go on.</li>
           </ol>
         </div>
       </SettingsSection>
       <SettingsSection
         title="Hey Jig"
-        description="Say “Hey Jig” and a command, such as “Hey Jig, new chat in Shop” or “Hey Jig, what's happening”, while Jig is open, also when it is minimized or behind other windows. Jig hears and runs the commands on this computer, without Claude and without using your plan; only “ask Claude” starts a chat. While it's on the microphone stays open, and the status bar shows it."
+        description="Say “Hey Jig” and a command, such as “Hey Jig, new chat in Shop” or “Hey Jig, what's happening”, while Jig is open, also when it is minimized or behind other windows. Jig hears and runs the commands on this computer, without sending anything to an AI provider and without using your plan; only “ask Claude” starts a chat. While it's on the microphone stays open, and the status bar shows it."
       >
         <SettingRow
           label="Listen for “Hey Jig”"
@@ -373,7 +371,7 @@ export function SpeechSettings() {
       </SettingsSection>
       <SettingsSection
         title="Reading aloud"
-        description="Claude writes text; Jig reads it aloud on this computer, with a natural voice or your system's voices. The same voice and speed are used for Read aloud (the speaker on Claude's messages) and when talking with Claude. Code blocks are skipped."
+        description="Jig reads its replies aloud on this computer, with a natural voice or your system's voices. The same voice and speed are used for Read aloud (the speaker on Jig's messages) and when talking with Jig. Code blocks are skipped."
       >
         <SettingRow
           label="Reads aloud"

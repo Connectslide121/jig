@@ -49,7 +49,7 @@ import {
 } from "./menus";
 import { ProviderPicker } from "./ProviderPicker";
 import { usePrompts } from "./prompts";
-import { canChangeProvider, capabilitiesOf, providerName } from "./provider";
+import { canChangeProvider, capabilitiesOf } from "./provider";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { useSessions } from "./store";
@@ -67,11 +67,11 @@ const LOCAL_COMMANDS: LocalCommand[] = [
   { name: "model", description: "Choose the model and effort", run: (m, a) => openMenuAt(a, modelMenu(m)) },
   {
     name: "permissions",
-    description: "When Claude asks before changing things",
+    description: "When Jig asks before changing things",
     run: (m, a) => openMenuAt(a, permissionMenu(m)),
   },
   { name: "mcp", description: "MCP servers of this chat", run: (m) => openMcpDialog(m.id) },
-  { name: "add-dir", description: "Let Claude use another folder", run: (m) => openFoldersDialog(m.id) },
+  { name: "add-dir", description: "Let Jig use another folder", run: (m) => openFoldersDialog(m.id) },
   { name: "export", description: "Save this chat as Markdown", run: (m) => void exportChat(m) },
   {
     name: "clear",
@@ -111,7 +111,7 @@ export function Composer({
   const sent = useSessions((s) => s.transcripts[meta.id]?.items);
   const busy = meta.status === "working" || meta.status === "needs_you" || meta.status === "starting";
   const caps = capabilitiesOf(meta);
-  const who = providerName(meta);
+  const who = "Jig";
   // Suggestions are Claude Code's; a provider without them never shows the chip (D-309).
   const suggestion = busy || !caps.promptSuggestions ? undefined : meta.suggestion;
   const mode = inputMode(text);
@@ -196,7 +196,7 @@ export function Composer({
       try {
         const { path } = await call("sessions.remember", { id: meta.id, text: line, scope });
         setText("");
-        notify({ title: "Claude will remember that", message: `Added to ${path}`, tone: "success" });
+        notify({ title: "Jig will remember that", message: `Added to ${path}`, tone: "success" });
       } catch (error) {
         notify({ title: "Couldn't remember it", message: errorMessage(error), tone: "danger" });
       }
@@ -394,7 +394,7 @@ export function Composer({
           <div className="flex min-w-0 items-center gap-1" data-testid="suggestion">
             <button
               type="button"
-              title="Claude Code's suggestion for your next message — click to edit it, or Tab in the empty box"
+              title="Jig's suggestion for your next message — click to edit it, or Tab in the empty box"
               onClick={() => {
                 setText(suggestion);
                 ref.current?.focus();
@@ -436,8 +436,8 @@ export function Composer({
           <div className="flex items-center gap-2 text-2xs" data-testid="composer-mode">
             {mode === "shell" ? (
               <span className="flex items-center gap-1 font-medium text-warning">
-                <SquareTerminal className="size-3" /> Shell: runs in {meta.cwd}; Claude sees the output with
-                your next message
+                <SquareTerminal className="size-3" /> Shell: runs in {meta.cwd}; Jig sees the output with your
+                next message
               </span>
             ) : (
               <span className="flex items-center gap-1 font-medium text-info">
@@ -504,7 +504,7 @@ export function Composer({
                 className="flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none text-muted hover:bg-hover hover:text-fg"
                 title={
                   meta.activeModel
-                    ? `Model and effort · ${who === "Claude" ? "Claude Code" : "Codex"} reports: ${meta.activeModel}`
+                    ? `Model and effort · ${meta.provider === "codex" ? "Codex" : "Claude Code"} reports: ${meta.activeModel}`
                     : `Model and effort · ${modelName}`
                 }
               >

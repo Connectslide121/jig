@@ -78,7 +78,7 @@ export function AudioDeviceRows() {
         description={
           systemVoice
             ? "The natural voice and talking sounds play here; system voices always use the system's output."
-            : "Where Claude's voice and the talking sounds play."
+            : "Where Jig's voice and the talking sounds play."
         }
       >
         <DeviceSelect

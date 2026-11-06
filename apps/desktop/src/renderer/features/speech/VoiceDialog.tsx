@@ -13,8 +13,8 @@ const STATUS: Record<VoicePhase, string> = {
   starting: "Getting ready…",
   listening: "Listening",
   hearing: "Hearing you",
-  thinking: "Claude is thinking",
-  speaking: "Claude is speaking",
+  thinking: "Jig is thinking",
+  speaking: "Jig is speaking",
 };
 
 /**
@@ -47,7 +47,7 @@ export function VoiceDialogHost() {
         ref={panel}
         role="dialog"
         aria-modal="true"
-        aria-label="Talking with Claude"
+        aria-label="Talking with Jig"
         tabIndex={-1}
         data-testid="voice-dialog"
         data-phase={phase}
@@ -64,9 +64,9 @@ export function VoiceDialogHost() {
         className="jig-modal-panel relative flex h-full max-h-240 w-full max-w-7xl flex-col overflow-hidden rounded-xl border border-line bg-elevated text-fg shadow-popover outline-none"
       >
         <header className="flex h-14 shrink-0 items-center gap-3 px-6">
-          <span className="shrink-0 text-sm font-medium">Talking with Claude</span>
+          <span className="shrink-0 text-sm font-medium">Talking with Jig</span>
           <span className="min-w-0 flex-1 truncate text-sm text-hint">{title}</span>
-          <span className="shrink-0 text-xs text-hint">AI · Claude can make mistakes</span>
+          <span className="shrink-0 text-xs text-hint">AI · Jig can make mistakes</span>
           <IconButton icon={X} label="End talking" size="sm" onClick={stopVoice} />
         </header>
         <div className="relative flex min-h-0 flex-1 flex-col">
@@ -95,7 +95,7 @@ function Status() {
   const label = muted
     ? "Microphone muted"
     : handing
-      ? "Claude is writing up the plan, then starts"
+      ? "Jig is writing up the plan, then starts"
       : phase === "thinking" && activity
         ? `${activity}…`
         : STATUS[phase];
@@ -150,7 +150,7 @@ function Conversation() {
       <div className="flex min-h-full flex-col justify-end pt-16 pb-4">
         {empty && (
           <p className="text-center text-base leading-relaxed text-hint">
-            Say what you want to do. Claude can look at the code while you plan.
+            Say what you want to do. Jig can look at the code while you plan.
             <br />
             Say “go ahead” when you agree, “bye” to stop talking.
           </p>
@@ -167,10 +167,10 @@ function Conversation() {
 function Line({ who, text, live }: { who: "you" | "claude"; text: string; live?: boolean }) {
   return (
     <div className="flex gap-3 py-1.5" data-testid="voice-line" data-who={who}>
-      <span className="flex h-6 w-2 shrink-0 items-center" title={who === "you" ? "You" : "Claude"}>
+      <span className="flex h-6 w-2 shrink-0 items-center" title={who === "you" ? "You" : "Jig"}>
         <span className={cn("size-1.5 rounded-full", who === "you" ? "bg-info" : "bg-accent")} />
       </span>
-      <span className="sr-only">{who === "you" ? "You:" : "Claude:"}</span>
+      <span className="sr-only">{who === "you" ? "You:" : "Jig:"}</span>
       <span
         className={cn(
           "min-w-0 flex-1 text-base leading-relaxed",
@@ -248,7 +248,7 @@ function Controls() {
       />
       <IconButton
         icon={VolumeX}
-        label="Stop Claude's voice (or just start talking)"
+        label="Stop Jig's voice (or just start talking)"
         disabled={phase !== "speaking"}
         data-testid="voice-hush"
         onClick={hushVoice}
@@ -273,8 +273,8 @@ function Controls() {
           plan?.kind === "queue"
             ? "Queue the tasks and start them; talking ends"
             : plan
-              ? "Approve the plan: Claude starts working and talking ends"
-              : "Claude writes up the plan and starts working; talking ends"
+              ? "Approve the plan: Jig starts working and talking ends"
+              : "Jig writes up the plan and starts working; talking ends"
         }
         data-testid="voice-go-ahead"
         onClick={goAhead}

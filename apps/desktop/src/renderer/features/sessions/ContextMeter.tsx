@@ -16,7 +16,7 @@ export function compactSession(meta: SessionMeta, instructions?: string): void {
 async function compactWithInstructions(meta: SessionMeta) {
   const instructions = await promptDialog({
     title: "Compact with instructions",
-    message: "Claude Code summarises the conversation so far. Say what the summary must keep.",
+    message: "Jig summarises the conversation so far. Say what the summary must keep.",
     placeholder: "e.g. keep the decisions about the API and the open todo list",
     confirmLabel: "Compact",
   });
@@ -81,8 +81,8 @@ function ContextCard({ context, meta, busy }: { context: ContextUsage; meta: Ses
       </div>
       <div className="border-t border-line pt-1.5 text-2xs text-hint">
         {buffer
-          ? `Claude Code compacts on its own when the window is full (${formatTokens(buffer.tokens)} kept free for that).`
-          : "Claude Code compacts on its own when the window is full."}
+          ? `Jig compacts the conversation on its own when the window is full (${formatTokens(buffer.tokens)} kept free for that).`
+          : "Jig compacts the conversation on its own when the window is full."}
       </div>
       {/* The card stays open while the pointer is on it, so these can be clicked. */}
       <div className="flex items-center gap-1.5">

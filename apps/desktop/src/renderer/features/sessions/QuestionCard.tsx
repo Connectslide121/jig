@@ -4,7 +4,6 @@ import type { ChatItem, PermissionDecision } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, cn } from "../../ui";
 import { notify } from "../../workbench/toasts";
-import { providerName } from "./provider";
 import {
   answerFor,
   answersOf,
@@ -16,7 +15,6 @@ import {
   splitRecommended,
   toggleOther,
 } from "./question";
-import { useSessions } from "./store";
 
 type PermissionItem = Extract<ChatItem, { kind: "permission" }>;
 
@@ -55,8 +53,7 @@ export function QuestionCard({ item, sessionId }: { item: PermissionItem; sessio
   const [choices, setChoices] = useState<Choice[]>(() => questions.map(() => EMPTY_CHOICE));
   const otherField = useRef<HTMLInputElement>(null);
   const pending = item.status === "pending";
-  // ChatGPT chats ask through Jig's ask_user (D-315): the card names who asks.
-  const who = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
+  const who = "Jig";
   const q = questions[step];
   const choice = choices[step] ?? EMPTY_CHOICE;
   const last = step === questions.length - 1;

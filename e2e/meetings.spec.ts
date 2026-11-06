@@ -208,8 +208,8 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     const id = before.activeId!;
     const geometry = await transcript.boundingBox();
     await hostCall(main, "projects.setActive", { id: first!.id });
-    await room.getByRole("button", { name: "Ask Claude", exact: true }).click();
-    const ask = room.getByRole("dialog", { name: "Ask Claude about this meeting" });
+    await room.getByRole("button", { name: "Ask Jig", exact: true }).click();
+    const ask = room.getByRole("dialog", { name: "Ask Jig about this meeting" });
     await expect(ask).toContainText(first!.name);
     await ask.getByLabel("Question", { exact: true }).fill("Would this work in the current repository?");
     await room.screenshot({

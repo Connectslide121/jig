@@ -2,7 +2,7 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "tests",
   "name": "Tests",
-  "description": "The test suites in your project's repositories (npm test scripts, Playwright, Vitest, Jest, Karma, dotnet test), run with one click, with their results, failing tests and history; Claude can run them too.",
+  "description": "The test suites in your project's repositories (npm test scripts, Playwright, Vitest, Jest, Karma, dotnet test), run with one click, with their results, failing tests and history; Jig can run them too.",
   "version": "1.0.0",
   "icon": "flask-conical",
   "permissions": ["exec:npm", "exec:dotnet", "exec:taskkill", "fs:read"],

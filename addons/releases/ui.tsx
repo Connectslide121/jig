@@ -343,7 +343,7 @@ function SetupCard({ ctx, name, data }: { ctx: AddonUiContext; name: string; dat
       <p className="mb-3 text-sm text-muted">
         {d?.versioned
           ? "This repository already versions. Jig adopts what it does and changes nothing unless you ask."
-          : "No versioning yet. Claude proposes rules for this repository (with reasons) and you adjust them."}
+          : "No versioning yet. Jig proposes rules for this repository (with reasons) and you adjust them."}
       </p>
       {d && (
         <div className="mb-3">
@@ -369,7 +369,7 @@ function SetupCard({ ctx, name, data }: { ctx: AddonUiContext; name: string; dat
             void ctx.openChat({ cwd: data.path, draft: setupPrompt({ repo: name, detection: d ?? {} }) })
           }
         >
-          Set up with Claude
+          Set up with Jig
         </Button>
         <Button
           icon={Wand2}
@@ -416,7 +416,7 @@ function PolicyCard({
             })
           }
         >
-          Change with Claude
+          Change with Jig
         </Button>
       </div>
       <Row label="Style">{STYLE_LABEL[policy.style]}</Row>
@@ -691,9 +691,9 @@ function PrepareCard({
               disabled={busy !== undefined}
               onClick={() => void draft()}
               data-testid="release-draft"
-              title="Claude suggests the bump and writes the changelog and the notes; you edit before anything is written"
+              title="Jig suggests the bump and writes the changelog and the notes; you edit before anything is written"
             >
-              {busy === "draft" ? "Drafting…" : "Draft with Claude"}
+              {busy === "draft" ? "Drafting…" : "Draft with Jig"}
             </Button>
           </div>
           {reason && (

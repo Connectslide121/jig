@@ -150,7 +150,7 @@ export function KnowledgeCard({ project }: { project: ProjectInfo }) {
             <NotebookPen className="size-5 shrink-0 text-hint" />
             <span className="min-w-0 flex-1 text-xs text-muted">
               Short facts every chat in this project gets with each message: decisions, constraints,
-              dependencies and links. You and Claude keep them current.
+              dependencies and links. You and Jig keep them current.
             </span>
           </button>
         ) : (
@@ -158,7 +158,7 @@ export function KnowledgeCard({ project }: { project: ProjectInfo }) {
         )}
       </div>
       <PartLabel count={docs?.length ? `${docs.length} ${docs.length === 1 ? "document" : "documents"}` : ""}>
-        Documents · Claude reads them when they help
+        Documents · Jig reads them when they help
       </PartLabel>
       <div
         className={cn(

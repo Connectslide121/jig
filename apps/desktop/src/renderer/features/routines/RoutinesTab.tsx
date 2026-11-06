@@ -128,7 +128,7 @@ function Detail({ routine, onChanged }: { routine: Routine; onChanged: () => voi
               void askClaude(`Change my Claude Code routine “${routine.name}” (id ${routine.id}): `)
             }
           >
-            Change with Claude…
+            Change with Jig…
           </Button>
         </div>
         <div className="grid gap-x-4 gap-y-1 text-xs" style={{ gridTemplateColumns: "auto 1fr" }}>
@@ -293,7 +293,7 @@ export function RoutinesTab({ active }: TabProps) {
       ) : data.routines.length === 0 ? (
         <Empty title="No routines yet" icon={CalendarClock}>
           A routine is a prompt Claude Code runs on a schedule, like “every weekday at 8:30, review my open
-          pull requests”. Click New routine… and tell Claude what and when, or ask in any chat.
+          pull requests”. Click New routine… and tell Jig what and when, or ask in any chat.
         </Empty>
       ) : (
         <div className="flex min-h-0 flex-1">

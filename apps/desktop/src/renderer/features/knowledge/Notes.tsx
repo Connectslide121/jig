@@ -214,7 +214,7 @@ function NoteRow({ projectId, note }: { projectId: string; note: Note }) {
         </div>
         <div className="text-2xs text-hint">
           {KINDS[note.kind].label}
-          {note.by === "claude" ? " · by Claude" : ""}
+          {note.by === "claude" ? " · by Jig" : ""}
         </div>
       </div>
       <span className="invisible flex h-5 w-14 shrink-0 items-center justify-end group-hover:visible group-focus-within:visible">

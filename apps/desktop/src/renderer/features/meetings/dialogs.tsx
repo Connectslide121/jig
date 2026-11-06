@@ -615,7 +615,7 @@ export function Ask({
   return (
     <Dialog
       open
-      title="Ask Claude about this meeting"
+      title="Ask Jig about this meeting"
       width="lg"
       onClose={onClose}
       footer={
@@ -670,8 +670,8 @@ export function Ask({
           </span>
         </div>
         <p className="text-xs text-muted">
-          Opens a Claude Code chat in Plan mode; the meeting keeps running. The chat stays in this project
-          even if you switch projects later.
+          Opens a chat in Plan mode; the meeting keeps running. The chat stays in this project even if you
+          switch projects later.
         </p>
       </div>
     </Dialog>

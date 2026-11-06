@@ -24,7 +24,7 @@ export function registerSkills(): void {
   registerAction({
     id: "jig.skills",
     title: "Skills library",
-    group: "Claude",
+    group: "Assistant",
     icon: BookOpen,
     keywords: ["skills", "library", "design", "quality", "security"],
     run: () => void workbench.openTab("jig.skills"),
@@ -261,7 +261,7 @@ function SkillsLibrary() {
         </div>
       </header>
       <p className="shrink-0 px-4 py-3 text-xs text-muted">
-        Built-in guidance Claude uses when relevant. Global off disables a skill everywhere; Projects chooses
+        Built-in guidance Jig uses when relevant. Global off disables a skill everywhere; Projects chooses
         where it is included. Changes apply before the next message without interrupting current work.
       </p>
       <div className="min-h-0 flex-1 overflow-auto px-4">

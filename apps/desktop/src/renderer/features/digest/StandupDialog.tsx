@@ -90,7 +90,7 @@ function Standup() {
         </div>
         {busy ? (
           <div className="flex items-center gap-2 py-8 text-sm text-muted">
-            <Spinner size="sm" /> Claude is reading your commits and chats…
+            <Spinner size="sm" /> Jig is reading your commits and chats…
           </div>
         ) : error ? (
           <div className="text-sm text-danger">{error}</div>
@@ -100,8 +100,8 @@ function Standup() {
           </div>
         ) : null}
         <div className="text-2xs text-hint">
-          Written by Claude from your commits (your git email) in every repository, uncommitted changes and
-          the chats you had. Read it before you share it.
+          Written by Jig from your commits (your git email) in every repository, uncommitted changes and the
+          chats you had. Read it before you share it.
         </div>
       </div>
     </Dialog>

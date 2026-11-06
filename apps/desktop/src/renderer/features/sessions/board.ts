@@ -12,7 +12,7 @@ export interface BoardColumn {
 
 const COLUMNS: Array<Omit<BoardColumn, "chats">> = [
   { key: "needs_you", title: "Needs you", hint: "Waiting for an answer or a permission" },
-  { key: "working", title: "Working", hint: "Claude is on it" },
+  { key: "working", title: "Working", hint: "Jig is on it" },
   { key: "unread", title: "Finished", hint: "Done since you last looked" },
   { key: "error", title: "Stopped with an error", hint: "Open it to see what went wrong" },
   { key: "recent", title: "Recent", hint: "Quiet chats of the last week" },

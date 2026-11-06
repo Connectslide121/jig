@@ -71,7 +71,7 @@ test('voice commands: "Hey Jig" opens a chat in Talk mode and answers from Jig\'
 
   // A new chat opens in Talk mode.
   await say("Hey Jig, open a new chat in Shop");
-  await expect(status).toHaveAttribute("data-said", "New chat in shop. Talk to Claude now.");
+  await expect(status).toHaveAttribute("data-said", "New chat in shop. Talk to Jig now.");
   await expect(page.getByTestId("voice-dialog")).toBeVisible();
   await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("composer-voice")).not.toHaveAttribute(
     "data-phase",

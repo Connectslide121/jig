@@ -41,7 +41,7 @@ import {
 import { chatInlineCode } from "./FileLink";
 import { HandoffDivider, LimitCard } from "./LimitCard";
 import { PermissionCard } from "./PermissionCard";
-import { providerName, useChatCapabilities } from "./provider";
+import { useChatCapabilities } from "./provider";
 import { restoreFiles, rewindChat } from "./restore";
 import { useSessions } from "./store";
 import { ToolCard } from "./ToolCard";
@@ -97,7 +97,7 @@ function userMessageMenu(
       testId: "rewind-menu",
       submenu: [
         {
-          label: "The chat (Claude forgets what came after)",
+          label: "The chat (Jig forgets what came after)",
           onSelect: () => void rewindChat(sessionId, item.id, false),
           testId: "rewind-chat",
         },
@@ -140,7 +140,7 @@ function ShellCard({ item }: { item: Extract<ChatItem, { kind: "shell" }> }) {
       )}
       {item.status === "done" && (
         <div className="border-t border-line px-2 py-0.5 text-2xs text-hint">
-          {item.sent ? "Claude saw this with your message" : "Claude sees this with your next message"}
+          {item.sent ? "Jig saw this with your message" : "Jig sees this with your next message"}
         </div>
       )}
     </div>
@@ -209,7 +209,6 @@ const Item = memo(function Item({
 }) {
   // Paths Claude writes in inline code are links to the files, from the chat's folder (D-261).
   const cwd = useSessions((s) => s.metas[sessionId]?.cwd);
-  const told = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
   const rewind = useChatCapabilities(sessionId).rewind && !beforeHandoff;
   const renderers = useToolRenderers();
   const inlineCode = useMemo(() => chatInlineCode(cwd), [cwd]);
@@ -231,7 +230,7 @@ const Item = memo(function Item({
               <SquareTerminal className="size-3.5 shrink-0" />
             )}
             <span className="selectable min-w-0 flex-1 truncate">{item.from}</span>
-            <span className="shrink-0 text-hint">Jig told {told}</span>
+            <span className="shrink-0 text-hint">Sent by Jig</span>
           </div>
         );
       return (
@@ -251,7 +250,7 @@ const Item = memo(function Item({
               <IconButton
                 icon={Pencil}
                 size="sm"
-                label="Edit and send again (Claude forgets what came after)"
+                label="Edit and send again (Jig forgets what came after)"
                 data-testid="user-message-edit"
                 onClick={() => void rewindChat(sessionId, item.id, false)}
               />

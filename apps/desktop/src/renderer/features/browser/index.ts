@@ -14,7 +14,7 @@ export function registerBrowser(): void {
   registerTopbarItem({ id: "jig.browser", order: -5, component: BrowserButton, owner: "core" });
   registerView({
     id: BROWSER_VIEW,
-    title: "Claude’s browser",
+    title: "Jig’s browser",
     icon: MonitorCog,
     defaultRegion: "right",
     component: BrowserView,
@@ -31,8 +31,8 @@ export function registerBrowser(): void {
   });
   registerAction({
     id: "jig.openClaudeBrowser",
-    title: "Open Claude’s browser",
-    group: "Claude",
+    title: "Open Jig’s browser",
+    group: "Assistant",
     icon: MonitorCog,
     keywords: ["agent", "browser", "automation"],
     run: () => workbench.showView(BROWSER_VIEW),
@@ -41,7 +41,7 @@ export function registerBrowser(): void {
     id: "jig.openBrowser",
     title: "Open Browser",
     // Beside "Open Claude's browser" in the Chats menu (a "Tools" group was a one-item top bar menu).
-    group: "Claude",
+    group: "Assistant",
     icon: Globe,
     keywords: ["browser", "web", "preview", "localhost"],
     run: () => workbench.openViewTab("jig.userBrowser"),
@@ -49,7 +49,7 @@ export function registerBrowser(): void {
   registerAction({
     id: "jig.testSomething",
     title: "Test something…",
-    group: "Claude",
+    group: "Assistant",
     icon: FlaskConical,
     keywords: ["test", "check", "qa", "browser", "haiku", "cheap"],
     run: () => void testSomething(),

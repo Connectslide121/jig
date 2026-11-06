@@ -14,7 +14,7 @@ export const VOICE_GROUPS: Array<{ id: VoiceGroup; title: string; lead: string }
   {
     id: "status",
     title: "Checking in",
-    lead: "Jig answers from what it already knows; nothing is sent to Claude.",
+    lead: "Jig answers from what it already knows; nothing is sent to an AI provider.",
   },
   { id: "run", title: "Running things", lead: "Runs tests, scripts, workflows and pipelines directly." },
   { id: "jig", title: "Jig itself", lead: "The voice itself: notes, volume and listening." },

@@ -110,7 +110,7 @@ function useAction(
       };
     case "claude-setup":
       return {
-        label: "Set it up with Claude",
+        label: "Set it up with Jig",
         icon: Bot,
         run: chat(`Set this up for Claude Code here: ${s.goal}`),
       };
@@ -130,7 +130,7 @@ function useAction(
       return { label: "Add to my profile", icon: UserRound, run: () => answer(s, "act") };
     case "practice":
       return {
-        label: "Fix it with Claude",
+        label: "Fix it with Jig",
         icon: ShieldCheck,
         run: chat(
           `Help me change this practice (explain the risk briefly, then help me fix it here; never print secrets): ${s.goal}`,
@@ -435,8 +435,8 @@ function WorkedCard() {
       <div className="mb-1 text-sm font-medium text-fg">How you worked (last 7 days)</div>
       {worked.text}
       <div className="mt-1.5 text-2xs text-hint">
-        Claude's lines are counted from Claude Code's own history on this computer; work done elsewhere counts
-        as by hand. Lock files and generated code are left out.
+        Jig's lines are counted from the chat history on this computer; work done elsewhere counts as by hand.
+        Lock files and generated code are left out.
       </div>
     </Card>
   );
@@ -486,10 +486,10 @@ export function SuggestionsView() {
         <CheckInCard />
         {fresh.length === 0 && (
           <Empty icon={Lightbulb} title="No suggestions">
-            Jig looks at how you ask Claude for things, what you repeat, what slows you down, risky practices
-            and what you mention in chats (locally), and suggests better prompts, add-ons and features you
-            already have, safer practices, workflows or new tools here. It looks when you press the button and
-            every week.
+            Jig looks at how you ask for things, what you repeat, what slows you down, risky practices and
+            what you mention in chats (locally), and suggests better prompts, add-ons and features you already
+            have, safer practices, workflows or new tools here. It looks when you press the button and every
+            week.
           </Empty>
         )}
         {fresh.map((s) => (

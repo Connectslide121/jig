@@ -24,21 +24,21 @@ Lists of steps you repeat, per project: a release, a deploy, a morning routine (
 - **Events** (D-177): **After you push** (any branch or one) — seen in the upstream's reflog — and
   **When a pipeline finishes** (any result, succeeded or failed; through your `az`), checked by the
   same watcher. The first check only remembers the latest push or run, so old events never fire.
-- **Export as skill** writes `.claude/skills/<name>/SKILL.md` in the project, so Claude can do it from
+- **Export as skill** writes `.claude/skills/<name>/SKILL.md` in the project, so Jig can do it from
   any chat. **Move to the cloud** opens a chat that turns it into a Claude Code routine or an Azure
   DevOps pipeline.
 - **From suggestions:** a "workflow" suggestion's **Draft a workflow** opens the editor with its steps
   (tab params `{ draft: { name, goal, steps: string[] } }`; lines that look like commands become
   command steps).
 
-- **Tools for Claude** (slot `claude.tool`): `addon_workflows_list` and `addon_workflows_get`
+- **Tools for chats** (slot `claude.tool`): `addon_workflows_list` and `addon_workflows_get`
   (read-only), `addon_workflows_save` (create or update by name, from steps as text or
   `{ title, kind, mode, command?, prompt?, provider?, model? }`; a message step's provider and model
   only when you ask for one), `addon_workflows_delete`, and `addon_workflows_run` (Jig's automatic
   command and pipeline steps run with their output, and so do automatic message steps with their own
   provider or model, in a new chat on it; it stops at the first step that is yours, asks first or is
   a message on the default, which the agent does in its own chat, and guides you through the rest). Without
-  `project`, the chat's project. Claude is told to offer saving a step-by-step request you'll repeat
+  `project`, the chat's project. The chat is told to offer saving a step-by-step request you'll repeat
   as a workflow (once, in one sentence).
 
 Storage (this add-on's, private to you): `workflows:<projectId>`, `runs:<workflowId>` (last 20),

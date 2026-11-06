@@ -33,7 +33,7 @@ function useProfileNudge(): void {
       notify({
         title: "Tell Jig how you work",
         message:
-          "What Jig knows about you is empty. A short chat where Claude asks you questions fills it in, so suggestions fit you.",
+          "What Jig knows about you is empty. A short chat where Jig asks you questions fills it in, so suggestions fit you.",
         timeout: 0,
         actions: [
           { label: "Start the interview", run: () => void startProfileInterview() },

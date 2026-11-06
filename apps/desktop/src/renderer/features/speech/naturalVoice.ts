@@ -70,7 +70,7 @@ export async function downloadNaturalVoice(ask = true): Promise<boolean> {
   if (ask) {
     const ok = await confirmDialog({
       title: "Download the natural voice?",
-      message: `Jig can read Claude's replies with a realistic voice (Kokoro, ${VOICE_MODEL.size}). It is downloaded once from Hugging Face and runs on this computer: what Claude says is never sent anywhere. Until it's ready, your system's voice reads. You can change the voice in Settings → Speech.`,
+      message: `Jig can read its replies with a realistic voice (Kokoro, ${VOICE_MODEL.size}). It is downloaded once from Hugging Face and runs on this computer: what Jig says is never sent anywhere. Until it's ready, your system's voice reads. You can change the voice in Settings → Speech.`,
       confirmLabel: "Download",
     });
     if (!ok) {
@@ -84,7 +84,7 @@ export async function downloadNaturalVoice(ask = true): Promise<boolean> {
     useNaturalVoice.setState({ state: "ready" });
     notify({
       title: "The natural voice is ready",
-      message: "Claude's replies are read with it now.",
+      message: "Jig's replies are read with it now.",
       tone: "success",
     });
     return true;

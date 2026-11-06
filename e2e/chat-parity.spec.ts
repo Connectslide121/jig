@@ -91,7 +91,7 @@ test("composer: / commands, @ files, ! shell, # memory, history, Shift+Tab", asy
   await input.fill("what did it print?");
   await page.keyboard.press("Enter");
   await expect(chat).toContainText("<bash-input>echo shell-output-42</bash-input>", { timeout: 15000 });
-  await expect(shell).toContainText("Claude saw this");
+  await expect(shell).toContainText("Jig saw this");
   await turnDone(page, 2);
 
   // `#` remembers a line in CLAUDE.md.

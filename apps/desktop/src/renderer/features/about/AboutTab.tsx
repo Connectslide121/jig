@@ -66,7 +66,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "overview", title: "Overview", icon: BookOpen },
   { id: "chats", title: "Chats", icon: MessageSquare },
   { id: "workspaces", title: "Projects & workspaces", icon: FolderGit2 },
-  { id: "claude-extras", title: "Claude around your work", icon: Sparkles },
+  { id: "claude-extras", title: "Jig around your work", icon: Sparkles },
   { id: "attempts", title: "Try several ways", icon: Split },
   { id: "browser", title: "Browser", icon: Globe },
   { id: "meetings", title: "Teams meetings", icon: Video },
@@ -75,7 +75,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "git", title: "Git", icon: GitBranch },
   { id: "releases", title: "Releases", icon: Tag },
   { id: "terminals", title: "Terminals & scripts", icon: SquareTerminal },
-  { id: "configure", title: "Claude configures Jig", icon: Settings2 },
+  { id: "configure", title: "Change Jig by asking", icon: Settings2 },
   { id: "build", title: "Build your own tools", icon: Wand2 },
   { id: "slots", title: "Extension slots", icon: Puzzle },
   { id: "addons", title: "Your add-ons", icon: Puzzle },
@@ -216,10 +216,11 @@ function Overview() {
       <div className="flex gap-6 rounded-xl border border-line bg-accent-soft p-6">
         <div className="min-w-0 flex-1">
           <div className="text-2xs font-semibold tracking-wide text-accent uppercase">What Jig can do</div>
-          <h1 className="mt-1 text-2xl font-semibold text-fg">Your workbench around Claude Code</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-fg">Your workbench for AI-assisted work</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted">
-            Chats with the real Claude Code, all your repositories, git, terminals and scripts in one window —
-            and tools you build yourself by asking for them. Claude can even change Jig's settings for you.
+            Chats with the real Claude Code or ChatGPT (Codex), all your repositories, git, terminals and
+            scripts in one window — and tools you build yourself by asking for them. Jig can even change its
+            own settings for you.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {projects.length === 0 && (
@@ -261,7 +262,7 @@ function Overview() {
         <Stat value={projects.length} label={`projects · ${repos} repos`} />
         <Stat value={addons.filter((a) => a.enabled).length} label="add-ons on" />
         <Stat value={Object.keys(SLOTS).length} label="extension slots" />
-        <Stat value={CONFIGURE_TOOLS.length} label="tools Claude gets for Jig" />
+        <Stat value={CONFIGURE_TOOLS.length} label="tools Jig gets for itself" />
       </div>
     </section>
   );
@@ -424,7 +425,7 @@ function ConfigureExamples() {
         ))}
       </div>
       <div>
-        <div className="mb-1.5 text-xs font-medium text-muted">The tools Claude gets in every chat</div>
+        <div className="mb-1.5 text-xs font-medium text-muted">The tools Jig gets in every chat</div>
         <div className="grid gap-x-6 gap-y-1 md:grid-cols-2">
           {CONFIGURE_TOOLS.map((t) => (
             <div key={t.name} className="flex gap-2 text-xs">
@@ -486,9 +487,7 @@ function Skills() {
         ]}
       />
       {skills === undefined ? null : skills.length === 0 ? (
-        <div className="text-xs text-muted">
-          No skills found yet. Ask Claude in a chat to write one for you.
-        </div>
+        <div className="text-xs text-muted">No skills found yet. Ask Jig in a chat to write one for you.</div>
       ) : (
         <div className="grid gap-2 md:grid-cols-2">
           {skills.map((s) => (
@@ -608,24 +607,24 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Paste screenshots, drop PDFs, Word, Excel and PowerPoint files",
-                "Talk instead of typing: the mic button (Ctrl+Shift+Space) dictates with Whisper on your machine, words appearing as you speak; Read aloud on Claude's answers in a natural voice that runs on your computer (English and Spanish)",
-                "Talk with Claude: the Talk button (sound waves) opens a calm talking window with live waves and the conversation; Claude looks at the code while you plan, shows its plan (or a task queue for bigger work), “go ahead” (or the button) starts the work, and a chime says when it's done; a voice detector ignores background noise",
+                "Talk instead of typing: the mic button (Ctrl+Shift+Space) dictates with Whisper on your machine, words appearing as you speak; Read aloud on Jig's answers in a natural voice that runs on your computer (English and Spanish)",
+                "Talk with Jig: the Talk button (sound waves) opens a calm talking window with live waves and the conversation; Jig looks at the code while you plan, shows its plan (or a task queue for bigger work), “go ahead” (or the button) starts the work, and a chime says when it's done; a voice detector ignores background noise",
                 "Permission cards: allow once, always, or deny",
-                "Queue messages while Claude works",
+                "Queue messages while Jig works",
                 "New chats name themselves: the quick model gives each a short name from its first message (Settings → Chats → Name new chats)",
                 "Chats lists ten per group including pins; Show more adds ten, while all pinned chats stay visible. Change grouping in Chats options → View type",
                 "Model and permission mode per chat",
                 "Start a new chat in another project: until its first message, the project beside its title is a picker, and switching the project in the top bar takes the chat along (its folder, model, permissions and starter prompts follow)",
                 "Chats on Claude or ChatGPT: pick it beside the model picker, set the default in Settings → Chats and per project in its settings; each chat shows its mark",
                 "Hand a chat over to the other provider whenever you want, from the provider picker or the chat's ⋯ menu: a dialog says what carries over (a summary, your files, the model's tier and effort), what doesn't and what's different there, and a divider marks the change",
-                "ChatGPT chats work like Claude's: Plan only with the plan card, question cards, a suggested next message, Claude Code's skills next to Codex's own, and their saved Codex chats in Open a saved chat",
+                "ChatGPT chats work like Claude chats: Plan only with the plan card, question cards, a suggested next message, Claude Code's skills next to Codex's own, and their saved Codex chats in Open a saved chat",
                 "ChatGPT chats have helpers like Claude's subagents: a code search and a page tester, each a separate ChatGPT call on its own model (Settings → Chats → ChatGPT chats)",
                 "When a chat hits its plan's limit, carry on in the same chat with the other provider (it reads a handoff of what happened so far), or wait and resume at the reset (left unanswered, it resumes by itself at the reset, also after a sleep); ask, switch or wait is a setting, per project too, and queued tasks follow it",
                 "Tool calls with diffs and file previews",
                 "Detailed tools show the reported caller model; subagents separate reported and requested models. The overview and details summarize reported models",
                 "New chats stay unsaved until you send a prompt",
                 "Idle chats free their memory: after 20 minutes unused (Settings → Chats) a chat lets go of its Claude Code or Codex process, and your next message picks it up where it was",
-                "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
+                "Compact chats: each run of Jig's steps folds into one line; Detailed shows every card",
                 "Times in chats: the clock button puts a time beside every message and step (hover any message for its time and the gap before it)",
                 "Your plans' usage as bars in the status bar, always visible: Claude's, and ChatGPT's when Codex is signed in; ask any chat (or Jig on your phone) how much is left and when it resets",
                 "How full the context window is, with a breakdown on hover and Compact on click",
@@ -633,9 +632,9 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Restore files to before any of your messages, and fork a chat to try another approach",
                 "Open a chat you had in Claude Code (terminal, desktop app, IDE) or Codex and continue it here as a copy",
                 "/ for Claude Code's commands and skills, @ for files, ! for shell commands, # to remember in CLAUDE.md",
-                "File paths Claude writes are links: click opens the file in Preview, Ctrl+click with its own app",
+                "File paths Jig writes are links: click opens the file in Preview, Ctrl+click with its own app",
                 "Mentioned files are highlighted in the message box, with a chip each to open them (or Ctrl+click)",
-                "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Claude works",
+                "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Jig works",
                 "Park a message to send later (Alt+Enter, or the menu beside Send): it waits under the queue, saved with the chat, until you send it; the same menu sends now or in a new chat",
                 "Todo lists, plans to approve, diffs on every edit, subagent progress and background tasks",
                 "Edit and send again: rewind the chat (and the files) to before any message",
@@ -644,7 +643,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
                 "Chat overview: a small card in each chat counts tool calls, files, skills, subagents, add-ons, MCP calls and tokens; Show details for the full breakdown",
                 "Chats board: every chat across projects in columns — needs you, working, unread, errors, recent",
-                "Task queue (Chats menu): tasks grouped in chats, one field each, with pasted or attached images and documents; Claude does them in order and reports outcome, summary, things to know and follow-ups in a card per chat, linked to it; Claude can queue tasks too (you review and edit them first) and delete queued ones (you approve a card naming them); tick the tasks a run takes, put a task back or start the queue over, mark a task that ended in Error done by hand; park ideas in a pool at the end of the queue that never runs; Reorganize asks a small AI to regroup and reorder what hasn't run (you check the proposal, apply it, and can undo it); one queue per project, and every run kept in History with its results",
+                "Task queue (Chats menu): tasks grouped in chats, one field each, with pasted or attached images and documents; Jig does them in order and reports outcome, summary, things to know and follow-ups in a card per chat, linked to it; Jig can queue tasks too (you review and edit them first) and delete queued ones (you approve a card naming them); tick the tasks a run takes, put a task back or start the queue over, mark a task that ended in Error done by hand; park ideas in a pool at the end of the queue that never runs; Reorganize asks a small AI to regroup and reorder what hasn't run (you check the proposal, apply it, and can undo it); one queue per project, and every run kept in History with its results",
                 "All queues: one tab with every project's task queue: what runs now, what needs you and why, what's next and how it went, with today's tasks and cost",
                 "Claude or ChatGPT per task queue: Runs on in the queue's header (the project's default, Claude or ChatGPT, with a model), and per task in Add tasks and Edit with a model; every row shows who runs it",
                 "Run report (Tasks → History, on a finished run): an AI-made report in its own tab: what was done per task, things to be aware of, what's blocked or failed, what needs you, and the follow-ups merged into proposals you can queue",
@@ -654,7 +653,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="workspaces"
             title="Projects & workspaces"
-            lead="Projects are yours: groups of chats with a default folder, a default Git repository, model and permission defaults, instructions for Claude and starter prompts. Workspaces are the folders Jig knows — a single repository or a whole folder of them."
+            lead="Projects are yours: groups of chats with a default folder, a default Git repository, model and permission defaults, instructions for Jig and starter prompts. Workspaces are the folders Jig knows — a single repository or a whole folder of them."
             shot={{
               src: dashboard,
               alt: "The dashboard of a workspace with four repositories",
@@ -663,8 +662,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Drag chats between projects; pin the ones you keep coming back to and put them in your order; group the list by project, status or day",
-                "Instructions per project, added to what Claude reads in its chats",
-                "Knowledge per project: notes every chat in it gets with each message (decisions, constraints, dependencies, links; you and Claude keep them current) and documents (text, PDF, Office) it can read (drop files on the project's Home)",
+                "Instructions per project, added to what Jig reads in its chats",
+                "Knowledge per project: notes every chat in it gets with each message (decisions, constraints, dependencies, links; you and Jig keep them current) and documents (text, PDF, Office) it can read (drop files on the project's Home)",
                 "Import your claude.ai projects (instructions and knowledge) from claude.ai's data export",
                 "One Home per project with its starter prompts, recent chats and scripts",
                 "A default repo per project for the Git view, others shown next to it when needed",
@@ -678,8 +677,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           </Section>
           <Section
             id="claude-extras"
-            title="Claude around your work"
-            lead="Claude helps outside the chat too: tours of your changes, checks before you commit, a standup written from what you actually did, and tools made from things you did by hand."
+            title="Jig around your work"
+            lead="Jig helps outside the chat too: tours of your changes, checks before you commit, a standup written from what you actually did, and tools made from things you did by hand."
           >
             <Bullets
               items={[
@@ -688,9 +687,9 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Write: a commit message in your repository's style",
                 "Turn this chat into a tool: the builder makes it a one-click tool",
                 "Write my standup: Done / Next / Blockers from commits and chats",
-                "Ask Claude about a failed script or any previewed file",
+                "Ask Jig about a failed script or any previewed file",
                 "Jig on your phone (Settings → Phone): your own Telegram bot, or your own Teams bot with a channel per project and a thread per chat (Jig sets up its relay in your Azure), tells you when a chat needs you, finishes or stops while you're away; tap Allow or an answer, or reply to talk to the chat",
-                "Routines (Search → Routines): your Claude Code routines with their schedules, runs and logs; Run now, on/off, or ask Claude to make one",
+                "Routines (Search → Routines): your Claude Code routines with their schedules, runs and logs; Run now, on/off, or ask Jig to make one",
                 "Pages (Tools → Pages): ask a chat to show you a report, mockup or the release notes and it publishes an HTML page into Jig: a card in the chat opens it in Preview (scripts off until you turn them on), and the Pages view keeps them all, on this computer only",
               ]}
             />
@@ -698,13 +697,13 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="attempts"
             title="Try several ways"
-            lead="Hand the same task to 2–4 Claude Code chats at once, each in its own git worktree and from a different angle: simplest, cleanest, most thorough, unconventional. Compare what they did, let Claude judge, and keep the best one in your working copy."
+            lead="Hand the same task to 2–4 Claude Code chats at once, each in its own git worktree and from a different angle: simplest, cleanest, most thorough, unconventional. Compare what they did, let Jig judge, and keep the best one in your working copy."
           >
             <Bullets
               items={[
                 "The split button in the message box, or Search → Try a task several ways…",
                 "Live progress and changed files per attempt, with diffs",
-                "Let Claude judge: a recommendation with strengths and weaknesses",
+                "Let Jig judge: a recommendation with strengths and weaknesses",
                 "Keep this one applies it uncommitted and removes the rest",
               ]}
             />
@@ -712,10 +711,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="browser"
             title="Browser"
-            lead="The globe icon at the top right opens your native Chromium browser tab in the main panel, with normal typing, scrolling, selection, navigation and developer tools. Claude has a separate browser to check its own web work: it opens your dev server, reads the page, clicks and types like a person, takes screenshots at phone, tablet and desktop sizes (they show in the chat) and reads the console. The page runs off-screen at its own size, so nothing pops up and the panel's size never limits Claude; Claude’s browser shows it live: you can click and type for sign-ins while Claude controls navigation. Its hint links to your own Browser."
+            lead="The globe icon at the top right opens your native Chromium browser tab in the main panel, with normal typing, scrolling, selection, navigation and developer tools. Jig has a separate browser to check its own web work: it opens your dev server, reads the page, clicks and types like a person, takes screenshots at phone, tablet and desktop sizes (they show in the chat) and reads the console. The page runs off-screen at its own size, so nothing pops up and the panel's size never limits Jig; Jig’s browser shows it live: you can click and type for sign-ins while Jig controls navigation. Its hint links to your own Browser."
             shot={{
               src: browserShot,
-              alt: "Claude checking a shop page in its browser, with a screenshot in the chat",
+              alt: "Jig checking a shop page in its browser, with a screenshot in the chat",
             }}
           >
             <Bullets
@@ -723,9 +722,9 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Ask a chat to “open the app and check the login form”",
                 "Settings → Chats: chats use Opus by default and hand code searches to the jig-search helper (Haiku); change chat, subagent fallback, helper, tester and search models there",
                 "Testing runs on a small model: chats hand it to the jig-tester helper (Haiku), and Search → Test something… (or the flask in the browser view) starts a test chat on it",
-                "Each chat has its own page, so chats can browse at the same time: Claude’s browser shows one tab per chat's page (its name, project and page title, a dot while it drives it), with Open chat and Close page in the tab's ⋯",
-                "Screenshots come back to Claude and show as thumbnails in the chat",
-                "Console errors are counted in the view, and Claude reads them too",
+                "Each chat has its own page, so chats can browse at the same time: Jig’s browser shows one tab per chat's page (its name, project and page title, a dot while it drives it), with Open chat and Close page in the tab's ⋯",
+                "Screenshots come back to Jig and show as thumbnails in the chat",
+                "Console errors are counted in the view, and Jig reads them too",
                 "Desktop, tablet and phone sizes for responsive checks",
                 "Its own cookies and storage, apart from Jig; downloads and camera/location requests are refused",
               ]}
@@ -736,9 +735,9 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             title="Teams meetings"
             shot={{
               src: meetingsShot,
-              alt: "Global Jig meeting transcript and notes, with screen-sharing and project-aware Claude controls",
+              alt: "Global Jig meeting transcript and notes, with screen-sharing and project-aware Ask Jig",
             }}
-            lead="Join Teams in a separate Jig meeting window, share a screen or application window, and save live captions with speaker names. Meetings stay global while you change projects. Ask Claude about the transcript so far with an explicit project's repository context; generate notes and review actions for different project task queues afterwards."
+            lead="Join Teams in a separate Jig meeting window, share a screen or application window, and save live captions with speaker names. Meetings stay global while you change projects. Ask Jig about the transcript so far with an explicit project's repository context; generate notes and review actions for different project task queues afterwards."
           >
             <Bullets
               items={[
@@ -746,19 +745,19 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Calls in their own window, like Teams: the meetings lobby stays usable beside a running call",
                 "Teams calls: call someone in your organisation, and calls ring in Jig while it runs",
                 "Profile pictures of the people in your meetings and calls",
-                "The meeting's or call's Teams chat in its own panel: read it, write in it, and Claude's notes include it",
+                "The meeting's or call's Teams chat in its own panel: read it, write in it, and Jig's notes include it",
                 "Your Teams chats in the meetings lobby: read and reply, and open your chat with someone from Call…",
                 "Search your Teams chats and their messages, filter Unread, Chats or Meetings, start a new chat, and pin chats on top (in Jig)",
-                "Mention a Teams chat in any chat with @chat, and Claude or ChatGPT reads it",
-                "Live captions in your language (Teams translates, or Claude without Teams Premium), with what was said under each line",
+                "Mention a Teams chat in any chat with @chat, and the chat reads it",
+                "Live captions in your language (Teams translates, or Jig without Teams Premium), with what was said under each line",
                 "No Teams captions in a meeting? Jig transcribes it on this computer (Whisper), marked Local",
                 "Noise suppression on your microphone, like Teams: typing and background noise are filtered out of your audio",
                 "Meeting history (the Meetings tab of the Meetings window), in folders: make your own and drag meetings in, and each recurring meeting gets its own; start a chat about a meeting, notes, actions, Markdown export",
-                "Mention a meeting in any chat with @ — Claude reads its transcript",
+                "Mention a meeting in any chat with @ — Jig reads its transcript",
                 "Remembers Agenda/Week and restores your Microsoft sign-in using protected storage",
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",
                 "Captions arrive live; no raw audio recording or full-meeting diarization job (local transcription keeps audio in memory only until it is transcribed)",
-                "Claude runs only when you ask; reviewed actions are queued in Plan mode and the queue stays paused, or run one at once in a new chat; mark the rest done or dismiss them",
+                "Jig works only when you ask; reviewed actions are queued in Plan mode and the queue stays paused, or run one at once in a new chat; mark the rest done or dismiss them",
                 "PowerPoint Live, Whiteboard and breakout rooms need the regular Teams client",
               ]}
             />
@@ -774,34 +773,34 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           >
             <Bullets
               items={[
-                "Live: the tree follows changes on disk, from you or Claude",
-                "If Claude changes a file you are editing, Jig asks: keep yours, load theirs, or see the diff",
+                "Live: the tree follows changes on disk, from you or Jig",
+                "If a chat changes a file you are editing, Jig asks: keep yours, load theirs, or see the diff",
                 "Split view: right-click a tab → Open to the side, or drag it to the right edge",
                 "Drag any view's tab anywhere: a sidebar, its lower half (splits it), the bottom panel, or the main area as a tab; View → Reset layout puts everything back",
                 "View in the top bar shows or hides the sidebars and the bottom panel, opens any view (Views), and switches named layouts: save how the views are arranged and switch between them (Layouts)",
                 "Pick how far the bottom panel reaches: under the centre only, also under the left or right sidebar, or the whole window width (the bottom panel's ⋯ menu → Panel width, or Settings → Layout)",
                 "Search in the center of the top bar (Ctrl+P or Ctrl+K): any chat, view, action or file, with results directly below",
-                "Right-click a file to open it in VS Code or ask Claude about it",
+                "Right-click a file to open it in VS Code or ask Jig about it",
               ]}
             />
           </Section>
           <Section
             id="previews"
             title="Previews"
-            lead="Files open the way they're meant to be read: Markdown with Mermaid diagrams, HTML pages (sandboxed), PDFs, CSV and Excel as tables, JSON as editable source with an optional tree preview, notebooks, images, audio, video, Word and PowerPoint text, and highlighted code. A preview follows the file while Claude edits it."
+            lead="Files open the way they're meant to be read: Markdown with Mermaid diagrams, HTML pages (sandboxed), PDFs, CSV and Excel as tables, JSON as editable source with an optional tree preview, notebooks, images, audio, video, Word and PowerPoint text, and highlighted code. A preview follows the file while Jig edits it."
             shot={{ src: imageZoomShot, alt: "An image preview with zoom controls, Fit and actual size" }}
           >
             <Bullets
               items={[
                 "Right-click a file in Git → Preview, or the eye on a chat tool card",
                 "Links between Markdown files open their preview",
-                "Preview / Source switch, and Ask Claude about the file",
+                "Preview / Source switch, and Ask Jig about the file",
                 "Images: zoom buttons, 10–800% presets, Fit/100% and Ctrl/Cmd + scroll, including both sides of Git comparisons",
                 "Two tabs side by side: right-click a tab → Open to the side, or drag it to the right edge",
-                "Code and text files are editable right there: Ctrl+S saves, and Jig asks if Claude changed the file meanwhile",
+                "Code and text files are editable right there: Ctrl+S saves, and Jig asks if the file changed meanwhile",
                 "A real editor: your theme's code colours, indentation guides, closing brackets, several cursors, folding, find and replace, go to line (Ctrl+G), word wrap and a status line (Settings → Editor)",
-                "Code completion as you type, Tab to take it: GitHub Copilot (optional, set up from Get started) or Claude",
-                "Azure DevOps boards you manage in Jig: open and edit cards, drag between columns, add and delete; Claude updates them from chats. A card shows what Azure DevOps' form does: rich text with its images (editable without losing them), comments, every field, links, pull requests and commits, attachments. Loaded when Jig starts, refreshed in the background; search and filter cards like Azure DevOps (type, person, state, tags, iteration, area)",
+                "Code completion as you type, Tab to take it: GitHub Copilot (optional, set up from Get started) or your Claude plan",
+                "Azure DevOps boards you manage in Jig: open and edit cards, drag between columns, add and delete; Jig updates them from chats. A card shows what Azure DevOps' form does: rich text with its images (editable without losing them), comments, every field, links, pull requests and commits, attachments. Loaded when Jig starts, refreshed in the background; search and filter cards like Azure DevOps (type, person, state, tags, iteration, area)",
                 "Language servers you install (TypeScript, Python, C#, Go…): errors as you type, hover, go to definition (F12), rename (F2), format",
                 "Markdown previews render safe embedded HTML, including centered headings and sized local images",
                 "Search → Preview a file… for anything else",
@@ -811,7 +810,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="git"
             title="Git"
-            lead="The repository you work in, plus any you show next to it (or all of them), with Repos in the lower half of the sidebar for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes. Click a line number in a diff to leave a review comment, then send them all to a chat."
+            lead="The repository you work in, plus any you show next to it (or all of them), with Repos in the lower half of the sidebar for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Jig for the commit message; right-click a file or repository to have Jig explain or review the changes. Click a line number in a diff to leave a review comment, then send them all to a chat."
             shot={{
               src: git,
               alt: "The Git view with changes in several repositories",
@@ -822,14 +821,14 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             title="Releases"
             shot={{
               src: releasesShot,
-              alt: "A repository's release policy, its unreleased commits and a release drafted with Claude",
+              alt: "A repository's release policy, its unreleased commits and a release drafted with Jig",
             }}
-            lead="Versions, changelogs and release notes per repository, by rules you set once: Claude looks at the repository and proposes a release policy (or adopts the versioning you already have), saved in the repo so your team shares it. Then Jig keeps you at it, quietly and without AI: what's unreleased, deploys without a version, reminders. Releasing is one action."
+            lead="Versions, changelogs and release notes per repository, by rules you set once: Jig looks at the repository and proposes a release policy (or adopts the versioning you already have), saved in the repo so your team shares it. Then Jig keeps you at it, quietly and without AI: what's unreleased, deploys without a version, reminders. Releasing is one action."
           >
             <Bullets
               items={[
                 "Planned releases, continuous (every prod deploy is a release) or not tracked — per repository",
-                "Draft with Claude: the bump with a reason, the changelog and notes for each audience and language",
+                "Draft with Jig: the bump with a reason, the changelog and notes for each audience and language",
                 "One action: version file, changelog, commit, tag and push, after you've seen every step",
                 "What's live per environment, from pipeline runs or a Deployed button",
                 "Git's Write follows the repository's commit convention",
@@ -839,15 +838,15 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="terminals"
             title="Terminals & scripts"
-            lead="Real terminals at the bottom. Jig finds the scripts of every repo (package.json, Makefile, …) so you can run, restart and stop them from one place, also in groups. The chevron beside + opens a terminal in any installed shell (PowerShell, cmd, Git Bash, …); the default is picked in Settings. When one fails, Ask Claude opens a chat with its output. When Claude starts a dev server or watcher, it runs in a terminal here (“Claude: …”) that you can see and stop. Tests (Show tests) finds each repo's test suites, runs them with one click and keeps their results, failing tests and history; Claude can run them too."
+            lead="Real terminals at the bottom. Jig finds the scripts of every repo (package.json, Makefile, …) so you can run, restart and stop them from one place, also in groups. The chevron beside + opens a terminal in any installed shell (PowerShell, cmd, Git Bash, …); the default is picked in Settings. When one fails, Ask Jig opens a chat with its output. When Jig starts a dev server or watcher, it runs in a terminal here (“Claude: …”) that you can see and stop. Tests (Show tests) finds each repo's test suites, runs them with one click and keeps their results, failing tests and history; Jig can run them too."
           />
           <Section
             id="configure"
-            title="Claude configures Jig"
-            lead="Ask in any chat: change the theme, fonts, layout, turn add-ons on or off. Claude does it right away and you get an Undo button."
+            title="Change Jig by asking"
+            lead="Ask in any chat: change the theme, fonts, layout, turn add-ons on or off. Jig does it right away and you get an Undo button."
             shot={{
               src: configure,
-              alt: "Claude switching the theme, with an Undo card",
+              alt: "Jig switching the theme, with an Undo card",
             }}
           >
             <ConfigureExamples />
@@ -918,28 +917,28 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="learning"
             title="Suggestions"
-            lead="Jig notices how you ask Claude for things, what you do often (the same prompt, the same commands), what slows you down, risky practices, and what you mention in chats, and suggests what would help — a better prompt, an add-on or Jig feature you already have, a safer practice, a tip, a workflow, a CLAUDE.md line, a routine, or a new tool. Everything stays on your computer."
+            lead="Jig notices how you ask for things, what you do often (the same prompt, the same commands), what slows you down, risky practices, and what you mention in chats, and suggests what would help — a better prompt, an add-on or Jig feature you already have, a safer practice, a tip, a workflow, a CLAUDE.md line, a routine, or a new tool. Everything stays on your computer."
             shot={{ src: suggestions, alt: "The suggestions view" }}
           >
             <Bullets
               items={[
-                "Claude notes manual work you mention in a chat (a card you can remove)",
+                "Jig notes manual work you mention in a chat (a card you can remove)",
                 "Friction counts too: stops, rewinds, denied permissions, corrections, failing scripts",
-                "A coach for working with Claude: it reads your recent chats and suggests the change that would help most, with Compare prompts: your prompt and a better one side by side, and why it's better",
-                "Safety first: secrets in messages or commands, risky commands, force pushes and commits without tests become a “better practice” suggestion with Fix it with Claude",
+                "A coach for working with Jig: it reads your recent chats and suggests the change that would help most, with Compare prompts: your prompt and a better one side by side, and why it's better",
+                "Safety first: secrets in messages or commands, risky commands, force pushes and commits without tests become a “better practice” suggestion with Fix it with Jig",
                 "What you already have comes before new tools: an add-on (Switch it on / Show me) or a Jig feature (Show me)",
                 "Each suggestion has its own action: Build it, Draft a workflow, Add to CLAUDE.md, Make a routine…",
                 "“Did it help?” a week after you act on one",
                 "What Jig knows about me: your editable profile, the notes and the activity — delete anything",
-                "How you worked: lines by Claude vs by hand in your commits, and how often each was changed again",
+                "How you worked: lines by Jig vs by hand in your commits, and how often each was changed again",
                 "Suggestions use a centered reading column on wide screens and still fit narrow panels",
-                "How Claude worked for you: the skills, subagents, add-ons and MCP servers it used across chats, which suggestions build on",
-                "An empty profile? Jig offers a short interview chat where Claude asks, follows up and fills it in; plus an optional weekly check-in chat (off by default)",
+                "How Jig worked for you: the skills, subagents, add-ons and MCP servers it used across chats, which suggestions build on",
+                "An empty profile? Jig offers a short interview chat that asks, follows up and fills it in; plus an optional weekly check-in chat (off by default)",
                 "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Views you keep opening as tabs: Jig suggests a place for them",
                 "Pipelines of your repositories, loaded when Jig starts, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
-                "Ask Claude (or Jig on your phone) whether any pipelines are running, why a run failed, or which repositories have something to push: it reads Pipelines and Repos with their tools, and never starts a run itself",
+                "Ask Jig (or Jig on your phone) whether any pipelines are running, why a run failed, or which repositories have something to push: it reads Pipelines and Repos with their tools, and never starts a run itself",
                 "Boards per project (Code → Boards): pick team boards found in your organisations; a tab per board with its columns and cards, like Azure DevOps, each card showing who has it (their Microsoft picture with the meeting sign-in, else initials)",
               ]}
             />
@@ -959,14 +958,14 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "On a schedule while Jig is open: alone when Jig can do every step, otherwise it reminds you",
                 "After you push, or when a pipeline finishes (succeeded, failed or either)",
                 "Export as a Claude Code skill, or Move to the cloud as a routine or a pipeline",
-                "Suggestions draft workflows from what you tell Claude you do by hand",
+                "Suggestions draft workflows from what you tell Jig you do by hand",
               ]}
             />
           </Section>
           <Section
             id="knowledge"
             title="What Jig knows about me"
-            lead="Everything Jig uses to suggest things, in one page you control: your profile (how you work), the notes Claude saved from your chats, your activity by kind, and how you worked this week — lines by Claude vs by hand. It stays on your computer; edit or delete anything."
+            lead="Everything Jig uses to suggest things, in one page you control: your profile (how you work), the notes Jig saved from your chats, your activity by kind, and how you worked this week — lines by Jig vs by hand. It stays on your computer; edit or delete anything."
             shot={{
               src: knowledgeShot,
               alt: "The profile, notes from chats and activity",
@@ -989,7 +988,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             id="voice"
             title="Voice commands"
             lead={
-              'Say "Hey Jig" and a command, also while Jig is minimized or behind other windows. Jig hears and runs these on this computer, without Claude and without using your plan; only "ask Claude" starts a chat. Turn it on with a click on Hey Jig in the status bar (right-click for more) or in Settings → Speech. The first time, Jig asks you to say "Hey Jig" five times so it learns your voice (Train Hey Jig, also in the right-click menu); only text is kept, never your voice.'
+              'Say "Hey Jig" and a command, also while Jig is minimized or behind other windows. Jig hears and runs these on this computer, without AI and without using your plan; only "ask Jig" starts a chat. Turn it on with a click on Hey Jig in the status bar (right-click for more) or in Settings → Speech. The first time, Jig asks you to say "Hey Jig" five times so it learns your voice (Train Hey Jig, also in the right-click menu); only text is kept, never your voice.'
             }
           >
             <VoiceCommandsList />

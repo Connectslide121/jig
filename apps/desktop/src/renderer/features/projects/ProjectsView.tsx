@@ -21,7 +21,7 @@ export function ProjectsView() {
           </Button>
         }
       >
-        A project groups your chats, with a default folder, Git repository and settings for Claude.
+        A project groups your chats, with a default folder, Git repository and settings for Jig.
       </Empty>
     );
   const where = (project: (typeof projects)[number]) => {

@@ -149,7 +149,7 @@ test("screenshots pasted or dropped into the composer go to Claude with the mess
     data.items.add(new File(["x"], "clip.mp4", { type: "video/mp4" }));
     el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
   });
-  await expect(page.getByTestId("toast").last()).toContainText("Claude can take images, PDFs, Word");
+  await expect(page.getByTestId("toast").last()).toContainText("Jig can take images, PDFs, Word");
   // An empty entry next to a screenshot is skipped quietly; an empty one alone is named once.
   await input.evaluate((el, b64) => {
     const data = new DataTransfer();

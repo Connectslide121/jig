@@ -16,7 +16,7 @@ export function registerAttempts(): void {
   registerAction({
     id: "jig.attempts",
     title: "Try a task several ways…",
-    group: "Claude",
+    group: "Assistant",
     icon: Split,
     keywords: ["attempts", "best of", "compare", "parallel", "worktree", "race"],
     run: () => openAttemptsDialog({ task: "" }),

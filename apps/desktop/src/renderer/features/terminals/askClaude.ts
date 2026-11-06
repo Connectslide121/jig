@@ -31,7 +31,7 @@ export async function askClaudeAboutTerminal(t: TerminalInfo): Promise<void> {
     const cwd = project && inside(t.cwd, project.path) ? t.cwd : undefined;
     await newSession(projectId, cwd, askClaudeDraft(t, outputTail(raw) || "(no output)"));
   } catch (error) {
-    notify({ title: "Couldn't ask Claude", message: errorMessage(error), tone: "danger" });
+    notify({ title: "Couldn't ask Jig", message: errorMessage(error), tone: "danger" });
   }
 }
 

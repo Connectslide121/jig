@@ -14,7 +14,7 @@ test("a terminal Claude started tells its chat when it ends", async ({ page, jig
   // The command exits by itself: Jig sends the chat one line (not a message from you), a new turn.
   const notice = chat.getByTestId("jig-message");
   await expect(notice).toContainText('Terminal "Build" finished', { timeout: 15000 });
-  await expect(notice).toContainText("Jig told Claude");
+  await expect(notice).toContainText("Sent by Jig");
   await expect(notice).toHaveAttribute("title", /build finished/);
   await expect(chat.getByTestId("user-message")).toHaveCount(1);
 

@@ -113,7 +113,7 @@ test("Git: Claude writes the commit message, and explains a change in a new chat
   );
 
   await page.getByTestId("git-file-unstaged-cart.ts").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Explain this change with Claude" }).click();
+  await page.getByRole("menuitem", { name: "Explain this change with Jig" }).click();
   await expect(page.getByTestId("composer-input")).toHaveValue(
     /^Explain the changes in cart\.ts \(git diff\)/,
   );
@@ -138,7 +138,7 @@ test("A failed script offers Ask Claude, with its output in a new chat", async (
 
   const toast = page.getByTestId("toast").filter({ hasText: "failed" });
   await expect(toast).toContainText("Exit code 3", { timeout: 15000 });
-  await toast.getByRole("button", { name: "Ask Claude" }).click();
+  await toast.getByRole("button", { name: "Ask Jig" }).click();
   const input = page.getByTestId("composer-input");
   await expect(input).toHaveValue(/failed with exit code 3/);
   await expect(input).toHaveValue(/Error: the cart total is wrong/);
@@ -173,8 +173,8 @@ test("Try several ways: parallel attempts in worktrees, Claude judges, keep one"
   await expect(attempts.getByTestId("attempts-diff")).toContainText("+Written by the fake engine.");
 
   await attempts.getByTestId("attempts-judge").click();
-  await expect(attempts.getByTestId("attempts-verdict")).toContainText("Claude recommends attempt 2");
-  await expect(attempts.getByTestId("attempt-2")).toContainText("Claude's pick");
+  await expect(attempts.getByTestId("attempts-verdict")).toContainText("Jig recommends attempt 2");
+  await expect(attempts.getByTestId("attempt-2")).toContainText("Jig's pick");
 
   await attempts.getByTestId("attempt-keep-2").click();
   await page.getByTestId("dialog-confirm").click();
@@ -246,7 +246,7 @@ test("Turn a chat into a tool: the builder gets what happened, in order", async 
   await page.getByRole("button", { name: "Chat options" }).click();
   await page.getByTestId("session-to-tool").click();
   await expect(page.getByTestId("build-goal")).toHaveValue(
-    /I asked: please write notes\.txt\n- Claude changed .*notes\.txt/,
+    /I asked: please write notes\.txt\n- Jig changed .*notes\.txt/,
   );
 });
 

@@ -81,9 +81,9 @@ function Form({ open }: { open: Open }) {
     >
       <div className="flex flex-col gap-3">
         <div className="text-xs text-muted">
-          Claude works on the same task in {count} chats at once, each in its own copy of the repository (a
-          git worktree from your last commit) and each from a different angle. Compare what they did, let
-          Claude judge, and keep the best one. Your working copy isn't touched until you keep one.
+          Jig works on the same task in {count} chats at once, each in its own copy of the repository (a git
+          worktree from your last commit) and each from a different angle. Compare what they did, let Jig
+          judge, and keep the best one. Your working copy isn't touched until you keep one.
         </div>
         <Textarea
           rows={4}

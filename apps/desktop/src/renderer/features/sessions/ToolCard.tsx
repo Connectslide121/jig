@@ -412,7 +412,7 @@ export function ToolCard({
           <IconButton
             icon={ArrowDownToLine}
             size="sm"
-            label="Move to the background: Claude goes on while this keeps running (Ctrl+B in Claude Code)"
+            label="Move to the background: Jig goes on while this keeps running (Ctrl+B in Claude Code)"
             data-testid="tool-background"
             onClick={() =>
               void call("sessions.background", { id: sessionId, toolUseId: item.id }).then((moved) => {
@@ -442,7 +442,7 @@ export function ToolCard({
           title={
             agentModels.length
               ? `Reported agent models: ${agentModels.join(", ")}`
-              : "Claude Code has not reported the subagent's model"
+              : "The subagent's model was not reported"
           }
         >
           <span className="shrink-0">Agent model:</span>

@@ -324,12 +324,12 @@ function Room() {
   const askButton = (
     <>
       {/*
-        Captions in your language: Teams translates (Teams Premium), or else Claude (D-277); the
+        Captions in your language: Teams translates (Teams Premium), or else Jig (D-277); the
         original stays under it.
       */}
       <Select
         aria-label="Show captions in"
-        title="Show captions in another language: Teams translates with Teams Premium, otherwise Claude does"
+        title="Show captions in another language: Teams translates with Teams Premium, otherwise Jig does"
         className="h-7 w-40 text-xs"
         value={mediaState.captionLanguage}
         onChange={(e) => {
@@ -349,7 +349,7 @@ function Room() {
         ))}
       </Select>
       <Button size="sm" icon={MessageSquare} onClick={() => setAsk(true)}>
-        Ask Claude
+        Ask Jig
       </Button>
     </>
   );

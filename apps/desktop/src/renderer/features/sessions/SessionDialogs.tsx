@@ -145,7 +145,7 @@ function FoldersDialog({ sessionId, onClose }: { sessionId: string; onClose: () 
     }
   };
   const add = async () => {
-    const folder = await call("app.pickFolder", { title: "A folder Claude may use" });
+    const folder = await call("app.pickFolder", { title: "A folder Jig may use" });
     if (folder && !dirs.includes(folder)) await save([...dirs, folder]);
   };
   return (
@@ -161,8 +161,8 @@ function FoldersDialog({ sessionId, onClose }: { sessionId: string; onClose: () 
       }
     >
       <p className="mb-3 text-xs text-muted">
-        Claude works in <span className="font-mono">{meta?.cwd}</span>. Add other folders it may read and
-        change too (another repository, shared docs). Claude Code restarts with them at your next message.
+        Jig works in <span className="font-mono">{meta?.cwd}</span>. Add other folders it may read and change
+        too (another repository, shared docs). The chat restarts with them at your next message.
       </p>
       {dirs.length === 0 && <div className="text-xs text-hint">No other folders.</div>}
       {dirs.map((dir) => (
@@ -253,7 +253,7 @@ function EditQueuedDialog({
       }
     >
       <p className="mb-2 text-xs text-muted">
-        It sends after Claude's current turn, in the same place in the queue. {formatShortcut("Mod+Enter")}{" "}
+        It sends after Jig's current turn, in the same place in the queue. {formatShortcut("Mod+Enter")}{" "}
         saves.
       </p>
       <div className="h-80">
@@ -268,7 +268,7 @@ function EditQueuedDialog({
           testId="edit-queued-box"
           inputTestId="edit-queued-text"
           inputLabel="Queued message"
-          placeholder="Message Claude…  / commands · @ files"
+          placeholder="Message Jig…  / commands · @ files"
           moreMenu={moreMenu}
           moreLabel="Commands, files and attachments"
           onKeyDown={(e) => {

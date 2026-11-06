@@ -52,7 +52,7 @@ export function terminalMenu(t: TerminalInfo): MenuEntry[] {
       ? []
       : [
           {
-            label: "Ask Claude about this output",
+            label: "Ask Jig about this output",
             icon: Sparkles,
             onSelect: () => void askClaudeAboutTerminal(t),
           },
@@ -149,7 +149,7 @@ export function TerminalsView(_props: ViewProps) {
                 <IconButton
                   icon={Sparkles}
                   size="sm"
-                  label="Ask Claude about this failure"
+                  label="Ask Jig about this failure"
                   data-testid="terminal-ask-claude"
                   className="size-5 text-accent"
                   onClick={(e) => {

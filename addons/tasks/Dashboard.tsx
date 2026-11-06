@@ -75,8 +75,8 @@ export function DashboardView({ ctx, onAdd }: { ctx: AddonUiContext; onAdd: () =
           </Button>
         }
       >
-        Each project has its own task queue. Add prompts and press Start: Claude does them one after another,
-        and every queue shows here.
+        Each project has its own task queue. Add prompts and press Start: Jig does them one after another, and
+        every queue shows here.
       </Empty>
     );
 

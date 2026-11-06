@@ -2,7 +2,7 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "pages",
   "name": "Pages",
-  "description": "Pages Claude (or ChatGPT) publishes into Jig: a report, mockup, dashboard, comparison or release notes as a self-contained HTML page, kept and previewed on this computer. Jig's own artifacts: nothing is uploaded.",
+  "description": "Pages Jig publishes for you: a report, mockup, dashboard, comparison or release notes as a self-contained HTML page, kept and previewed on this computer. Jig's own artifacts: nothing is uploaded.",
   "version": "1.0.0",
   "icon": "layout-template",
   "permissions": ["fs:read", "fs:write", "chat"],
@@ -22,7 +22,7 @@
       {
         "id": "show",
         "title": "Pages",
-        "group": "Claude",
+        "group": "Assistant",
         "icon": "layout-template",
         "run": "showPages"
       }

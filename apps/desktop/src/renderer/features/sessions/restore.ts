@@ -18,7 +18,7 @@ export async function restoreFiles(sessionId: string, itemId: string): Promise<v
     }
     const files = preview.filesChanged ?? [];
     if (files.length === 0) {
-      notify({ title: "Nothing to restore", message: "Claude hasn't changed any files since this message." });
+      notify({ title: "Nothing to restore", message: "Jig hasn't changed any files since this message." });
       return;
     }
     const shown =
@@ -45,8 +45,8 @@ export async function restoreFiles(sessionId: string, itemId: string): Promise<v
 export async function rewindChat(sessionId: string, itemId: string, files: boolean): Promise<void> {
   const ok = await confirmDialog({
     title: files ? "Rewind the chat and the files?" : "Rewind the chat?",
-    message: `Claude forgets this message and everything after it, and it goes back into the message box.${
-      files ? " Files Claude changed since then go back to how they were." : " Files stay as they are."
+    message: `Jig forgets this message and everything after it, and it goes back into the message box.${
+      files ? " Files Jig changed since then go back to how they were." : " Files stay as they are."
     }`,
     confirmLabel: "Rewind",
     danger: true,

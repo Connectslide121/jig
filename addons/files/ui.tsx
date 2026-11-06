@@ -152,7 +152,7 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
           onSelect: () => ctx.openPath(dir ? path : parent(path)),
         },
         {
-          label: dir ? "New chat in this folder" : "Ask Claude about this file",
+          label: dir ? "New chat in this folder" : "Ask Jig about this file",
           icon: "message-square-plus",
           onSelect: () =>
             void ctx.openChat(

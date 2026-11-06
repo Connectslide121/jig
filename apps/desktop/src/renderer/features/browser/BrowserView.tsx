@@ -133,7 +133,7 @@ function PageTab({
       </span>
       <span className="flex size-2 shrink-0 items-center" data-testid="browser-tab-driving">
         {page.driving && (
-          <span title="Claude is using this page" className="size-2 animate-pulse rounded-full bg-info" />
+          <span title="Jig is using this page" className="size-2 animate-pulse rounded-full bg-info" />
         )}
       </span>
       {/* Always laid out (opacity only), so the name and the dot never move on hover. */}
@@ -317,9 +317,9 @@ export function BrowserView(_props: ViewProps) {
           <Input
             value={state?.url ?? ""}
             readOnly
-            aria-label="Claude’s browser address"
+            aria-label="Jig’s browser address"
             data-testid="browser-address"
-            placeholder="Waiting for Claude to open a page"
+            placeholder="Waiting for Jig to open a page"
             onFocus={(event) => event.currentTarget.select()}
           />
         </div>
@@ -350,7 +350,7 @@ export function BrowserView(_props: ViewProps) {
         {open && frame ? (
           <div
             role="application"
-            aria-label="Claude’s browser page"
+            aria-label="Jig’s browser page"
             // biome-ignore lint/a11y/noNoninteractiveTabindex: the live page takes keyboard input like a browser
             tabIndex={0}
             className="absolute inset-0 outline-none focus:ring-1 focus:ring-focus"
@@ -376,10 +376,9 @@ export function BrowserView(_props: ViewProps) {
             />
           </div>
         ) : (
-          <Empty title="Claude’s browser" icon={MonitorCog}>
-            Claude opens pages here to check its work: it clicks, types, takes screenshots and reads the
-            console. Each chat has its own page, in its own tab. Ask a chat to "open the app and check the
-            login form".
+          <Empty title="Jig’s browser" icon={MonitorCog}>
+            Jig opens pages here to check its work: it clicks, types, takes screenshots and reads the console.
+            Each chat has its own page, in its own tab. Ask a chat to "open the app and check the login form".
           </Empty>
         )}
       </div>
@@ -420,7 +419,7 @@ export function BrowserView(_props: ViewProps) {
         className="shrink-0 border-t border-line px-2 py-2 text-xs text-muted"
         data-testid="claude-browser-hint"
       >
-        Claude controls this browser. You can click and type in the page to help with sign-ins. For your own
+        Jig controls this browser. You can click and type in the page to help with sign-ins. For your own
         browsing,{" "}
         <button
           type="button"

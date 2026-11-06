@@ -8,7 +8,7 @@ export function registerDigest(): void {
   registerAction({
     id: "jig.standup",
     title: "Write my standup…",
-    group: "Claude",
+    group: "Assistant",
     icon: NotebookPen,
     keywords: ["standup", "daily", "summary", "digest", "what did I do", "report"],
     run: () => openStandup(),

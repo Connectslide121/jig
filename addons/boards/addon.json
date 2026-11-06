@@ -2,7 +2,7 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "boards",
   "name": "Boards",
-  "description": "Azure DevOps boards per project, laid out like Azure DevOps: each project follows the team boards you pick from your organisations, one tab per board. Open, edit, drag between columns, create and delete cards right here, and Claude can read and update them from your chats. Uses your own az login.",
+  "description": "Azure DevOps boards per project, laid out like Azure DevOps: each project follows the team boards you pick from your organisations, one tab per board. Open, edit, drag between columns, create and delete cards right here, and Jig can read and update them from your chats. Uses your own az login.",
   "version": "2.2.0",
   "icon": "kanban",
   "permissions": ["exec:az", "fs:read", "chat"],

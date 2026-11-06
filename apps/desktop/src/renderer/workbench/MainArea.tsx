@@ -45,7 +45,7 @@ function useTabTitle(tab: LayoutTab): string {
 
 const noStatus = () => undefined;
 const STATUS_TITLE = {
-  working: "Claude is working",
+  working: "Jig is working",
   attention: "Needs you",
   error: "Stopped with an error",
   unread: "Finished — not seen yet",

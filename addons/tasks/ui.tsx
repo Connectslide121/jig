@@ -896,9 +896,9 @@ function QueuePanel({
             </>
           }
         >
-          Add prompts and press Start: Claude does them one after another, each in its own chat or continuing
-          the one before, and reports how each went here. Claude can queue tasks too (ask it in a chat, e.g.
-          "queue a task for each spec in docs/"). Every run is kept in History.
+          Add prompts and press Start: Jig does them one after another, each in its own chat or continuing the
+          one before, and reports how each went here. Jig can queue tasks too (ask it in a chat, e.g. "queue a
+          task for each spec in docs/"). Every run is kept in History.
         </Empty>
       ) : (
         <TaskTable
@@ -2321,7 +2321,7 @@ function TaskRow({
     task.reportedLate ? "reported late" : "",
     isActive(task) && task.nudgedAt ? "asked for its report" : "",
     continues ? "same chat" : "",
-    task.addedBy ? "queued by Claude" : "",
+    task.addedBy ? "queued by Jig" : "",
     task.from ? "a follow-up" : "",
     task.permissionMode === "plan"
       ? "plan only"
@@ -2579,7 +2579,7 @@ function TaskDialog({
       ["Finished", when(task.finishedAt)],
       ["Time", duration(task)],
       ["Cost", money(task.costUsd)],
-      ["Queued by", task.addedBy ? "Claude, from a chat" : "you"],
+      ["Queued by", task.addedBy ? "Jig, from a chat" : "you"],
     ] as Array<[string, ReactNode]>
   ).filter(([, v]) => v);
   return (
@@ -3018,7 +3018,7 @@ function AddDialog({
                         autoFocus={step.id === focus || (!focus && ci === 0 && si === 0)}
                         className="h-20 min-w-0 flex-1 resize-none"
                         value={step.text}
-                        placeholder={si === 0 ? "What should Claude do?" : "Then, in the same chat…"}
+                        placeholder={si === 0 ? "What should Jig do?" : "Then, in the same chat…"}
                         onChange={(e) => setChats(setStep(chats, ci, si, e.target.value))}
                         onPaste={(e) => {
                           if (takeFiles(ctx, e.clipboardData.files, (f) => attach(ci, si, f))) {
@@ -3417,7 +3417,7 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
       <div className="flex items-center gap-2 text-sm font-medium text-fg">
         <ListTodo className="size-4 shrink-0 text-accent" />
         <span className="min-w-0 truncate">
-          Claude wants to {parked ? "park" : "queue"} {count === 1 ? "a task" : `${count} tasks`}
+          Jig wants to {parked ? "park" : "queue"} {count === 1 ? "a task" : `${count} tasks`}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {project && <ProjectSwatch color={project.color} />}

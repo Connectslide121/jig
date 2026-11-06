@@ -19,15 +19,15 @@ export function chatRecipe(title: string, items: ChatItem[]): string {
           : typeof item.input.path === "string"
             ? item.input.path
             : undefined;
-      if (command) steps.push(`- Claude ran: ${short(command, 200)}`);
-      else if (file && /^(Write|Edit|MultiEdit)$/.test(item.name)) steps.push(`- Claude changed ${file}`);
+      if (command) steps.push(`- Jig ran: ${short(command, 200)}`);
+      else if (file && /^(Write|Edit|MultiEdit)$/.test(item.name)) steps.push(`- Jig changed ${file}`);
     }
     if (steps.length >= 40) break;
   }
   return [
-    `Turn what I did in the chat "${title}" into a tool I can run again with one click, so I don't have to ask Claude every time.`,
+    `Turn what I did in the chat "${title}" into a tool I can run again with one click, so I don't have to ask Jig every time.`,
     "What happened in the chat:",
     ...steps,
-    "Pick the right shape (a Tools-menu action with a shortcut, a button, a view, a prompt button, or a watcher if it should run on its own). Steps that need judgement can ask Claude through ctx.ai.ask or open a chat with a draft; fixed commands should run directly.",
+    "Pick the right shape (a Tools-menu action with a shortcut, a button, a view, a prompt button, or a watcher if it should run on its own). Steps that need judgement can ask Jig through ctx.ai.ask or open a chat with a draft; fixed commands should run directly.",
   ].join("\n");
 }

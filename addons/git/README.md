@@ -19,12 +19,12 @@ detail in the main window**. Rebase, graph and blame are out of scope.
   - The choice is kept per project and per focus repository (add-on storage `shown:<projectId>`).
   - Only the listed repositories are watched and checked.
   - The Repos add-on below the list shows every repository at a glance.
-- **Write** (commit box) asks Claude for the message from the staged diff and recent subjects. When the
+- **Write** (commit box) asks Jig for the message from the staged diff and recent subjects. When the
   repository's release policy (`.jig/release.json`, Releases add-on) sets `commitConvention:
   "conventional"`, it asks for Conventional Commits (`feat(scope): …`, `!` for breaking).
 - **Review comments** (diff tab of a working change): click a line number to comment on that line;
   comments show under their line and are kept per repository (storage `review:<repo path>`). **Review
-  (N)** → Send to a new chat makes one message with every comment, per file and line, for Claude to
+  (N)** → Send to a new chat makes one message with every comment, per file and line, for Jig to
   address (`lib/review.ts`); or Clear.
 - **"N unreleased"** next to a repository whose release policy (`.jig/release.json`) plans releases:
   commits since the latest tag in its format. Click opens the Releases view.

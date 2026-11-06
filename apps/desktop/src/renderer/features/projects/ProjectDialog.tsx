@@ -347,8 +347,8 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
           </Field>
         </div>
         <Field
-          label="Instructions for Claude"
-          hint="Added to Claude's instructions in this project's chats, e.g. how you name branches or which language release notes are in."
+          label="Instructions for Jig"
+          hint="Added to Jig's instructions in this project's chats, e.g. how you name branches or which language release notes are in."
         >
           <Textarea
             rows={3}

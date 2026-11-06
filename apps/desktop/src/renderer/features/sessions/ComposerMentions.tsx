@@ -148,7 +148,7 @@ export function MentionChips({
             type="button"
             title={
               m.kind === "chat"
-                ? `Teams chat: ${label(m)}. Claude reads it when you send (${click} to open Meetings)`
+                ? `Teams chat: ${label(m)}. Jig reads it when you send (${click} to open Meetings)`
                 : m.kind === "meeting"
                   ? `Open the meeting in Meetings (or ${click} it in the message)`
                   : `Open ${m.value} (or ${click} it in the message)`

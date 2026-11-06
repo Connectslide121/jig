@@ -15,7 +15,7 @@ export function registerRoutines(): void {
   registerAction({
     id: "jig.routines",
     title: "Routines",
-    group: "Claude",
+    group: "Assistant",
     icon: CalendarClock,
     keywords: ["schedule", "cron", "trigger", "recurring", "automation"],
     run: () => {

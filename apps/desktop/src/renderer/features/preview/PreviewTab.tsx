@@ -354,7 +354,7 @@ export function PreviewTab({ params, active, tabId }: TabProps) {
           </Button>
         )}
         <Button size="sm" variant="ghost" icon={Sparkles} onClick={ask} data-testid="preview-ask">
-          Ask Claude
+          Ask Jig
         </Button>
         <IconButton
           icon={SquareArrowOutUpRight}
@@ -375,7 +375,7 @@ export function PreviewTab({ params, active, tabId }: TabProps) {
           data-testid="preview-conflict"
         >
           <span className="min-w-0 flex-1 text-fg">
-            This file changed on disk (Claude, or another program) while you have unsaved edits.
+            This file changed on disk (Jig, or another program) while you have unsaved edits.
           </span>
           <Button size="sm" onClick={() => void save(theirs)} data-testid="conflict-keep">
             Keep mine

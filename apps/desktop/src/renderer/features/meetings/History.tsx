@@ -169,7 +169,7 @@ export function MeetingHistory({
     const ok = await confirmDialog({
       title: `Delete "${r.title}"?`,
       message:
-        "Deletes its transcript, notes and actions from this computer. Chats where you already asked Claude about it keep what Claude read there.",
+        "Deletes its transcript, notes and actions from this computer. Chats where you already asked Jig about it keep what Jig read there.",
       confirmLabel: "Delete meeting",
       danger: true,
     });

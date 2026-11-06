@@ -150,12 +150,12 @@ export function UserBrowserView() {
       >
         {state?.error
           ? `Couldn't load this page: ${state.error}`
-          : state?.title || "Your browser · separate from Claude's browser"}
+          : state?.title || "Your browser · separate from Jig's browser"}
       </div>
       <div ref={slot} className="relative min-h-0 flex-1 bg-canvas" data-testid="user-browser-page">
         {!open && (
           <Empty title="Browser" icon={Globe}>
-            Enter an address above to browse. Claude works in its own browser.
+            Enter an address above to browse. Jig works in its own browser.
           </Empty>
         )}
       </div>

@@ -224,7 +224,7 @@ export const permissionTone = (mode: PermissionMode): string =>
 /** The modes a chat can switch to (the message box's permission button, its + menu, /permissions). */
 export function permissionMenu(meta: SessionMeta): MenuEntry[] {
   return [
-    { heading: `When ${providerName(meta)} wants to change things` },
+    { heading: "When Jig wants to change things" },
     ...permissionModesOf(meta).map((mode) => ({
       label: PERMISSION_MODE_LABELS[mode],
       icon: permissionIcon(mode),
@@ -243,7 +243,7 @@ export async function renameSession(meta: SessionMeta): Promise<void> {
 export async function deleteSession(meta: SessionMeta): Promise<void> {
   const ok = await confirmDialog({
     title: `Delete “${meta.title}”?`,
-    message: "Removes the chat from Jig. Claude Code's own transcript file stays on disk.",
+    message: "Removes the chat from Jig. The chat's own transcript file stays on disk.",
     confirmLabel: "Delete",
     danger: true,
   });

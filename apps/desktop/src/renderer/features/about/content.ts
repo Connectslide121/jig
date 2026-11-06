@@ -12,11 +12,11 @@ export const BUILD_EXAMPLES: Array<{ level: string; what: string; goals: string[
   },
   {
     level: "An add-on",
-    what: "New views, tabs, buttons, menus, watchers, search results and reactions to what happens in Jig, with toasts, badges and live output. Claude writes it, Jig checks and loads it.",
+    what: "New views, tabs, buttons, menus, watchers, search results and reactions to what happens in Jig, with toasts, badges and live output. Jig writes it, then checks and loads it.",
     goals: [
       "A view that lists my Azure DevOps pipelines and their last run",
       "A status bar item with the current branch of the focus repo",
-      "A chat button that asks Claude to write the commit message for my staged changes",
+      "A chat button that asks Jig to write the commit message for my staged changes",
       "Warn me when a pipeline run fails (check every 5 minutes)",
     ],
   },
@@ -88,7 +88,7 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
     snippet: '"toolRenderers": [{ "tool": "mcp__ado__get_run", "component": "RunCard" }]',
   },
   "chat.permissionRenderer": {
-    idea: "Review and edit the tasks Claude wants to queue before allowing it",
+    idea: "Review and edit the tasks Jig wants to queue before allowing it",
     snippet: '"permissionRenderers": [{ "tool": "add", "component": "ReviewTasks" }]',
   },
   prompt: {

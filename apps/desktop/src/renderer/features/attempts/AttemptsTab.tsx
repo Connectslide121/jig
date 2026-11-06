@@ -87,7 +87,7 @@ export function AttemptsTab({ params, active }: TabProps) {
     try {
       await call("attempts.judge", { id });
     } catch (e) {
-      notify({ title: "Claude couldn't judge", message: errorMessage(e), tone: "danger" });
+      notify({ title: "Jig couldn't judge", message: errorMessage(e), tone: "danger" });
     } finally {
       setJudging(false);
     }
@@ -157,12 +157,12 @@ export function AttemptsTab({ params, active }: TabProps) {
                 title={
                   working
                     ? "Wait until every attempt has finished"
-                    : "Claude compares the attempts and picks one"
+                    : "Jig compares the attempts and picks one"
                 }
                 onClick={() => void judge()}
                 data-testid="attempts-judge"
               >
-                Let Claude judge
+                Let Jig judge
               </Button>
               <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void discard()}>
                 Discard all
@@ -180,7 +180,7 @@ export function AttemptsTab({ params, active }: TabProps) {
           <Trophy className="mt-0.5 size-4 shrink-0 text-accent" />
           <div>
             <div className="font-medium text-fg">
-              {verdict.winner ? `Claude recommends attempt ${verdict.winner}` : "Claude has no clear winner"}
+              {verdict.winner ? `Jig recommends attempt ${verdict.winner}` : "Jig has no clear winner"}
             </div>
             <div className="text-xs text-muted">{verdict.summary}</div>
           </div>
@@ -204,7 +204,7 @@ export function AttemptsTab({ params, active }: TabProps) {
               <div className="flex items-center gap-2">
                 {meta && <StatusDot status={meta.status} />}
                 <span className="text-sm font-semibold text-fg">Attempt {a.index}</span>
-                {verdict?.winner === a.index && <Badge tone="accent">Claude's pick</Badge>}
+                {verdict?.winner === a.index && <Badge tone="accent">Jig's pick</Badge>}
                 <div className="flex-1" />
                 <Button
                   size="sm"

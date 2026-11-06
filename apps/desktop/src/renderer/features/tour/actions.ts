@@ -5,7 +5,7 @@ import { dismiss, notify } from "../../workbench/toasts";
 /** Asks Claude for a guided tour of the uncommitted changes where `cwd` is, and opens it. */
 export async function startTour(cwd: string, focus?: string): Promise<void> {
   const waiting = notify({
-    title: "Claude is preparing a tour of the changes…",
+    title: "Jig is preparing a tour of the changes…",
     message: "It opens when it's ready.",
     timeout: 0,
   });

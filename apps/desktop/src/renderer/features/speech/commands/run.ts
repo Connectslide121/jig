@@ -155,7 +155,7 @@ export async function runCommand({ command, slots }: ParsedCommand): Promise<Voi
       if (!project) return NO_PROJECT;
       const id = await newSession(project.id);
       if (!id) return { say: "I couldn't start a chat." };
-      return { say: `New chat in ${project.name}. Talk to Claude now.`, after: () => requestTalk(id) };
+      return { say: `New chat in ${project.name}. Talk to Jig now.`, after: () => requestTalk(id) };
     }
     case "chat.continue": {
       const last = chats()[0];
@@ -189,7 +189,7 @@ export async function runCommand({ command, slots }: ParsedCommand): Promise<Voi
       if (!project) return NO_PROJECT;
       const id = await newSession(project.id);
       if (!id) return { say: "I couldn't start a chat." };
-      return { say: "Asking Claude.", after: () => requestTalk(id, slots.text) };
+      return { say: "Asking Jig.", after: () => requestTalk(id, slots.text) };
     }
     // ── Checking in ──
     case "status.overview": {
@@ -212,7 +212,7 @@ export async function runCommand({ command, slots }: ParsedCommand): Promise<Voi
       await ensureTranscript(id);
       const items = useSessions.getState().transcripts[id]?.items ?? [];
       const last = [...items].reverse().find((i) => i.kind === "assistant" && !i.streaming);
-      if (last?.kind !== "assistant") return { say: "Claude hasn't answered in that chat yet." };
+      if (last?.kind !== "assistant") return { say: "Jig hasn't answered in that chat yet." };
       return { say: speakableText(last.text) || "Its last answer is only code. Look at the screen for it." };
     }
     case "status.tasks": {
