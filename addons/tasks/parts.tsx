@@ -10,7 +10,7 @@ import {
   LoaderCircle,
   SkipForward,
 } from "lucide-react";
-import { CHATGPT_COST_NOTE, CHATGPT_NO_PRICE_NOTE } from "../../apps/desktop/src/shared/openaiPrices";
+import { CHATGPT_COST_NOTE, CHATGPT_NO_PRICE_NOTE } from "../shared/costNotes";
 import { type CountKey, progressParts, type QueueCounts } from "./lib/counts";
 import type { Task, TaskStatus } from "./lib/tasks";
 

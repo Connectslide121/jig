@@ -1,5 +1,14 @@
 # Status
 
+The Task queue works in the installed app again (2026-11-06, D-415, Jon): in 0.17.0 every Tasks view
+and tab was gone ("This tab needs addon.tasks.dashboard"; Settings → Add-ons showed `Could not
+resolve "../../apps/desktop/src/shared/openaiPrices"`), because D-414 imported two tooltip strings
+from the app's source, which the installed app doesn't ship. They now live in
+`addons/shared/costNotes.ts`, and `npm run check:addon-imports` (in `verify`) fails on any add-on
+import that leaves `addons/`. Needs a release to reach the installed app.
+**Check on your machine:** after updating, the Task queue view and its All queues tab open, and
+Settings → Add-ons → Tasks shows no red error.
+
 ChatGPT runs have a cost estimate (2026-11-06, D-414, Jon): ChatGPT chats and queue tasks no longer show
 $0.00. Each Codex turn's tokens are priced at OpenAI's API prices for its model (`shared/openaiPrices.ts`,
 cache reads at the cached price, long-context rate above 272K input tokens), so the chat overview, the

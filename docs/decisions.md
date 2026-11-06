@@ -7246,3 +7246,20 @@ own**.
   "—" (not $0.00) with a tooltip saying why (`taskCost` in the Tasks add-on: a ChatGPT task whose chat
   cost didn't grow has no cost). No new text in rows, so nothing moves.
 - **One-shot AI features** (`main/providers`) record no cost on either provider; nothing to price.
+
+## D-415: Add-ons import only from addons/ and @jig/sdk
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06) asked for the fix after the Task queue disappeared in 0.17.0; how it's
+  guarded is Claude, on my own.
+- **Why:** built-in add-ons ship as their source folders (`resources/addons`) and are bundled on the
+  user's computer, where `apps/` and `packages/` don't exist. D-414 imported two tooltip strings
+  into the Tasks add-on from `apps/desktop/src/shared/openaiPrices.ts`: fine in a dev checkout, but
+  in the installed 0.17.0 the UI bundle failed ("Could not resolve"), so every Tasks view and tab
+  vanished, with the error shown only in Settings → Add-ons.
+- **What:** add-on code imports only from its own folder, `addons/shared`, and packages by name
+  (`@jig/sdk`, `react`…). `import type` from anywhere is fine (erased before bundling). Something
+  the app and add-ons both need is copied into `addons/shared` with a test that keeps the copies
+  the same (`addons/shared/costNotes.ts` + `costNotes.test.ts`). `npm run check:addon-imports`
+  (`scripts/check-addon-imports.ts`, rules in `scripts/addon-imports-lib.ts`) enforces it and runs
+  in `verify` and `check`, so a release can't ship it again.

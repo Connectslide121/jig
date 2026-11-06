@@ -14,7 +14,7 @@ import {
 } from "@jig/sdk/ui";
 import { LayoutDashboard, MessageSquare, MoreHorizontal, Pause, Play, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
-import { CHATGPT_COST_NOTE } from "../../apps/desktop/src/shared/openaiPrices";
+import { CHATGPT_COST_NOTE } from "../shared/costNotes";
 import { progressText, sizeText } from "./lib/counts";
 import {
   cardTime,

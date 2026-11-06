@@ -6,6 +6,7 @@
 | End-to-end, what a change needs | Playwright + Electron | `e2e/*.spec.ts` | `npm run e2e:changed` |
 | End-to-end, everything (releases) | Playwright + Electron | `e2e/*.spec.ts` | `npm run e2e` |
 | Design tokens | `scripts/check-tokens.ts` | renderer + add-ons | `npm run check:tokens` |
+| Add-on imports stay in `addons/` (D-415) | `scripts/check-addon-imports.ts` | add-ons | `npm run check:addon-imports` |
 | Before each commit (no tests, D-258) | — | — | `npm run verify` |
 | Everything fast (releases) | — | — | `npm run check` |
 

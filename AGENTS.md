@@ -48,7 +48,7 @@ npm install            # once
 npm run dev            # Electron + Vite dev server with hot reload
 npm run build          # production build into apps/desktop/dist
 npm start              # run the production build
-npm run verify         # typecheck + lint + design-token check + no duplicate decision numbers (no tests) — run before every commit
+npm run verify         # typecheck + lint + design-token check + add-on imports (D-415) + no duplicate decision numbers (no tests) — run before every commit
 npm run decision -- "Title"   # reserve the next D-xxx: appends its heading to docs/decisions.md and prints the number (D-361)
 npm run check          # verify + unit tests — when releasing
 npm run e2e:changed    # the e2e specs a change needs since the last passing e2e run (else uncommitted only) — before committing a change to the app or a spec (D-331, D-357); -- --since origin/main for the old base, -- --list to only print the choice
@@ -234,6 +234,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   `addons/shared/RunsOn.tsx`, D-412), the OpenAI API prices ChatGPT turns' cost estimates use in
   `shared/openaiPrices.ts` (from OpenAI's pricing page, never guessed, D-414). Add to them there, never
   ad hoc in a view.
+- **Add-ons import only from `addons/` and packages by name (D-415).** The installed app ships the
+  add-ons' folders, not `apps/` or `packages/`: a relative import out of `addons/` works in dev and
+  breaks the add-on for users. Copy what both need into `addons/shared` (with a test keeping the
+  copies equal); `import type` is fine. `npm run check:addon-imports` (in `verify`) enforces it.
 - **Add-on data has a scope** (D-116): declare `storage.scope` (global, project, repo) and use
   `useStorage` / `ctx.storage` rather than putting project ids into keys by hand.
 - **A repository's files are the user's.** Built-in add-ons write into a repository only on a user
