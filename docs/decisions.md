@@ -6840,3 +6840,20 @@ stopped for good.
 - **View:** a calm full-width divider row "Stop here" (warning-coloured stop mark, a rule, "the run pauses here" when wide, a remove ✕ slot at the right edge) between chat cards; the whole row drags (grip on hover) to another gap. Added from ⋯ → **Stop after this task** (removal: **Remove the stop line after this task**, also on a running task) or from a **Stop here** pill that floats over the gap below a chat on hover (it overlays the existing 12 px gap, so nothing moves). Drags: a task over a line's top half drops above it, its bottom half below it.
 - **Claude:** `addon_tasks_edit` takes `stopAfter` (true/false; also on the running task); `addon_tasks_list` shows `--- stop ---` where a line is; a running task's instructions mark queued tasks after a line as a later block.
 - **Reorganize:** blocks end at a line, so nothing moves across one, and a line stays in its slot while the tasks of its block change places.
+
+## D-399: Switching phone channels parks the old one and keeps its setup
+
+- Status: accepted.
+- **Who:**
+ Jon reported that switching between Telegram and Teams in Settings → Phone left both
+  unset. The fix: Claude, on my own.
+- **Decision:** switching `phone.channel` only **parks** the old channel (`PhoneService.park`): polling
+  stops and the in-memory state is dropped. Nothing is sent, no `unpair`, no `store.save(undefined)`, no
+  Teams `setup.forget()`; the channel's credential and pairing stay in `phone.json`, so switching back
+  reads them and is connected again with nothing to set up. Only the explicit **Disconnect** forgets a
+  channel (goodbye message, unpair, entry deleted, Teams setup forgotten). Amends D-370 ("one channel
+  at a time" stays: only the active channel polls and sends) and D-377 (each channel's saved state
+  apart is now also kept across a switch).
+- **Safety:** a save queued before the switch finishes first, under the old channel's kind; `persist()`
+  captures its kind and channel and writes nothing once they changed; a place being made on the old
+  channel is not recorded into the new one.

@@ -114,8 +114,8 @@ export function PhoneSettings() {
         title: `Use ${CHANNEL_NAMES[channel]} instead?`,
         message:
           state.channel === "teams"
-            ? "Jig disconnects Teams first: one channel at a time. Your bot and relay stay in Azure; switch back and Continue in Set up Teams connects them again."
-            : `Jig disconnects your Telegram bot (@${state.bot}) first: one channel at a time.`,
+            ? "Jig pauses Teams first: one channel at a time. Its setup is kept, so switching back connects it again with nothing to set up."
+            : `Jig pauses your Telegram bot (@${state.bot}) first: one channel at a time. Its setup is kept, so switching back connects it again with nothing to set up.`,
         confirmLabel: `Use ${CHANNEL_NAMES[channel]}`,
       });
       if (!ok) return;

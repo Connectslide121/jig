@@ -65,14 +65,26 @@ describe("PhoneService channels", () => {
     t.service.stop();
   });
 
-  it("switching disconnects the other channel and forgets its state", async () => {
+  it("switching parks the other channel and keeps its setup", async () => {
     const t = setup("telegram");
     await t.service.start();
+    const before = t.store.get("telegram");
     t.settings.channel = "teams";
     t.service.refresh();
     await vi.waitFor(() => expect(t.service.state()).toMatchObject({ channel: "teams", status: "off" }));
-    expect(t.sent.at(-1)).toContain("Jig disconnected this bot");
-    expect(t.store.has("telegram")).toBe(false);
+    expect(t.sent).toEqual([]);
+    expect(t.store.get("telegram")).toBe(before);
+    // Switching back is connected again, with nothing sent and nothing set up.
+    t.settings.channel = "telegram";
+    t.service.refresh();
+    await vi.waitFor(() =>
+      expect(t.service.state()).toMatchObject({ channel: "telegram", status: "connected", owner: "Alex" }),
+    );
+    expect(t.sent).toEqual([]);
+    expect(t.store.get("telegram")).toBe(before);
+    t.settings.channel = "teams";
+    t.service.refresh();
+    await vi.waitFor(() => expect(t.service.state()).toMatchObject({ channel: "teams", status: "off" }));
     // Teams takes its relay's address and key; without a Teams channel (`deps.channel`) it's unavailable.
     await expect(t.service.connect("key")).rejects.toMatchObject({ code: "invalid_token" });
     const credential = `https://shop-relay.example.net#${"k".repeat(43)}`;

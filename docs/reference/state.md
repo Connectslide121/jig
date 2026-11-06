@@ -107,7 +107,7 @@ A new state file is documented here in the same commit that adds it.
 | `editor.languageServers` | `true` | run the language servers found on PATH for files in the editor (D-259) |
 | `editor.claudeCompletionModel` | `"haiku"` | the model Claude completes with (from Claude Code's model list); protected |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
-| `phone.channel` | `"telegram"` | where Jig reaches your phone (D-377): `telegram` (your own Telegram bot, D-350) or `teams` (your own Teams bot through a relay in your Azure, D-370, D-379; set up in Settings → Phone → Set up Teams, D-381). One at a time: switching disconnects the other and forgets its saved state; protected |
+| `phone.channel` | `"telegram"` | where Jig reaches your phone (D-377): `telegram` (your own Telegram bot, D-350) or `teams` (your own Teams bot through a relay in your Azure, D-370, D-379; set up in Settings → Phone → Set up Teams, D-381). One at a time: switching parks the other (polling stops) and keeps its saved state, so switching back is connected again (D-399); protected |
 | `phone.enabled` | `false` | Jig on your phone (D-350): message your paired bot and read your replies; turned on by pairing; protected |
 | `phone.when` | `"away"` | `away`: only while this computer is idle for `phone.awayMinutes` or locked; `always`; protected |
 | `phone.awayMinutes` | `5` | 1–60; protected |
@@ -195,8 +195,9 @@ Start over. The app package goes to `teams/jig-teams-app.zip`.
 `rooms` maps chats open as rooms on the phone to their places. Teams (D-380) adds `threads`
 (chat id → `{ place, parent }`: each chat's thread and the channel it is in; Jig's place there is the
 team's General channel) and both channels keep `names` (project id → the name its place was made or
-last renamed with, so a renamed project renames its topic or channel). Disconnect (or switching
-`phone.channel`) removes that channel's entry; the file goes with the last one.
+last renamed with, so a renamed project renames its topic or channel). Disconnect removes that
+channel's entry; the file goes with the last one. Switching `phone.channel` only parks the old
+channel and keeps its entry (D-399).
 
 Outside `JIG_HOME`, Teams' relay (D-378) keeps its own state in Azure, in a table of the Function's
 storage account: what the paired account wrote (up to 24 hours, deleted once Jig has read it), the

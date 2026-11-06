@@ -278,9 +278,15 @@ export class PhoneService {
     return this.deps.channel?.(this.kind, credential);
   }
 
-  /** `phone.channel` changed: the old channel is disconnected (one at a time, D-370), the new one read. */
+  /**
+   * `phone.channel` changed: the old channel is parked (one at a time, D-370; D-3xx), the new one
+   * read. Parking stops polling and drops what is in memory; nothing is sent, unpaired or deleted,
+   * so the old channel's setup is still in `phone.json` when you switch back.
+   */
   private async switchTo(kind: PhoneChannelId): Promise<void> {
-    await this.disconnect().catch((error) => this.deps.log?.warn("Disconnecting the phone failed", error));
+    // Let a save already queued finish first: it writes the old channel's entry, under its own kind.
+    await this.saving;
+    this.park();
     this.kind = kind;
     await this.load();
     if (this.saved) await this.checkTopics().catch(() => undefined);
@@ -385,6 +391,25 @@ export class PhoneService {
     await this.deps.store.save(this.saved, this.kind);
     this.refresh();
     return this.state();
+  }
+
+  /** Forgets the channel's state in memory only: the credential, pairing and places stay saved. */
+  private park(): void {
+    this.stop();
+    this.saved = undefined;
+    this.channel = undefined;
+    this.code = undefined;
+    this.error = undefined;
+    this.targets.clear();
+    this.topics = false;
+    this.topicsNote = undefined;
+    this.areas.clear();
+    for (const room of this.rooms.values()) if (room.timer) clearTimeout(room.timer);
+    this.rooms.clear();
+    this.replies.clear();
+    this.requests.clear();
+    this.keys.clear();
+    this.creating.clear();
   }
 
   async disconnect(): Promise<PhoneState> {
@@ -654,16 +679,17 @@ export class PhoneService {
 
   private async createTopic(projectId: string | undefined): Promise<Place | undefined> {
     const chatId = this.saved?.owner?.chatId;
-    if (!this.channel || chatId === undefined) return undefined;
+    const channel = this.channel;
+    if (!channel || chatId === undefined) return undefined;
     const project = projectId ? await this.deps.project?.(projectId).catch(() => undefined) : undefined;
     const name = projectId ? (project?.name ?? "Chats") : "Jig";
     try {
-      const place = await this.channel.createPlace(chatId, {
+      const place = await channel.createPlace(chatId, {
         kind: projectId ? "project" : "jig",
         name,
         color: projectId ? (project?.color ?? "accent") : "jig",
       });
-      if (!this.saved) return undefined;
+      if (!this.saved || this.channel !== channel) return undefined;
       const topics = this.saved.topics ?? {};
       this.saved = {
         ...this.saved,
@@ -703,19 +729,20 @@ export class PhoneService {
   ): Promise<Place | undefined> {
     const chatId = this.saved?.owner?.chatId;
     const parent = await this.topicFor(meta.projectId);
-    if (!this.channel || chatId === undefined || parent === undefined) return undefined;
+    const channel = this.channel;
+    if (!channel || chatId === undefined || parent === undefined) return undefined;
     const project = meta.projectId
       ? await this.deps.project?.(meta.projectId).catch(() => undefined)
       : undefined;
     try {
-      const place = await this.channel.createPlace(chatId, {
+      const place = await channel.createPlace(chatId, {
         kind: "chat",
         name: `💬 ${meta.title}`,
         color: project?.color ?? "jig",
         parent,
         heading: `💬 <b>${chatTitle(meta)}</b>${project ? ` · ${escapeHtml(project.name)}` : ""}`,
       });
-      if (!this.saved) return undefined;
+      if (!this.saved || this.channel !== channel) return undefined;
       this.saved = { ...this.saved, threads: { ...this.saved.threads, [meta.id]: { place, parent } } };
       this.areas.set(place, parent);
       this.targets.set(place, meta.id);
@@ -851,15 +878,18 @@ export class PhoneService {
 
   /** Keeps which message belongs to which chat, and the chat text goes to, in `phone.json`. */
   private persist(): void {
+    const kind = this.kind;
+    const channel = this.channel;
     this.saving = this.saving
       .then(async () => {
-        if (!this.saved?.owner) return;
+        // A parked or switched channel's entry is never written from here.
+        if (!this.saved?.owner || this.kind !== kind || this.channel !== channel) return;
         this.saved = {
           ...this.saved,
           replies: [...this.replies],
           targets: [...this.targets],
         };
-        await this.deps.store.save(this.saved, this.kind);
+        await this.deps.store.save(this.saved, kind);
       })
       .catch((error) => this.deps.log?.warn("Saving the phone's messages failed", error));
   }
