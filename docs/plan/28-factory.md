@@ -92,6 +92,11 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
 
 - **Branch:** `factory` (not merged into main yet). Commits are small; `git log --oneline` on it
   shows the order.
+- **Decision numbers (2026-11-07):** main and this branch both used D-424 onward, so the factory's
+  decisions were renumbered by +2 (now D-426…D-452) and main is merged in. Commit messages from
+  before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
+  `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
+  has moved past the factory's last number, say so and merge main first instead of reserving.
 - **Current session:** 2, the add-on core (Conductor and stage runner) — in progress.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
