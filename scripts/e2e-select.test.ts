@@ -2,7 +2,14 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AffectedRules, chooseBase, type E2ePass, selectSpecs, testIds } from "./e2e-select";
+import {
+  type AffectedRules,
+  chooseBase,
+  type E2ePass,
+  selectSpecs,
+  testIds,
+  versionOnly,
+} from "./e2e-select";
 
 const root = new URL("..", import.meta.url);
 const rules = JSON.parse(readFileSync(new URL("e2e/affected.json", root), "utf8")) as AffectedRules;
@@ -120,5 +127,35 @@ describe("e2e:changed base", () => {
   it("falls back to HEAD (uncommitted changes only) when nothing passed", () => {
     expect(chooseBase(undefined, [undefined, undefined], all)).toEqual({ kind: "head", ref: "HEAD" });
     expect(chooseBase("", [], all)).toEqual({ kind: "head", ref: "HEAD" });
+  });
+});
+
+describe("a release's version bump (D-420)", () => {
+  it("runs nothing when only version lines changed", () => {
+    const bump = [
+      "diff --git a/package-lock.json b/package-lock.json",
+      "--- a/package-lock.json",
+      "+++ b/package-lock.json",
+      "@@ -3 +3 @@",
+      '-  "version": "0.17.0",',
+      '+  "version": "0.17.1",',
+      "@@ -9 +9 @@",
+      '-      "version": "0.17.0",',
+      '+      "version": "0.17.1",',
+    ].join("\n");
+    expect(versionOnly(bump)).toBe(true);
+  });
+
+  it("still counts a dependency change and an empty diff", () => {
+    const upgrade = [
+      "@@ -40,3 +40,3 @@",
+      '-      "version": "1.2.0",',
+      '-      "resolved": "https://registry.npmjs.org/x/-/x-1.2.0.tgz",',
+      '+      "version": "1.3.0",',
+      '+      "resolved": "https://registry.npmjs.org/x/-/x-1.3.0.tgz",',
+    ].join("\n");
+    expect(versionOnly(upgrade)).toBe(false);
+    expect(versionOnly('@@ -20 +20 @@\n-    "vite": "^7.0.0",\n+    "vite": "^7.1.0",')).toBe(false);
+    expect(versionOnly("")).toBe(false);
   });
 });

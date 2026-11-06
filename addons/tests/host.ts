@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { AddonHostApi, AddonProcess } from "@jig/sdk";
 import { doneReport, runningReport, waitSeconds, within } from "./lib/report";
-import { parseResults, runStatus } from "./lib/results";
+import { parseResults, runStatus, waitingForOtherRun } from "./lib/results";
 import { dotnetSuite, npmSuites, type Suite, sortSuites } from "./lib/suites";
 
 /**
@@ -35,6 +35,8 @@ export interface TestRun {
   parsed: boolean;
   /** Who started it. */
   by: "you" | "claude";
+  /** While running: it waits for another e2e run on this computer to finish (D-420). */
+  waiting?: boolean;
 }
 
 /** Runs kept per repository (newest first). */
@@ -174,6 +176,11 @@ async function start(
     onOutput: (text) => {
       entry.output = (entry.output + text).slice(-OUTPUT_LIMIT);
       api.emit("output", { id: run.id, text });
+      const waiting = waitingForOtherRun(entry.output);
+      if (waiting !== Boolean(run.waiting)) {
+        run.waiting = waiting || undefined;
+        api.emit("runs", { repo });
+      }
     },
   });
   live.set(run.id, entry);
@@ -186,6 +193,7 @@ async function start(
       exitCode: code,
       endedAt: new Date().toISOString(),
       status: entry.stopping ? "stopped" : runStatus(code, result),
+      waiting: undefined,
     };
     finished.set(run.id, { run: done, output: entry.output });
     for (const old of [...finished.keys()].slice(0, -20)) finished.delete(old);

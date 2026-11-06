@@ -84,6 +84,16 @@ export function parseResults(raw: string): RunResult {
   return { passed, failed, skipped, failures: [...failures].slice(0, 50), parsed };
 }
 
+/** What Jig's e2e scripts print while they wait for the computer's e2e lock, and once they have it (D-420). */
+export const WAITING_LINE = "Waiting for another e2e run to finish";
+export const GOT_LINE = "The other e2e run finished: starting.";
+
+/** Whether the run is still waiting for another e2e run: it said it waits and hasn't started since. */
+export function waitingForOtherRun(output: string): boolean {
+  const waits = output.lastIndexOf(WAITING_LINE);
+  return waits >= 0 && output.indexOf(GOT_LINE, waits) < 0;
+}
+
 /** The run's status from its exit code and what the output said. */
 export function runStatus(exitCode: number | null, result: RunResult): "passed" | "failed" {
   return exitCode === 0 && result.failed === 0 ? "passed" : "failed";

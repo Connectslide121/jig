@@ -17,6 +17,7 @@ import {
   CircleX,
   FlaskConical,
   GitCompareArrows,
+  Hourglass,
   ListChecks,
   MonitorPlay,
   Play,
@@ -48,7 +49,11 @@ export function duration(run: Pick<TestRun, "startedAt" | "endedAt">, now = Date
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
 }
 
+/** What waiting for another chat's e2e run on this computer is called (D-420). */
+const WAITING = "Waiting for another e2e run";
+
 function counts(run: TestRun | undefined): string {
+  if (run?.waiting) return "Waiting";
   if (!run || run.status === "running" || !run.parsed) return "";
   return run.failed ? `${run.failed} failed` : `${run.passed} passed`;
 }
@@ -56,6 +61,7 @@ function counts(run: TestRun | undefined): string {
 /** The status mark at a row's far right: the same slot in every row. */
 function StatusMark({ run }: { run?: TestRun }) {
   if (!run) return <span className="size-4 shrink-0" />;
+  if (run.waiting) return <Hourglass className="block size-4 shrink-0 text-muted" aria-label={WAITING} />;
   if (run.status === "running") return <Spinner size="sm" />;
   const Icon = run.status === "passed" ? CircleCheck : run.status === "stopped" ? CircleSlash : CircleX;
   return (
@@ -100,7 +106,7 @@ function SuiteRow({
       role="button"
       tabIndex={0}
       className="group flex h-8 w-full min-w-0 cursor-default items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
-      title={`${KIND_LABEL[suite.kind]} · ${suite.detail}`}
+      title={last?.waiting ? `${WAITING} to finish` : `${KIND_LABEL[suite.kind]} · ${suite.detail}`}
       onClick={onOpen}
       onKeyDown={(e) => {
         if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
@@ -235,13 +241,15 @@ function RunDetails({
               <div className="flex h-6 shrink-0 items-center gap-3 text-sm">
                 <StatusMark run={last} />
                 <span className="font-medium">
-                  {last.status === "running"
-                    ? "Running…"
-                    : last.status === "passed"
-                      ? "Passed"
-                      : last.status === "stopped"
-                        ? "Stopped"
-                        : "Failed"}
+                  {last.waiting
+                    ? `${WAITING}…`
+                    : last.status === "running"
+                      ? "Running…"
+                      : last.status === "passed"
+                        ? "Passed"
+                        : last.status === "stopped"
+                          ? "Stopped"
+                          : "Failed"}
                 </span>
                 <span className="text-muted tabular-nums">
                   {last.parsed

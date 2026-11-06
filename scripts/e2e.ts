@@ -11,6 +11,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { acquireE2eLock, killOrphanTestElectrons } from "./e2e-lock.ts";
 import { type AffectedRules, selectSpecs } from "./e2e-select.ts";
 import { E2E_FAILED, E2E_STAMP, failedSpecFiles, isReleaseFile, rerunSpecs } from "./release-lib.ts";
 
@@ -29,6 +30,9 @@ const sh = (cmd: string, a: string[], env: Record<string, string> = {}) =>
     env: { ...process.env, ...env },
   }).status ?? 1;
 
+// One e2e run at a time on this computer, the build included (D-420).
+await acquireE2eLock("e2e");
+killOrphanTestElectrons();
 if (sh(process.execPath, ["scripts/build-if-stale.ts"]) !== 0) process.exit(1);
 // The source the suite runs on: uncommitted changes make it unknown, so nothing is recorded then.
 const clean = git("status", "--porcelain") === "";

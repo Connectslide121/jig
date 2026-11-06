@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseResults, runStatus } from "./results";
+import { GOT_LINE, parseResults, runStatus, WAITING_LINE, waitingForOtherRun } from "./results";
 import { dotnetSuite, npmSuites, sortSuites, suiteKind } from "./suites";
 
 describe("finding test suites", () => {
@@ -55,6 +55,15 @@ describe("finding test suites", () => {
       }),
     );
     expect(sortSuites(suites).map((s) => s.label)).toEqual(["e2e:changed", "test", "check", "e2e"]);
+  });
+});
+
+describe("waiting for another e2e run (D-420)", () => {
+  it("waits from the waiting line until the starting line", () => {
+    expect(waitingForOtherRun("Base: HEAD\n")).toBe(false);
+    expect(waitingForOtherRun(`${WAITING_LINE} (e2e:changed in E:\\shop, pid 4)…\n`)).toBe(true);
+    expect(waitingForOtherRun(`${WAITING_LINE} (…)…\n${GOT_LINE}\nRunning 12 tests`)).toBe(false);
+    expect(waitingForOtherRun(`${WAITING_LINE}…\n${GOT_LINE}\n${WAITING_LINE}…`)).toBe(true);
   });
 });
 

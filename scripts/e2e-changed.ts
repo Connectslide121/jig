@@ -13,7 +13,15 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildIfStale } from "./build-if-stale.ts";
-import { type AffectedRules, chooseBase, type E2ePass, selectSpecs } from "./e2e-select.ts";
+import { acquireE2eLock, killOrphanTestElectrons } from "./e2e-lock.ts";
+import {
+  type AffectedRules,
+  chooseBase,
+  type E2ePass,
+  selectSpecs,
+  VERSION_FILES,
+  versionOnly,
+} from "./e2e-select.ts";
 import { E2E_STAMP } from "./release-lib.ts";
 
 /** Where a passing e2e:changed run records the working-tree snapshot it tested. */
@@ -21,6 +29,13 @@ const E2E_CHANGED = ".jig-e2e-changed.json";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const args = process.argv.slice(2);
+const list = args.includes("--list");
+// One e2e run at a time on this computer (D-420), taken before choosing: a run that passes while this
+// one waits moves the base forward.
+if (!list) {
+  await acquireE2eLock("e2e:changed");
+  killOrphanTestElectrons();
+}
 const git = (a: string[], env: Record<string, string> = {}) => {
   try {
     return execFileSync("git", a, {
@@ -73,7 +88,11 @@ if (!from) {
   process.exit(1);
 }
 const tree = snapshot();
-const paths = git(["diff", "--name-only", "--no-renames", from, tree]).split("\n").filter(Boolean);
+const paths = git(["diff", "--name-only", "--no-renames", from, tree])
+  .split("\n")
+  .filter(Boolean)
+  // A release's version bump touches files that run everything, but changes nothing a test sees.
+  .filter((path) => !VERSION_FILES.has(path) || !versionOnly(git(["diff", "-U0", from, tree, "--", path])));
 
 const changed = paths.map((path) => {
   const full = join(root, path);
@@ -103,7 +122,6 @@ const record = () =>
     join(root, E2E_CHANGED),
     `${JSON.stringify({ tree, head: git(["rev-parse", "HEAD"]), at: new Date().toISOString() }, null, 2)}\n`,
   );
-const list = args.includes("--list");
 
 if (pick.specs !== "all" && pick.specs.length === 0) {
   console.log("No e2e specs needed for these changes.");

@@ -31,6 +31,12 @@ describe("waiting for a run", () => {
 });
 
 describe("what the tools answer", () => {
+  it("says when a run waits for another chat's e2e run (D-420)", () => {
+    const now = Date.parse(run.startedAt) + 30_000;
+    expect(runningReport({ ...run, waiting: true }, "", now)).toContain("waiting for another chat's e2e run");
+    expect(runningReport(run, "", now)).not.toContain("waiting for another");
+  });
+
   it("formats durations", () => {
     expect(duration(4_400)).toBe("4 s");
     expect(duration(185_000)).toBe("3 min 05 s");

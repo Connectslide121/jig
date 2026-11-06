@@ -99,6 +99,22 @@ export function selectSpecs(
   return { specs: Object.keys(reasons).sort(), reasons, unmapped };
 }
 
+/** The package files a release bumps: a change that is only their `"version"` lines runs nothing. */
+export const VERSION_FILES = new Set(["package.json", "apps/desktop/package.json", "package-lock.json"]);
+
+/**
+ * Whether a file's `git diff -U0` changes nothing but `"version": "…"` lines (a release's bump, D-420):
+ * those files are in `all`, so without this the first e2e:changed after a release whose suite was
+ * skipped (D-272) ran the whole suite. A dependency change also changes `resolved`/`integrity` or a
+ * dependency line, so it still counts.
+ */
+export function versionOnly(diff: string): boolean {
+  const lines = diff
+    .split("\n")
+    .filter((l) => /^[+-]/.test(l) && !l.startsWith("+++") && !l.startsWith("---"));
+  return lines.length > 0 && lines.every((l) => /^[+-]\s*"version":\s*"[^"]*",?\s*$/.test(l));
+}
+
 /** A recorded e2e pass: the source it ran on (a commit or a working-tree snapshot) and when. */
 export interface E2ePass {
   /** A commit or tree object git can diff against. */

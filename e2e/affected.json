@@ -4,6 +4,7 @@
   "all": [
     "e2e/fixtures.ts",
     "e2e/global.d.ts",
+    "e2e/global-setup.ts",
     "playwright.config.ts",
     "package-lock.json",
     "apps/desktop/package.json",
@@ -22,6 +23,8 @@
     ".claude/**",
     "skills/**",
     "release/**",
+    "package.json",
+    ".gitignore",
     "apps/desktop/build/**",
     "apps/desktop/electron-builder.yml",
     "e2e/affected.json",
@@ -429,7 +432,7 @@
         "apps/desktop/src/main/phone/**",
         "apps/desktop/src/renderer/features/phone/**",
         "apps/desktop/src/shared/phone.ts",
-        "relay/teams/src/protocol.ts"
+        "relay/teams/**"
       ],
       "specs": ["phone-teams.spec.ts"]
     }

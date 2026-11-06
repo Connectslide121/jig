@@ -52,6 +52,7 @@ export interface ReportRun {
   skipped: number;
   failures: string[];
   parsed: boolean;
+  waiting?: boolean;
 }
 
 /** A finished run: status, counts, failing tests and the output's last 60 lines. */
@@ -72,6 +73,9 @@ export function runningReport(run: ReportRun, output: string, now = Date.now()):
   const last = tail(output, 15);
   return [
     `${run.label}: still running (run ${run.id}, ${duration(now - Date.parse(run.startedAt))} so far).`,
+    run.waiting
+      ? "It is waiting for another chat's e2e run on this computer to finish (one e2e run at a time), then starts by itself."
+      : "",
     `Call addon_tests_wait with id "${run.id}" to keep waiting; call it again each time it says still running. The user sees it in the Tests view.`,
     last ? `Output so far (last lines):\n${last}` : "",
   ]
