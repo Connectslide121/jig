@@ -29,7 +29,7 @@
       "after": ["S5"],
       "loop": { "back": "S5", "until": "quality.pass", "max": 3 }
     },
-    { "gate": "G1", "after": ["S6"] },
+    { "gate": "G1", "after": ["S6"], "changes": "S5" },
     { "fanout": "S7", "title": "Pack", "after": ["G1"], "outputs": "plan.outputs" },
     { "gate": "G2", "after": ["S7:spec", "S7:stories", "S7:tests"] },
     { "gate": "G4", "after": ["S7:pitch", "S7:deck", "S7:course-sales"] },

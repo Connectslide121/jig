@@ -39,6 +39,51 @@ export interface Run {
   createdAt: string;
   updatedAt: string;
   source: { kind: "typed" | "voice" | "meeting" | "message" | "ticket"; ref?: string };
+  /** What the run makes and how its chats ask (the Plan step; session 2: the start modal). */
+  plan?: RunPlan;
+  /**
+   * Where the run works (D-449): its git worktree on `factory/<slug>`, or `null` when it works in the
+   * repository itself (a repository without commits). Unset on sample runs.
+   */
+  worktree?: string | null;
+  /** Question cards stages asked (`factory_questions`), answered or not. */
+  questions?: Question[];
+  /** The run and stage it was forked from. */
+  forkOf?: { runId: string; stage: string };
+}
+
+export interface RunPlan {
+  /** The pack's outputs (the fan-out's recipes): `spec`, `stories`, `pitch`… */
+  outputs: string[];
+  /** Whether S8 builds the product after the docs gate. */
+  build: boolean;
+  /** How stage chats ask: Accept edits, or Don't ask when you picked it (D-447). */
+  permissionMode: "acceptEdits" | "bypassPermissions";
+  /** An existing product (its kit is extracted) or a new one (three directions). */
+  productExists: boolean;
+}
+
+export interface Question {
+  id: string;
+  stage: string;
+  round: number;
+  text: string;
+  suggestion?: string;
+  options?: string[];
+  askedAt: string;
+  answer?: string;
+  answeredAt?: string;
+}
+
+/** What a stage reported with `factory_report`. */
+export interface StageReport {
+  summary: string;
+  outputs: string[];
+  notes: string[];
+  /** The critic's verdict (critique stages). */
+  quality?: { pass: boolean; score?: number };
+  /** The stage says it couldn't do its work: it is retried once, then waits for you. */
+  failed?: boolean;
 }
 
 export interface StageRun {
@@ -50,7 +95,19 @@ export interface StageRun {
   version?: number;
   startedAt?: string;
   endedAt?: string;
-  report?: { summary: string; outputs: string[]; notes: string[] };
+  report?: StageReport;
+  /** Every chat the stage ran in, oldest first (a retry starts a new one); `chatId` is the last. */
+  chats?: string[];
+  /** When the Conductor last sent the stage's prompt, a nudge or a "carry on". */
+  sentAt?: string;
+  nudgedAt?: string;
+  resumedAt?: string;
+  /** What the stage asked a person (`factory_ask`), or why it waits for you. */
+  question?: string;
+  /** What its chat waits for while it runs: the plan's reset, or you in the chat. */
+  chatNote?: string;
+  /** A gate's "Ask for changes" note this version must address. */
+  feedback?: string;
 }
 
 export interface OutputHistoryEntry {
@@ -64,6 +121,8 @@ export interface OutputHistoryEntry {
 export interface Output {
   id: string;
   kind: string;
+  /** The stage that wrote it. */
+  stage?: string;
   path: string;
   version: number;
   status: OutputStatus;
@@ -188,6 +247,31 @@ export function stageNeedsYou(run: Run, stageId: string, at = now()): Run {
       withStage(run, stageId, (x) => ({ ...x, status: "needs-you" })),
       at,
     ),
+  );
+}
+
+/** A stage that waited for you works again (you answered in its chat). */
+export function resumeStage(run: Run, stageId: string, at = now()): Run {
+  const s = stageAt(run, stageId).stage;
+  if (s.status !== "needs-you") return run;
+  return deriveState(
+    touch(
+      withStage(run, stageId, (x) => ({ ...x, status: "running", question: undefined, nudgedAt: undefined })),
+      at,
+    ),
+  );
+}
+
+/** Changes a stage's bookkeeping (chat, times, report, question) without changing its status. */
+export function patchStage(
+  run: Run,
+  stageId: string,
+  change: Partial<Omit<StageRun, "id" | "status">>,
+  at = now(),
+): Run {
+  return touch(
+    withStage(run, stageId, (x) => ({ ...x, ...change })),
+    at,
   );
 }
 

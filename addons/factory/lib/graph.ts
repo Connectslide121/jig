@@ -26,6 +26,8 @@ export interface TrackItem {
   loop?: TrackLoop;
   /** For a fan-out: the fact that lists its outputs (`plan.outputs`). */
   outputs?: string;
+  /** For a gate: the stage "Ask for changes" runs again (default: the stages it waits for). */
+  changes?: string;
 }
 
 export interface Track {
@@ -155,7 +157,9 @@ export function nextSteps(track: Track, run: Run, facts: Facts = {}): Step[] {
     if (ready === "pending") continue;
     const skip = ready === "skipped" || !holds(item.when, facts);
     if (item.gate) {
-      if (!skip && !run.gates.some((g) => g.id === item.gate)) steps.push({ kind: "open", gate: item.gate });
+      // A gate opens once; one closed again (changes asked, its stage ran again) opens again.
+      const g = run.gates.find((x) => x.id === item.gate);
+      if (!skip && (!g || g.status === "closed")) steps.push({ kind: "open", gate: item.gate });
       continue;
     }
     if (item.fanout) {
@@ -199,4 +203,40 @@ export function order(track: Track): GraphNode[] {
     kind: item.gate ? "gate" : item.fanout ? "fanout" : "stage",
     title: item.title ?? itemId(item),
   }));
+}
+
+/** The ids an `after` term names: `S4|GD` → S4, GD; `S7:spec` stays itself. */
+function termIds(term: string): string[] {
+  return term.split("|");
+}
+
+/**
+ * Everything after a node in the graph, transitively: the stages, fan-out instances (`S7:spec`) and
+ * gates that wait for it. A fan-out instance counts as its fan-out (`S7`) for what follows it.
+ */
+export function downstream(track: Track, id: string): Set<string> {
+  const out = new Set<string>();
+  const queue = [id];
+  const matches = (term: string, node: string) =>
+    termIds(term).some((t) => t === node || t.split(":")[0] === node || node.split(":")[0] === t);
+  while (queue.length) {
+    const node = queue.shift() ?? "";
+    for (const item of track.stages) {
+      const iid = itemId(item);
+      if (out.has(iid) || iid === id) continue;
+      if ((item.after ?? []).some((term) => matches(term, node))) {
+        out.add(iid);
+        queue.push(iid);
+      }
+    }
+  }
+  return out;
+}
+
+/** The stages "Ask for changes" at a gate runs again: its `changes`, else the stages it waits for. */
+export function changeTargets(track: Track, gate: GateId): string[] {
+  const item = track.stages.find((i) => i.gate === gate);
+  if (!item) return [];
+  if (item.changes) return [item.changes];
+  return (item.after ?? []).flatMap(termIds).filter((id) => !track.stages.some((i) => i.gate === id));
 }
