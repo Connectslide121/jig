@@ -7840,7 +7840,7 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
 
 ## D-448: Jig factory: teasers rendered with HyperFrames, not html-video
 
-- Status: accepted.
+- Status: accepted; where it renders (the demo kit) replaced by D-458 (Motion).
 - **Who:** Jon asked for recorded HTML and to weigh github.com/nexu-io/html-video; the choice
   Claude, on my own (2026-11-06).
 
@@ -7925,3 +7925,100 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
 - **Questions** a stage asks (`factory_questions`, `factory_ask`) are kept on the run and the
   stage shows "needs you"; until the Interview tab (session 3) you answer them in the stage's chat
   (Open chat in the stage's sheet).
+
+## D-453: Motion: a built-in add-on for videos made from HTML, planned inside phase 28
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06); details Claude, on my own.
+
+- **Motion** (`addons/motion`) makes videos from HTML: a storyboard of scenes rendered to MP4. It is
+  useful on its own, apart from the factory, but planned inside phase 28 (sessions M1–M3) so there
+  is one plan; it can be merged to main before the factory is finished.
+- **First version does three kinds well:** product teasers / launch clips, "what's new" (release
+  notes) videos, and walkthroughs of an app or demo (screens, zooms, arrows, captions). Data videos,
+  social clips, course intros and recaps come later as templates.
+- **Kept in Jig's storage per project**, like Pages (`storage.scope: "project"`): nothing is written
+  into a repository; you export where you want.
+- **Editing in Jig:** a storyboard (scenes with text, media, voice script, duration), the video's
+  settings (format, style, motion, captions, music) and a live preview with a scrubber. No
+  frame-level timeline.
+- **AI only writes, never renders:** a chat makes or changes a video through Motion's tools, on the
+  chat's own provider (Claude or ChatGPT). A video can also be made without AI from a template.
+- **Exports:** MP4 and a poster image.
+- **Templates:** our own, built on product kits and tokens; HyperFrames catalogue blocks
+  (Apache-2.0) adapted where useful, with their licence kept.
+
+## D-454: Motion renders with HyperFrames; FFmpeg found on the computer or downloaded after you approve
+
+- Status: accepted.
+- **Who:** Jon (FFmpeg: look first, download only after asking); the rest Claude, on my own
+  (2026-11-06).
+
+- **HyperFrames** (Apache-2.0, npm `hyperframes`) renders: it seeks each frame of a paused animation
+  timeline in a headless Chrome and encodes with FFmpeg, so the same storyboard gives the same
+  video (D-448 chose it over html-video).
+- **Built-in add-ons ship no npm dependencies**, so the renderer (a pinned HyperFrames and the
+  headless Chrome it uses) is installed into Motion's data folder on first render, after a modal
+  that says what is downloaded, from where and how big. Same for FFmpeg: Motion first looks for it
+  (a setting `motion.ffmpegPath`, then PATH); only when it isn't found does it offer to download a
+  pinned build into its data folder, again after you approve.
+- Rendering runs on this computer, with no AI and no per-video cost; a render shows its progress and
+  can be cancelled.
+
+## D-455: Motion's voiceover uses the natural voice, with captions and subtitle files
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06); details Claude, on my own.
+
+- **Each scene can have a voice script**, read by the natural voice (Kokoro, on this computer,
+  D-243; English and Spanish voices). The scene's length follows the speech (plus a short pause),
+  unless you fix it.
+- **The same script gives burned-in captions** (on/off, style from the video's settings) and a
+  subtitle file (`.srt` and `.vtt`) next to the MP4.
+- **Core addition:** add-ons can't speak today. A host API `api.speech.say({ text, voice, speed })`
+  (permission `speech`) returns a WAV file path, using the same Kokoro process as Read aloud; docs in
+  `addon-api.md`. Nothing leaves the computer.
+
+## D-456: Motion's music comes from your own music folder; Find music opens Pixabay Music
+
+- Status: accepted.
+- **Who:** Jon asked for music from an online library (Pixabay, Epidemic Sound, Envato, Artlist,
+  Suno); the choice Claude, on my own (2026-11-06).
+
+- **A music folder** (setting `motion.musicFolder`) that Motion lists: you pick a track per video,
+  or let a chat pick by mood. Music is ducked under the voice and fades in and out.
+- **Find music** opens Pixabay Music (free, commercial use, no attribution) in your browser; tracks
+  you download go into the folder. Other libraries you subscribe to work the same way.
+- **Why not fetched by Jig:** the libraries' licences tie downloads to your account and forbid
+  redistributing tracks as they are, so Jig neither bundles tracks nor signs in to those services
+  for you (AGENTS.md: the user's own tools and credentials). Pixabay's API covers images and videos,
+  not music, as far as checked; an official music API later could add a picker inside Jig.
+- Track licences stay your responsibility; Motion keeps the source page's address next to the track
+  when you paste it.
+
+## D-457: Motion records live captures of an app for scenes
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06, in the first version); details Claude, on my own.
+
+- **A scene can be a live capture** of a web app or demo (a URL, a local demo kit build or a page in
+  Jig's browser), not only a screenshot: a short scripted walk (go to, click, type, scroll, wait)
+  recorded at the video's size, then trimmed and placed in the scene with zooms and arrows on top.
+- **Recorded in a hidden window, never on your screen** (the captures follow AGENTS.md's hidden-window
+  rules), with invented data only; the real-data scan of the factory runs on captures too.
+- **Core addition:** a host API `api.capture.record({ url, steps, width, height, maxSeconds })`
+  (permission `capture`) returning a video file; a step that fails stops the capture with the step's
+  name. Docs in `addon-api.md`.
+
+## D-458: Jig factory's teasers are made with Motion
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06).
+
+- **The factory's `teaser` recipe makes a Motion video** (through Motion's export `createVideo`,
+  D-215) from the approved demo: storyboard, the product kit's style, the demo's screens or live
+  captures, voiceover and captions in the run's language. Motion renders it; the MP4 and poster go
+  into the run's `teaser/` folder as a draft for the marketing owner.
+- **Replaces D-448's "`npm run teaser` in the demo kit":** HyperFrames stays the engine, but it lives
+  in Motion, so teaser templates and the renderer exist once. Motion is built first (sessions M1–M3,
+  before session 5).

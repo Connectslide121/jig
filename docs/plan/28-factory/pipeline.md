@@ -122,7 +122,7 @@ A role is a **recipe**: a reviewed prompt file with front-matter (format in
 | Learning designer | `course-sales`, `course-customer` | courses on the user's e-learning platform through its MCP server, as unpublished drafts; Markdown when not set up (D-447) | sales owner |
 | Sales enablement | `pitch`, `deck`, `one-pager`, `objections` | sales material, including "what they'll ask next" (security, hosting, licences); deck and one-pager in two forms, HTML→PDF and ChatGPT images (D-445) | sales owner |
 | Marketing | `marketing-plan`, `article`, `linkedin`, `newsletter` | marketing drafts, images by ChatGPT (D-446) | marketing owner |
-| Film maker | `teaser` | a 35–50 s teaser: storyboard + demo kit template, rendered with HyperFrames (D-448) | marketing owner |
+| Film maker | `teaser` | a 35–50 s teaser made with Motion: storyboard from the demo, product kit style, voice and captions (D-458) | marketing owner |
 | Change-request intake | `cr-intake`, `quote` | track change-request | support |
 | Tender analyst | `tender-matrix`, `tender-gaps` | track tender | tender owner |
 

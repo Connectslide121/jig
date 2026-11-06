@@ -125,7 +125,7 @@ upstream scripts; D-432). Their scripts' jobs are done by the demo kit.
 | Storybook, Playwright `toHaveScreenshot`, `@axe-core/playwright` | the kit's catalogue and its checks | npm in the kit |
 | Community design skills (e.g. "UI/UX Pro Max") | evaluate only: mine for rules, don't install blindly | review first |
 | `DESIGN.md` libraries (e.g. VoltAgent `awesome-design-md`, MIT) | references for new brands' directions and the critic (D-444) | addresses in `factory.designSources`, read at run time |
-| HyperFrames (Apache-2.0) | renders teasers from HTML to MP4, frame by frame (D-448) | npm in the kit (`npm run teaser`) |
+| HyperFrames (Apache-2.0) | renders teasers from HTML to MP4, frame by frame (D-448) | inside Motion, installed on first render (D-454, D-458) |
 
 Sources checked 2026-11-06: [DTCG first stable version](https://www.w3.org/community/design-tokens/2025/10/28/design-tokens-specification-reaches-first-stable-version/),
 [Tremor joins Vercel, blocks MIT](https://vercel.com/blog/vercel-acquires-tremor),
