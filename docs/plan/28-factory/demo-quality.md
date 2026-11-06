@@ -118,6 +118,7 @@ upstream scripts; D-432). Their scripts' jobs are done by the demo kit.
 | Anthropic `theme-factory` | generating direction boards for new brands | vendor (text) |
 | Anthropic `webapp-testing` | Playwright checks of demos | vendor (text); the kit's `check` does it |
 | Vercel `web-design-guidelines` (Web Interface Guidelines) | the critic's checklist | vendor (text, pinned copy of the guidelines) |
+| pbakaus `impeccable` (D-459) | the design director's visual worlds, the builders' quality floor (`craft-floor`, `polish`), the critic's `critique` and `audit` playbooks | vendor (text; its launcher, binary and slop detector are not bundled) |
 | Vercel `react-best-practices`, Jig `ui-ux-review`, `browser-verification`, `ai-feature-ux` | code quality, reviews, AI disclosure in demos | already bundled |
 | A dataviz skill (palette, chart forms) | dashboards and charts in demos | if present in the workspace |
 | shadcn/ui + registry, Tremor blocks, Motion, TanStack | the demo kit's building blocks | npm in the kit |

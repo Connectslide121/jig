@@ -25,6 +25,8 @@ export interface Recipe {
   reviewer?: GateId;
   checks: string[];
   languageGroup?: string;
+  /** Bundled skills the stage should use when they are on (Settings → Skills), by id. */
+  skills: string[];
   /** The prompt. */
   body: string;
   source: "built-in" | "repository";
@@ -65,6 +67,7 @@ export function parseRecipe(text: string, file: string, source: Recipe["source"]
     reviewer: typeof data.reviewer === "string" ? (data.reviewer as GateId) : undefined,
     checks: strings(data.checks),
     languageGroup: typeof data.languageGroup === "string" ? data.languageGroup : undefined,
+    skills: strings(data.skills),
     body: body.trim(),
     source,
     file,
@@ -165,6 +168,12 @@ export function stagePrompt(p: PromptInput): string {
     "## Write",
     ...outs.map((o) => `- ${o}`),
   ];
+  if (p.recipe.skills.length)
+    lines.push(
+      "",
+      "## Skills",
+      `Use these skills when this chat has them (Jig's library, Settings → Skills): ${p.recipe.skills.join(", ")}. Without them, follow this prompt alone.`,
+    );
   if (p.stage.feedback) lines.push("", "## Changes asked at the gate", p.stage.feedback);
   lines.push(
     "",

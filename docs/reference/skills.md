@@ -12,11 +12,12 @@ choices. Personal and repository Claude Code skills are independent.
 ## Contents and provenance
 
 `skills/catalog.json` is Jig's curated catalog, not a replacement for Claude Code's runtime skill
-or command discovery. Eight pinned snapshots retain their reference files and licences: Anthropic
+or command discovery. Nine pinned snapshots retain their reference files and licences: Anthropic
 frontend-design, Vercel React best practices, Angular developer and .NET Web API, and for Jig
 factory (D-432, off by default) Anthropic web-artifacts-builder, theme-factory and webapp-testing
 (their scripts and PDF are not bundled; the demo kit does their jobs) and Vercel
-web-design-guidelines with a pinned copy of the Web Interface Guidelines as a reference file. Six
+web-design-guidelines with a pinned copy of the Web Interface Guidelines as a reference file, and
+pbakaus's Impeccable (D-459, off by default; its playbooks only, without its launcher). Six
 Jig-authored skills cover UI/UX review, backend architecture, application security, browser
 verification, AI feature UX and Jig factory's demo critic (`demo-quality`, its rubric in
 `references/rubric.md`, off by default). Source links, author, revision and licence appear in the details modal. See

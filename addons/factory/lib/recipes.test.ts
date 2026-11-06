@@ -117,6 +117,18 @@ describe("recipes", () => {
   });
 
   it("fill in the version of their outputs", () => {
+    // The skills they name are in Jig's bundled library.
+    const library = new Set(
+      (
+        JSON.parse(
+          readFileSync(join(__dirname, "..", "..", "..", "skills", "catalog.json"), "utf8"),
+        ) as Array<{
+          id: string;
+        }>
+      ).map((x) => x.id),
+    );
+    expect(builtIns.flatMap((r) => r.skills).filter((id) => !library.has(id))).toEqual([]);
+    expect(builtIns.find((r) => r.id === "critique")?.skills).toContain("impeccable");
     const demo = builtIns.find((r) => r.id === "demo-l1");
     expect(demo && outputPaths(demo, 2)).toEqual(["demo/v2/index.html", "demo/v2/CHANGES.md"]);
   });
@@ -136,5 +148,14 @@ describe("recipes", () => {
     expect(text).toContain("## Changes asked at the gate\nShorter");
     expect(text).toContain("status: draft");
     expect(text).toContain("addon_factory_report");
+    expect(text).not.toContain("## Skills");
+    const withSkills = stagePrompt({
+      recipe: { ...recipe, skills: ["impeccable", "demo-quality"] },
+      run: { id: "fx-1", title: "Shift swap", slug: "shift-swap", languages: { all: "en" } },
+      stage: { id: "S7:pitch", attempt: 1 },
+      folder: "/repo/docs/factory/shift-swap",
+      inputs: [],
+    });
+    expect(withSkills).toMatch(/## Skills\nUse these skills .*: impeccable, demo-quality\./);
   });
 });

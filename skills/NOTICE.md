@@ -1,6 +1,6 @@
 # Jig skill library
 
-Eight upstream snapshots are pinned in `scripts/vendor-skills.py` and `catalog.json`, retaining
+Nine upstream snapshots are pinned in `scripts/vendor-skills.py` and `catalog.json`, retaining
 source metadata and licences. Other skills are original Jig guidance with links to authoritative
 references. Only instruction/reference text is shipped: no upstream hooks, custom agents, MCP
 servers or executable helpers are loaded. Personal/project Claude Code configuration is untouched.
@@ -20,3 +20,9 @@ web-design-guidelines is MIT by the agent-skills repository's README (no licence
 bundled LICENSE.txt carries the MIT terms), and its `references/web-interface-guidelines.md` is a
 pinned copy of vercel-labs/web-interface-guidelines `command.md` (MIT, its licence beside it). These
 four and the Jig-authored demo-quality start off (`defaultEnabled: false`).
+
+Impeccable (D-459): pbakaus/impeccable's Claude Code skill at c3bb418e, Apache-2.0 (its LICENSE as
+`LICENSE.txt`, its NOTICE beside SKILL.md, which credits ehmo's MIT platform-design-skills for the
+iOS and Android references). Only SKILL.md and `reference/*.md` are bundled: its `scripts/`
+launcher, the binary it downloads and its detector are not, so the skill follows its own
+"Launcher unavailable" path. Off by default (`defaultEnabled: false`).

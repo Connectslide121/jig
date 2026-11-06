@@ -8022,3 +8022,24 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
 - **Replaces D-448's "`npm run teaser` in the demo kit":** HyperFrames stays the engine, but it lives
   in Motion, so teaser templates and the renderer exist once. Motion is built first (sessions M1–M3,
   before session 5).
+
+## D-459: Jig factory bundles Impeccable's design playbooks (text only, off by default)
+
+- Status: accepted.
+- **Who:** Jon asked for it (2026-11-07: "this skill fits the factory really well, put it in
+  somewhere"); where and how: Claude, on my own.
+- **What:** `skills/impeccable`, a pinned snapshot of pbakaus/impeccable's Claude Code skill
+  (`.claude/skills/impeccable` at c3bb418e, Apache-2.0, its NOTICE beside SKILL.md), joins the
+  bundled library through `scripts/vendor-skills.py`, **off by default** like the factory's other
+  skills (D-443). Only SKILL.md and its `reference/*.md` playbooks ship: the `scripts/` launcher
+  and the binary it downloads are left out (D-432's rule: no executable helpers), so the skill
+  runs its own "Launcher unavailable" path and reads PRODUCT.md / DESIGN.md directly. Its slop
+  detector (62 deterministic rules) is therefore not available; the demo kit's `check` stays the
+  automated gate.
+- **Where the factory uses it:** the design director (`directions`), the demo builders
+  (`demo-l1`, `demo-l2`) and the critic (`critique`) list `impeccable` in their recipe `skills`, and
+  their prompts name the playbooks to read (`craft-floor` before building, `critique` and `audit`
+  for the critic, `polish` for a fix round). The critic's score stays the `demo-quality` rubric
+  (D-436); Impeccable's heuristics feed its notes.
+- **Why:** it is the closest thing to a design vocabulary and a reviewer an agent can follow, and
+  it targets exactly the generic look Jon wants demos never to have.

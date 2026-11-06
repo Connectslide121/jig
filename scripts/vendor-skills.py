@@ -17,8 +17,10 @@ SOURCES = [
  ('theme-factory', 'Theme factory', 'Design', 'Colour and font themes applied consistently to slides, documents and pages.', 'anthropics/skills', 'ca45fc496a3436251f191354091d557da31c15b5', 'skills/theme-factory', 'theme-factory', 'Apache-2.0', 'skills/theme-factory/LICENSE.txt'),
  ('webapp-testing', 'Web app testing', 'Testing', 'Checking a local web app with Playwright: screenshots, console logs, flows.', 'anthropics/skills', 'ca45fc496a3436251f191354091d557da31c15b5', 'skills/webapp-testing', 'webapp-testing', 'Apache-2.0', 'skills/webapp-testing/LICENSE.txt'),
  ('web-design-guidelines', 'Web design guidelines', 'Design', 'Reviewing UI code against the Web Interface Guidelines.', 'vercel-labs/agent-skills', '1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62', 'skills/web-design-guidelines', 'web-design-guidelines', 'MIT', None),
+ # Jig factory's design vocabulary and critic playbooks (Jon, 2026-11-07): text only; its launcher and binary are not bundled.
+ ('impeccable', 'Impeccable', 'Design', 'Design vocabulary for polishing, critiquing and auditing a UI, and catching generic AI-made looks.', 'pbakaus/impeccable', 'c3bb418ee38ee49a6b999b7752c1368f3123a2bd', '.claude/skills/impeccable', 'impeccable', 'Apache-2.0', 'LICENSE'),
 ]
-OFF_BY_DEFAULT = {'web-artifacts', 'theme-factory', 'webapp-testing', 'web-design-guidelines'}
+OFF_BY_DEFAULT = {'web-artifacts', 'theme-factory', 'webapp-testing', 'web-design-guidelines', 'impeccable'}
 # Extra pinned files: (skill id, repo, revision, upstream path, path inside the skill folder).
 EXTRAS = [
  ('web-design-guidelines', 'vercel-labs/web-interface-guidelines', '434b7f91364665f2f733b310ec54809bf8f37937', 'command.md', 'references/web-interface-guidelines.md'),

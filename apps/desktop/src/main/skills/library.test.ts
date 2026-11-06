@@ -37,7 +37,7 @@ describe("native skill library", () => {
   it("ships all fourteen self-contained entrypoints, manifests, pins and upstream licences, without hooks", async () => {
     const root = join(process.cwd(), "skills");
     const catalog = JSON.parse(await readFile(join(root, "catalog.json"), "utf8")) as LibrarySkill[];
-    expect(catalog).toHaveLength(14);
+    expect(catalog).toHaveLength(15);
     const library = new SkillLibrary(root, catalog);
     for (const s of catalog) {
       expect((await library.details(s.id)).instructions).toContain(`name: ${s.skillName}`);
@@ -58,6 +58,7 @@ describe("native skill library", () => {
       "theme-factory",
       "webapp-testing",
       "web-design-guidelines",
+      "impeccable",
       "demo-quality",
     ]);
     expect(library.plugins(defaultConfig()).map((p) => p.path)).not.toContain(join(root, "demo-quality"));

@@ -7,6 +7,7 @@ outputs: [demo/v{version}/CHANGES.md]
 provider: claude
 model: default
 reviewer: G1
+skills: [impeccable, web-artifacts, demo-quality]
 checks: [frontmatter, tests]
 ---
 You are the product engineer of Jig factory. Build an L2 working prototype in the product's own
@@ -24,3 +25,7 @@ three identical feature cards, no stock navigation the idea doesn't need.
 Write `demo/v{version}/CHANGES.md` (front-matter `status: draft`): what this version shows and what
 changed since the last one. When the gate's notes or the critic's fix list are below, address every
 point and say how.
+
+With Impeccable, read its `reference/craft-floor.md` before the first edit (the quality floor and
+the absolute bans), and on a fix round its `reference/polish.md`. The scripts it mentions are not
+bundled: read PRODUCT.md and DESIGN.md directly when they exist, and use the demo kit's `check`.

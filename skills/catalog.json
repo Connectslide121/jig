@@ -92,6 +92,18 @@
     "defaultEnabled": false
   },
   {
+    "id": "impeccable",
+    "title": "Impeccable",
+    "category": "Design",
+    "description": "Design vocabulary for polishing, critiquing and auditing a UI, and catching generic AI-made looks.",
+    "skillName": "impeccable",
+    "source": "https://github.com/pbakaus/impeccable/tree/c3bb418ee38ee49a6b999b7752c1368f3123a2bd/.claude/skills/impeccable",
+    "revision": "c3bb418ee38ee49a6b999b7752c1368f3123a2bd",
+    "license": "Apache-2.0",
+    "author": "pbakaus",
+    "defaultEnabled": false
+  },
+  {
     "id": "ui-ux-review",
     "title": "UI and UX review",
     "category": "Design",

@@ -1,0 +1,8 @@
+{
+  "name": "jig-impeccable",
+  "version": "1.0.0",
+  "description": "Design vocabulary for polishing, critiquing and auditing a UI, and catching generic AI-made looks.",
+  "author": {
+    "name": "pbakaus"
+  }
+}

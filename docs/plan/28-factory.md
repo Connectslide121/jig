@@ -63,6 +63,7 @@ Later decisions (Jon, 2026-11-06, after going through the plan):
 | D-446 | **Images are generated with ChatGPT** (Codex's image generation on the signed-in plan); demo screenshots first. |
 | D-447 | **E-learning through the user's own MCP server:** Jig factory builds the connector (setting + recipes); courses are created as unpublished drafts. |
 | D-448 | **Teasers are HTML rendered to MP4 with HyperFrames**, in the demo kit; not html-video (a second agent runtime). |
+| D-459 | **Impeccable's design playbooks** (pbakaus/impeccable) are bundled, text only and off by default; the design director, demo builders and critic name them in their recipes' `skills` (Jon asked, 2026-11-07). |
 
 Motion, the video add-on (Jon, 2026-11-06; [28-factory/motion.md](28-factory/motion.md)):
 

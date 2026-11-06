@@ -159,6 +159,7 @@ model: default
 reviewer: G4
 checks: [frontmatter, words<=600, glossary]
 languageGroup: sales
+skills: [impeccable]      # bundled skills the stage uses when they are on (D-459)
 ---
 You are the sales enablement role of Jig factory… (the reviewed prompt)
 ```
@@ -166,7 +167,8 @@ You are the sales enablement role of Jig factory… (the reviewed prompt)
 Built-ins live in `addons/factory/recipes/`; a product repo overrides one by putting a file with the
 same `id` in `<repo>/.jig/factory/recipes/` (committed). `lib/recipes.ts` validates (known inputs,
 outputs inside the run folder, a reviewer gate that exists) and builds the stage prompt: recipe
-text + the run's inputs (paths) + the rules from [pipeline.md](pipeline.md) → Rules + how to report.
+text + the run's inputs (paths) + the skills it names (a "Skills" section, D-459) + the rules from
+[pipeline.md](pipeline.md) → Rules + how to report.
 
 ## The stage runner (D-427)
 
