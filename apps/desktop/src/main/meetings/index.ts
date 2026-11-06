@@ -61,6 +61,7 @@ import {
   markSecondaryWindow,
   openExternal,
   revealWindow,
+  showUnseen,
   showWindowQuietly,
 } from "../appWindows";
 import { getConfig } from "../config";
@@ -654,7 +655,8 @@ async function openCall(options: { show?: boolean } = {}): Promise<void> {
   const url = new URL(process.env.JIG_RENDERER_URL || (await meetingPage(window.webContents.id)));
   url.searchParams.set("meetingRoom", "1");
   await window.loadURL(url.href);
-  if (show && !hiddenMode()) window.show();
+  if (show && hiddenMode()) showUnseen(window);
+  else if (show) window.show();
 }
 
 /**
@@ -723,7 +725,8 @@ async function openLobby(target: MeetingsTarget = {}, quiet = false): Promise<vo
   if (target.select) url.searchParams.set("select", target.select);
   await window.loadURL(url.href);
   if (quiet) showWindowQuietly(window);
-  else if (!hiddenMode()) window.show();
+  else if (hiddenMode()) showUnseen(window);
+  else window.show();
 }
 
 /**

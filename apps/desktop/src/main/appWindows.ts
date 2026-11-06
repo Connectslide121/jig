@@ -57,7 +57,12 @@ export function openPath(path: string): Promise<string> {
  * minimized window stays minimized and flashes in the taskbar instead.
  */
 export function showWindowQuietly(window: BrowserWindow, raise = false): void {
-  if (hiddenMode() || window.isDestroyed()) return;
+  if (window.isDestroyed()) return;
+  // Hidden: shown where nobody sees it, so it is visible (and draws) as it would be for the user (D-420).
+  if (hiddenMode()) {
+    showUnseen(window);
+    return;
+  }
   if (window.isMinimized()) {
     window.flashFrame(true);
     return;
@@ -66,9 +71,17 @@ export function showWindowQuietly(window: BrowserWindow, raise = false): void {
   if (raise) window.moveTop();
 }
 
-/** Shows a window and gives it focus, unless Jig runs hidden. Only for something you just did. */
+/**
+ * Shows a window and gives it focus; while Jig runs hidden, shows it unseen and unfocused instead
+ * (D-358, D-420: a meeting window that never shows draws once a second and every test click in it
+ * waited ~2 s). Only for something you just did.
+ */
 export function revealWindow(window: BrowserWindow): void {
-  if (hiddenMode() || window.isDestroyed()) return;
+  if (window.isDestroyed()) return;
+  if (hiddenMode()) {
+    showUnseen(window);
+    return;
+  }
   if (window.isMinimized()) window.restore();
   window.show();
   window.focus();
