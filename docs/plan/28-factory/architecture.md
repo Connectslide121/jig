@@ -268,7 +268,9 @@ The board's column roles come from the Boards add-on's data.
 
 `factory.demoKitPath`, `factory.concurrency` (1–6, default 3), `factory.critic` (provider:
 `chatgpt` when signed in, else `claude`), `factory.publishTargets` (Azure Static Web Apps sites,
-asked at each publish, D-436), `factory.defaultLanguage` (`en`). Settings that run programs or decide
+asked at each publish, D-436), `factory.defaultLanguage` (`en`), `factory.designSources`
+(`DESIGN.md` libraries: repository URLs or folders, D-442), `factory.elearning` (the e-learning
+MCP server's name and a note of its course tools, D-445). Settings that run programs or decide
 spending go into `PROTECTED_SETTINGS` (D-077).
 
 ## Exports (other add-ons, D-215)

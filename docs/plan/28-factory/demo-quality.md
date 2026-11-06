@@ -99,6 +99,13 @@ with the product's current tokens.
 you gave them, or invented when you said so (D-435), palette, type pairing, a sample screen in the
 kit's shell); your pick at GD becomes the run's kit.
 
+**Design inspiration (D-442):** the setting `factory.designSources` lists libraries of `DESIGN.md`
+files (Google Stitch's format), for example github.com/VoltAgent/awesome-design-md. Only the
+addresses are kept; `directions` reads them when it runs. Each direction names its reference ("in
+the spirit of …") and borrows mood, rhythm and rules, never another brand's colours, logo or name.
+The interview may ask "Feels like?" with a picker from the sources, and the critic scores the demo
+against the reference's do's and don'ts. A product kit always wins over a reference.
+
 ## Skills and resources
 
 Vendored into `skills/` like the existing catalogue (pinned, licences kept, reviewed text only, no
@@ -117,6 +124,8 @@ upstream scripts; D-430). Their scripts' jobs are done by the demo kit.
 | DTCG 2025.10, Style Dictionary v5 | tokens as the contract between products and demos | npm in the kit |
 | Storybook, Playwright `toHaveScreenshot`, `@axe-core/playwright` | the kit's catalogue and its checks | npm in the kit |
 | Community design skills (e.g. "UI/UX Pro Max") | evaluate only: mine for rules, don't install blindly | review first |
+| `DESIGN.md` libraries (e.g. VoltAgent `awesome-design-md`, MIT) | references for new brands' directions and the critic (D-442) | addresses in `factory.designSources`, read at run time |
+| HyperFrames (Apache-2.0) | renders teasers from HTML to MP4, frame by frame (D-446) | npm in the kit (`npm run teaser`) |
 
 Sources checked 2026-11-06: [DTCG first stable version](https://www.w3.org/community/design-tokens/2025/10/28/design-tokens-specification-reaches-first-stable-version/),
 [Tremor joins Vercel, blocks MIT](https://vercel.com/blog/vercel-acquires-tremor),

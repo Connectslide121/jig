@@ -53,6 +53,21 @@ draft of this plan, in the same order).
 | D-438 | **Runs go on unattended** (overnight, while away) and stop only at gates, with a cap on retries per stage. |
 | D-439 | **No usage design:** runs use the user's own plan like any chat; recipe evals on real models only start from a button. |
 
+Later decisions (Jon, 2026-11-06, after going through the plan):
+
+| # | Decision |
+|---|---|
+| D-442 | **`DESIGN.md` libraries as inspiration** for new brands' directions and the critic; only their addresses are kept (`factory.designSources`). |
+| D-443 | **Deck and one-pager in two forms:** HTML from the demo kit (→ PDF) and made with ChatGPT's image model; you pick which to share, or both. |
+| D-444 | **Images are generated with ChatGPT** (Codex's image generation on the signed-in plan); demo screenshots first. |
+| D-445 | **E-learning through the user's own MCP server:** Jig factory builds the connector (setting + recipes); courses are created as unpublished drafts. |
+| D-446 | **Teasers are HTML rendered to MP4 with HyperFrames**, in the demo kit; not html-video (a second agent runtime). |
+
+**Open: sharing a demo for review with people who don't have Jig.** A demo is one self-contained
+HTML file, so it can simply be sent (for example in Teams) and opened in a browser. A private
+review site (for example Azure Static Web Apps behind company sign-in, board cards linking to it)
+is an option Jon hasn't decided on; until then the demo review (G1) is Jon's, in Jig.
+
 ## Overview
 
 ```
@@ -209,7 +224,9 @@ and survives a Jig restart.
 ### 4. The demo, end to end — not started
 
 - [ ] Design director: product kit from the product repo (tokens + reference screenshots,
-      `.jig/factory/kit/`); for a new brand, 3 directions (GD gate, direction cards).
+      `.jig/factory/kit/`); for a new brand, 3 directions (GD gate, direction cards), each with a
+      reference from `factory.designSources` (D-442; setting, "Feels like?" in the interview,
+      the critic reads the reference's do's and don'ts).
 - [ ] Demo builder (L1) on the demo kit; critic loop (score → fix list → rebuild, max 3 rounds,
       D-434); the quality gate's results on the run.
 - [ ] Demo review tab: device frames (desktop, tablet, phone) side by side, v1–v3 switcher with
@@ -224,8 +241,20 @@ and survives a Jig restart.
 
 - [ ] Recipes: spec, user stories (as board cards), test cases, release notes, customer letter,
       glossary delta; pitch, presentation, one-pager, objection handling; e-learning for sales and
-      for customers (the workspace's e-learning skill when present); marketing plan, articles,
-      LinkedIn drafts, newsletter; teaser film (when the teaser skill is present).
+      for customers; marketing plan, articles, LinkedIn drafts, newsletter; teaser film.
+- [ ] Formats (D-443): documents in Markdown; customer letter also PDF; deck and one-pager in two
+      forms, HTML from the demo kit → PDF and an image version by ChatGPT, the review lets you pick
+      one or both to share; newsletter also as e-mail HTML.
+- [ ] Images (D-444): image recipes run on ChatGPT; core: `codexNormalize.ts` shows Codex's
+      `imageGeneration` items as image cards and passes `usageLimitExceeded` on as a limit; no
+      ChatGPT sign-in = image outputs skipped with a reason; fake-engine row.
+- [ ] E-learning connector (D-445): setting `factory.elearning` (MCP server name, which tools
+      create a course / add pages / publish), `course-*` recipes create an unpublished course and
+      report its link; without the setting, the course as Markdown in `learning/`. Jon fills the
+      setting in his workspace.
+- [ ] Teaser (D-446): `npm run teaser` in the demo kit on HyperFrames (pinned, GSAP and fonts
+      bundled), teaser templates on the product kit's tokens and the demo's screens, a storyboard
+      the `teaser` recipe writes, checks (35–50 s, logo visible, text readable); MP4 in `teaser/`.
 - [ ] Inbox: everything waiting for a person, grouped by gate; approve / edit / reject; statuses
       `draft → reviewed → approved → published` (and `rejected`, `superseded`) with history.
 - [ ] Trust numbers per output kind: approved without edits, review time.
