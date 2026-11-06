@@ -115,11 +115,13 @@ import {
   isParked,
   MARKED_DONE_SUMMARY,
   type NewTask,
+  newChatRunsOn,
   type PermissionMode,
   PROVIDER_LABEL,
   parsePrompts,
   parseTaskIds,
   type Queue,
+  queueModel,
   type Run,
   type RunsOn,
   runOutcome,
@@ -143,7 +145,14 @@ import {
   StatusIcon,
   takeRequestedQueue,
 } from "./parts";
-import { type ProviderChoice, RunsOnButton, runsOnText, SOURCE_TEXT } from "./RunsOn";
+import {
+  modelShort,
+  type ProviderChoice,
+  RunsOnButton,
+  runsOnShort,
+  runsOnText,
+  SOURCE_TEXT,
+} from "./RunsOn";
 
 /**
  * The permission modes a task can run in, in the add and edit dialogs. Don't ask comes last, named as in
@@ -201,8 +210,11 @@ const COL = {
   time: "@max-xl:hidden @xl:block w-16",
   cost: "@max-xl:hidden @xl:block w-16",
   status: "w-28",
-  /** Who runs the chat: always the mark, in the same place on every row (D-330). */
-  provider: "flex w-4 shrink-0 items-center justify-center",
+  /**
+   * Who runs the chat: always the mark, in the same place on every row (D-330); with room, the model
+   * beside it (D-408), in a fixed width so nothing after it moves.
+   */
+  provider: "@max-2xl:w-4 @2xl:w-16 flex shrink-0 items-center gap-1",
 };
 /** History's "Ran on": the marks alone when narrow, with the name beside them when there's room. */
 const RAN_ON = "@max-xl:w-8 @xl:w-20 flex shrink-0 items-center gap-1";
@@ -384,6 +396,8 @@ interface QueueOverview {
   runs: number;
   /** Who runs the queue's new chats: its "Runs on", else the project's default (D-330). */
   provider: TaskProvider;
+  /** The queue's own model for them, only with its own provider (D-408). */
+  model?: string;
 }
 
 /**
@@ -485,26 +499,30 @@ export function TasksView({ ctx }: AddonComponentProps) {
           onClick={() => openDashboard(ctx)}
         />
         {/* "Runs on": who runs this queue's new chats (D-330); a fixed slot, reserved while it loads. */}
-        <span className="flex @max-md:w-12 @md:w-32 shrink-0">
+        <span className="flex @max-md:w-12 @md:w-48 shrink-0">
           {queue && (
             <RunsOnButton
               ctx={ctx}
-              value={{ provider: queue.provider }}
+              value={{ provider: queue.provider, model: queueModel(queue) }}
               shown={
                 queue.provider
-                  ? { provider: queue.provider, from: "queue" }
+                  ? { provider: queue.provider, model: queueModel(queue), from: "queue" }
                   : { provider: project.provider, from: "project" }
               }
               fallback={project.provider}
               defaultLabel="Project default"
-              models={false}
+              models
               label={queue.provider ? undefined : "Default"}
               className="w-full"
               labelClassName="@max-md:hidden @md:inline"
               testId="tasks-runs-on"
               onPick={(choice) =>
                 void ctx.host
-                  .call("setProvider", { projectId: project.id, provider: choice.provider ?? null })
+                  .call("setProvider", {
+                    projectId: project.id,
+                    provider: choice.provider ?? null,
+                    model: choice.model ?? null,
+                  })
                   .catch((e: Error) => ctx.notify({ title: e.message, tone: "danger" }))
               }
             />
@@ -2458,6 +2476,9 @@ function ProviderSlot({ on, testId }: { on: RunsOn; testId: string }) {
       data-testid={testId}
     >
       <ProviderMark provider={on.provider} iconOnly />
+      <span className="@max-2xl:hidden @2xl:inline min-w-0 truncate text-xs text-muted">
+        {on.model ? modelShort(on.model) : ""}
+      </span>
     </span>
   );
 }
@@ -2754,12 +2775,16 @@ function AddDialog({
   const projects = useProjectList();
   const firstProject = chosenProject ?? active?.id ?? projects[0]?.id ?? "";
   const [chats, setChats] = useState<DraftChat[]>(() => [draftChat(firstProject)]);
-  // What "Queue's choice" means in each project: its queue's "Runs on", else the project's default.
+  // What "Queue default" means in each project: its queue's "Runs on" and model, else the project's default.
   const { data: overview } = useHostCall<QueueOverview[]>("overview");
-  const queueProvider = (projectId: string): TaskProvider =>
-    overview?.find((o) => o.projectId === projectId)?.provider ??
-    projects.find((p) => p.id === projectId)?.provider ??
-    "claude";
+  const queueChoice = (projectId: string): RunsOn => {
+    const o = overview?.find((x) => x.projectId === projectId);
+    return {
+      provider: o?.provider ?? projects.find((p) => p.id === projectId)?.provider ?? "claude",
+      ...(o?.model ? { model: o.model } : {}),
+      from: "queue",
+    };
+  };
   const [mode, setMode] = useState<PermissionMode>("acceptEdits");
   const [busy, setBusy] = useState(false);
   const [focus, setFocus] = useState<string>();
@@ -2923,16 +2948,19 @@ function AddDialog({
                 <RunsOnButton
                   ctx={ctx}
                   value={{ provider: chat.provider, model: chat.model }}
-                  shown={
-                    chat.provider
-                      ? { provider: chat.provider, model: chat.model, from: "task" }
-                      : { provider: queueProvider(chat.projectId), from: "queue" }
-                  }
-                  fallback={queueProvider(chat.projectId)}
-                  defaultLabel="Queue's choice"
+                  shown={newChatRunsOn(
+                    queueChoice(chat.projectId),
+                    chat,
+                    queueChoice(chat.projectId).provider,
+                  )}
+                  fallback={queueChoice(chat.projectId).provider}
+                  fallbackModel={queueChoice(chat.projectId).model}
+                  defaultLabel="Queue default"
                   models
-                  label={chat.provider ? undefined : "Queue's choice"}
-                  className="w-52"
+                  label={
+                    chat.provider ? undefined : `Queue default (${runsOnShort(queueChoice(chat.projectId))})`
+                  }
+                  className="w-72"
                   testId={`tasks-add-runs-on-${ci}`}
                   onPick={(choice: ProviderChoice) =>
                     setChats(setChatProvider(chats, ci, choice.provider, choice.model))
@@ -3101,11 +3129,7 @@ function EditDialog({
   const { provider: _p, model: _m, ...plain } = task;
   const inherited = runsOn(as({ ...plain, newChat: false }), { ...plain, newChat: false }, projectDefault);
   const queueChoice = runsOn(as({ ...plain, newChat: true }), { ...plain, newChat: true }, projectDefault);
-  const shown: RunsOn = sameChat
-    ? inherited
-    : choice.provider
-      ? { provider: choice.provider, model: choice.model, from: "task" }
-      : queueChoice;
+  const shown: RunsOn = sameChat ? inherited : newChatRunsOn(queue, choice, projectDefault);
   const save = async () => {
     if (empty) return;
     setBusy(true);
@@ -3206,11 +3230,14 @@ function EditDialog({
               value={choice}
               shown={shown}
               fallback={queueChoice.provider}
-              defaultLabel="Queue's choice"
+              fallbackModel={queueChoice.model}
+              defaultLabel="Queue default"
               models
-              label={!sameChat && !choice.provider ? "Queue's choice" : undefined}
+              label={
+                !sameChat && !choice.provider ? `Queue default (${runsOnShort(queueChoice)})` : undefined
+              }
               disabledReason={sameChat ? "it continues the chat before, which keeps its provider" : undefined}
-              className="w-52"
+              className="w-72"
               testId="tasks-edit-runs-on"
               onPick={setChoice}
             />

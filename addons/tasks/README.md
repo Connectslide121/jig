@@ -60,9 +60,11 @@ went, so you read the results as a table instead of scrolling one long chat.
   run (before the next stop line), after stop (the later blocks), parked; zeros stay in place, quiet; each scrolls to its first task. Narrow they get a
   line of their own; wide they show their words.
 - **Claude or ChatGPT (D-330):** the Queue tab's header has **Runs on** beside the project picker:
-  **Project default** (the project's provider, else Jig's), **Claude** or **ChatGPT**, stored in the
-  queue (`Queue.provider`). In **Add tasks** each chat has its own **Runs on** (Queue's choice,
-  Claude or ChatGPT, each with a model: Default model or a family, "Opus (latest)", "Sol (latest)");
+  **Project default** (the project's provider, else Jig's), **Claude** or **ChatGPT**, each with a
+  model (Default model or a family, D-408), stored in the queue (`Queue.provider`, `Queue.model`).
+  In **Add tasks** each chat has its own **Runs on** (Queue default, named with what it stands for,
+  "Queue default (ChatGPT · Terra)", or Claude or ChatGPT, each with a model: Default model or a
+  family, "Opus (latest)", "Sol (latest)");
   it goes on the chat's first task (`Task.provider`, `Task.model`). **Edit** has the same; a task that
   continues the chat before shows that chat's provider, greyed out ("Same as the chat it continues"):
   a chat keeps its provider (D-309; only a limit handoff changes it, D-338), so its own choice is dropped. ChatGPT is greyed out with
@@ -70,13 +72,16 @@ went, so you read the results as a table instead of scrolling one long chat.
   chat card shows the provider's mark in one column (the usage footer's), its tooltip says from where
   ("the queue's", "the project's default", "the chat it continues"); the details show provider and
   model; the All queues card shows the queue's provider beside its state.
+  Wide rows show the model's short name beside the mark (D-408).
   When a task starts, `runsOn` (`lib/tasks.ts`) decides: the chat it continues, else the task's choice,
-  the queue's, the project's default; the chat's real provider and model are kept on the task
+  the queue's, the project's default; the queue's model applies only to a chat on the queue's
+  provider (a task with its own provider of the other kind gets that one's default model); the chat's real provider and model are kept on the task
   (`ranOn`, `ranModel`). A task for ChatGPT while it isn't signed in ends **Blocked** ("ChatGPT isn't
   signed in") and pauses the queue with "Stop when a task fails" (`startFailed`). Claude's tools:
   `addon_tasks_add` tasks take `provider` and `model` (a model alone names its provider; refused on a
   task that continues a chat), `addon_tasks_edit` takes them per task (`"default"`/`null` back to the
-  queue's choice) and `runsOn` for the queue; `addon_tasks_list` says who runs each task. The queue's
+  queue's choice) and `runsOn` / `runsOnModel` for the queue; `addon_tasks_list` says who runs each task
+  and the queue's provider and model. The queue's
   context and `addon_tasks_report` reach ChatGPT chats too, through Jig's MCP server (D-313).
 - **Start / Pause:** the queue runs in the add-on's host, so it goes on with the view closed. A task
   that needs you (a permission or a question) shows "Needs you" and notifies; answer in its chat and

@@ -4955,6 +4955,7 @@ Jig queues." The details are **Claude, on my own**.
   optional); listings say who runs each task and the queue's Runs on.
 - The fallback-provider task (carry on with the other provider when a chat hits its limit) hadn't
   landed; it should keep `ranOn` true to the chat that actually ran.
+- The queue's Runs on picks a model too since D-408 (`Queue.model`).
 
 ## D-331: A change runs its affected e2e specs; the release fixes the tests that fail
 
@@ -7049,3 +7050,35 @@ stopped for good.
   Dismiss); the badge stays at the far right (Queued, Running, Done, Dismissed, or Your action /
   Someone else while to do). What a card's action did, or why it failed, shows in the footer's
   existing text slot. The Markdown export ticks done actions and names the other statuses.
+
+## D-408: Tasks queue: Runs on picks a model too
+
+**Jon:** the queue-level Runs on should pick a model as well as a provider, and a task or chat that
+starts a chat can override both. The details are **Claude, on my own**.
+
+- **Stored:** `Queue.model` beside `Queue.provider` (D-330): a model of that provider only, never
+  without one. `setQueueRunsOn` (pure, tested) applies a change: a model alone names its provider,
+  a provider change drops a model that isn't that provider's (`providerOfModel`), Default (the
+  project's) drops both. The host's `setProvider` takes `model` too (the view always sends both).
+- **Header:** Runs on opens each provider's models like Add tasks and Edit do ("Default model", then
+  the families); the button says "Claude · Opus" (`runsOnShort`), its slot widened from `w-32` to
+  `w-40` at `@md` (the mark alone below).
+- **Resolution** (`runsOn` → `newChatRunsOn`): a new chat takes its own provider and model, else the
+  queue's, else the project's default. The queue's model applies only to its own provider: a task on
+  the same provider without a model of its own takes it (the task's provider menu names it, "Queue's
+  model · Opus", instead of "Default model"); a task on the other provider gets that provider's default
+  model, so a ChatGPT model never reaches a Claude chat or the reverse. A task that continues a chat
+  shows that chat's provider and model (read-only, as before). `ranOn`/`ranModel` still record what
+  the chat really ran on, and when the D-338 limit handover starts the chat on the other provider the
+  model is not passed (`ranModel` stays empty), so the handover never carries a model of the wrong
+  provider.
+- **Dialogs:** Add tasks and Edit name the inherited value "Queue default (ChatGPT · Terra)" (the
+  queue's provider and model, else the project's default), buttons widened to `w-60`.
+- **Rows:** the provider column shows the effective model's short name beside the mark from `@2xl`
+  (`w-16`, empty slot when the provider's default), only the mark below, so nothing after it moves.
+- **Claude's tools:** `addon_tasks_edit` takes `runsOnModel` beside `runsOn` (a model alone also sets
+  its provider; a model of the other provider than `runsOn` is refused); listings' header says
+  "New chats run on Claude (opus).", also for an empty queue. The All queues overview reports the
+  queue's model.
+- **Reorganize** (D-397) is unchanged: only a task's own provider or model makes it start its own
+  chat; a queue model never fixes a task.

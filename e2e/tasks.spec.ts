@@ -114,12 +114,12 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   // Who runs each chat (D-330): the queue's choice by default; chat 2 on ChatGPT's Sol. The control
   // keeps its width, so the project picker beside it doesn't move.
   const runsOn = add.getByTestId("tasks-add-runs-on-1");
-  await expect(runsOn).toContainText("Queue's choice");
+  await expect(runsOn).toContainText("Queue default (Claude)");
   const projectBefore = await add.getByTestId("tasks-add-project-1").boundingBox();
   await runsOn.click();
   await page.getByTestId("tasks-runs-on-chatgpt").hover();
   await page.getByTestId("tasks-model-sol").click();
-  await expect(runsOn).toContainText("ChatGPT · Sol (latest)");
+  await expect(runsOn).toContainText("ChatGPT · Sol");
   expect(await add.getByTestId("tasks-add-project-1").boundingBox()).toEqual(projectBefore);
   await add.getByTestId("tasks-add-confirm").click();
   await expect(view.getByTestId("task-t3")).toContainText("update the readme");
@@ -762,7 +762,7 @@ test("Tasks: a Partly done task is marked done by hand and keeps its chat's repo
   await details.screenshot({ path: test.info().outputPath("marked-partial-details.png") });
 });
 
-test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it (D-330)", async ({
+test("Tasks: a queue that runs on ChatGPT's Terra, and a task that runs on Claude in it (D-330, D-408)", async ({
   page,
   jigHome,
 }) => {
@@ -774,8 +774,9 @@ test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it 
   await expect(runsOn).toContainText("Default");
   const pickerBefore = await view.getByTestId("tasks-project").boundingBox();
   await runsOn.click();
-  await page.getByTestId("tasks-runs-on-chatgpt").click();
-  await expect(runsOn).toContainText("ChatGPT");
+  await page.getByTestId("tasks-runs-on-chatgpt").hover();
+  await page.getByTestId("tasks-model-terra").click();
+  await expect(runsOn).toContainText("ChatGPT · Terra");
   expect(await view.getByTestId("tasks-project").boundingBox()).toEqual(pickerBefore);
 
   await hostCall(page, "addons.call", {
@@ -793,6 +794,16 @@ test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it 
   });
   await expect(view.getByTestId("task-provider-t1").getByTestId("provider-mark-chatgpt")).toBeVisible();
   await expect(view.getByTestId("task-provider-t3").getByTestId("provider-mark-claude")).toBeVisible();
+
+  // A task that starts a chat shows the queue's provider and model as what it inherits.
+  await view.getByTestId("task-t1").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Edit…" }).click();
+  const first = page.getByTestId("tasks-edit-dialog");
+  await expect(first.getByTestId("tasks-edit-runs-on")).toContainText("Queue default (ChatGPT · Terra)");
+  await first.getByRole("button", { name: "Cancel" }).click();
+  await view.getByTestId("task-t1").click();
+  await expect(page.getByTestId("task-runs-on")).toContainText("ChatGPT · Terra (latest)");
+  await page.getByTestId("task-details").getByRole("button", { name: "Close" }).last().click();
 
   // Editing a task that continues a chat shows that chat's provider, greyed out with the reason.
   await view.getByTestId("task-t2").click({ button: "right" });

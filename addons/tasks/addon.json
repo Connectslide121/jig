@@ -111,7 +111,7 @@
         "params": {
           "tasks": {
             "type": "array",
-            "description": "The tasks in order: each a prompt string, or { title, prompt, newChat, provider, model } (newChat false continues the previous task's chat; provider \"claude\" or \"chatgpt\" and model, e.g. opus, sonnet, sol, only on a task that starts a chat: by default the queue's Runs on)"
+            "description": "The tasks in order: each a prompt string, or { title, prompt, newChat, provider, model } (newChat false continues the previous task's chat; provider \"claude\" or \"chatgpt\" and model, e.g. opus, sonnet, sol, only on a task that starts a chat: by default the queue's Runs on, whose model applies only to a task on its own provider)"
           },
           "project": {
             "type": "string",
@@ -138,7 +138,7 @@
       },
       {
         "id": "edit",
-        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, a stop line after them (stopAfter: the run pauses there so the user can release or check before the next block; it also works on the running task), whether they are parked (ideas kept in a pool at the end of the queue, never run), whether they continue the previous task's chat (newChat), where they are in the queue (moveTo), and who runs them (provider, model). runsOn changes the whole queue's provider. Moves follow the Queue tab's rules: never above or between tasks that ran, and only parked tasks go into the parked pool at the end (park or unpark with parked); a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats, or with parked parks or unparks the whole chat together, its order and joins kept. A parked task may continue the parked task before it (a parked chat), but the first parked task always starts a chat, and nothing in the queue continues a parked chat. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue; to delete a queued task use addon_tasks_delete. addon_tasks_list gives the ids.",
+        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, a stop line after them (stopAfter: the run pauses there so the user can release or check before the next block; it also works on the running task), whether they are parked (ideas kept in a pool at the end of the queue, never run), whether they continue the previous task's chat (newChat), where they are in the queue (moveTo), and who runs them (provider, model). runsOn and runsOnModel change the whole queue's provider and model (the default for new chats; a task with its own provider of the other kind runs on that provider's default model). Moves follow the Queue tab's rules: never above or between tasks that ran, and only parked tasks go into the parked pool at the end (park or unpark with parked); a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats, or with parked parks or unparks the whole chat together, its order and joins kept. A parked task may continue the parked task before it (a parked chat), but the first parked task always starts a chat, and nothing in the queue continues a parked chat. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue; to delete a queued task use addon_tasks_delete. addon_tasks_list gives the ids.",
         "params": {
           "tasks": {
             "type": "array",
@@ -148,7 +148,12 @@
           "runsOn": {
             "type": "string",
             "enum": ["default", "claude", "chatgpt"],
-            "description": "The queue's Runs on: who runs its new chats (default: the project's default)",
+            "description": "The queue's Runs on: who runs its new chats (default: the project's default, which also clears runsOnModel). Changing it drops a model of the other provider",
+            "optional": true
+          },
+          "runsOnModel": {
+            "type": "string",
+            "description": "The model of the queue's Runs on: a model of its provider (Claude: opus, sonnet, haiku or an exact id; ChatGPT: sol, terra, luna), or default for the provider's default model. Alone it also sets the provider the model belongs to",
             "optional": true
           },
           "project": {
@@ -195,7 +200,7 @@
       },
       {
         "id": "list",
-        "description": "The user's task queue: each task's status and report summary, with a \"--- stop ---\" line where a stop line is (the run stops there; addon_tasks_edit's stopAfter places or removes one). By default this chat's project's queue; `project` names another project's (its name or id); `all` lists every project's queue compactly (project name and id, then each task's id, status and title), to find a task anywhere and then change it with addon_tasks_edit and its `project`.",
+        "description": "The user's task queue: each task's status and report summary, with a \"--- stop ---\" line where a stop line is (the run stops there; addon_tasks_edit's stopAfter places or removes one), and a first line saying who runs the queue's new chats (provider and model, its Runs on). By default this chat's project's queue; `project` names another project's (its name or id); `all` lists every project's queue compactly (project name and id, then each task's id, status and title), to find a task anywhere and then change it with addon_tasks_edit and its `project`.",
         "params": {
           "project": {
             "type": "string",

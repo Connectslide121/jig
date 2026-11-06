@@ -156,6 +156,12 @@ describe("parseProposal", () => {
     const other = q([t("a"), t("b", true, { projectId: "blog" })]);
     expect(() => parseProposal(other, answer(["a", false], ["b", true]))).toThrow(/another project/);
   });
+
+  it("keeps tasks movable under the queue's provider and model (D-408)", () => {
+    const queue = { ...q([t("a"), t("b")]), provider: "claude" as const, model: "opus" };
+    expect(reorganizePrompt(queue)).not.toContain("id b [own provider");
+    expect(() => parseProposal(queue, answer(["a", false], ["b", true]))).not.toThrow();
+  });
 });
 
 describe("applyProposal", () => {

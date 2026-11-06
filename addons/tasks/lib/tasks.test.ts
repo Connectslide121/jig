@@ -38,6 +38,7 @@ import {
   markDone,
   moveStop,
   moveTasks,
+  newChatRunsOn,
   nextTask,
   normalizeQueue,
   nudgeFrom,
@@ -47,6 +48,7 @@ import {
   parsePermissionMode,
   parsePrompts,
   parseQueueProvider,
+  parseQueueRunsOn,
   parseReport,
   parseTaskEdits,
   parseTaskIds,
@@ -76,6 +78,7 @@ import {
   setNewChat,
   setParked,
   setProviderChoice,
+  setQueueRunsOn,
   setStop,
   shouldPause,
   splitQueue,
@@ -1275,6 +1278,64 @@ describe("who runs a task (D-330)", () => {
     q = { ...q, tasks: q.tasks.map((t) => (t.id === "t1" ? { ...t, ranOn: "chatgpt" as const } : t)) };
     expect(runsOn(q, q.tasks[1]!, "claude")).toEqual({ provider: "chatgpt", from: "chat" });
     expect(runsOn(q, q.tasks[0]!, "claude")).toEqual({ provider: "chatgpt", from: "ran" });
+  });
+
+  it("gives new chats the queue's model, only on the queue's provider (D-408)", () => {
+    let q: Queue = { ...two(), provider: "claude", model: "opus" };
+    expect(runsOn(q, q.tasks[0]!, "chatgpt")).toEqual({ provider: "claude", model: "opus", from: "queue" });
+    // A task on the same provider without a model takes the queue's; its own model wins.
+    q = editTasks(q, [
+      { id: "t1", provider: "claude" },
+      { id: "t3", provider: "claude", model: "haiku" },
+    ]);
+    expect(runsOn(q, q.tasks[0]!, "claude")).toEqual({ provider: "claude", model: "opus", from: "task" });
+    expect(runsOn(q, q.tasks[2]!, "claude")).toEqual({ provider: "claude", model: "haiku", from: "task" });
+    // A task on the other provider never inherits Claude's model: ChatGPT's default.
+    q = editTasks(q, [{ id: "t1", provider: "chatgpt" }]);
+    expect(runsOn(q, q.tasks[0]!, "claude")).toEqual({ provider: "chatgpt", from: "task" });
+    // A task that continues a chat shows that chat's provider and model.
+    expect(runsOn(q, q.tasks[1]!, "claude")).toEqual({ provider: "chatgpt", from: "chat" });
+    q = editTasks(q, [{ id: "t1", provider: null }]);
+    expect(runsOn(q, q.tasks[1]!, "claude")).toEqual({ provider: "claude", model: "opus", from: "chat" });
+    // Once it ran, what its chat ran on, even after the queue changed.
+    q = {
+      ...q,
+      model: "sonnet",
+      tasks: q.tasks.map((t) => (t.id === "t1" ? { ...t, ranOn: "claude" as const, ranModel: "opus" } : t)),
+    };
+    expect(runsOn(q, q.tasks[0]!, "claude")).toEqual({ provider: "claude", model: "opus", from: "ran" });
+    expect(runsOn(q, q.tasks[1]!, "claude")).toEqual({ provider: "claude", model: "opus", from: "chat" });
+    // A stored model of another provider than the queue's never applies.
+    const odd = { ...two(), provider: "chatgpt" as const, model: "opus" };
+    expect(runsOn(odd, odd.tasks[0]!, "claude")).toEqual({ provider: "chatgpt", from: "queue" });
+    expect(newChatRunsOn({ provider: "chatgpt", model: "sol" }, {}, "claude")).toEqual({
+      provider: "chatgpt",
+      model: "sol",
+      from: "queue",
+    });
+    expect(newChatRunsOn({}, { provider: "chatgpt" }, "claude")).toEqual({
+      provider: "chatgpt",
+      from: "task",
+    });
+  });
+
+  it("changes the queue's Runs on and model together (D-408)", () => {
+    const q = emptyQueue();
+    expect(setQueueRunsOn(q, "claude", "opus")).toMatchObject({ provider: "claude", model: "opus" });
+    // A model alone names its provider; a provider change drops the other provider's model.
+    expect(setQueueRunsOn(q, undefined, "sol")).toMatchObject({ provider: "chatgpt", model: "sol" });
+    const opus = setQueueRunsOn(q, "claude", "opus");
+    expect(setQueueRunsOn(opus, "chatgpt", undefined)).toEqual({ ...q, provider: "chatgpt" });
+    expect(setQueueRunsOn(opus, "claude", undefined)).toMatchObject({ provider: "claude", model: "opus" });
+    expect(setQueueRunsOn(opus, undefined, null)).toEqual({ ...q, provider: "claude" });
+    expect(setQueueRunsOn(opus, null, undefined)).toEqual(q);
+    expect(setQueueRunsOn(opus, null, null)).toEqual(q);
+    expect(parseQueueRunsOn("default", undefined)).toEqual({ provider: null, model: undefined });
+    expect(parseQueueRunsOn(undefined, "default")).toEqual({ provider: undefined, model: null });
+    expect(parseQueueRunsOn("claude", "sonnet")).toEqual({ provider: "claude", model: "sonnet" });
+    expect(() => parseQueueRunsOn("claude", "sol")).toThrow(/isn't a Claude model/);
+    expect(() => parseQueueRunsOn(undefined, "rm -rf /")).toThrow(/model id/);
+    expect(listing({ ...opus, tasks: [] })).toBe("The task queue is empty. New chats run on Claude (opus).");
   });
 
   it("refuses a provider or model for a task that continues a chat", () => {

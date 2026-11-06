@@ -463,8 +463,10 @@ finds nothing (some tenants turn Microsoft Search off for Teams) or Start chat s
 after it was approved (press Connect… once).
 
 Claude or ChatGPT per task queue (2026-11-04, D-330): each project's queue picks who runs its chats:
-the Queue tab's header has **Runs on** beside the project picker (Project default, Claude, ChatGPT),
-so Podium's queue can run on ChatGPT and Jig's on Claude. A task can override it in **Add tasks** (per
+the Queue tab's header has **Runs on** beside the project picker (Project default, Claude, ChatGPT,
+each with a model since D-408: "Claude · Opus"), so one queue can run on ChatGPT and another on Claude.
+Add tasks and Edit show what a chat inherits as "Queue default (ChatGPT · Terra)"; the queue's model
+only applies to chats on its provider. Wide rows show the model beside the provider's mark. A task can override it in **Add tasks** (per
 chat) and **Edit**, with a model ("Opus (latest)", "Sol (latest)"…); a task that continues a chat
 shows that chat's provider, greyed out. Every row shows the provider's mark in its own column, the
 details say provider and model, and the All queues card shows the queue's. ChatGPT is greyed out with

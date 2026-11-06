@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import {
   modelLabel,
   PROVIDER_LABEL,
+  providerOfModel,
   type RunsOn,
   type RunsOnSource,
   TASK_MODELS,
@@ -30,20 +31,30 @@ export const SOURCE_TEXT: Record<RunsOnSource, string> = {
 export const runsOnText = (on: { provider: TaskProvider; model?: string }) =>
   `${PROVIDER_LABEL[on.provider]}${on.model ? ` · ${modelLabel(on.model)}` : ""}`;
 
+/** A model's short name for tight places: "Opus", "Sol", else the id as given. */
+export const modelShort = (model: string) => modelLabel(model).replace(/ \(latest\)$/, "");
+
+/** "Claude · Opus", "ChatGPT": for buttons and defaults that have little room. */
+export const runsOnShort = (on: { provider: TaskProvider; model?: string }) =>
+  `${PROVIDER_LABEL[on.provider]}${on.model ? ` · ${modelShort(on.model)}` : ""}`;
+
 export interface ProviderChoice {
   provider?: TaskProvider;
   model?: string;
 }
 
 /**
- * The entries: the default (`fallback`: what it stands for), Claude and ChatGPT; with `models`, each
- * provider opens its models ("Default model", then the families) beside it.
+ * The entries: the default (`fallback` and `fallbackModel`: what it stands for), Claude and ChatGPT;
+ * with `models`, each provider opens its models ("Default model", then the families) beside it. A
+ * task's provider without a model of its own takes the queue's model when it's that provider's
+ * (D-408), so that provider's first entry names it ("Queue's model · Opus").
  */
 export function providerEntries({
   ctx,
   chatgptReady,
   value,
   fallback,
+  fallbackModel,
   defaultLabel,
   models,
   onPick,
@@ -52,10 +63,15 @@ export function providerEntries({
   chatgptReady: boolean;
   value: ProviderChoice;
   fallback: TaskProvider;
+  fallbackModel?: string;
   defaultLabel: string;
   models: boolean;
   onPick: (choice: ProviderChoice) => void;
 }): MenuInput[] {
+  const defaultModel = (provider: TaskProvider) =>
+    fallbackModel && providerOfModel(fallbackModel) === provider
+      ? `Queue's model · ${modelShort(fallbackModel)}`
+      : "Default model";
   const providerEntry = (provider: TaskProvider): MenuInput => {
     const off = provider === "chatgpt" && !chatgptReady;
     const checked = value.provider === provider;
@@ -73,7 +89,7 @@ export function providerEntries({
           ? {
               submenu: [
                 {
-                  label: "Default model",
+                  label: defaultModel(provider),
                   checked: checked && !value.model,
                   testId: `tasks-model-${provider}-default`,
                   onSelect: () => onPick({ provider }),
@@ -92,7 +108,7 @@ export function providerEntries({
   return [
     { heading: "Runs on" },
     {
-      label: `${defaultLabel} (${PROVIDER_LABEL[fallback]})`,
+      label: `${defaultLabel} (${runsOnShort({ provider: fallback, model: fallbackModel })})`,
       provider: fallback,
       checked: !value.provider,
       testId: "tasks-runs-on-default",
@@ -124,6 +140,7 @@ export function RunsOnButton({
   value,
   shown,
   fallback,
+  fallbackModel,
   defaultLabel,
   models,
   label,
@@ -138,6 +155,8 @@ export function RunsOnButton({
   /** What it runs on now (the choice, else the default). */
   shown: RunsOn;
   fallback: TaskProvider;
+  /** The default's model (the queue's, D-408). */
+  fallbackModel?: string;
   defaultLabel: string;
   models: boolean;
   /** The words after the mark; none shows the provider's name. */
@@ -150,10 +169,10 @@ export function RunsOnButton({
   onPick: (choice: ProviderChoice) => void;
 }) {
   const chatgpt = useChatGptReady();
-  const text = label ?? runsOnText(shown);
+  const text = label ?? runsOnShort(shown);
   const title = disabledReason
     ? `Runs on ${runsOnText(shown)}: ${disabledReason}`
-    : `Runs on ${runsOnText(shown)} (${SOURCE_TEXT[shown.from]}): choose Claude or ChatGPT`;
+    : `Runs on ${runsOnText(shown)} (${SOURCE_TEXT[shown.from]}): choose Claude or ChatGPT${models ? " and a model" : ""}`;
   return (
     <button
       type="button"
@@ -174,6 +193,7 @@ export function RunsOnButton({
             chatgptReady: chatgpt?.ready === true,
             value,
             fallback,
+            fallbackModel,
             defaultLabel,
             models,
             onPick,

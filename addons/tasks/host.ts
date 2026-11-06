@@ -41,6 +41,7 @@ import {
   parseNewTasks,
   parsePermissionMode,
   parseQueueProvider,
+  parseQueueRunsOn,
   parseReport,
   parseTaskEdits,
   parseTaskIds,
@@ -61,6 +62,7 @@ import {
   STATUS_LABEL,
   setParked,
   setProviderChoice,
+  setQueueRunsOn,
   setStop,
   shouldPause,
   splitQueue,
@@ -439,6 +441,8 @@ export async function overview(
       running: q.running,
       runs: (await loadHistory(api, p.id)).length,
       provider: q.provider ?? p.provider,
+      // The queue's own model (D-408): only with the queue's own provider.
+      ...(q.provider && q.model ? { model: q.model } : {}),
     });
   }
   return out;
@@ -895,16 +899,20 @@ export async function setStopOnFailure(
   ]);
 }
 
-/** The queue's "Runs on" (D-330): the provider of its new chats, or none for the project's default. */
+/**
+ * The queue's "Runs on" (D-330, D-408): the provider of its new chats and its model, or none for the
+ * project's default. The view always sends both; `model` left out keeps the queue's model when it
+ * belongs to the new provider.
+ */
 export async function setProvider(
-  args: ProjectArgs & { provider?: TaskProvider | "default" | null },
+  args: ProjectArgs & { provider?: TaskProvider | "default" | null; model?: string | null },
   api: AddonHostApi,
 ): Promise<void> {
-  const provider = parseQueueProvider(args?.provider);
-  await change(api, await projectArg(api, args?.projectId), (q) => {
-    const { provider: _was, ...rest } = q;
-    return [provider ? { ...rest, provider } : rest, undefined];
-  });
+  const choice = parseQueueRunsOn(args?.provider ?? null, args?.model);
+  await change(api, await projectArg(api, args?.projectId), (q) => [
+    setQueueRunsOn(q, choice.provider, choice.model),
+    undefined,
+  ]);
 }
 
 /** Clears finished tasks from the queue; their runs stay in the history. */
@@ -1096,24 +1104,24 @@ export async function toolAdd(
 
 /** Claude changes queued tasks; the queue's own state (running, other tasks) stays as it is. */
 export async function toolEdit(
-  args: ChatArgs & { tasks?: unknown; project?: string; runsOn?: unknown },
+  args: ChatArgs & { tasks?: unknown; project?: string; runsOn?: unknown; runsOnModel?: unknown },
   api: AddonHostApi,
 ): Promise<string> {
-  // The queue's "Runs on" alone, or with task edits (D-330).
-  const queueProvider = args.runsOn === undefined ? undefined : { provider: parseQueueProvider(args.runsOn) };
-  const edits = queueProvider && args.tasks === undefined ? [] : parseTaskEdits(args.tasks);
+  // The queue's "Runs on" and its model alone, or with task edits (D-330, D-408).
+  const queueRunsOn =
+    args.runsOn === undefined && args.runsOnModel === undefined
+      ? undefined
+      : parseQueueRunsOn(args.runsOn, args.runsOnModel);
+  const edits = queueRunsOn && args.tasks === undefined ? [] : parseTaskEdits(args.tasks);
   const projectId = await projectNamed(api, args.project, args.chat?.projectId);
   if (!projectId) throw new Error("Say which project's queue to change (this chat has none)");
   const fallback = await projectProvider(api, projectId);
   return change(api, projectId, (q) => {
     let next = q;
-    if (queueProvider) {
-      const { provider: _was, ...rest } = q;
-      next = queueProvider.provider ? { ...rest, provider: queueProvider.provider } : rest;
-    }
+    if (queueRunsOn) next = setQueueRunsOn(next, queueRunsOn.provider, queueRunsOn.model);
     if (edits.length) next = editTasks(next, edits);
     const what = [
-      queueProvider ? "the queue's Runs on" : "",
+      queueRunsOn ? "the queue's Runs on" : "",
       edits.length ? `${edits.length} task${edits.length === 1 ? "" : "s"}` : "",
     ]
       .filter(Boolean)

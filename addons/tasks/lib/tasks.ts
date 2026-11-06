@@ -113,6 +113,11 @@ export interface Queue {
   /** "Runs on": the provider of the queue's new chats; none = the project's default (D-330). */
   provider?: TaskProvider;
   /**
+   * "Runs on": a model of `provider` for its new chats (a family alias like `opus` or `sol`, or an exact
+   * id); none = that provider's default (D-408). Only set with `provider`, never another provider's.
+   */
+  model?: string;
+  /**
    * Paused by Jig, not by you (D-395): it was running when Jig closed to install an update, and starts
    * again by itself after the restart. Start or Pause clears it.
    */
@@ -1603,7 +1608,7 @@ function runsOnText(queue: Queue, task: Task, projectDefault: TaskProvider): str
 /** The queue's "Runs on", for Claude. */
 const queueRunsOn = (queue: Queue) =>
   queue.provider
-    ? `New chats run on ${PROVIDER_LABEL[queue.provider]}.`
+    ? `New chats run on ${PROVIDER_LABEL[queue.provider]}${queue.model ? ` (${queue.model})` : ""}.`
     : "New chats run on the project's default.";
 
 /** ", parked" after a queued task's status in Claude's listings. */
@@ -1614,7 +1619,7 @@ export const STOP_LINE_TEXT = "--- stop ---";
 
 /** One line per task for Claude (the list tool), a stop line where a run stops; `projectDefault`: the project's provider. */
 export function listing(queue: Queue, projectDefault: TaskProvider = "claude"): string {
-  if (!queue.tasks.length) return "The task queue is empty.";
+  if (!queue.tasks.length) return `The task queue is empty. ${queueRunsOn(queue)}`;
   const lines = queue.tasks.flatMap((t, i) => [
     `${i + 1}. [${STATUS_LABEL[t.status]}${stateText(t)}${t.reportedLate ? ", reported late" : ""}${t.markedDone ? `, marked done by the user (was ${STATUS_LABEL[t.markedDone.was].toLowerCase()})` : ""}${t.revised ? `, revised from ${STATUS_LABEL[t.revised.from.outcome].toLowerCase()}` : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
       (t.report ? ` — ${t.report.summary}` : ""),
@@ -1718,7 +1723,7 @@ export interface RunsOn {
  * provider, else Jig's).
  */
 export function runsOn(
-  queue: Pick<Queue, "tasks" | "provider">,
+  queue: Pick<Queue, "tasks" | "provider" | "model">,
   task: Task,
   projectDefault: TaskProvider,
 ): RunsOn {
@@ -1729,12 +1734,54 @@ export function runsOn(
   if (tasks[0] && tasks[0] !== task) {
     // The chat it continues: the one a task of its card ran in, else the one its first task will start.
     const chat = runsOn(queue, tasks.find((t) => t.ranOn) ?? tasks[0], projectDefault);
-    return { provider: chat.provider, from: "chat" };
+    return { provider: chat.provider, ...(chat.model ? { model: chat.model } : {}), from: "chat" };
   }
-  if (task.provider)
-    return { provider: task.provider, ...(task.model ? { model: task.model } : {}), from: "task" };
-  if (queue.provider) return { provider: queue.provider, from: "queue" };
+  return newChatRunsOn(queue, task, projectDefault);
+}
+
+/**
+ * Who runs a new chat (D-330, D-408): its own provider and model, else the queue's, else the project's
+ * default. The queue's model applies only to its own provider: a chat with its own provider takes it
+ * when it's that provider's, else that provider's default model.
+ */
+export function newChatRunsOn(
+  queue: Pick<Queue, "provider" | "model">,
+  own: { provider?: TaskProvider; model?: string },
+  projectDefault: TaskProvider,
+): RunsOn {
+  const model = (provider: TaskProvider) => {
+    const m = own.model ?? queueModel(queue);
+    return m && providerOfModel(m) === provider ? { model: m } : {};
+  };
+  if (own.provider) return { provider: own.provider, ...model(own.provider), from: "task" };
+  if (queue.provider) return { provider: queue.provider, ...model(queue.provider), from: "queue" };
   return { provider: projectDefault, from: "project" };
+}
+
+/** The queue's model, when it belongs to the queue's provider (D-408). */
+export function queueModel(queue: Pick<Queue, "provider" | "model">): string | undefined {
+  return queue.provider && queue.model && providerOfModel(queue.model) === queue.provider
+    ? queue.model
+    : undefined;
+}
+
+/**
+ * The queue's "Runs on" after a change (D-408). `undefined` keeps what it was, `null` goes back to the
+ * default: a `null` provider is the project's default (and drops the model), a `null` model the
+ * provider's default model. A model alone names its provider; a provider change drops a model that
+ * isn't that provider's.
+ */
+export function setQueueRunsOn<Q extends Pick<Queue, "provider" | "model">>(
+  queue: Q,
+  provider: TaskProvider | null | undefined,
+  model: string | null | undefined,
+): Q {
+  const { provider: _p, model: _m, ...rest } = queue;
+  if (provider === null && !model) return rest as Q;
+  const nextProvider =
+    provider === undefined ? (model ? providerOfModel(model) : queue.provider) : (provider ?? undefined);
+  const nextModel = model === undefined ? queue.model : (model ?? undefined);
+  return { ...rest, ...providerFields(nextProvider, nextModel) } as Q;
 }
 
 /** A run's tasks per provider they ran on: most tasks first; `unrecorded` started before Jig kept it. */
@@ -1836,6 +1883,23 @@ export function parseProviderChoice(
 export function parseQueueProvider(value: unknown): TaskProvider | undefined {
   if (value === "default" || value === undefined || value === null || value === "") return undefined;
   return parseProvider(value, "the queue");
+}
+
+/**
+ * The queue's "Runs on" change as Claude or the view gives it (D-408), for `setQueueRunsOn`: left out =
+ * unchanged; provider "default" (or null) = the project's default, model "default" (or null) = the
+ * provider's default model. A model of the other provider than the one given is refused.
+ */
+export function parseQueueRunsOn(
+  provider: unknown,
+  model: unknown,
+): { provider: TaskProvider | null | undefined; model: string | null | undefined } {
+  const p = provider === undefined ? undefined : (parseQueueProvider(provider) ?? null);
+  const m =
+    model === undefined ? undefined : model === "default" ? null : (parseModel(model, "the queue") ?? null);
+  if (p && m && providerOfModel(m) !== p)
+    throw new Error(`model ${m} for the queue isn't a ${PROVIDER_LABEL[p]} model`);
+  return { provider: p, model: m };
 }
 
 /**
