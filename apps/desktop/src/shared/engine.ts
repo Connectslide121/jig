@@ -347,8 +347,6 @@ export interface SessionMeta {
   importedFrom?: string;
   /** You are talking with Claude: its replies are read aloud, so it answers briefly (D-209). */
   voice?: boolean;
-  /** Drafts the notes of this Jig meeting (its id): its plan saves notes for review, nothing runs (D-268). */
-  meetingNotes?: string;
   /** The Azure tenant its running Claude Code process started with (none while no process runs). */
   azureTenant?: TenantTag;
 }

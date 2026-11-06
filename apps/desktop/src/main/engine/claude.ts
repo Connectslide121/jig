@@ -375,6 +375,9 @@ export class ClaudeEngine implements Engine {
     // A one-shot answer never takes this long; without a limit a hung process would block its caller.
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), options.timeoutMs ?? 180_000);
+    if (options.signal?.aborted) throw new Error("Stopped");
+    const stop = () => abort.abort();
+    options.signal?.addEventListener("abort", stop, { once: true });
     const q = query({
       prompt,
       options: {
@@ -398,10 +401,12 @@ export class ClaudeEngine implements Engine {
         }
       }
     } catch (error) {
+      if (options.signal?.aborted) throw new Error("Stopped");
       if (abort.signal.aborted) throw new Error("Claude Code didn't answer in time");
       throw error;
     } finally {
       clearTimeout(timer);
+      options.signal?.removeEventListener("abort", stop);
     }
     return text;
   }

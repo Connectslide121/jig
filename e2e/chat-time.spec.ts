@@ -1,5 +1,5 @@
 import { launchWithChats, seedChatTime } from "./chatTimeSeed";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, openViewFromMenu, test } from "./fixtures";
 
 test("Chat time: in View → Views, a project or all projects, a chat's own tab and the AI tools", async ({
   jigHome,
@@ -10,9 +10,7 @@ test("Chat time: in View → Views, a project or all projects, a chat's own tab 
     await seedChatTime(jigHome, ["contoso-project"], { count: 1 });
   });
   try {
-    await page.getByTestId("tools-group-View").click();
-    await page.getByRole("menuitem", { name: "Views" }).hover();
-    await page.getByRole("menuitem", { name: "Chat time" }).click();
+    await openViewFromMenu(page, "Chat time");
     const view = page.getByTestId("chat-time");
     await expect(view).toBeVisible({ timeout: 15000 });
     await expect(view.getByTestId("chat-time-categories")).toContainText("Tests & builds");

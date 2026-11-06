@@ -11,7 +11,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { meetingMention } from "../../../../../../addons/meetings/lib/meeting";
 import type { MeetingFolder } from "../../../shared/meetingFolders";
 import type { MeetingLayout, MeetingSizeKey } from "../../../shared/meetingLayout";
@@ -38,7 +38,8 @@ import { notify } from "../../workbench/toasts";
 import { ProjectSwatch } from "../projects/colors";
 import { FolderRow, useMeetingFolders } from "./folders";
 import { dayAndTime, duration } from "./format";
-import { NotesPanel, TranscriptPanel } from "./Panels";
+import { NotesPanel } from "./Notes";
+import { type TranscriptJump, TranscriptPanel } from "./Panels";
 import { Review } from "./Review";
 import { SizedBox } from "./Slots";
 
@@ -51,22 +52,22 @@ import { SizedBox } from "./Slots";
  */
 export function MeetingHistory({
   projects,
+  boards,
   layout,
   onResize,
   onTranscript,
   target,
-  onOpenChat,
   extraMenu,
 }: {
   projects: ProjectsState;
+  /** The Boards add-on is on: actions offer Create card… (D-425). */
+  boards: boolean;
   layout: MeetingLayout;
   onResize(key: MeetingSizeKey, size: number): void;
   /** Shows or hides the transcript beside the notes. */
   onTranscript(shown: boolean): void;
   /** The meeting to show: its id, or an id's first hex digits (a mention's chip). `at` changes with every request. */
   target?: { select: string; at: number };
-  /** Shows a chat (notes being written) in Jig's main window. */
-  onOpenChat(sessionId: string): Promise<void>;
   /** More entries for a meeting's ⋯ menu (Call back, Open in Teams). */
   extraMenu?(record: MeetingRecord): MenuEntry[];
 }) {
@@ -74,13 +75,21 @@ export function MeetingHistory({
   const [failed, setFailed] = useState<string>();
   const [selected, setSelected] = useState<string>();
   const select = target?.select.replace(/-/g, "").toLowerCase();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `target.at` asks again for the same meeting.
+  // Each request selects its meeting once, when it's loaded: a later reload (notes being written,
+  // D-424) doesn't take you back to it after you picked another.
+  const handled = useRef<string | undefined>(undefined);
   useEffect(() => {
-    const found = select && records?.find((r) => r.id.replace(/-/g, "").toLowerCase().startsWith(select));
-    if (found) setSelected(found.id);
+    const request = `${select}:${target?.at}`;
+    if (!select || handled.current === request) return;
+    const found = records?.find((r) => r.id.replace(/-/g, "").toLowerCase().startsWith(select));
+    if (!found) return;
+    handled.current = request;
+    setSelected(found.id);
   }, [select, target?.at, records]);
   const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState<"notes" | "queue">();
+  const [busy, setBusy] = useState<"queue">();
+  // A timestamp in the notes shows that caption in the transcript, showing the transcript first.
+  const [jump, setJump] = useState<TranscriptJump>();
   const [review, setReview] = useState(false);
   const transcript = layout.historyTranscript === true;
   const [detail, detailWidth] = useWidth();
@@ -136,7 +145,7 @@ export function MeetingHistory({
     moveMenu,
   } = folderState;
 
-  const run = async (what: string, work: () => Promise<void>, kind?: "notes" | "queue") => {
+  const run = async (what: string, work: () => Promise<void>, kind?: "queue") => {
     setBusy(kind);
     try {
       await work();
@@ -369,16 +378,20 @@ export function MeetingHistory({
                 >
                   <NotesPanel
                     record={record}
-                    busy={busy === "notes"}
+                    projects={projects}
+                    boards={boards}
                     onGenerateNotes={() =>
-                      void run(
-                        "Couldn't start the notes",
-                        async () => {
-                          await onOpenChat((await call("meetings.notes", { id: record.id })).sessionId);
-                        },
-                        "notes",
+                      void run("Couldn't write the notes", () => call("meetings.notes", { id: record.id }))
+                    }
+                    onCancelNotes={() =>
+                      void run("Couldn't cancel the notes", () =>
+                        call("meetings.cancelNotes", { id: record.id }),
                       )
                     }
+                    onJump={(at) => {
+                      if (!transcript) onTranscript(true);
+                      setJump((j) => ({ at, n: (j?.n ?? 0) + 1 }));
+                    }}
                     onReview={() => setReview(true)}
                   />
                 </div>
@@ -395,12 +408,12 @@ export function MeetingHistory({
                       className="border-l border-line"
                     >
                       <div id="meeting-history-transcript" className="flex size-full min-h-0 min-w-0">
-                        <TranscriptPanel record={record} live={false} />
+                        <TranscriptPanel record={record} live={false} jump={jump} />
                       </div>
                     </SizedBox>
                   ) : (
                     <div id="meeting-history-transcript" className="flex min-h-0 min-w-0 flex-1">
-                      <TranscriptPanel record={record} live={false} />
+                      <TranscriptPanel record={record} live={false} jump={jump} />
                     </div>
                   ))}
               </div>
@@ -412,6 +425,7 @@ export function MeetingHistory({
         <Review
           record={record}
           projects={projects}
+          boards={boards}
           busy={busy === "queue"}
           onClose={() => setReview(false)}
           onQueue={(actions, actionIds) =>

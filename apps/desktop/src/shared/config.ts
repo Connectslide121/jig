@@ -2,13 +2,16 @@ import { z } from "zod";
 import { AI_FEATURE_IDS, AI_FEATURES, type AiFeatureId } from "./aiFeatures";
 import { CHAT_PROVIDERS, CODEX_EFFORT_LEVELS, EFFORT_LEVELS, LIMIT_POLICIES } from "./engine";
 import { PHONE_CHANNELS } from "./phone";
-import { AI_PROVIDERS, type AiProvider } from "./providers";
+import { AI_PROVIDER_SETTINGS, type AiProviderSetting } from "./providers";
 
-/** One AI feature's provider and model (D-297); the provider defaults to the feature's own. */
-const aiChoiceSchema = (provider: AiProvider = "claude") =>
+/**
+ * One AI feature's provider and model (D-297); the provider defaults to the feature's own. `default`
+ * follows the chats' provider (D-424).
+ */
+const aiChoiceSchema = (provider: AiProviderSetting = "claude") =>
   z
     .object({
-      provider: z.enum(AI_PROVIDERS).default(provider),
+      provider: z.enum(AI_PROVIDER_SETTINGS).default(provider),
       model: z.string().max(100).default(""),
     })
     .prefault({});

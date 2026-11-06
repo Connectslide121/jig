@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, openViewFromMenu, test } from "./fixtures";
 
 const screenText = (page: Page) => page.locator(".jig-xterm:visible .xterm-rows");
 
@@ -31,9 +31,7 @@ test("scripts: discovered, run from the Scripts panel, shown in the status bar, 
   jigHome,
 }) => {
   await project(page, jigHome);
-  await page.getByTestId("tools-group-View").click();
-  await page.getByRole("menuitem", { name: "Views" }).hover();
-  await page.getByRole("menuitem", { name: "Scripts" }).click();
+  await openViewFromMenu(page, "Scripts");
   const view = page.getByTestId("scripts-view");
   await expect(view.getByTestId("scripts-addon-dev")).toBeVisible({ timeout: 15000 });
   await view.getByRole("button", { name: "Run dev" }).click();

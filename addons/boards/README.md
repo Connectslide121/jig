@@ -79,3 +79,7 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
   descriptions and comments reach az as written, quotes and non-ASCII included (D-290).
 
 Storage (project scope): `boards`, the followed boards; `selected`, the open tab. Global: `columnWidth`, the columns' width in px; `filters` (project scope), each board's search and filters by board id; `cache`, each board's last cards keyed `tenant|org|project|team|boardId` (written by the host). The cache and merge logic is in `lib/cache.ts`, the filter logic in `lib/filter.ts`, a card's details (relations, development links, fields, attachments) in `lib/boards.ts` (all unit-tested; details in `lib/details.test.ts`, the new card's form in `lib/newcard.test.ts`). Cards also carry their tags, iteration and area (from the board query) for the filters. Tested by `e2e/boards.spec.ts` with a fake `az`.
+
+- **Shared with Jig (D-425):** `exports` `cardTargets` (the boards a project follows, their types and
+  backlog type), `cardAssignee` (you, or the one person in the organisation with a name, else nobody)
+  and `createCard` (a card on a followed board). Meetings' Create card… uses them through `callShared`.

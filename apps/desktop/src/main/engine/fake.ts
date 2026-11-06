@@ -413,43 +413,11 @@ export class FakeEngine implements Engine {
           });
           const output = outputText(await toolHandlers.jig_meeting_read({ id, through }));
           onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
-          if (/Write (concise )?meeting notes/.test(text) && toolHandlers.jig_meeting_save_notes) {
-            const projects = JSON.parse(
-              /optional projectId from (\[.*?\])\./.exec(text)?.[1] ?? "[]",
-            ) as Array<{ id: string }>;
-            const input = {
-              id,
-              notes:
-                "## Summary\nThe team discussed the Shop API and Portal.\n\n## Decisions\nReview the API before release.\n\n## Actions\nUser: review the Shop API. Sam: update documentation.",
-              actions: [
-                {
-                  title: "Review the Shop API",
-                  prompt: "Review the Shop API before release and report findings.",
-                  owner: "User",
-                  mine: true,
-                  projectId: projects[0]?.id,
-                  evidence: "Alex: review the API before release",
-                },
-                {
-                  title: "Update documentation",
-                  prompt: "Update the Portal service documentation.",
-                  owner: "Sam",
-                  projectId: projects[1]?.id,
-                  evidence: "Sam: update service documentation",
-                },
-              ],
-            };
-            const saveId = `tool-${randomUUID()}`;
-            onEvent({ type: "tool_use", id: saveId, name: "mcp__jig__jig_meeting_save_notes", input });
-            const saved = outputText(await toolHandlers.jig_meeting_save_notes(input));
-            onEvent({ type: "tool_result", toolUseId: saveId, output: saved, isError: false });
-            await stream(`${msg}:text:0`, saved, signal);
-          } else
-            await stream(
-              `${msg}:text:0`,
-              `Meeting answer using this chat's project and the captured transcript.\n\n${output.slice(0, 1000)}`,
-              signal,
-            );
+          await stream(
+            `${msg}:text:0`,
+            `Meeting answer using this chat's project and the captured transcript.\n\n${output.slice(0, 1000)}`,
+            signal,
+          );
         } else if (
           toolHandlers?.jig_meeting_read &&
           /with jig_meeting_read, id "([a-f\d-]{36})"/.test(sent)
@@ -1902,9 +1870,55 @@ ${output.slice(0, 600)}`,
     };
   }
 
-  async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {
+  async oneShot(prompt: string, options: OneShotOptions): Promise<string> {
     const scripted = process.env.JIG_FAKE_ONESHOT;
     if (scripted) return scripted;
+    // Meeting notes (D-424): a caption saying "hold until released" keeps them writing until the test
+    // calls `fake.release` (or Cancel stops them); "fail the notes" fails them.
+    if (prompt.startsWith("You write meeting notes for Jig.")) {
+      const transcript = prompt.slice(prompt.indexOf("<transcript>"));
+      if (/hold until released/i.test(transcript))
+        await holdUntilReleased(prompt, options.signal ?? new AbortController().signal).catch(() => {
+          throw new Error("Stopped");
+        });
+      if (/fail the notes/i.test(transcript)) throw new Error("The scripted notes failed");
+      const stamps = [...transcript.matchAll(/^\[(\d\d:\d\d:\d\d)\] (?!\()/gm)].map((m) => m[1]!);
+      const projects = JSON.parse(
+        /only an id from this list, when the action clearly belongs to that project; otherwise leave it out\. (\[.*?\])\n/.exec(
+          prompt,
+        )?.[1] ?? "[]",
+      ) as Array<{ id: string }>;
+      const first = stamps[0] ?? "00:00:00";
+      const last = stamps.at(-1) ?? first;
+      return JSON.stringify({
+        tldr: "The team reviewed the Shop API and the Portal documentation (scripted notes).",
+        decisions: [{ what: "Review the API before the release.", by: "Alex", at: [first] }],
+        actions: [
+          {
+            title: "Review the Shop API",
+            owner: "User",
+            mine: true,
+            due: "Friday",
+            prompt: "Review the Shop API before release and report findings.",
+            evidence: "Alex: review the API before release",
+            projectId: projects[0]?.id,
+            at: [first],
+          },
+          {
+            title: "Update documentation",
+            owner: "Sam",
+            prompt: "Update the Portal service documentation.",
+            evidence: "Sam: update service documentation",
+            projectId: projects[1]?.id ?? "not-a-project",
+            at: [last, "99:99:99"],
+          },
+        ],
+        questions: [
+          { kind: "risk", text: "The release date may slip.", raisedBy: "Sam", at: [last, "23:59:58"] },
+        ],
+        topics: [{ title: "Shop API", points: ["What ships next", "Who reviews it"] }],
+      });
+    }
     // Reorganize the task queue (D-397): each block reversed, its second task joining the first's chat.
     if (/You organize a queue of prompts/.test(prompt)) {
       const fixed = prompt.indexOf("\nOther tasks");

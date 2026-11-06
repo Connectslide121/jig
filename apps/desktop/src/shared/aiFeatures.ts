@@ -6,7 +6,7 @@
  * (`chatgpt`, D-310). Documented in docs/reference/engine.md.
  */
 import type { JigConfig } from "./config";
-import type { AiProvider, ChatGptFamily } from "./providers";
+import type { AiProvider, AiProviderSetting, ChatGptFamily } from "./providers";
 
 export interface AiFeature {
   id: AiFeatureId;
@@ -20,8 +20,15 @@ export interface AiFeature {
   chatgpt: ChatGptFamily;
   /** It asks for JSON: Jig checks the answer and says so when it doesn't parse. */
   json?: boolean;
-  /** The provider it runs on until you pick one (default Claude). */
-  provider?: AiProvider;
+  /** The provider it runs on until you pick one (default Claude; `default` follows your chats). */
+  provider?: AiProviderSetting;
+  /**
+   * Settings offers "Default (follows your chat provider)" for it (D-424): it runs on whoever runs
+   * your chats (`engine.provider`), on the feature's default model there.
+   */
+  followsChat?: boolean;
+  /** Said beside where it shows, always: what it sends (the meeting's transcript…). */
+  sends?: string;
   /** Said beside it in Settings while ChatGPT is picked: how it does worse there. */
   chatgptNote?: string;
 }
@@ -38,6 +45,7 @@ export const AI_FEATURE_IDS = [
   "chatSuggestions",
   "learning",
   "meetingTranslation",
+  "meetingNotes",
   "taskQueueReorganize",
   "addonQuick",
   "addonHelper",
@@ -123,6 +131,19 @@ export const AI_FEATURES: AiFeature[] = [
     chatgptNote: "Slower with ChatGPT: more lines are skipped to keep up. Claude keeps up better",
   },
   {
+    // Made only when you click Generate notes, silently, as structured JSON (D-424). Meetings run
+    // long, so it needs a model that keeps up with a long transcript (Jon: Sonnet / Terra).
+    id: "meetingNotes",
+    label: "Meeting notes",
+    where: "Meetings → Generate notes",
+    fallback: helper,
+    chatgpt: "terra",
+    json: true,
+    provider: "default",
+    followsChat: true,
+    sends: "Sends the meeting's transcript to the chosen provider",
+  },
+  {
     id: "taskQueueReorganize",
     label: "Reorganize the task queue",
     where: "Tasks → Reorganize",
@@ -167,10 +188,21 @@ export function aiFeature(id: AiFeatureId): AiFeature {
  */
 export function aiChoice(config: JigConfig, id: AiFeatureId): { provider: AiProvider; model: string } {
   const choice = config.ai[id];
-  const provider = choice.provider;
   const feature = aiFeature(id);
+  // Following the chats (D-424): their provider, on the feature's default model there; a model picked
+  // for one provider never goes to the other.
+  if (choice.provider === "default") {
+    const provider = chatProviderAi(config);
+    return { provider, model: provider === "claude" ? feature.fallback(config) : feature.chatgpt };
+  }
+  const provider = choice.provider;
   const model = choice.model || (provider === "claude" ? feature.fallback(config) : feature.chatgpt);
   return { provider, model };
+}
+
+/** Who runs your chats, as an AI feature provider: Codex chats are ChatGPT (D-424). */
+export function chatProviderAi(config: JigConfig): AiProvider {
+  return config.engine.provider === "codex" ? "chatgpt" : "claude";
 }
 
 /** "Claude" / "ChatGPT", for messages ("ChatGPT's answer wasn't…"). */

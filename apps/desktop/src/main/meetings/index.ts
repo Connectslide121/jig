@@ -11,6 +11,7 @@ import {
   questionPrompt,
   transcriptText,
 } from "../../../../../addons/meetings/lib/meeting";
+import { notesMarkdown } from "../../../../../addons/meetings/lib/notes";
 import { aiChoice, providerName } from "../../shared/aiFeatures";
 import { JigError } from "../../shared/ipc";
 import {
@@ -45,13 +46,14 @@ import { presenceIds, type TeamsPresence, type TeamsPresenceResult } from "../..
 import {
   actionOpen,
   type MeetingAction,
+  type MeetingCardTarget,
   type MeetingEvent,
   type MeetingRecord,
   type MeetingStart,
   type MeetingsTarget,
 } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
-import { addonService } from "../addons";
+import { addonService, onAddonsChange } from "../addons";
 import {
   appWindows,
   closeHelpersIfAlone,
@@ -69,12 +71,14 @@ import { addMessageContext, registerJigTools } from "../engine/jigTools";
 import { type CallContext, emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
+import { featureOneShot } from "../providers";
 import { registerQuitGuard } from "../quit";
 import { createChat, sessionManager } from "../sessions";
 import { jigHome } from "../state/paths";
 import { APP_ICON } from "../window";
-import { actionPrompt, changeStatus, mergeEdits } from "./actions";
+import { actionPrompt, cardDescription, changeStatus, mergeEdits } from "./actions";
 import { MeetingAuth } from "./auth";
+import { mergeDrafts, NOTES_TIMEOUT, notesPrompt, notesTranscript, parseNotes } from "./notes";
 import { closeMeetingPage, meetingPage, meetingPageOrigin } from "./page";
 import { isUserName } from "./people";
 import { ownMediaUrl, ownPagePermission } from "./permissions";
@@ -470,7 +474,8 @@ let appQuitting = false;
 let ringNote: Notification | undefined;
 let selectedShare: { id: string; expires: number } | undefined;
 let queueChain: Promise<unknown> = Promise.resolve();
-const noteChats = new Map<string, string>();
+/** Notes being written now, by meeting id (D-424): Cancel aborts the AI call. */
+const notesRuns = new Map<string, AbortController>();
 const changed = () => emit("meetings.changed", undefined);
 /** Claude's caption translation for the meeting you're in, when Teams can't translate (D-277). */
 const translator = new CaptionTranslator({
@@ -506,6 +511,11 @@ const meetingsOn = () =>
 function enabled(): void {
   if (!meetingsOn()) throw new JigError("meeting_disabled", "Enable the Meetings add-on first");
 }
+/** The Boards add-on is on: actions offer Create card… (D-425). */
+const boardsOn = () =>
+  addonService()
+    .list()
+    .some((a) => a.id === "boards" && a.enabled && !a.errors.length);
 /** The call window only: media, the calling credential, captions, the call's status and chat. */
 function own(context: CallContext): void {
   if (!room || context.sender.id !== room.webContents.id)
@@ -766,6 +776,13 @@ function ring(name: string | undefined): void {
 
 export async function startMeetings(): Promise<void> {
   await store.load();
+  // Turning Boards on or off shows or hides Create card… in open meeting windows.
+  let boardsWere = boardsOn();
+  onAddonsChange(() => {
+    if (boardsOn() === boardsWere) return;
+    boardsWere = boardsOn();
+    changed();
+  });
   if (!store.settings().clientId && !process.env.JIG_HOME) {
     const setup = await readFile(join(app.getAppPath(), "../../.azure-local/meetings.json"), "utf8").catch(
       () => "",
@@ -896,6 +913,12 @@ export async function startMeetings(): Promise<void> {
     const workbench = mainWindow();
     if (workbench && workbench !== room && workbench !== lobby) revealWindow(workbench);
   });
+  handle("meetings.showBoards", ({ projectId }, ctx) => {
+    lobbyOrCall(ctx);
+    emit("meetings.boardsOpen", { projectId });
+    const workbench = mainWindow();
+    if (workbench && workbench !== room && workbench !== lobby) revealWindow(workbench);
+  });
   handle("meetings.overview", async () => {
     enabled();
     if (!fake()) await auth.restore();
@@ -903,6 +926,7 @@ export async function startMeetings(): Promise<void> {
       settings: store.settings(),
       account: fake() ? "Test account" : auth.name,
       fake: fake(),
+      boards: boardsOn(),
       activeId,
       ringing: store.ringing(),
       records: store.records(),
@@ -1510,35 +1534,41 @@ export async function startMeetings(): Promise<void> {
     activity("ask");
     return { sessionId: chat.id };
   });
+  // Notes are written silently, only when you click Generate notes (D-424): no chat. The job's state
+  // lives on the record, so the meeting window and History show the same spinner, error or notes.
   handle("meetings.notes", async ({ id }, ctx) => {
     fromJig(ctx);
     enabled();
+    if (notesRuns.has(id))
+      throw new JigError("meeting_notes", "Jig is already writing notes for this meeting");
     const record = store.get(id);
-    const chat = await createChat({
-      cwd: jigHome(),
-      title: `Notes: ${record.title}`,
-      permissionMode: "plan",
-      meetingNotes: id,
-    });
-    noteChats.set(chat.id, id);
-    const projects = (await projectStore().list()).map((p) => ({ id: p.id, name: p.name }));
+    if (!record.captions.some((c) => c.final) && !record.chat?.length)
+      throw new JigError("meeting_notes", "There's no transcript to write notes from yet");
     const through = new Date().toISOString();
     await store.snapshot(id, through);
-    await sessionManager().send(
-      chat.id,
-      questionPrompt(
-        record,
-        // Short on purpose (Jon: notes were far too long): read in two minutes, evidence only in actions.
-        `Write concise meeting notes in Markdown for someone who missed the meeting: ` +
-          `**Summary** (2-4 sentences), **Decisions** (one line each), **Open questions** (only real ones), **Actions** (one line each: owner — action). ` +
-          `Skip empty sections. No preamble, agenda recap, quotes or timestamps in the notes; aim for under 250 words unless the meeting was long. ` +
-          `Separately, draft actions: only commitments, not suggestions. Give each an owner (Unknown if unclear), a standalone prompt, short evidence with timestamps, and optional projectId from ${JSON.stringify(projects)}. ` +
-          `The user is ${JSON.stringify(auth.displayName ?? auth.name ?? "Unknown")}; account ${JSON.stringify(auth.name ?? "Unknown")}. Mark mine=true only for actions assigned to this user, false when unclear or someone else owns them. ` +
-          `Save the notes with jig_meeting_save_notes (meeting id ${id}); this only drafts actions for user review. Never queue or start work.`,
-        through,
-      ),
-    );
-    return { sessionId: chat.id };
+    const frozen = await store.readSnapshot(id, through);
+    const startedAt = new Date().toISOString();
+    const controller = new AbortController();
+    notesRuns.set(id, controller);
+    await store.update(id, (r) => {
+      r.notesJob = { state: "running", startedAt };
+    });
+    changed();
+    activity("notes");
+    void writeNotes(id, frozen, through, startedAt, controller.signal).finally(() => {
+      if (notesRuns.get(id) === controller) notesRuns.delete(id);
+      changed();
+    });
+  });
+  /** Stops notes being written, or puts away the last failure (the old notes, if any, stay). */
+  handle("meetings.cancelNotes", async ({ id }, ctx) => {
+    fromJig(ctx);
+    notesRuns.get(id)?.abort();
+    notesRuns.delete(id);
+    await store.update(id, (r) => {
+      r.notesJob = undefined;
+    });
+    changed();
   });
   handle("meetings.actions", async ({ id, actions }, ctx) => {
     fromJig(ctx);
@@ -1618,6 +1648,61 @@ export async function startMeetings(): Promise<void> {
     });
     changed();
     return result!;
+  });
+  // Create card… (D-425): the Boards add-on's shared methods make the card; the action keeps its number.
+  const actionOf = (id: string, actionId: string) => {
+    const record = store.get(id);
+    const a = record.actions.find((x) => x.id === actionId);
+    if (!a) throw new JigError("not_found", "That action is no longer in the meeting");
+    return { record, a };
+  };
+  const boardsCall = <T>(method: string, args: unknown) => {
+    if (!boardsOn()) throw new JigError("addon_disabled", "Turn on the Boards add-on to make cards");
+    return addonService().callShared("meetings", "boards", method, args) as Promise<T>;
+  };
+  handle("meetings.cardForm", async ({ id, actionId, projectId, boardId }, ctx) => {
+    fromJig(ctx);
+    const { record, a } = actionOf(id, actionId);
+    const boards = await boardsCall<MeetingCardTarget[]>("cardTargets", { projectId });
+    const board = boards.find((b) => b.id === boardId) ?? boards.find((b) => !b.problem);
+    const who = board
+      ? await boardsCall<{ assignedTo?: string; name?: string }>("cardAssignee", {
+          projectId,
+          boardId: board.id,
+          owner: a.owner,
+          mine: Boolean(a.mine),
+        })
+      : {};
+    return {
+      boards,
+      ...(board ? { boardId: board.id } : {}),
+      ...(who.assignedTo ? { assignedTo: who.assignedTo, assigneeName: who.name ?? who.assignedTo } : {}),
+      description: cardDescription(record, a),
+    };
+  });
+  handle("meetings.createCard", async ({ id, actionId, projectId, boardId, ...card }, ctx) => {
+    fromJig(ctx);
+    if (actionOf(id, actionId).a.card)
+      throw new JigError("meeting_actions", "This action already has a card");
+    const made = await boardsCall<{ id: number; url: string; board: string }>("createCard", {
+      projectId,
+      boardId,
+      ...card,
+    });
+    let result: MeetingAction | undefined;
+    await store.update(id, (r) => {
+      const a = r.actions.find((x) => x.id === actionId);
+      if (!a) return;
+      a.card = { id: made.id, url: made.url, board: made.board };
+      // An action without a project gets the card's, so Run and Queue go there too.
+      if (!a.projectId && actionOpen(a)) a.projectId = projectId;
+      result = { ...a };
+    });
+    activity("create-card");
+    changed();
+    if (!result)
+      throw new JigError("not_found", `Made card #${made.id}, but the action is no longer in the meeting`);
+    return result;
   });
   handle("meetings.shareSources", async (_args, ctx) => {
     own(ctx);
@@ -1728,43 +1813,63 @@ export async function startMeetings(): Promise<void> {
         });
       },
     },
-    {
-      name: "jig_meeting_save_notes",
-      description:
-        "Save notes and draft actions for a meeting from its notes chat. This never queues work; the user reviews the actions in Meetings.",
-      readOnly: false,
-      shape: {
-        id: z.string(),
-        notes: z.string().max(200_000),
-        actions: z
-          .array(
-            z.object({
-              title: z.string().max(500),
-              prompt: z.string().max(50_000),
-              owner: z.string().max(200),
-              mine: z.boolean().optional(),
-              projectId: z.string().optional(),
-              evidence: z.string().max(4000),
-            }),
-          )
-          .max(200),
-      },
-      handler: async (args, meta) => {
-        enabled();
-        if (noteChats.get(meta.id) !== args.id)
-          throw new JigError("forbidden", "Generate meeting notes from the Meetings window first");
-        const actions = args.actions as Array<Omit<MeetingRecord["actions"][number], "id">>;
-        await store.update(String(args.id), (r) => {
-          r.notes = String(args.notes);
-          // New drafts replace the ones still to do; queued, running and handled ones stay (D-407).
-          r.actions = [
-            ...r.actions.filter((a) => !actionOpen(a)),
-            ...actions.map((a, i) => ({ ...a, id: `${Date.now()}-${i}` })),
-          ];
-        });
-        changed();
-        return "Notes saved. Review actions in Meetings before adding anything to the task queue.";
-      },
-    },
   ]);
+}
+
+/**
+ * Writes a meeting's notes from its frozen transcript with one AI call (D-424) and saves them on the
+ * record, unless the job was cancelled or replaced meanwhile. A failure stays on the record with its
+ * reason, for Retry.
+ */
+async function writeNotes(
+  id: string,
+  frozen: MeetingRecord,
+  through: string,
+  startedAt: string,
+  signal: AbortSignal,
+): Promise<void> {
+  const mine = (r: MeetingRecord) => r.notesJob?.state === "running" && r.notesJob.startedAt === startedAt;
+  try {
+    const projects = (await projectStore().list()).map((p) => ({ id: p.id, name: p.name }));
+    const transcript = notesTranscript(frozen);
+    if (transcript.trimmed)
+      log.warn("Meeting transcript too long for notes: lines left out", {
+        lines: transcript.lines,
+        trimmed: transcript.trimmed,
+      });
+    const prompt = notesPrompt({
+      record: frozen,
+      through,
+      transcript: transcript.text,
+      projects,
+      user: { name: auth.displayName ?? auth.name ?? "Unknown", account: auth.name ?? "Unknown" },
+    });
+    const answer = await featureOneShot("meetingNotes", prompt, { signal, timeoutMs: NOTES_TIMEOUT });
+    if (signal.aborted) return;
+    const parsed = parseNotes(answer.text, frozen, through, projects);
+    await store.update(id, (r) => {
+      if (!mine(r)) return;
+      const doc = {
+        ...parsed.doc,
+        generatedAt: new Date().toISOString(),
+        through,
+        provider: answer.provider,
+        model: answer.model,
+        ...(transcript.trimmed ? { trimmed: transcript.trimmed } : {}),
+      };
+      r.actions = mergeDrafts(r.actions, parsed.actions, String(Date.now()));
+      r.notesDoc = doc;
+      r.notes = notesMarkdown(doc, r.actions);
+      r.notesJob = undefined;
+    });
+  } catch (error) {
+    if (signal.aborted) return;
+    const message = error instanceof Error ? error.message : String(error);
+    log.warn("Meeting notes failed", { error: message });
+    await store
+      .update(id, (r) => {
+        if (mine(r)) r.notesJob = { state: "failed", startedAt, error: message.slice(0, 500) };
+      })
+      .catch(() => undefined);
+  }
 }

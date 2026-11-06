@@ -138,7 +138,6 @@ export async function createChat(input: {
   provider?: ChatProvider;
   /** Instead of the provider's default (an add-on's new chat, D-330). */
   model?: string;
-  meetingNotes?: string;
   /**
    * Start on the other provider when this one's plan is used up and "When a chat hits its limit" is
    * "continue with the other provider" (D-338): a queued task's new chat.
@@ -180,7 +179,6 @@ export async function createChat(input: {
       input.permissionMode ?? ((project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode),
     ),
     effort: defaults.effort,
-    meetingNotes: input.meetingNotes,
   });
   if (switched)
     await sessionManager().addItem(meta.id, {

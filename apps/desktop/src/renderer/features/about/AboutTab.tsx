@@ -737,7 +737,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               src: meetingsShot,
               alt: "Global Jig meeting transcript and notes, with screen-sharing and project-aware Ask Jig",
             }}
-            lead="Join Teams in a separate Jig meeting window, share a screen or application window, and save live captions with speaker names. Meetings stay global while you change projects. Ask Jig about the transcript so far with an explicit project's repository context; generate notes and review actions for different project task queues afterwards."
+            lead="Join Teams in a separate Jig meeting window, share a screen or application window, and save live captions with speaker names. Meetings stay global while you change projects. Ask Jig about the transcript so far with an explicit project's repository context; generate structured notes (TL;DR, decisions, actions, open questions, with timestamps into the transcript) in the background with one click, and review actions for different project task queues afterwards."
           >
             <Bullets
               items={[
@@ -758,6 +758,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",
                 "Captions arrive live; no raw audio recording or full-meeting diarization job (local transcription keeps audio in memory only until it is transcribed)",
                 "Jig works only when you ask; reviewed actions are queued in Plan mode and the queue stays paused, or run one at once in a new chat; mark the rest done or dismiss them",
+                "Each action row in the notes has one menu: run it in a chat, queue it, make an Azure DevOps card for it (board, type and assignee filled in; a queued task owns its card), mark it done, dismiss or reopen it",
                 "PowerPoint Live, Whiteboard and breakout rooms need the regular Teams client",
               ]}
             />

@@ -47,7 +47,9 @@ import { Review } from "./Review";
 const callLanguage = () =>
   SPEECH_LANGUAGES.find(([code]) => code === navigator.language.toLowerCase())?.[0] ?? "en-us";
 
-import { NotesPanel, PeoplePanel, TranscriptPanel } from "./Panels";
+import { ToastHost } from "../../workbench/toasts";
+import { NotesPanel } from "./Notes";
+import { PeoplePanel, type TranscriptJump, TranscriptPanel } from "./Panels";
 import { AccountLabel, MeetingsShell, StatusBar, useConfigStore, useMeetingsData } from "./Shell";
 import { Slot } from "./Slots";
 import { Stage } from "./Stage";
@@ -229,6 +231,8 @@ function Room() {
     void call("meetings.callIdle").catch(() => {});
   }, [busy, error]);
   const openChat = (sessionId: string) => call("meetings.revealChat", { sessionId });
+  // Where a timestamp in the notes asks the transcript to go (D-424).
+  const [jump, setJump] = useState<TranscriptJump>();
   // The meeting's Teams chat (D-270): read every 5 seconds while you're in a meeting or call, also
   // with the Chat panel hidden, so the notes see it too.
   const [chatStatus, setChatStatus] = useState<ChatStatus>();
@@ -299,11 +303,14 @@ function Room() {
     { separator: true },
     { label: "Reset layout", icon: RotateCcw, onSelect: () => changeLayout(DEFAULT_MEETING_LAYOUT) },
   ];
-  const generateNotes = (id: string) =>
-    void run(async () => {
-      const chat = await call("meetings.notes", { id });
-      await openChat(chat.sessionId);
-    }, "notes");
+  // Notes are written silently (D-424): the record says how it goes, in every window.
+  const generateNotes = (id: string) => void run(() => call("meetings.notes", { id }), "notes");
+  const cancelNotes = (id: string) => void run(() => call("meetings.cancelNotes", { id }), "notes");
+  // A timestamp in the notes shows that caption in the transcript, showing the panel if it's hidden.
+  const jumpTo = (at: string) => {
+    if (layout.panels.transcript.hidden) changeLayout(setPanelHidden(layout, "transcript", false));
+    setJump((j) => ({ at, n: (j?.n ?? 0) + 1 }));
+  };
   // Teams' languages, and the ones Claude translates into when Teams can't (D-277).
   const captionLanguages = [
     ...mediaState.captionLanguages,
@@ -356,10 +363,13 @@ function Room() {
   const notes = (r: MeetingRecord, menu?: MenuEntry[]) => (
     <NotesPanel
       record={r}
-      busy={pending === "notes"}
+      projects={projects}
+      boards={overview.boards}
       menu={menu}
       onGenerateNotes={() => generateNotes(r.id)}
+      onCancelNotes={() => cancelNotes(r.id)}
       onReview={() => setReview(true)}
+      onJump={jumpTo}
     />
   );
   return (
@@ -543,6 +553,7 @@ function Room() {
         <Review
           record={record}
           projects={projects}
+          boards={overview.boards}
           busy={pending === "queue"}
           onClose={() => setReview(false)}
           onQueue={(actions, actionIds) =>
@@ -566,6 +577,8 @@ function Room() {
           }
         />
       )}
+      {/* What a meeting action's command did (D-425). */}
+      <ToastHost />
     </div>
   );
 
@@ -598,7 +611,7 @@ function Room() {
         />
       );
     return id === "transcript" ? (
-      <TranscriptPanel record={r} live menu={panelMenu(id)} actions={askButton} />
+      <TranscriptPanel record={r} live menu={panelMenu(id)} actions={askButton} jump={jump} />
     ) : (
       notes(r, panelMenu(id))
     );

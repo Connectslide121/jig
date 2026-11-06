@@ -1,7 +1,7 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ElectronApplication, Page } from "@playwright/test";
-import { expect, hostCall, launchJig, test } from "./fixtures";
+import { AZ_ARGV, expect, hostCall, launchJig, test } from "./fixtures";
 
 const OLD = "1a2b3c4d-0000-4000-8000-000000000001";
 const NEW = "5e6f7a8b-0000-4000-8000-000000000002";
@@ -210,10 +210,8 @@ test("Meeting actions: run one in a new chat, mark one done, dismiss one, and re
     await expect(todo("Old queued task").getByTestId("action-status")).toHaveText("Queued");
     await expect(review.getByRole("tab", { name: "To do · 4" })).toBeVisible();
 
-    // Run in a new chat needs a project first, like the queue.
-    const run = review.getByRole("button", { name: "Run in a new chat" }).first();
-    await run.click();
-    await expect(review.getByTestId("review-message")).toContainText("Choose a project");
+    // Run in a chat goes to the action's project (without one it asks for one in a submenu, D-425).
+    const run = review.getByRole("button", { name: "Run in a chat" }).first();
     await review.getByLabel("Project for Write release notes").selectOption(projectId);
     const box = await review.getByTestId("review-list").boundingBox();
     await run.click();
@@ -256,8 +254,8 @@ test("Meeting actions: run one in a new chat, mark one done, dismiss one, and re
       ["a4", "queued"],
     ]);
 
-    // Restore brings a dismissed one back to the to-do list.
-    await review.getByRole("button", { name: "Restore Book a demo" }).click();
+    // Reopen brings a dismissed one back to the to-do list.
+    await review.getByRole("button", { name: "Reopen Book a demo" }).click();
     await expect(review.getByRole("tab", { name: "Handled · 1" })).toBeVisible();
     await review.getByRole("tab", { name: "To do · 3" }).click();
     await expect(todo("Book a demo").getByTestId("action-status")).toHaveText("Your action");
@@ -266,6 +264,172 @@ test("Meeting actions: run one in a new chat, mark one done, dismiss one, and re
       path: ".jig-test-home-meeting-screenshots/action-todo.png",
     });
     expect((await actions()).find((a) => a.id === "a3")!.status).toBeUndefined();
+  } finally {
+    await app.close();
+  }
+});
+
+/**
+ * An `az` for Create card… (D-425): who you are, one person named Alex Demo in contoso, the Web team's
+ * Stories board, and a create that logs its arguments next to it and answers card #501.
+ */
+const CARD_AZ = `
+const args = ${AZ_ARGV};
+const has = (...words) => words.every((w) => args.includes(w));
+const say = (value) => { process.stdout.write(JSON.stringify(value)); process.exit(0); };
+const uri = args.includes("--uri") ? args[args.indexOf("--uri") + 1] : "";
+const arg = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+if (uri.endsWith("/profiles/me")) say({ id: "me-1", displayName: "Sam Example", emailAddress: "sam@contoso.com" });
+if (uri.endsWith("/_apis/identities")) say({ value: [
+  { providerDisplayName: "Alex Demo", isActive: true, properties: { Mail: { $value: "alex@contoso.com" } } },
+]});
+if (uri.endsWith("/Web/_apis/work/boards/b-stories")) say({
+  columns: [
+    { id: "c1", name: "New", columnType: "incoming", itemLimit: 0, stateMappings: { Bug: "New", "User Story": "New" } },
+    { id: "c2", name: "Closed", columnType: "outgoing", itemLimit: 0, stateMappings: { Bug: "Closed", "User Story": "Closed" } },
+  ],
+  fields: { columnField: { referenceName: "WEF_1_Kanban.Column" } },
+});
+if (uri.endsWith("/teamfieldvalues")) say({ field: { referenceName: "System.AreaPath" }, defaultValue: "Shop\\\\Web", values: [{ value: "Shop\\\\Web", includeChildren: true }] });
+if (uri.endsWith("/teamsettings/iterations")) say({ value: [] });
+if (uri.endsWith("/teamsettings")) say({ defaultIteration: null });
+if (has("boards", "query")) say([]);
+if (has("boards", "work-item", "create")) {
+  require("node:fs").appendFileSync(require("node:path").join(__dirname, "az-writes.log"), JSON.stringify(args) + "\\n");
+  say({ id: 501, fields: { "System.Id": 501, "System.Title": arg("--title"), "System.WorkItemType": arg("--type"), "System.State": "New" } });
+}
+console.error("ERROR: Please run 'az login' to setup account.");
+process.exit(1);
+`;
+
+test("Meeting actions: a row's menu makes a board card, queues it with the card, marks done and reopens (D-425)", async ({
+  jigHome,
+}) => {
+  const drafted = (id: string, title: string, extra: object = {}) => ({
+    id,
+    title,
+    prompt: `${title} for the portal`,
+    owner: "Alex Demo",
+    evidence: "09:01 Portal looks good.",
+    at: ["2026-02-10T09:01:00.000Z"],
+    ...extra,
+  });
+  await seed(jigHome, [
+    drafted("a1", "Fix the login"),
+    drafted("a2", "Update the docs", { owner: "Sam", mine: true }),
+  ]);
+  // Generated notes (D-424), so the actions show as rows in the notes' Action items.
+  const file = join(jigHome, "addon-data", "meetings.json");
+  const data = JSON.parse(await readFile(file, "utf8"));
+  data.records[1].notesDoc = {
+    tldr: "Portal is ready.",
+    decisions: [],
+    questions: [],
+    topics: [],
+    participants: ["Alex"],
+    generatedAt: "2026-02-10T10:00:00.000Z",
+    through: "2026-02-10T09:45:00.000Z",
+    provider: "claude",
+    model: "sonnet",
+  };
+  await writeFile(file, JSON.stringify(data));
+  await mkdir(join(jigHome, "shop"));
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    const bin = join(jigHome, "fake-bin");
+    await writeFile(join(bin, "az-signed-out.cjs"), CARD_AZ);
+    await writeFile(join(bin, "az"), `#!/usr/bin/env node\n${CARD_AZ}`);
+    const added = await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
+    const projectId = (added as { value: { id: string } }).value.id;
+    // The project follows the Web team's Stories board in the Boards add-on.
+    await hostCall(page, "addons.storageSet", {
+      id: "boards",
+      key: `@project(${projectId}) boards`,
+      value: [
+        {
+          id: "web-stories",
+          name: "Stories",
+          org: "contoso",
+          project: "Shop",
+          team: "Web",
+          boardId: "b-stories",
+          boardName: "Stories",
+        },
+      ],
+    });
+
+    await hostCall(page, "meetings.open", { tab: "meetings", select: NEW });
+    const lobby = await meetingsWindow(app);
+    const rows = lobby.getByTestId("notes-action");
+    await expect(rows).toHaveCount(2);
+    const row = (title: string) => rows.filter({ hasText: title });
+
+    // The whole row opens its menu; Create card… opens a modal with everything filled in.
+    await row("Fix the login").click();
+    await lobby.getByTestId("action-create-card").click();
+    const dialog = lobby.getByTestId("action-card-dialog");
+    await expect(dialog.getByLabel("Board")).toHaveValue("web-stories");
+    await expect(dialog.getByLabel("Board")).toBeDisabled();
+    await expect(dialog.getByLabel("Type")).toHaveValue("User Story");
+    await expect(dialog.getByLabel("Assigned to")).toHaveValue("alex@contoso.com");
+    await expect(dialog.getByTestId("card-assignee-hint")).toHaveText("Found Alex Demo in Azure DevOps");
+    await expect(dialog.getByLabel("Description")).toHaveValue(
+      "Fix the login for the portal\n\n“09:01 Portal looks good.”\n\nFrom meeting Portal review, 2026-02-10",
+    );
+    await lobby.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/card-dialog.png",
+    });
+    await dialog.getByRole("button", { name: "Create card" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(row("Fix the login").getByTestId("action-card-link")).toHaveText("#501");
+    const created = JSON.parse((await readFile(join(bin, "az-writes.log"), "utf8")).trim()) as string[];
+    expect(created[created.indexOf("--type") + 1]).toBe("User Story");
+    expect(created[created.indexOf("--title") + 1]).toBe("Fix the login");
+    expect(created[created.indexOf("--assigned-to") + 1]).toBe("alex@contoso.com");
+
+    // Queued with its card: the task owns it (the card gave the action its project).
+    await row("Fix the login").click();
+    await lobby.getByTestId("action-queue").click();
+    await expect(row("Fix the login").getByTestId("action-status")).toHaveText("Queued");
+    const queue = (await hostCall(page, "addons.storageGet", {
+      id: "tasks",
+      key: `@project(${projectId}) queue`,
+    })) as { value: { tasks: Array<{ prompt: string }> } };
+    expect(queue.value.tasks[0]!.prompt).toContain(
+      "Board card #501 (board Web · Stories): you own it; move it as you work and resolve it when done.",
+    );
+
+    // Mark as done from the menu, then Reopen from the row's hover action; badges stay in one column.
+    await row("Update the docs").click();
+    await lobby.getByTestId("action-done").click();
+    await expect(row("Update the docs").getByTestId("action-status")).toHaveText("Done");
+    const right = async (title: string) => {
+      const box = await row(title).getByTestId("action-status").boundingBox();
+      return box && box.x + box.width;
+    };
+    expect(await right("Update the docs")).toBe(await right("Fix the login"));
+    await lobby.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/action-rows.png",
+    });
+    await row("Update the docs").hover();
+    await row("Update the docs").getByRole("button", { name: "Reopen" }).click();
+    await expect(row("Update the docs").getByTestId("action-status")).toHaveText("");
+
+    // With the Boards add-on off, Create card… isn't offered.
+    await hostCall(page, "addons.setEnabled", { id: "boards", enabled: false });
+    await expect
+      .poll(
+        async () =>
+          ((await hostCall(page, "meetings.overview")) as { value: { boards: boolean } }).value.boards,
+      )
+      .toBe(false);
+    await row("Update the docs").click();
+    await expect(lobby.getByTestId("action-done")).toBeVisible();
+    await expect(lobby.getByTestId("action-create-card")).toHaveCount(0);
   } finally {
     await app.close();
   }
@@ -336,6 +500,161 @@ test("Meeting history: a recurring meeting gets its own folder, and you make fol
       value: Array<{ id: string; folder?: string }>;
     };
     expect(records.value.find((r) => r.id === NEW)?.folder).toBe(folders.value[0]!.id);
+  } finally {
+    await app.close();
+  }
+});
+
+test("Meeting notes: written silently with a spinner and Cancel, structured, stale hint, failure with Retry (D-424)", async ({
+  jigHome,
+}) => {
+  const at = (s: string) => `2026-02-10T09:${s}.000Z`;
+  const line = (id: string, speaker: string, time: string, text: string) => ({
+    id,
+    speakerId: speaker,
+    speaker,
+    timestamp: at(time),
+    text,
+    final: true,
+  });
+  const record = (id: string, title: string, captions: unknown[]) => ({
+    id,
+    title,
+    joinUrl: "https://teams.microsoft.com/l/meetup-join/x",
+    startedAt: at("00:00"),
+    endedAt: at("30:00"),
+    status: "ended",
+    capture: "Captions",
+    captions,
+    gaps: [],
+    notes: "",
+    actions: [],
+  });
+  await mkdir(join(jigHome, "addon-data"), { recursive: true });
+  await writeFile(
+    join(jigHome, "addon-data", "meetings.json"),
+    JSON.stringify({
+      records: [
+        // The fake engine holds notes whose transcript says "hold until released" (D-424).
+        record(NEW, "Portal review", [
+          line("n1", "Alex", "01:05", "Review the API before the release, hold until released."),
+          line("n2", "Sam", "12:30", "I'll update the service documentation."),
+          line("n3", "Sam", "28:00", "The release date may slip."),
+        ]),
+        record(OLD, "Shop planning", [line("o1", "Alex", "01:00", "Please fail the notes.")]),
+      ],
+    }),
+  );
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    await hostCall(page, "meetings.open", { tab: "meetings", select: "5e6f7a8b" });
+    const lobby = await meetingsWindow(app);
+    const detail = lobby.getByTestId("meeting-detail");
+    const notes = detail.getByRole("region", { name: "Notes" });
+    const generate = notes.getByRole("button", { name: "Generate notes", exact: true });
+    const writing = notes.getByTestId("meeting-notes-writing");
+    const footer = notes.getByTestId("meeting-notes-footer");
+    // Opt-in screenshots of each state, in Jig Dark and Jig Light, at a few window widths.
+    const shoot = async (state: string) => {
+      if (!process.env.JIG_SCREENSHOTS) return;
+      for (const themeId of ["jig-dark", "jig-light"]) {
+        await hostCall(page, "config.update", { appearance: { themeId } });
+        for (const width of [720, 1100, 1500]) {
+          await lobby.setViewportSize({ width, height: 760 });
+          await lobby.waitForTimeout(150);
+          await notes.screenshot({
+            animations: "disabled",
+            path: `.tmp/shots/meeting-notes-${state}-${themeId}-${width}.png`,
+          });
+        }
+      }
+      await hostCall(page, "config.update", { appearance: { themeId: "jig-dark" } });
+    };
+    await expect(notes).toContainText("No notes yet");
+    await shoot("empty");
+    const box = await notes.boundingBox();
+
+    // First notes: a spinner in the notes' own space, with Cancel; no chat opens.
+    await generate.click();
+    await expect(writing).toBeVisible();
+    await expect(generate).toBeDisabled();
+    expect(await notes.boundingBox()).toEqual(box);
+    await shoot("spinner");
+    await writing.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(writing).toHaveCount(0);
+    await expect(notes).toContainText("No notes yet");
+    expect(await hostCall(page, "fake.release")).toMatchObject({ value: 0 });
+
+    // Again, and let it finish: Jig renders the structured notes.
+    await generate.click();
+    await expect(writing).toBeVisible();
+    await expect
+      .poll(async () => (await hostCall(page, "fake.release")) as { value: number })
+      .toMatchObject({
+        value: 1,
+      });
+    const doc = notes.getByTestId("meeting-notes-doc");
+    await expect(doc).toContainText("scripted notes");
+    await expect(doc).toContainText("Decided by Alex");
+    await expect(doc).toContainText("Review the Shop API");
+    await expect(doc).toContainText("You · due Friday");
+    await expect(doc).toContainText("Risk · raised by Sam");
+    await expect(doc).toContainText("Participants");
+    await expect(doc).toContainText("Alex, Sam");
+    // 30 minutes: the discussion by topic is there.
+    await expect(doc).toContainText("Who reviews it");
+    await expect(footer).toContainText("AI-generated by Claude Sonnet · from transcript up to");
+    await expect(footer).toContainText("check important details");
+    expect(await notes.boundingBox()).toEqual(box);
+    await shoot("notes");
+    const saved = (await hostCall(page, "meetings.overview")) as {
+      value: {
+        records: Array<{ id: string; notes: string; actions: Array<{ at?: string[]; projectId?: string }> }>;
+      };
+    };
+    const portal = saved.value.records.find((r) => r.id === NEW)!;
+    expect(portal.notes).toContain("**TL;DR**");
+    expect(portal.actions).toHaveLength(2);
+    // A citation that matches no caption is dropped; so is a project that doesn't exist.
+    expect(portal.actions[1]!.at).toEqual([at("28:00")]);
+    expect(portal.actions[1]!.projectId).toBeUndefined();
+
+    // A timestamp shows that caption in the transcript.
+    // (The decision and the first action cite 09:01:05, the second action 09:28:00.)
+    await doc.getByTitle("Show in the transcript").nth(2).click();
+    await expect(detail.getByTestId("meeting-transcript")).toBeVisible();
+    await expect(detail.locator(`[data-at="${at("28:00")}"]`)).toHaveClass(/bg-accent-soft/);
+    await detail.getByTestId("meeting-transcript-toggle").click();
+    await expect(detail.getByTestId("meeting-transcript")).toHaveCount(0);
+
+    // Regenerating keeps the old notes dimmed under the spinner, then replaces them.
+    await generate.click();
+    await expect(writing).toBeVisible();
+    await expect(doc).toBeVisible();
+    await shoot("regenerating");
+    await expect
+      .poll(async () => (await hostCall(page, "fake.release")) as { value: number })
+      .toMatchObject({
+        value: 1,
+      });
+    await expect(writing).toHaveCount(0);
+    const again = (await hostCall(page, "meetings.overview")) as typeof saved;
+    expect(again.value.records.find((r) => r.id === NEW)!.actions).toHaveLength(2);
+
+    // A failure shows in the same place, with Retry.
+    await lobby.getByTestId("meeting-row").nth(1).click();
+    await expect(detail).toContainText("Shop planning");
+    await generate.click();
+    const failed = notes.getByTestId("meeting-notes-failed");
+    await expect(failed).toContainText("Couldn't write the notes");
+    await expect(failed).toContainText("The scripted notes failed");
+    await expect(failed.getByRole("button", { name: "Retry", exact: true })).toBeVisible();
+    await shoot("error");
+    await failed.getByRole("button", { name: "Dismiss", exact: true }).click();
+    await expect(failed).toHaveCount(0);
+    await expect(notes).toContainText("No notes yet");
   } finally {
     await app.close();
   }

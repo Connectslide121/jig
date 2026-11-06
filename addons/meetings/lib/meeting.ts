@@ -1,4 +1,5 @@
 import type { MeetingCaption, MeetingRecord } from "../../../apps/desktop/src/shared/meetings";
+import { notesMarkdown } from "./notes";
 
 /** Only real Teams join links reach the Calling SDK. Reject credentials and lookalike domains. */
 export function meetingLink(value: string): string {
@@ -128,7 +129,9 @@ export function meetingMarkdown(record: MeetingRecord): string {
     `${start.toISOString().slice(0, 10)} ${time(record.startedAt)} UTC${minutes ? ` · ${minutes} min` : ""}`,
     "",
   );
-  if (record.notes.trim()) out.push("## Notes", "", record.notes.trim(), "");
+  // Generated notes (D-424) without their action items: the Actions section below lists them.
+  if (record.notesDoc) out.push("## Notes", "", notesMarkdown(record.notesDoc, []).trim(), "");
+  else if (record.notes.trim()) out.push("## Notes", "", record.notes.trim(), "");
   if (record.actions.length) {
     out.push("## Actions", "");
     // Done is ticked; queued, running and dismissed say so after the owner (D-407).

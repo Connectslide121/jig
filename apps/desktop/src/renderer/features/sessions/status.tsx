@@ -1,4 +1,4 @@
-import { MessageSquare, MessageSquareDot } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import type { SessionMeta, SessionStatus } from "../../../shared/engine";
 import { cn, type MarkStatus, StatusMark } from "../../ui";
 import { useProjects } from "../../workbench/projects";
@@ -29,8 +29,8 @@ export function useUnread(meta: Pick<SessionMeta, "id" | "turns"> | undefined): 
 /**
  * A chat's mark, the same in its tab, the Chats list and everywhere chats are listed (D-416): its
  * speech bubble filled in its project's colour; in that slot three bouncing dots while it works, a
- * ringing bell when it needs you, an alert after an error; a bright dot on the bubble when it finished
- * a turn you haven't seen.
+ * ringing bell when it needs you, an alert after an error; an accent dot poking out of the bubble's
+ * top-right corner when it finished a turn you haven't seen.
  */
 export function ChatIcon({
   meta,
@@ -50,9 +50,10 @@ export function ChatIcon({
         title="Finished, not seen yet"
         data-testid="status-mark"
         data-status="unread"
-        className="flex shrink-0"
+        className="relative flex shrink-0"
       >
-        <MessageSquareDot className={cn("jig-unread size-3.5", fill, className)} />
+        <MessageSquare className={cn("size-3.5", fill, className)} />
+        <span className="-top-1 -right-1 absolute size-2 rounded-full bg-accent" />
       </span>
     );
   return <MessageSquare className={cn("size-3.5 shrink-0", fill, className)} />;

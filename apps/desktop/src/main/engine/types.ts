@@ -144,6 +144,8 @@ export interface OneShotOptions {
   appendSystemPrompt: string;
   env: Record<string, string | undefined>;
   claudePath: string;
+  /** Stops the answer early: it rejects with "Stopped" (D-424). */
+  signal?: AbortSignal;
 }
 
 /**

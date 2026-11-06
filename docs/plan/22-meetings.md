@@ -13,6 +13,7 @@ explicit project context, notes and reviewed multi-project tasks (Jon, D-217).
 - [x] Explicit project per question; frozen transcript snapshots, read-only paginated tool, normal Claude Code chats.
 - [x] Notes chat and save tool, editable owner/project/action review; idempotent paused Tasks integration.
 - [x] Review actions one by one: Run in a new chat, Mark as done, Dismiss; a status per action, a Handled tab with Restore (D-407).
+- [x] One menu per action row in the notes and Review (Run in a chat, Queue, Create card…, Mark as done, Dismiss, Reopen); Create card… makes an Azure DevOps card through the Boards add-on, and a queued action owns its card (D-425).
 - [x] Unit coverage and fake calling/engine regression for project switches, capture, notes and task destinations.
 - [x] Real Microsoft sign-in and keyless calling-credential issuance on the target machine.
 - [ ] Administrator approval for calendar consent; device preview, internal/external meeting join, screen sharing,
@@ -54,3 +55,5 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [ ] Verify the devices on a real machine: headphones as default output, switching the default and unplugging during a call (D-323).
 - [x] Share sound: the SDK has no supported way to send system sound, so the share dialog says "Sound isn't shared" instead of a switch (D-324).
 - [ ] Add a "Share sound" switch (off on every open) once the calling SDK gets a public option for system audio (D-324).
+- [x] Generate notes silently with one AI call (no chat), job state on the record with Cancel and Retry, structured JSON notes Jig renders (TL;DR, decisions, actions, open questions and risks, topics, participants) with timestamps into the transcript, a Meeting notes row in AI features that follows the chat provider (D-424).
+- [ ] Verify notes on a real 60-minute meeting on Claude (Sonnet) and ChatGPT (Terra): time to write, the meeting's language, owners and citations (D-424).

@@ -63,6 +63,8 @@ export interface OneShotExtras {
   cwd?: string;
   /** Lines added to the instructions: Claude's `append`; for Codex, put before the prompt. */
   system?: string;
+  /** Stops the call (Cancel on meeting notes, D-424): it rejects with "Stopped". */
+  signal?: AbortSignal;
 }
 
 export interface CodexExecRun {
@@ -177,6 +179,7 @@ export async function oneShot(
       env: sessionEnv(process.env, config.allowApiKey),
       claudePath: config.claudePath,
       timeoutMs,
+      ...(extras.signal ? { signal: extras.signal } : {}),
     });
   }
   const binary = codexBinary();
@@ -188,6 +191,7 @@ export async function oneShot(
     prompt: extras.system ? `${extras.system}\n\n${prompt}` : prompt,
     timeoutMs,
     cwd,
+    ...(extras.signal ? { signal: extras.signal } : {}),
   });
 }
 

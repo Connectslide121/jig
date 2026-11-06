@@ -371,7 +371,6 @@ export class SessionManager {
     kind?: SessionMeta["kind"];
     buildId?: string;
     effort?: SessionMeta["effort"];
-    meetingNotes?: string;
   }): Promise<SessionMeta> {
     await this.load();
     const at = new Date().toISOString();
@@ -394,7 +393,6 @@ export class SessionManager {
       kind: input.kind,
       buildId: input.buildId,
       ...(input.effort ? { effort: input.effort } : {}),
-      ...(input.meetingNotes ? { meetingNotes: input.meetingNotes } : {}),
     };
     const live: Live = {
       state: { meta, items: [] },

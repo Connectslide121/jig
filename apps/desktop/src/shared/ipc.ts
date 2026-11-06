@@ -112,6 +112,8 @@ export interface HostMethods {
   /** The call window has nothing to show (no call, prejoin or ringing): main hides it. */
   "meetings.callIdle": { args: void; result: void };
   "meetings.revealChat": { args: { sessionId: string }; result: void };
+  /** Create card…'s way to Boards (D-425): the main window shows the project's Boards view. */
+  "meetings.showBoards": { args: { projectId: string }; result: void };
   "meetings.overview": { args: void; result: import("./meetings").MeetingOverview };
   "meetings.lobbyView": { args: { view: import("./meetings").LobbyView }; result: void };
   "meetings.captionLanguage": { args: { language: string }; result: void };
@@ -327,7 +329,10 @@ export interface HostMethods {
     args: { id: string; question: string; projectId?: string; sessionId?: string };
     result: { sessionId: string };
   };
-  "meetings.notes": { args: { id: string }; result: { sessionId: string } };
+  /** Writes the meeting's notes silently (D-424); progress and the result arrive as `meetings.changed`. */
+  "meetings.notes": { args: { id: string }; result: void };
+  /** Stops notes being written, or puts away the last failed try. */
+  "meetings.cancelNotes": { args: { id: string }; result: void };
   "meetings.actions": { args: { id: string; actions: import("./meetings").MeetingAction[] }; result: void };
   "meetings.queue": { args: { id: string; actionIds: string[] }; result: void };
   /** Runs one reviewed action in a new Plan-mode chat in its project, now (D-407); the action is "running". */
@@ -338,6 +343,28 @@ export interface HostMethods {
   /** Marks an action done or dismissed, or restores a handled one ("open"; back to running if it has a chat). */
   "meetings.setActionStatus": {
     args: { id: string; actionId: string; status: "done" | "dismissed" | "open" };
+    result: import("./meetings").MeetingAction;
+  };
+  /**
+   * What Create card… starts from (D-425): the boards `projectId` follows in the Boards add-on, the
+   * card's description, and its assignee looked up on `boardId` (else the first board that works).
+   */
+  "meetings.cardForm": {
+    args: { id: string; actionId: string; projectId: string; boardId?: string };
+    result: import("./meetings").MeetingCardForm;
+  };
+  /** Makes an Azure DevOps card for an action through the Boards add-on and keeps it on the action (D-425). */
+  "meetings.createCard": {
+    args: {
+      id: string;
+      actionId: string;
+      projectId: string;
+      boardId: string;
+      type: string;
+      title: string;
+      description: string;
+      assignedTo?: string;
+    };
     result: import("./meetings").MeetingAction;
   };
   "meetings.shareSources": { args: void; result: Array<{ id: string; name: string; thumbnail: string }> };
@@ -959,6 +986,8 @@ export interface HostEvents {
   /** The main window starts a chat from a meeting (`meetings.startChat`). */
   "meetings.chatNew": { projectId: string; draft: string };
   "meetings.chatOpen": { sessionId: string };
+  /** Show this project's Boards view (a meeting's Create card… found no boards, D-425). */
+  "meetings.boardsOpen": { projectId: string };
   "config.changed": JigConfig;
   /** The theme list or a theme file changed; refetch the list and the active theme. */
   "themes.changed": void;

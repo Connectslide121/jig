@@ -1,28 +1,16 @@
 import {
   AlertTriangle,
-  ListChecks,
   MessageSquareText,
   Mic,
   MicOff,
   MonitorUp,
   MoreHorizontal,
-  Sparkles,
   Video,
   VideoOff,
 } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { actionOpen, type MeetingCaption, type MeetingRecord } from "../../../shared/meetings";
-import {
-  Button,
-  CountBadge,
-  cn,
-  Empty,
-  IconButton,
-  JumpToLatest,
-  Markdown,
-  type MenuEntry,
-  openMenuAt,
-} from "../../ui";
+import type { MeetingCaption, MeetingRecord } from "../../../shared/meetings";
+import { cn, Empty, IconButton, JumpToLatest, type MenuEntry, openMenuAt } from "../../ui";
 import { clock, initials } from "./format";
 import type { Person } from "./media";
 import { PersonPhoto } from "./photo";
@@ -106,16 +94,24 @@ function items(record: MeetingRecord): Item[] {
   return out;
 }
 
+/** A request to show a caption in the transcript (a timestamp in the notes, D-424); `n` asks again. */
+export interface TranscriptJump {
+  at: string;
+  n: number;
+}
+
 export function TranscriptPanel({
   record,
   live,
   menu,
   actions,
+  jump,
 }: {
   record: MeetingRecord;
   live: boolean;
   menu?: MenuEntry[];
   actions?: ReactNode;
+  jump?: TranscriptJump;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLOListElement>(null);
@@ -124,6 +120,8 @@ export function TranscriptPanel({
   const following = useRef(true);
   const lastTop = useRef(0);
   const [away, setAway] = useState(false);
+  // The caption a timestamp in the notes jumped to, lit for a moment (only its background changes).
+  const [lit, setLit] = useState<string>();
   const previous = useRef<string | undefined>(undefined);
   const lastCaption = record.captions.at(-1);
   const empty = !record.captions.length && !record.gaps.length;
@@ -146,6 +144,20 @@ export function TranscriptPanel({
     previous.current = record.id;
     toBottom();
   }, [record.id, lastCaption?.id, lastCaption?.text]);
+  // A timestamp in the notes: scroll its caption to the middle and stop following the newest.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `jump.n` asks again for the same caption.
+  useEffect(() => {
+    if (!jump) return;
+    const line = container.current?.querySelector<HTMLElement>(`[data-at="${CSS.escape(jump.at)}"]`);
+    if (!line) return;
+    following.current = false;
+    setAway(true);
+    line.scrollIntoView({ block: "center" });
+    lastTop.current = container.current!.scrollTop;
+    setLit(jump.at);
+    const timer = setTimeout(() => setLit(undefined), 2000);
+    return () => clearTimeout(timer);
+  }, [jump?.n]);
   // Anything else that makes the list taller (translations, wrapping, photos, a narrower panel).
   // biome-ignore lint/correctness/useExhaustiveDependencies: toBottom reads refs only.
   useEffect(() => {
@@ -234,7 +246,11 @@ export function TranscriptPanel({
                         )}
                       </div>
                       {item.lines.map((c) => (
-                        <div key={c.id}>
+                        <div
+                          key={c.id}
+                          data-at={c.timestamp}
+                          className={cn("-mx-1 rounded-sm px-1", lit === c.timestamp && "bg-accent-soft")}
+                        >
                           <p
                             className={
                               c.final
@@ -288,56 +304,6 @@ export function TranscriptPanel({
             }}
           />
         )}
-      </div>
-    </section>
-  );
-}
-
-export function NotesPanel({
-  record,
-  busy,
-  menu,
-  onGenerateNotes,
-  onReview,
-}: {
-  record: MeetingRecord;
-  busy: boolean;
-  menu?: MenuEntry[];
-  onGenerateNotes(): void;
-  onReview(): void;
-}) {
-  const open = record.actions.filter(actionOpen).length;
-  return (
-    <section className="flex size-full min-h-0 min-w-0 flex-col" aria-label="Notes">
-      <PanelHeader title="Notes" menu={menu}>
-        <Button size="sm" icon={Sparkles} busy={busy} onClick={onGenerateNotes}>
-          Generate notes
-        </Button>
-      </PanelHeader>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-        {record.notes ? (
-          <Markdown text={record.notes} />
-        ) : (
-          <Empty icon={Sparkles} title="No notes yet" className="h-full">
-            Jig reads the transcript and drafts a summary, decisions and actions. It only runs when you ask.
-          </Empty>
-        )}
-      </div>
-      <div className="flex h-12 shrink-0 items-center gap-2 border-t border-line px-3">
-        <span className="min-w-0 flex-1 truncate text-xs text-hint">
-          {record.notes ? "AI draft · check details" : ""}
-        </span>
-        <Button
-          icon={ListChecks}
-          aria-label="Review actions"
-          disabled={!record.actions.length}
-          onClick={onReview}
-        >
-          Review actions
-          <span className="flex w-5 justify-end">
-            <CountBadge count={open} />
-          </span>
-        </Button>
       </div>
     </section>
   );

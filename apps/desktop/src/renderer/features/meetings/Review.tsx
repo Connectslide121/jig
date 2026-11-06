@@ -1,25 +1,9 @@
-import {
-  CircleCheck,
-  CircleSlash,
-  EyeOff,
-  MessageSquare,
-  MessageSquarePlus,
-  MoreHorizontal,
-  RotateCcw,
-} from "lucide-react";
+import { CircleCheck, CircleSlash, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
-import {
-  actionHandled,
-  actionOpen,
-  type MeetingAction,
-  type MeetingActionStatus,
-  type MeetingRecord,
-} from "../../../shared/meetings";
+import { actionHandled, actionOpen, type MeetingAction, type MeetingRecord } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
-import { call, errorMessage } from "../../lib/host";
 import {
   Badge,
-  type BadgeTone,
   Button,
   Card,
   cn,
@@ -27,29 +11,21 @@ import {
   IconButton,
   Input,
   MenuButton,
-  type MenuEntry,
   Select,
   Spinner,
   Tabs,
   Textarea,
 } from "../../ui";
 import { ProjectSwatch } from "../projects/colors";
+import { ActionStatus, CardLink, useActionCommands } from "./actionMenu";
 import { Field } from "./dialogs";
-
-const STATUS: Record<MeetingActionStatus, { label: string; tone: BadgeTone }> = {
-  queued: { label: "Queued", tone: "info" },
-  running: { label: "Running", tone: "accent" },
-  done: { label: "Done", tone: "success" },
-  dismissed: { label: "Dismissed", tone: "neutral" },
-};
 
 /** The status badge in the far-right column: where it stands, or whose action it is while still to do. */
 function StatusBadge({ action }: { action: MeetingAction }) {
-  const status = action.status && STATUS[action.status];
   return (
     <span className="flex w-24 shrink-0 justify-end" data-testid="action-status">
-      {status ? (
-        <Badge tone={status.tone}>{status.label}</Badge>
+      {action.status ? (
+        <ActionStatus action={action} />
       ) : action.mine ? (
         <Badge tone="accent">Your action</Badge>
       ) : (
@@ -59,20 +35,30 @@ function StatusBadge({ action }: { action: MeetingAction }) {
   );
 }
 
+/** The action's card number in its own fixed slot, empty when it has none (D-425). */
+function CardSlot({ action }: { action: MeetingAction }) {
+  return (
+    <span className="flex w-12 shrink-0 justify-end">{action.card && <CardLink card={action.card} />}</span>
+  );
+}
+
 /**
- * Review the actions Claude drafted from a meeting (D-407): edit them, tick some and add them to the
- * task queue, or handle one at a time from its card: run it in a new chat now, mark it done or dismiss
- * it. Done and dismissed ones move to Handled, where Restore brings them back.
+ * Review the actions Jig drafted from a meeting (D-407): edit them, tick some and add them to the task
+ * queue, or handle one at a time with the same commands as the notes' rows (D-425): run it in a chat,
+ * queue it, make a board card, mark it done or dismiss it. Done and dismissed ones move to Handled,
+ * where Reopen brings them back.
  */
 export function Review({
   record,
   projects,
+  boards,
   busy,
   onClose,
   onQueue,
 }: {
   record: MeetingRecord;
   projects: ProjectsState;
+  boards: boolean;
   busy: boolean;
   onClose(): void;
   onQueue(actions: MeetingAction[], selected: string[]): Promise<void>;
@@ -80,72 +66,26 @@ export function Review({
   const [actions, setActions] = useState(record.actions);
   const [selected, setSelected] = useState<string[]>([]);
   const [view, setView] = useState<"todo" | "handled">("todo");
-  /** The action a card's own button is working on, and the last thing it said (the footer's slot). */
-  const [pending, setPending] = useState<string>();
+  /** The last thing an action's command said (the footer's slot). */
   const [message, setMessage] = useState<{ text: string; error?: boolean }>();
-  /** Actions "Run in a new chat" needed a project for: their project select shows red. */
-  const [needsProject, setNeedsProject] = useState<string[]>([]);
-  const update = (id: string, patch: Partial<MeetingAction>) => {
+  const update = (id: string, patch: Partial<MeetingAction>) =>
     setActions((list) => list.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-    if (patch.projectId) setNeedsProject((ids) => ids.filter((x) => x !== id));
-  };
+  const commands = useActionCommands({
+    record,
+    actions,
+    projects,
+    boards,
+    saveFirst: true,
+    report: (text, error) => setMessage({ text, error }),
+    onChanged: (next) => {
+      setActions((list) => list.map((x) => (x.id === next.id ? next : x)));
+      if (!actionOpen(next)) setSelected((ids) => ids.filter((id) => id !== next.id));
+    },
+  });
   const todo = actions.filter((a) => !actionHandled(a));
   const handled = actions.filter(actionHandled);
   const missingProject = actions.some((a) => selected.includes(a.id) && !a.projectId);
   const projectOf = (a: MeetingAction) => projects.projects.find((p) => p.id === a.projectId);
-
-  /** Saves the edits first (as queuing does), then changes one action and shows what main made of it. */
-  const handle = async (a: MeetingAction, change: () => Promise<MeetingAction>, done: string) => {
-    setPending(a.id);
-    setMessage(undefined);
-    try {
-      await call("meetings.actions", { id: record.id, actions });
-      const next = await change();
-      setActions((list) => list.map((x) => (x.id === next.id ? next : x)));
-      setSelected((ids) => ids.filter((id) => id !== next.id));
-      setMessage({ text: done });
-    } catch (error) {
-      setMessage({ text: errorMessage(error), error: true });
-    } finally {
-      setPending(undefined);
-    }
-  };
-  const run = (a: MeetingAction) => {
-    if (!a.projectId) {
-      setNeedsProject((ids) => [...new Set([...ids, a.id])]);
-      setMessage({ text: `Choose a project for “${a.title}” to run it in a new chat.`, error: true });
-      return;
-    }
-    void handle(
-      a,
-      () => call("meetings.runAction", { id: record.id, actionId: a.id }),
-      `Started “${a.title}” in a new chat in Plan mode.`,
-    );
-  };
-  const setStatus = (a: MeetingAction, status: "done" | "dismissed" | "open", done: string) =>
-    void handle(a, () => call("meetings.setActionStatus", { id: record.id, actionId: a.id, status }), done);
-  const openChat = (sessionId: string) =>
-    void call("meetings.revealChat", { sessionId }).catch((error) =>
-      setMessage({ text: errorMessage(error), error: true }),
-    );
-  const menu = (a: MeetingAction): MenuEntry[] => [
-    ...(a.status === "running" && a.sessionId
-      ? [{ label: "Open the chat", icon: MessageSquare, onSelect: () => openChat(a.sessionId!) }]
-      : [{ label: "Run in a new chat", icon: MessageSquarePlus, onSelect: () => run(a) }]),
-    { separator: true },
-    {
-      label: "Mark as done",
-      icon: CircleCheck,
-      testId: "action-done",
-      onSelect: () => setStatus(a, "done", `Marked “${a.title}” as done. It's under Handled.`),
-    },
-    {
-      label: "Dismiss",
-      icon: EyeOff,
-      testId: "action-dismiss",
-      onSelect: () => setStatus(a, "dismissed", `Dismissed “${a.title}”. It's under Handled.`),
-    },
-  ];
 
   const footerText = message
     ? message.text
@@ -184,8 +124,7 @@ export function Review({
     >
       <p className="mb-2 shrink-0 text-sm text-muted">
         Jig drafted these from the transcript — check them first. Tick tasks to add them to the queue, each to
-        its own project, or run one in a new chat now. Mark ones you did yourself as done, and dismiss the
-        rest.
+        its own project, or use ⋯ on one: run it in a chat, make a board card, mark it done or dismiss it.
       </p>
       <Tabs
         className="mb-3 shrink-0 px-0"
@@ -205,19 +144,23 @@ export function Review({
         )}
         {view === "handled" && !handled.length && (
           <p className="flex h-full items-center justify-center text-sm text-muted">
-            Actions you mark as done or dismiss show here, and Restore brings them back.
+            Actions you mark as done or dismiss show here, and Reopen brings them back.
           </p>
         )}
         {view === "todo" &&
           todo.map((a) => {
             const picked = selected.includes(a.id);
             const locked = !actionOpen(a);
-            const working = pending === a.id;
+            const quick = commands.quick(a);
             return (
               <Card
                 key={a.id}
                 data-testid="action-card"
                 className={cn("space-y-2 p-3 shadow-none", picked && "border-accent", locked && "opacity-80")}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  commands.rowProps(a).onContextMenu(e);
+                }}
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -239,45 +182,37 @@ export function Review({
                     disabled={locked}
                     onChange={(e) => update(a.id, { title: e.target.value })}
                   />
-                  {/* The card's own actions, in a fixed slot: the primary one, then ⋯ for the rarer ones. */}
+                  {/* The card's own actions, in a fixed slot: the quick one, then ⋯ for all of them. */}
                   <span className="flex w-15 shrink-0 items-center justify-end gap-1">
-                    {working ? (
+                    {commands.pending === a.id ? (
                       <span className="flex size-7 items-center justify-center">
                         <Spinner size="sm" />
                       </span>
-                    ) : a.status === "running" && a.sessionId ? (
+                    ) : quick ? (
                       <IconButton
-                        icon={MessageSquare}
+                        icon={quick.icon}
                         size="sm"
-                        label="Open the chat"
-                        onClick={() => openChat(a.sessionId!)}
-                      />
-                    ) : actionOpen(a) ? (
-                      <IconButton
-                        icon={MessageSquarePlus}
-                        size="sm"
-                        label="Run in a new chat"
-                        disabled={Boolean(pending)}
-                        onClick={() => run(a)}
+                        label={quick.label}
+                        disabled={Boolean(commands.pending)}
+                        onClick={(e) => quick.onClick(e.currentTarget)}
                       />
                     ) : null}
-                    {a.status !== "queued" && (
-                      <MenuButton
-                        label={`More for ${a.title}`}
-                        entries={() => menu(a)}
-                        alignRight
-                        className={cn(
-                          "inline-flex size-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg",
-                          pending && "pointer-events-none opacity-50",
-                        )}
-                      >
-                        <MoreHorizontal className="size-4" />
-                      </MenuButton>
-                    )}
+                    <MenuButton
+                      label={`More for ${a.title}`}
+                      entries={() => commands.menu(a)}
+                      alignRight
+                      className={cn(
+                        "inline-flex size-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg",
+                        commands.pending && "pointer-events-none opacity-50",
+                      )}
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </MenuButton>
                   </span>
+                  <CardSlot action={a} />
                   <StatusBadge action={a} />
                 </div>
-                <div className="flex gap-3 pr-45 pl-7">
+                <div className="flex gap-3 pr-60 pl-7">
                   <div className="w-48 shrink-0">
                     <Field id={`owner-${a.id}`} label="Owner">
                       <Input
@@ -293,9 +228,7 @@ export function Review({
                       <Select
                         id={`project-${a.id}`}
                         aria-label={`Project for ${a.title}`}
-                        className={cn(
-                          (picked || needsProject.includes(a.id)) && !a.projectId && "border-danger",
-                        )}
+                        className={cn(picked && !a.projectId && "border-danger")}
                         disabled={locked}
                         value={a.projectId ?? ""}
                         onChange={(e) => update(a.id, { projectId: e.target.value || undefined })}
@@ -310,7 +243,7 @@ export function Review({
                     </Field>
                   </div>
                 </div>
-                <div className="space-y-2 pr-45 pl-7">
+                <div className="space-y-2 pr-60 pl-7">
                   <Field id={`prompt-${a.id}`} label="Task prompt">
                     <Textarea
                       id={`prompt-${a.id}`}
@@ -331,11 +264,13 @@ export function Review({
           handled.map((a) => {
             const project = projectOf(a);
             const Icon = a.status === "done" ? CircleCheck : CircleSlash;
+            const quick = commands.quick(a);
             return (
               <Card
                 key={a.id}
                 data-testid="action-card"
-                className="flex h-14 items-center gap-3 px-3 shadow-none"
+                {...commands.rowProps(a)}
+                className="flex h-14 cursor-pointer items-center gap-3 px-3 shadow-none outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <Icon className={cn("size-4 shrink-0", a.status === "done" ? "text-success" : "text-hint")} />
                 <span className="min-w-0 flex-1">
@@ -350,33 +285,32 @@ export function Review({
                   </span>
                 </span>
                 <span className="flex w-15 shrink-0 items-center justify-end gap-1">
-                  {pending === a.id ? (
+                  {commands.pending === a.id ? (
                     <span className="flex size-7 items-center justify-center">
                       <Spinner size="sm" />
                     </span>
                   ) : (
-                    <IconButton
-                      icon={RotateCcw}
-                      size="sm"
-                      label={`Restore ${a.title}`}
-                      disabled={Boolean(pending)}
-                      onClick={() =>
-                        setStatus(
-                          a,
-                          "open",
-                          a.sessionId
-                            ? `Restored “${a.title}”; its chat is still running.`
-                            : `Restored “${a.title}” to the to-do list.`,
-                        )
-                      }
-                    />
+                    quick && (
+                      <IconButton
+                        icon={quick.icon}
+                        size="sm"
+                        label={`${quick.label} ${a.title}`}
+                        disabled={Boolean(commands.pending)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          quick.onClick(e.currentTarget);
+                        }}
+                      />
+                    )
                   )}
                 </span>
+                <CardSlot action={a} />
                 <StatusBadge action={a} />
               </Card>
             );
           })}
       </div>
+      {commands.dialog}
     </Dialog>
   );
 }

@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, openViewFromMenu, test } from "./fixtures";
 
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
 
@@ -174,9 +174,7 @@ test("Repos: the branch is a dropdown that switches branches", async ({ page, ji
 
 test("Scripts add-on lists and runs scripts", async ({ page, jigHome }) => {
   await setup(page, jigHome);
-  await page.getByTestId("tools-group-View").click();
-  await page.getByRole("menuitem", { name: "Views" }).hover();
-  await page.getByRole("menuitem", { name: "Scripts" }).click();
+  await openViewFromMenu(page, "Scripts");
   await expect(page.getByTestId("scripts-view")).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId("scripts-addon-dev")).toBeVisible({ timeout: 15000 });
   await page.getByTestId("scripts-addon-dev").getByRole("button", { name: "Run dev" }).click();
@@ -193,9 +191,7 @@ async function scriptsFolder(page: Page, jigHome: string) {
     JSON.stringify({ scripts: { serve: forever, api: forever, lint: "echo l" } }),
   );
   await hostCall(page, "projects.add", { path: dir });
-  await page.getByTestId("tools-group-View").click();
-  await page.getByRole("menuitem", { name: "Views" }).hover();
-  await page.getByRole("menuitem", { name: "Scripts" }).click();
+  await openViewFromMenu(page, "Scripts");
   const view = page.getByTestId("scripts-view");
   const tree = view.getByTestId("scripts-package-tools");
   await expect(tree.getByTestId("scripts-addon-lint")).toBeVisible({ timeout: 15000 });

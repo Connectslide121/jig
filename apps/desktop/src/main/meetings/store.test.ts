@@ -28,6 +28,21 @@ describe("global meeting persistence", () => {
     expect(next.chatPins()).toEqual([b, a]);
     expect(await next.pinChat(b, false)).toEqual([a]);
   });
+  it("loads notes Jig was writing when it closed as failed, with Retry (D-424)", async () => {
+    const { store, file } = await setup();
+    const record = await store.create("https://teams.microsoft.com/l/meetup-join/test", "Weekly products");
+    await store.update(record.id, (r) => {
+      r.status = "ended";
+      r.notesJob = { state: "running", startedAt: "2026-02-10T09:00:00.000Z" };
+    });
+    const next = new MeetingStore(file);
+    await next.load();
+    expect(next.get(record.id).notesJob).toEqual({
+      state: "failed",
+      startedAt: "2026-02-10T09:00:00.000Z",
+      error: "Jig closed before the notes were finished",
+    });
+  });
   it("reads an old queued action as status queued, and keeps statuses and chats (D-407)", async () => {
     const { store, file } = await setup();
     const record = await store.create("https://teams.microsoft.com/l/meetup-join/test", "Weekly products");
