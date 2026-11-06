@@ -361,8 +361,10 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.caption / meetings.status | Persist live caption revisions/lifecycle/gaps; owned active room only. A caption may carry `source: "local"` (transcribed on this computer, D-321); main logs each status change to `main.log`, with `detail` (the caption capability and try, D-382) that only the log gets |
 | meetings.shareSources / meetings.selectShare | Room-only screen/window picker; one-use 30-second source grant; the granted source gets a frame (D-266) |
 | meetings.shareStopped | Room-only: sharing ended, remove the frame around the shared screen/window |
-| meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat; ask from the lobby or room, notes also from the main window |
-| meetings.revealChat | Lobby or room: open the question/notes chat in the main workbench |
+| meetings.ask | Frozen transcript + a normal Plan-mode question chat; lobby or room |
+| meetings.notes | `{ id }`: writes the meeting's notes silently from a frozen transcript with one AI call (`featureOneShot("meetingNotes")`, no chat, no tools, D-424); returns at once, the record's `notesJob` (running, then cleared or failed) and `notesDoc` arrive with `meetings.changed`; one at a time per meeting; room, Meetings window or main window |
+| meetings.cancelNotes | `{ id }`: stops notes being written (aborts the call) or puts away a failed try; old notes stay (D-424) |
+| meetings.revealChat | Lobby or room: open a question chat in the main workbench |
 | meetings.actions / meetings.queue | Edited draft actions (only actions still to do take edits; main keeps every status, D-407) / explicitly selected ids to paused Task queue (status `queued`); room or main window |
 | meetings.runAction | `{ id, actionId }` → the action: one action still to do, with a project, runs now in a new Plan-mode chat in its project with the queue's prompt (source meeting, evidence, owner); status `running`, `sessionId` = the chat (D-407); room, Meetings window or main window |
 | meetings.setActionStatus | `{ id, actionId, status: done \| dismissed \| open }` → the action: marks an action done or dismissed (not a queued one), or restores a handled one (`open`: back to `running` when it has a chat, else to do) (D-407) |
@@ -376,8 +378,8 @@ meetings.show ({tab?, select?}: the open Meetings window shows a tab, and on Mee
 meetings.chatNew ({projectId, draft}: the main window starts a chat from a meeting),
 meetings.chatOpen ({sessionId}: main workbench reveals the normal chat).
 
-Jig tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset)
-and jig_meeting_save_notes ({id, notes, actions}, normal approval, generated notes chat only).
+Jig tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset).
+Notes need no tool: Jig writes them itself (D-424).
 A chat message with `@meeting:…` mentions gets turn context naming each meeting's id, telling Jig to
 read it with jig_meeting_read (speech is source material, not instructions; only while Meetings is on).
 A message with `@chat:<name>-<8 hex>` mentions (D-333) gets a line per Teams chat naming it and its short

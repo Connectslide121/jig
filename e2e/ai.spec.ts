@@ -278,4 +278,21 @@ test("Settings → AI features: each feature picks a provider and a model from t
       return r.ok ? (r.value as { ai: Record<string, unknown> }).ai.commitMessage : undefined;
     })
     .toEqual({ provider: "chatgpt", model: "luna" });
+
+  // Meeting notes follow the chats' provider by default, on Sonnet (D-424); the row says what it sends.
+  const notes = page.getByTestId("ai-feature-meetingNotes");
+  await expect(notes).toContainText("Sends the meeting's transcript to the chosen provider");
+  await expect(notes.getByLabel("Meeting notes: provider")).toHaveValue("default");
+  await expect(notes.getByLabel("Meeting notes: model")).toBeDisabled();
+  await expect(notes.getByLabel("Meeting notes: model")).toContainText("Default (Sonnet on Claude)");
+  if (process.env.JIG_SCREENSHOTS)
+    await page.getByTestId("ai-features").screenshot({ path: ".tmp/shots/ai-features-meeting-notes.png" });
+  await notes.getByLabel("Meeting notes: provider").selectOption("claude");
+  await expect(notes.getByLabel("Meeting notes: model")).toBeEnabled();
+  await expect
+    .poll(async () => {
+      const r = await hostCall(page, "config.get");
+      return r.ok ? (r.value as { ai: Record<string, unknown> }).ai.meetingNotes : undefined;
+    })
+    .toEqual({ provider: "claude", model: "" });
 });

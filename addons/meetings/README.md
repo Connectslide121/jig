@@ -55,9 +55,15 @@ project's context, and review actions for the task queue. Meetings are global (D
 - **Mention a meeting in a chat:** type `@` and a meeting's name (or `@meeting`) in any chat; the
   picker lists meetings after files. `@meeting:<name>-<id>` tells Jig to read that meeting with
   `jig_meeting_read`.
-- **Generate notes:** opens a normal chat. Concise notes (a short summary, decisions, open
-  questions, one line per action) and owner/project/evidence-bearing actions are saved through `jig_meeting_save_notes` after its normal
-  tool approval. Regenerating notes retains already queued actions. Review actions opens a modal to
+- **Generate notes (D-424):** only when you click it, silently: no chat opens. Jig freezes the
+  transcript, sends it to the provider and model picked in Settings → AI features → Meeting notes
+  (default: whoever runs your chats, Sonnet on Claude, Terra on ChatGPT) and renders the JSON answer
+  the same way for every meeting: TL;DR, Decisions, Action items (the meeting's actions), Open
+  questions and risks, Discussion by topic (meetings over 20 minutes) and Participants (from the
+  captions). Timestamps jump to the transcript; citations that match no caption are dropped. A
+  spinner with Cancel shows while it writes, in every window; a failure shows Retry. The footer says
+  which model wrote them and up to when, and how many lines came since. Regenerating replaces only
+  actions still to do; queued, running and handled ones stay and aren't drafted again. Review actions opens a modal to
   edit prompts/owners and choose each task's project. Select explicitly; nothing is preselected.
 - **Add selected to queue:** goes through Tasks' shared `addReviewed` export, idempotent per source
   action, with standalone prompts and meeting references. It pauses the queue and defaults tasks to

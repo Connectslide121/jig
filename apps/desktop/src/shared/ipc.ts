@@ -327,7 +327,10 @@ export interface HostMethods {
     args: { id: string; question: string; projectId?: string; sessionId?: string };
     result: { sessionId: string };
   };
-  "meetings.notes": { args: { id: string }; result: { sessionId: string } };
+  /** Writes the meeting's notes silently (D-424); progress and the result arrive as `meetings.changed`. */
+  "meetings.notes": { args: { id: string }; result: void };
+  /** Stops notes being written, or puts away the last failed try. */
+  "meetings.cancelNotes": { args: { id: string }; result: void };
   "meetings.actions": { args: { id: string; actions: import("./meetings").MeetingAction[] }; result: void };
   "meetings.queue": { args: { id: string; actionIds: string[] }; result: void };
   /** Runs one reviewed action in a new Plan-mode chat in its project, now (D-407); the action is "running". */

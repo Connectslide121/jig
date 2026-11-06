@@ -9,6 +9,13 @@ import type { ModelInfo } from "./engine";
 export const AI_PROVIDERS = ["claude", "chatgpt"] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
+/**
+ * What an AI feature's setting may hold (D-424): a provider, or `default`, which follows who runs your
+ * chats (`engine.provider`). Only features marked `followsChat` offer `default` in Settings.
+ */
+export const AI_PROVIDER_SETTINGS = ["default", ...AI_PROVIDERS] as const;
+export type AiProviderSetting = (typeof AI_PROVIDER_SETTINGS)[number];
+
 export const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
   claude: "Claude",
   chatgpt: "ChatGPT (Codex)",

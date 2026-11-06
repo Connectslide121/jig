@@ -737,7 +737,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               src: meetingsShot,
               alt: "Global Jig meeting transcript and notes, with screen-sharing and project-aware Ask Jig",
             }}
-            lead="Join Teams in a separate Jig meeting window, share a screen or application window, and save live captions with speaker names. Meetings stay global while you change projects. Ask Jig about the transcript so far with an explicit project's repository context; generate notes and review actions for different project task queues afterwards."
+            lead="Join Teams in a separate Jig meeting window, share a screen or application window, and save live captions with speaker names. Meetings stay global while you change projects. Ask Jig about the transcript so far with an explicit project's repository context; generate structured notes (TL;DR, decisions, actions, open questions, with timestamps into the transcript) in the background with one click, and review actions for different project task queues afterwards."
           >
             <Bullets
               items={[

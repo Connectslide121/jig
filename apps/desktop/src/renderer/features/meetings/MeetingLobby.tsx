@@ -188,7 +188,6 @@ function LobbyWindow() {
     }
     await run(() => call("meetings.start", what));
   };
-  const openChat = (sessionId: string) => call("meetings.revealChat", { sessionId });
   /** Call back and Open in Teams, in a meeting's ⋯ menu on the Meetings tab. */
   const meetingMenu = (r: MeetingRecord): MenuEntry[] =>
     r.call
@@ -302,7 +301,6 @@ function LobbyWindow() {
             onResize={resize}
             onTranscript={(shown) => changeLayout((l) => setHistoryTranscript(l, shown))}
             target={target}
-            onOpenChat={openChat}
             extraMenu={meetingMenu}
           />
         ) : (

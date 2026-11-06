@@ -35,6 +35,8 @@ const action = z
     evidence: z.string(),
     status: z.enum(["queued", "running", "done", "dismissed"]).optional(),
     sessionId: z.string().optional(),
+    due: z.string().optional(),
+    at: z.array(z.string()).optional(),
     /** Before D-407: `queued: true` is read as status "queued" and dropped on the next save. */
     queued: z.boolean().optional(),
   })
@@ -50,6 +52,34 @@ const record = z.object({
   captions: z.array(caption),
   gaps: z.array(z.object({ at: z.iso.datetime(), reason: z.string() })),
   notes: z.string(),
+  notesDoc: z
+    .object({
+      tldr: z.string(),
+      decisions: z.array(z.object({ what: z.string(), by: z.string(), at: z.array(z.string()) })),
+      questions: z.array(
+        z.object({
+          kind: z.enum(["question", "risk"]),
+          text: z.string(),
+          raisedBy: z.string(),
+          at: z.array(z.string()),
+        }),
+      ),
+      topics: z.array(z.object({ title: z.string(), points: z.array(z.string()) })),
+      participants: z.array(z.string()),
+      generatedAt: z.iso.datetime(),
+      through: z.iso.datetime(),
+      provider: z.enum(["claude", "chatgpt"]),
+      model: z.string(),
+      trimmed: z.number().int().nonnegative().optional(),
+    })
+    .optional(),
+  notesJob: z
+    .object({
+      state: z.enum(["running", "failed"]),
+      startedAt: z.iso.datetime(),
+      error: z.string().optional(),
+    })
+    .optional(),
   actions: z.array(action),
   call: z
     .object({
@@ -113,6 +143,12 @@ export class MeetingStore {
         r.capture = "Interrupted when Jig closed";
         r.endedAt = new Date().toISOString();
         r.gaps.push({ at: r.endedAt, reason: r.capture });
+        changed = true;
+      }
+    // Notes being written when Jig closed never finish (D-424): say so, with Retry.
+    for (const r of this.data.records)
+      if (r.notesJob?.state === "running") {
+        r.notesJob = { ...r.notesJob, state: "failed", error: "Jig closed before the notes were finished" };
         changed = true;
       }
     if (changed) await writeJson(this.file, this.data);

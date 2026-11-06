@@ -1,12 +1,14 @@
 import { LogIn } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AI_FEATURES, type AiFeature } from "../../../shared/aiFeatures";
+import { AI_FEATURES, type AiFeature, chatProviderAi } from "../../../shared/aiFeatures";
 import type { JigConfig } from "../../../shared/config";
 import type { ModelInfo } from "../../../shared/engine";
 import { modelName, modelOptions } from "../../../shared/models";
 import {
   AI_PROVIDER_LABELS,
   type AiProvider,
+  type AiProviderSetting,
+  CHATGPT_FAMILY_LABELS,
   chatGptModelChoices,
   resolveChatGptModel,
 } from "../../../shared/providers";
@@ -78,7 +80,7 @@ export function AiFeaturesSettings() {
   const models = useProviderModels();
   const chatgpt = useChatGptStatus();
   if (!config) return <Spinner center />;
-  const choose = (feature: AiFeature, provider: AiProvider, model: string) =>
+  const choose = (feature: AiFeature, provider: AiProviderSetting, model: string) =>
     void updateConfig({ ai: { [feature.id]: { provider, model } } });
   return (
     <SettingsSection
@@ -96,9 +98,22 @@ export function AiFeaturesSettings() {
           <span className="shrink-0 @max-2xl:w-52 @2xl:w-72">Model</span>
         </div>
         {AI_FEATURES.map((feature) => {
-          const { provider } = config.ai[feature.id];
-          const model = shownModel(feature, provider, config);
-          const choices = modelChoices(feature, provider, config, models[provider]);
+          const setting = config.ai[feature.id].provider;
+          // Following your chats (D-424): the provider they run on, on the feature's default model.
+          const following = setting === "default";
+          const provider: AiProvider = following ? chatProviderAi(config) : setting;
+          const model = following ? "" : shownModel(feature, provider, config);
+          const choices: Array<[string, string] | null> = following
+            ? [
+                [
+                  "",
+                  provider === "claude"
+                    ? `Default (${modelName(feature.fallback(config), models.claude) || "Claude Code's"} on Claude)`
+                    : `Default (${CHATGPT_FAMILY_LABELS[feature.chatgpt]} on ChatGPT)`,
+                ],
+              ]
+            : modelChoices(feature, provider, config, models[provider]);
+          const where = feature.sends ? `${feature.where} · ${feature.sends}` : feature.where;
           return (
             <div
               key={feature.id}
@@ -110,10 +125,12 @@ export function AiFeaturesSettings() {
                 {/* One line either way, so nothing moves when the provider changes. */}
                 {provider === "chatgpt" && feature.chatgptNote ? (
                   <div className="truncate text-xs text-muted" title={feature.chatgptNote}>
-                    {feature.where} · <span className="text-warning">{feature.chatgptNote}</span>
+                    {where} · <span className="text-warning">{feature.chatgptNote}</span>
                   </div>
                 ) : (
-                  <div className="truncate text-xs text-muted">{feature.where}</div>
+                  <div className="truncate text-xs text-muted" title={where}>
+                    {where}
+                  </div>
                 )}
               </div>
               <div className="flex gap-3">
@@ -121,12 +138,18 @@ export function AiFeaturesSettings() {
                   <Select
                     className="w-full"
                     aria-label={`${feature.label}: provider`}
-                    value={provider}
+                    title={following ? "Default (follows your chat provider)" : undefined}
+                    value={setting}
                     onChange={(ev) => {
-                      const next = ev.target.value as AiProvider;
+                      const next = ev.target.value as AiProviderSetting;
                       choose(feature, next, next === "chatgpt" ? feature.chatgpt : "");
                     }}
                   >
+                    {(feature.followsChat || following) && (
+                      <option value="default" title="Default (follows your chat provider)">
+                        Same as chats
+                      </option>
+                    )}
                     <option value="claude">{AI_PROVIDER_LABELS.claude}</option>
                     <option value="chatgpt" disabled={!chatgpt?.ready}>
                       {chatgpt?.ready ? "ChatGPT" : "ChatGPT (sign in first)"}
@@ -138,7 +161,12 @@ export function AiFeaturesSettings() {
                     className="w-full"
                     aria-label={`${feature.label}: model`}
                     // The whole name on hover, where a narrow column cuts it off.
-                    title={choices.find((c) => c?.[0] === model)?.[1]}
+                    title={
+                      following
+                        ? "Follows your chats' provider: pick Claude or ChatGPT to choose a model"
+                        : choices.find((c) => c?.[0] === model)?.[1]
+                    }
+                    disabled={following}
                     value={model}
                     onChange={(ev) => choose(feature, provider, ev.target.value)}
                   >

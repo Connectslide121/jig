@@ -55,6 +55,10 @@ export interface MeetingAction {
   status?: MeetingActionStatus;
   /** The chat "Run in a new chat" started for it. */
   sessionId?: string;
+  /** When it's due, only when someone said so, as they said it (D-424). */
+  due?: string;
+  /** Where in the transcript it was said: caption timestamps (ISO) Jig matched (D-424). */
+  at?: string[];
 }
 /**
  * A reviewed action (D-407): added to the task queue, running in a chat of its own, done by you, or
@@ -66,6 +70,50 @@ export const actionOpen = (a: Pick<MeetingAction, "status">): boolean => !a.stat
 /** Marked done or dismissed: shown under Handled, with Restore. */
 export const actionHandled = (a: Pick<MeetingAction, "status">): boolean =>
   a.status === "done" || a.status === "dismissed";
+/**
+ * Notes being written, or the last try that failed (D-424). Kept on the record so the meeting window
+ * and History show the same state; a running job Jig closed during loads as failed.
+ */
+export interface MeetingNotesJob {
+  state: "running" | "failed";
+  startedAt: string;
+  error?: string;
+}
+/** A decision, question or risk in structured notes, with who and where (caption timestamps, ISO). */
+export interface MeetingNotesDecision {
+  what: string;
+  /** Who decided ("Unknown" when it wasn't clear). */
+  by: string;
+  at: string[];
+}
+export interface MeetingNotesQuestion {
+  kind: "question" | "risk";
+  text: string;
+  /** Who raised it ("Unknown" when it wasn't clear). */
+  raisedBy: string;
+  at: string[];
+}
+/**
+ * Generated notes as data (D-424): Jig renders them, so every meeting's notes look the same. Action
+ * items are the record's `actions`, so notes and actions never drift; `notes` keeps a Markdown copy.
+ */
+export interface MeetingNotesDoc {
+  /** One to three sentences. */
+  tldr: string;
+  decisions: MeetingNotesDecision[];
+  questions: MeetingNotesQuestion[];
+  /** The discussion by topic: only for meetings longer than about 20 minutes. */
+  topics: Array<{ title: string; points: string[] }>;
+  /** Who spoke, from the captions' speakers (not the AI). */
+  participants: string[];
+  generatedAt: string;
+  /** The transcript they were written from ends here (the frozen snapshot's cutoff). */
+  through: string;
+  provider: import("./providers").AiProvider;
+  model: string;
+  /** Transcript lines left out of the middle because the meeting was too long to send whole. */
+  trimmed?: number;
+}
 export interface MeetingRecord {
   id: string;
   title: string;
@@ -76,7 +124,11 @@ export interface MeetingRecord {
   capture: string;
   captions: MeetingCaption[];
   gaps: Array<{ at: string; reason: string }>;
+  /** Markdown notes: the generated ones' copy (D-424), or older notes written by a chat. */
   notes: string;
+  /** Generated notes as data (D-424); missing on meetings whose notes came from a chat. */
+  notesDoc?: MeetingNotesDoc;
+  notesJob?: MeetingNotesJob;
   actions: MeetingAction[];
   /** A one-to-one Teams call instead of a meeting (`joinUrl` is empty then). */
   call?: MeetingCall;

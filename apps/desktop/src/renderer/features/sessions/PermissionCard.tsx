@@ -1,4 +1,4 @@
-import { Check, ListChecks, Save, ShieldAlert, ShieldCheck, Timer, TriangleAlert, X } from "lucide-react";
+import { Check, ListChecks, ShieldAlert, ShieldCheck, Timer, TriangleAlert, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ChatItem, PermissionDecision, PermissionMode } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
@@ -21,15 +21,12 @@ async function answer(sessionId: string, requestId: string, decision: Permission
 
 /**
  * Claude's plan (plan mode's ExitPlanMode), as Claude Code shows it: approve and let Claude edit
- * without asking, approve and keep being asked, or keep planning with feedback. In a meeting-notes
- * chat the plan is the notes and draft actions: approving only saves them for review in Meetings,
- * so the card says that instead (D-268).
+ * without asking, approve and keep being asked, or keep planning with feedback.
  */
 function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string }) {
   const plan = typeof item.request.input.plan === "string" ? item.request.input.plan : "";
   const pending = item.status === "pending";
   const [feedback, setFeedback] = useState("");
-  const notes = useSessions((s) => Boolean(s.metas[sessionId]?.meetingNotes));
   const who = "Jig";
   const approve = async (mode: PermissionMode) => {
     await call("sessions.setPermissionMode", { id: sessionId, mode }).catch(() => {});
@@ -45,72 +42,44 @@ function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string
     >
       <div className="flex items-center gap-2 text-sm font-medium text-fg">
         <ListChecks className="size-4 text-accent" />
-        {notes ? "Meeting notes and draft actions" : `${who}'s plan`}
+        {`${who}'s plan`}
         {!pending && (
           <Badge tone={item.status === "denied" ? "neutral" : "success"}>
             {item.status === "denied"
-              ? notes
-                ? "changes asked"
-                : "kept planning"
+              ? "kept planning"
               : item.status === "cancelled"
                 ? "cancelled"
-                : notes
-                  ? "saved for review"
-                  : "approved"}
+                : "approved"}
           </Badge>
         )}
       </div>
       <div className="max-h-96 overflow-y-auto rounded-md bg-raised px-3 py-1">
         <Markdown text={plan} />
       </div>
-      {pending && notes && (
-        <p className="text-xs text-muted">
-          Saving keeps the notes and the draft actions with the meeting. Nothing is queued or started: you
-          review the actions in Meetings and send the ones you want to the task queue.
-        </p>
-      )}
       {pending && (
         <>
           <div className="flex flex-wrap gap-2">
-            {notes ? (
-              <Button
-                size="sm"
-                variant="primary"
-                icon={Save}
-                onClick={() => void approve("acceptEdits")}
-                data-testid="plan-approve-auto"
-              >
-                Save notes and actions for review
-              </Button>
-            ) : (
-              <>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  icon={Check}
-                  onClick={() => void approve("acceptEdits")}
-                  data-testid="plan-approve-auto"
-                >
-                  Approve, and accept edits
-                </Button>
-                <Button
-                  size="sm"
-                  icon={ShieldCheck}
-                  onClick={() => void approve("default")}
-                  data-testid="plan-approve"
-                >
-                  Approve, ask before edits
-                </Button>
-              </>
-            )}
+            <Button
+              size="sm"
+              variant="primary"
+              icon={Check}
+              onClick={() => void approve("acceptEdits")}
+              data-testid="plan-approve-auto"
+            >
+              Approve, and accept edits
+            </Button>
+            <Button
+              size="sm"
+              icon={ShieldCheck}
+              onClick={() => void approve("default")}
+              data-testid="plan-approve"
+            >
+              Approve, ask before edits
+            </Button>
           </div>
           <div className="flex gap-2">
             <input
-              placeholder={
-                notes
-                  ? `Or tell ${who} what to change in the notes…`
-                  : `Or tell ${who} what to change in the plan…`
-              }
+              placeholder={`Or tell ${who} what to change in the plan…`}
               className="h-7 min-w-0 flex-1 rounded-md border border-line-strong bg-raised px-2 text-xs outline-none focus:border-focus"
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
@@ -124,12 +93,12 @@ function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string
                 void answer(sessionId, item.request.requestId, {
                   behavior: "deny",
                   message: feedback.trim()
-                    ? `The user wants changes to the ${notes ? "notes" : "plan"}: ${feedback.trim()}`
+                    ? `The user wants changes to the plan: ${feedback.trim()}`
                     : "The user wants to keep planning.",
                 })
               }
             >
-              {notes ? "Change the notes" : "Keep planning"}
+              Keep planning
             </Button>
           </div>
         </>

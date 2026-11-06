@@ -47,6 +47,21 @@ describe("aiChoice", () => {
       expect(aiChoice(c, feature.id).model).toBe(tier[feature.fallback(defaultConfig())]);
   });
 
+  it("meeting notes follow the chats' provider by default, on Sonnet or Terra (D-424)", () => {
+    expect(aiChoice(defaultConfig(), "meetingNotes")).toEqual({ provider: "claude", model: "sonnet" });
+    const codex = ConfigSchema.parse({ engine: { provider: "codex", helperModel: "opus" } });
+    expect(aiChoice(codex, "meetingNotes")).toEqual({ provider: "chatgpt", model: "terra" });
+    // A model saved while following is ignored: it may belong to the other provider.
+    const saved = ConfigSchema.parse({
+      engine: { provider: "codex" },
+      ai: { meetingNotes: { provider: "default", model: "opus" } },
+    });
+    expect(aiChoice(saved, "meetingNotes")).toEqual({ provider: "chatgpt", model: "terra" });
+    const picked = ConfigSchema.parse({ ai: { meetingNotes: { provider: "claude", model: "opus" } } });
+    expect(aiChoice(picked, "meetingNotes")).toEqual({ provider: "claude", model: "opus" });
+    expect(AI_FEATURES.filter((f) => f.followsChat).map((f) => f.id)).toEqual(["meetingNotes"]);
+  });
+
   it("rejects unknown providers", () => {
     expect(() => ConfigSchema.parse({ ai: { tour: { provider: "gemini" } } })).toThrow();
   });

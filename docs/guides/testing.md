@@ -303,4 +303,4 @@ media origin checks and idempotent reviewed task addition. The room screenshot i
 | Fake-engine trigger | Behaviour |
 |---|---|
 | Question about meeting …, captured through … | Calls jig_meeting_read with the immutable cutoff and answers with the transcript |
-| Same trigger containing "Write meeting notes" or "Write concise meeting notes" | Reads the snapshot, calls jig_meeting_save_notes with two owner/project actions; queues nothing |
+| One-shot starting "You write meeting notes for Jig." (Generate notes, D-424) | Answers notes JSON: a TL;DR, a decision, two actions ("Review the Shop API", mine, due Friday, the first listed project; "Update documentation", Sam, the second project or an unknown id, plus a citation matching no caption), a risk and a topic, citing the transcript's first and last timestamps. A caption saying "hold until released" keeps it writing until `fake.release` (or Cancel); "fail the notes" makes it fail |

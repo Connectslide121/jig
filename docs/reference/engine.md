@@ -271,9 +271,10 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
 
 ## Providers (D-294)
 
-Non-chat AI features call `oneShot(provider, model, prompt, timeoutMs?, { cwd?, system? })` from
+Non-chat AI features call `oneShot(provider, model, prompt, timeoutMs?, { cwd?, system?, signal? })` from
 `main/providers/index.ts` (`provider: "claude" | "chatgpt"`, `shared/providers.ts`). Both return the
 final text, reject with a plain message, and time out after 3 minutes ("... didn't answer in time").
+A `signal` stops the call early (rejects with "Stopped"; Cancel on meeting notes, D-424).
 
 - **`claude`:** the engine's `oneShot` (above): no tools, one turn, `system` appended to the preset.
 - **`chatgpt`:** OpenAI's Codex CLI from PATH (`codexBinary()`; on Windows the native `codex.exe`
@@ -306,7 +307,10 @@ final text, reject with a plain message, and time out after 3 minutes ("... didn
   which takes `aiChoice(config, feature)` (`shared/aiFeatures.ts`): the provider and model picked in
   Settings → AI features, else Claude on the feature's old model. On ChatGPT without a picked model
   it is the feature's family (`AiFeature.chatgpt`: Luna where Claude used Haiku, Terra for Sonnet,
-  Sol for Opus), and switching a row to ChatGPT picks that family. `ai.providers` says whether ChatGPT
+  Sol for Opus), and switching a row to ChatGPT picks that family. A feature with `followsChat`
+  (only `meetingNotes`, D-424) also offers "Default (follows your chat provider)" (shown as "Same as chats", `provider:
+  "default"`), its default: `aiChoice` takes `engine.provider` (Codex chats → ChatGPT) and the
+  feature's default model there, ignoring a saved model; `sends` says in Settings what it sends. `ai.providers` says whether ChatGPT
   is ready (installed and signed in). `ai.ask` (add-ons) uses its `feature` (Git, Releases) or the
   add-ons' rows. JSON features (tour, compare attempts) name who answered when the reply doesn't
   parse. Caption translation asks a warm completer on both providers (Claude Code, or Codex since D-402; a

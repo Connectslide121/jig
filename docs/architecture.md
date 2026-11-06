@@ -724,7 +724,9 @@ lifecycle handling. Stored meeting records contain no projectId. Questions make 
 then create normal project/meeting-only Plan-mode chats that read paginated text with jig_meeting_read.
 Any chat can mention a Teams chat with `@chat:…` (D-333): main names it in the turn context and answers
 jig_teams_chat_read from Graph (Chat.Read) for chats that Jig chat mentioned only; nothing is stored.
-Notes use jig_meeting_save_notes only from the generated notes chat. Reviewed actions are sent to Tasks'
+Generate notes runs one silent AI call (`featureOneShot("meetingNotes")`, D-424) on a frozen transcript put
+inline in the prompt; `main/meetings/notes.ts` checks the JSON answer (zod, citations matched to captions) and
+the record keeps `notesDoc`, a Markdown copy in `notes` and the job's state (`notesJob`). Reviewed actions are sent to Tasks'
 shared addReviewed export with one project/source id per task; queueing pauses the queue and is idempotent.
 See addons/meetings/README.md for the UI, setup, persistence and known SDK limits.
 
