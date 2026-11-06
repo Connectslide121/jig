@@ -11,17 +11,20 @@ addons/factory/
   addon.json          manifest (below)
   host.ts             Conductor: runs, stage runner, gates, watcher tick, tools, exports
   ui.tsx              views and tabs: Floor, Run, Interview, Demo review, Inbox, Settings
-  parts/              UI pieces: RunCard, StageGraph, OutputCard, QuestionCard, BriefPanel,
-                      DeviceFrames, ScoreCard, GateOwnerPicker, Inspector…
+  parts.tsx / parts/  UI pieces: RunCard, StageGraph, OutputCard, QuestionCard, BriefPanel,
+                      DeviceFrames, ScoreCard, GateOwnerPicker, Inspector… (session 0: one parts.tsx)
   lib/                pure logic, unit-tested (*.test.ts beside each file)
     run.ts            types, run/stage/output/gate transitions
     graph.ts          a track's stage graph: what may start now, fan-out, joins
-    gates.ts          owners, caps (revisions, retries), trust numbers
+    gates.ts          owners, caps (revisions, retries), the inbox, trust numbers
+    floor.ts          the Floor's lanes, a card's progress, the KPI strip, the stage-graph boxes
+    samples.ts        the sample runs shown until runs can be started (D-440)
     recipes.ts        parse + validate recipe files, resolve overrides, build a stage's prompt
     frontmatter.ts    read/write an output file's front-matter status and history
     quality.ts        the critic's rubric, the kit's check.json, pass/fail
     slug.ts           run ids, branch names
   recipes/            built-in recipes (*.md)
+  fixtures/demo/      the sample runs' demo page (static HTML)
   tracks/             new-idea.json, existing-product.json, change-request.json, tender.json
   README.md
 ```

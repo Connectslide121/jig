@@ -7654,3 +7654,29 @@ Runs go on unattended (overnight, while away) and stop only at gates, with a cap
 - **Who:** Jon (2026-11-06, phase 28 plan, `docs/plan/28-factory.md`, J-16 there before numbering); recorded by Claude in session 0.
 
 No usage design: runs use the user's own plan like any chat. Recipe evals on real models only start from a button; nothing in the factory spends plan usage in the background except the run the user started.
+
+## D-440: Jig factory shows sample runs until runs can be started
+
+- Status: accepted.
+- **Who:** Claude, on my own (phase 28 session 0).
+
+Session 0's "Done when" asks for the Floor, a run's page and the inbox showing fixture runs, but runs
+can only be started from session 3 (New idea, interview). So the Floor's empty state and the top bar
+menu offer **Load sample runs**: six runs in every lane (`addons/factory/lib/samples.ts`, neutral
+names, times relative to now), with ids prefixed `fx-sample-` so **Remove sample runs** takes out only
+them, and the data model needs no flag. Their output files are written into the add-on's data folder
+(`samples/<projectId>/<slug>/`), so output cards open in Preview like real ones, which live in the product
+repository (D-427). The same runs are the unit tests' and e2e tests' fixtures. New idea stays out of
+the UI until session 3: no dead buttons. Once runs can be started the sample runs can stay as a way
+to see the factory without spending plan usage (D-439), or go; that is decided in session 3.
+
+Which gate reviews which output kind is a table in `lib/gates.ts` (`reviewerOf`: demo G1, docs G2,
+sales G4, marketing G4m, unknown kinds G2), because an output has no gate field; a gate skipped by the
+graph (its inputs all skipped or its `when` false) is derived, not recorded, because `GateState` has
+no skipped status.
+
+The "new idea" track (`tracks/new-idea.json`) also has the gates the pipeline names but the plan's
+graph sketch left implicit: G4m (marketing) after the marketing output, S8 build only when a build is
+requested, G3 after it and G5 (publish) after G4 or G4m. A looped stage (the critic loop) that runs
+out of rounds goes on to its gate anyway, where a person decides; a fan-out's instances count as
+pending until the fan-out is reached, so the Floor and the inbox never show them as skipped early.

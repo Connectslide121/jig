@@ -88,23 +88,30 @@ New idea ─► Interview ─► Brief ─► [G0 go] ─► Plan ─► Art dir
 
 Sessions run in order. Each ends with something Jon can try (in Jig, after pulling).
 
-### 0. Foundations: decisions, skeleton, mockup in code — not started
+### 0. Foundations: decisions, skeleton, mockup in code — done
 
 - [x] Reserve D-numbers for J-1 … J-16 (`npm run decision`): D-424 … D-439, filled, used here.
-- [ ] `addons/factory/` skeleton: `addon.json` (id `factory`, name "Jig factory", icon `factory`,
+- [x] `addons/factory/` skeleton: `addon.json` (id `factory`, name "Jig factory", icon `factory`,
       `storage.scope: "project"`, permissions `chat`, `ai`, `exec`, `fs:read`, `fs:write`), empty
       `host.ts`, `ui.tsx`, `README.md`; the view "Jig factory" listed in View → Views (hard rule: no
       hidden features) and a top-bar item.
-- [ ] `lib/run.ts`, `lib/graph.ts`, `lib/gates.ts` types and pure functions from
+- [x] `lib/run.ts`, `lib/graph.ts`, `lib/gates.ts` types and pure functions from
       [architecture.md](28-factory/architecture.md) → Data model, with unit tests.
-- [ ] The Factory floor, Run, Inbox views rendering **fixture runs** (no AI yet), matching
+- [x] The Factory floor, Run, Inbox views rendering **fixture runs** (no AI yet), matching
       [ui.md](28-factory/ui.md) and [mockup.html](28-factory/mockup.html), at sidebar, panel and tab
       widths, Jig Dark and Light (`shootView`).
-- [ ] `e2e/factory.spec.ts` (fixture runs render, whole card clickable, no layout shift on load) and
+- [x] `e2e/factory.spec.ts` (fixture runs render, whole card clickable, no layout shift on load) and
       its rule in `e2e/affected.json`.
 
 **Done when:** Jig factory shows fixture runs on the floor, a run's page and the inbox, looking like
 the mockup.
+
+Session 0 notes: the fixture runs are **sample runs** the user loads and removes (⋯ → Load sample
+runs), stored like real runs and marked `fx-sample-` (D-440). Besides the three planned lib files,
+`lib/floor.ts` (lanes, card progress, KPIs, stage-graph boxes) and `lib/samples.ts` keep the views'
+logic pure. The top bar menu has Floor, Inbox, Runs and the sample entries; **New idea…** comes with
+session 3. Screenshots: `JIG_UI_SHOTS=1 xvfb-run -a npx playwright test e2e/factory.spec.ts -g "Dark
+and Light"` (view at sidebar, panel and tab; Floor, Run and Inbox at a wide and a narrow window).
 
 ### 1. The demo kit and the quality gate — not started
 

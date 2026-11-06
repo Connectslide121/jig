@@ -1,5 +1,15 @@
 # Status
 
+Jig factory, first look (2026-11-07, phase 28 session 0, D-424…D-440): a new built-in add-on with a
+**factory** button in the top bar (its count is what waits for you across projects): Floor, Inbox,
+Runs, Load sample runs. The **Floor** tab shows the active project's runs as cards in six lanes
+(Interview, Demo, Review, Pack, Launch, Done) under four numbers; a card opens the run's page (its
+stages and gates in a row, output cards with a picture of the demo, the timeline). The **Inbox** lists
+what waits for a person, grouped by gate, with a **you** pill on yours. View → Views → Jig factory is
+the compact runs list. Starting runs comes in later sessions; until then only sample runs show
+(D-440). **Check on your machine:** factory button → Load sample runs, then Floor, a card, Inbox, in
+Jig Dark and Light, with the Floor as a wide tab and in a narrow split.
+
 See where a chat's time goes (2026-11-06, D-423, Jon): with Show times on (the clock button in a
 chat's header), every tool card shows how long the call took, right-aligned before its check mark,
 counting live while it runs; Jig now records when each tool call ends, for Claude and ChatGPT chats.
