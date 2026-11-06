@@ -12,13 +12,29 @@
 
 ## End-to-end tests
 
-**When they run (D-258, D-331):** the specs a change affects before committing it (`npm run
-e2e:changed`, when it touches the app or a spec); the whole suite only when releasing; anything
-else when Jon asks.
+**When they run (D-258, D-331, D-420):** `npm run verify` once before each commit; the specs a task's
+changes affect **once, at the end of the task** (`npm run e2e:changed`, when it touched the app or a
+spec), before its last commit or report. It covers every change since the last passing run (D-357),
+so the commits before it need no run of their own; what fails is fixed in a follow-up commit. Run it
+earlier only when a change is risky and the next steps build on it. The whole suite runs only when
+releasing; anything else when Jon asks. In Jig, run it through the Tests add-on (`addon_tests_run`,
+then `addon_tests_wait` with the run id, D-359), never in a chat's own shell or with `sleep` loops
+polling a log.
+
+**One e2e run at a time on the computer (D-420).** `npm run e2e`, `npm run e2e:changed` and a plain
+`npx playwright test` (the config's `globalSetup`, `e2e/global-setup.ts`) take a lock
+(`scripts/e2e-lock.ts`, a file in the temp folder) before building and running. A run started while
+another holds it prints "Waiting for another e2e run to finish (…)" (the Tests view shows the run as
+waiting, with an hourglass) and starts by itself when that one ends; a lock whose process is gone is
+taken over. Two runs at once took as long as taking turns but made tests flaky (measured: two
+19-spec runs side by side ~230-245 s each, with 1-5 failed or flaky tests; one alone 161 s). Only e2e
+runs take it: Jig's browser and each chat's page are not affected. The lock owner also ends test
+Electrons a killed run left behind (their Playwright worker gone), which otherwise kept gigabytes of
+memory.
 
 **Two ways to run them (D-242).**
 
-- `npm run e2e:changed` before committing a change: only the specs it needs, usually well under a minute. The
+- `npm run e2e:changed` at the end of a task: only the specs its changes need, a few minutes at most. The
   changed files are those that differ from the source the last passing run tested (D-357): a
   passing `e2e:changed` records the working tree it ran on (untracked files included) in
   `.jig-e2e-changed.json`, a passing whole suite its commit in `.jig-e2e-passed.json`, and the newer
@@ -28,8 +44,10 @@ else when Jon asks.
   everything not yet pushed, the old behaviour); `-- --list` prints the choice without running or
   recording. `scripts/e2e-select.ts` picks specs by the
   rules in `e2e/affected.json` (source folders → specs), by the `data-testid`s a changed view renders
-  that a spec uses, and changed specs themselves; `smoke.spec.ts` always runs. Docs and unit tests run
-  nothing; fixtures, the Playwright config, the preload and the IPC router run everything; a file no
+  that a spec uses, and changed specs themselves; `smoke.spec.ts` always runs. Docs, unit tests, the
+  root `package.json` (scripts; a dependency change also changes the lock file) and a release's version
+  bump (only `"version"` lines in the package files, D-420) run nothing; fixtures, the Playwright
+  config, `package-lock.json`, the preload and the IPC router run everything; a file no
   rule covers runs `fallback` and is named, so you can add a rule. A new spec needs a rule
   (`scripts/e2e-select.test.ts` fails otherwise, and when a rule's glob matches no file).
 - `npm run e2e`, the whole suite: only when releasing Jig (the release skill runs it; failures are
@@ -39,8 +57,10 @@ else when Jon asks.
 
 Both build first only when the build is stale (`scripts/build-if-stale.ts` keeps a stamp of the
 inputs in `apps/desktop/dist/.build-stamp`; `--force` rebuilds). Tests run side by side: one Electron
-per worker, a third of the cores (2–16; `JIG_E2E_WORKERS=n` to change), every test in its own temporary
-`JIG_HOME`. So a test must not depend on another or on timing: measure layout with `settledBox`
+per worker, a fifth of the cores that are free when the run starts (2–8, D-420; each Electron keeps
+about three cores busy, and more workers only made every test slower: on 40 cores a 19-spec run took
+161 s with 8 workers, 180 s with 13, 186 s with 5; `JIG_E2E_WORKERS=n` to change), every test in its
+own temporary `JIG_HOME`. So a test must not depend on another or on timing: measure layout with `settledBox`
 (after panels finish their motion), and give fake work that a test talks to while it runs enough time.
 Keep tests short and focused (under ~30 s): the slowest single test sets how long the suite takes.
 

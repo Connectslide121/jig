@@ -51,7 +51,7 @@ npm start              # run the production build
 npm run verify         # typecheck + lint + design-token check + add-on imports (D-415) + no duplicate decision numbers (no tests) — run before every commit
 npm run decision -- "Title"   # reserve the next D-xxx: appends its heading to docs/decisions.md and prints the number (D-361)
 npm run check          # verify + unit tests — when releasing
-npm run e2e:changed    # the e2e specs a change needs since the last passing e2e run (else uncommitted only) — before committing a change to the app or a spec (D-331, D-357); -- --since origin/main for the old base, -- --list to only print the choice
+npm run e2e:changed    # the e2e specs the changes since the last passing e2e run need (else uncommitted only) — once per task, at the end, when it touched the app or a spec (D-331, D-357, D-420); -- --since origin/main for the old base, -- --list to only print the choice
 npm run e2e            # the whole e2e suite in parallel (~4-5 min): only when releasing (Linux: xvfb-run); a full pass on a clean checkout is recorded, and the release skips the suite when only the version changed since
 npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
 npm run relay:build    # the Teams relay's deployment package: relay/teams/dist/relay.zip (D-370; run by dist)
@@ -120,9 +120,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   for anything meaning "Jig's windows" (events, focus, notifications, quitting). Hidden helper windows
   (Jig's browser) are marked with `markHelperWindow`. Show or focus a window with
   `revealWindow`/`focusJig`, and open links, files and folders with `openExternal`/`openPath`/
-  `showInFolder` (same file): they do nothing while Jig runs hidden (`JIG_HIDDEN`, the e2e tests), so
-  tests never take over the user's screen. A hidden Jig shows its workbench window only through
-  `showUnseen` (transparent, off-screen, unfocusable), so it draws at full speed (D-358).
+  `showInFolder` (same file): while Jig runs hidden (`JIG_HIDDEN`, the e2e tests) they open nothing
+  and focus nothing, so tests never take over the user's screen. A hidden Jig shows windows only
+  through `showUnseen` (transparent, off-screen, unfocusable), so they draw at full speed: the
+  workbench at start, others where `revealWindow`/`showWindowQuietly` would show them (D-358, D-420).
 - **Never read, copy, store, log or forward Claude, Codex or ChatGPT credentials or tokens.** No login
   UI: sign-in is the official CLI's own flow in a private terminal (`claude auth login`, `codex
   login`). Keep the default that strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from session
@@ -267,15 +268,23 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - End-to-end tests in `e2e/` run the real app with `JIG_ENGINE=fake` and a temp `JIG_HOME`. A new
   fake-engine behaviour gets a row in the table in `docs/guides/testing.md`.
 - Never use real Claude credentials in tests.
-- **A change runs the e2e specs it affects; the whole suite runs only when releasing (Jon, D-258,
-  D-331).** Write and update unit and e2e tests with each change. Before a commit run `npm run verify`
-  (typecheck, lint, tokens; seconds) and, when the change touches the app or an e2e spec, `npm run
-  e2e:changed` (only the specs it needs, usually under a minute; in Jig through the Tests add-on's
-  `addon_tests_run`, so Jon sees it; it answers within 100 s, so call `addon_tests_wait` with the run
-  id until it's done, D-359, never the shell instead). Fix what fails before committing. Docs-only
-  and unit-test-only changes run nothing. The whole `npm run e2e` and `npm run check` run at release, never at other
-  moments: only a run on the release's own source proves it clean. Run a single quick unit test file
-  (`npx vitest run <file>`) when a pure function's logic is tricky, and anything else when Jon asks.
+- **A task runs the e2e specs it affects once, at the end; the whole suite runs only when releasing
+  (Jon, D-258, D-331, D-420).** Write and update unit and e2e tests with each change.
+  - **Before each commit:** `npm run verify` (typecheck, lint, tokens; seconds), once per commit, not
+    after every edit.
+  - **Once per task, at the end:** when the task touched the app or an e2e spec, `npm run
+    e2e:changed` before the task's last commit or its report. It covers everything since the last
+    passing run (D-357), so the commits before it need no run of their own. Fix what fails in a
+    follow-up commit. Run it earlier only when a change is risky and the next steps build on it.
+  - **How:** in Jig through the Tests add-on's `addon_tests_run`, so Jon sees it; it answers within
+    100 s, so call `addon_tests_wait` with the run id until it's done (D-359). Never run it in your
+    own shell and never poll a test log with `sleep`/`until` loops. One e2e run at a time runs on
+    the computer: a run started while another chat's goes waits for it ("Waiting for another e2e
+    run" in the Tests view) and then starts by itself, so just keep waiting (D-420).
+  - Docs-only and unit-test-only changes run nothing. The whole `npm run e2e` and `npm run check` run
+    at release, never at other moments: only a run on the release's own source proves it clean. Run a
+    single quick unit test file (`npx vitest run <file>`) when a pure function's logic is tricky, and
+    anything else when Jon asks.
 - A new spec gets a rule in `e2e/affected.json`. Tests run in parallel: no dependence on other tests or
   timing; keep each test short (the slowest sets the suite's time).
 - **UI is still looked at before it's done:** a screenshot in Jig's browser or a quick `npm run dev`
@@ -297,7 +306,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Always commit (Jon).** Commit after each logical, validated change without being asked; never
   leave completed work uncommitted, and never ask whether to commit. Never push except for an explicitly
   requested Jig publication through the release skill below.
-- Run `npm run verify` before committing (not the tests; they run when releasing, D-258).
+- Run `npm run verify` before committing; `npm run e2e:changed` once per task, at its end (D-420).
 - No AI attribution trailers in commit messages.
 
 ## Releasing Jig

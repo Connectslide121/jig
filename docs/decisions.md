@@ -7378,3 +7378,64 @@ own**.
   `addon_chat_time_` (the SDK turns `-` into `_`), not `addon_chattime_`.
 - **Later:** once Jig records tool-call durations and offers a `chatOverview` slot (queued separately),
   read those instead of Claude Code's transcripts and show the breakdown in the chat overview.
+
+## D-420: e2e:changed once per task, one e2e run at a time on the computer
+
+- Status: accepted. Refines D-331 (when), D-357 (what it picks), D-359 (how chats run it) and D-358
+  (hidden windows).
+- **Who:** Jon, 2026-11-06, after analysing the transcripts: in Jig chats ~26% of active time went to
+  tests, typecheck and build (12 h of 89 h on e2e) against 8% before; `e2e:changed` averaged 102 s a
+  run but often took 7-10 minutes, ran in 79 chats in a week, 2.5 times per chat (up to 9), because
+  "before a commit run e2e:changed" met "commit as you go". Chats also polled test logs with
+  `sleep`/`until` loops (1.4 h). The week had 2-3 task queues running side by side on one computer.
+  He decided the timing rule and asked for the measurements; the lock applies only to e2e runs, never
+  to Jig's browser. The measurements and the details below are Claude, on my own.
+- **When:** `npm run verify` once before each commit. `npm run e2e:changed` once per task, at its end,
+  before the last commit or the report: it covers everything since the last passing run (D-357), so
+  earlier commits need no run of their own; failures are fixed in a follow-up commit. Earlier only
+  when a change is risky and the next steps build on it. Through `addon_tests_run` /
+  `addon_tests_wait`, never the shell or polling loops. The release still runs the whole suite and
+  UI is still screenshotted before it's done.
+- **Measured (Windows, 40 logical cores, 2026-11-06):**
+  - The whole suite alone, 13 workers: 360 s, CPU at ~100% the whole time; 2 tests failed, both
+    passing at fewer workers or alone (load-sensitive).
+  - A typical 19-spec selection (a `Composer.tsx` change), alone: 13 workers 180 s (sum of test
+    times 1598 s, one test failed), 8 workers 161 s (1046 s, clean), 5 workers 186 s (896 s).
+  - Two such runs side by side: 8 workers each 241-244 s, 13 workers each 228-236 s, with 1-5
+    failed or flaky tests per pair. Taking turns finishes the first in 161 s and the second in ~322 s:
+    the same average, no flakes, and the CPU free for the other chats' typecheck.
+  - Selection over the last 80 commits: 23.2 specs per commit on average, 9 whole-suite runs, 6 of
+    them a release's version bump (`package.json` is in `all`): after a release whose suite was
+    skipped (D-272), the next `e2e:changed` ran all 84 specs. Ordinary changes picked 2-48 specs, by
+    rules and data-testids that really cover them.
+  - 117 test Electron processes (~10 GB) were left running by runs that were killed (their Playwright
+    worker gone).
+  - The slowest tests were the meeting walkthroughs (62-86 s): every click in a meeting window took
+    ~2 s, because D-358 left meeting windows hidden in tests and Chromium draws a window never shown
+    about once a second.
+- **What changed:**
+  - **One e2e run at a time** (`scripts/e2e-lock.ts`): `npm run e2e`, `e2e:changed` and a plain
+    `npx playwright test` (`globalSetup`) take a lock file in the temp folder (pid, checkout, what)
+    before building and running, so two checkouts' builds don't overwrite `dist` mid-run either. A
+    second run prints "Waiting for another e2e run to finish (…)" every minute and starts by itself;
+    the Tests add-on reads that line and shows the run as waiting (an hourglass, "Waiting" in the
+    counts slot, the dialog's title), and `addon_tests_wait` says so. A lock whose process is gone or
+    older than 3 h is taken over. `e2e:changed` takes it before choosing specs, so a run that passed
+    while it waited moves its base forward. Jig's browser is untouched: each chat keeps its own page,
+    also during another chat's e2e run.
+  - **Left-behind test Electrons** (an Electron main launched with Playwright's loader whose parent is
+    gone) are ended when a run takes the lock.
+  - **Workers:** a fifth of the cores free when the run starts (CPU sampled for 300 ms), 2-8, instead
+    of a third of all cores (2-16); counted once and passed to the workers. A run that will wait for
+    the lock counts the whole computer as free.
+  - **Selection:** a package file whose diff is only `"version"` lines runs nothing (`versionOnly`); the
+    root `package.json` (scripts; dependencies also change `package-lock.json`, which still runs
+    everything) and `.gitignore` run nothing; `relay/teams/**` runs the Teams phone spec instead of
+    the fallback. Over the same 80 commits: 17.9 specs per commit, 4 whole-suite runs.
+  - **Hidden windows draw:** while Jig runs hidden, `revealWindow` and `showWindowQuietly` put the
+    window on screen unseen (`showUnseen`) instead of doing nothing, and the call window and lobby
+    open that way where they would be shown. Meeting windows are then visible exactly when they would
+    be for the user (a hidden call window still waits hidden for calls). Meeting tests: 62 → 24 s and
+    48 → 17 s.
+- **Not changed:** the data-testid mapping (it is what covers a change); tightening it further would
+  drop specs that render what the change touches.

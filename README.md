@@ -373,7 +373,7 @@ Lost? The `?` and the **Jig menu** (top left) show everything Jig can do.
 
 ```bash
 npm run verify       # typecheck, lint, design-token check — before every commit
-npm run e2e:changed  # the end-to-end specs a change needs — before committing it
+npm run e2e:changed  # the end-to-end specs your changes need — once, at the end of a task
 npm run check        # verify + unit tests — when releasing
 npm run e2e          # the whole end-to-end suite, Playwright driving the real app — when releasing (Linux: xvfb-run)
 ```

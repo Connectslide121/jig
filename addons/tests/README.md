@@ -20,6 +20,10 @@ The test suites in the active project's repositories, run with one click (D-244)
   going answers with its run id and the output so far. `wait` (read-only) waits for that id the same
   way and is called again until the run is done, so suites of several minutes (an e2e run) work
   without hitting the add-on host's 120 s call limit. You see Jig's runs in the view like your own.
+- **Waiting for another e2e run (D-420):** Jig's own e2e scripts run one at a time on the computer.
+  A run that prints "Waiting for another e2e run to finish" shows as waiting until it starts: an
+  hourglass instead of the spinner, "Waiting" in the counts column, the same in its details and in
+  `run`/`wait`'s answer. Other suites never wait.
 - **History:** the last 30 runs per repository in this add-on's storage (`runs:<repo path>`). Output
   (and `wait` by run id) is kept only while Jig runs, for the newest 20 finished runs.
 - Never on a schedule: you or Jig start runs.

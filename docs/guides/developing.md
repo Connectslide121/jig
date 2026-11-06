@@ -13,11 +13,11 @@
 ```bash
 npm install          # once, and after pulling dependency changes
 npm run dev          # Electron + Vite dev server; UI hot-reloads, main/preload changes restart Electron
-npm run verify       # typecheck + lint + design-token check (run before committing; tests run at release, D-258)
+npm run verify       # typecheck + lint + design-token check (once before each commit; tests run at release, D-258)
 npm run check        # verify + unit tests (releases)
 npm run build        # production build into apps/desktop/dist
 npm start            # run the production build
-npm run e2e:changed  # the end-to-end specs a change needs (before committing it, D-331)
+npm run e2e:changed  # the end-to-end specs the task's changes need (once, at the end of the task, D-331, D-420)
 npm run e2e          # the whole end-to-end suite (releases)
 ```
 

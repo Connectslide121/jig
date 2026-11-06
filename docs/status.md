@@ -1,5 +1,15 @@
 # Status
 
+Jig's own e2e tests run once per task and one at a time (2026-11-06, D-420, Jon): chats working on
+Jig run `npm run e2e:changed` once, at the end of a task, instead of before every commit. Two chats'
+e2e runs no longer fight over the CPU: the second waits ("Waiting for another e2e run" with an
+hourglass in the Tests view) and starts by itself. Runs use fewer workers (a fifth of the free cores,
+at most 8), end test Electrons a killed run left behind, don't run the whole suite after a release's
+version bump, and the meeting tests are 2-3x faster (their windows now draw at full speed in tests).
+Jig's browser is not affected.
+**Check on your machine:** with two task queues running on Jig, start e2e:changed in the Tests view
+while another chat's run goes: the row shows the hourglass and "Waiting", then runs by itself.
+
 The Task queue reads calmer (2026-11-06, D-418, Jon): every task has a code, `TQ-195`, in its own
 column and wherever Jig names it (its list, reports, the chats' instructions, notifications; the old
 `t195` still works in every tool). A chat's header is a short chat title ("Checkout: rebuild the
