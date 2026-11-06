@@ -11,6 +11,8 @@ export { useImageFile } from "../features/files/images";
  * meeting sign-in), else initials; an empty slot when there's nobody; hover shows name and e-mail.
  */
 export { PersonAvatar, personInitials } from "../features/people/PersonAvatar";
+/** A small picture of an HTML page (sandboxed, no scripts), scaled to the width it is given (D-405). */
+export { HtmlThumbnail } from "../features/preview/HtmlThumbnail";
 /** A project's colour square (`project.color` from `useProjectList`). */
 export { ProjectSwatch } from "../features/projects/colors";
 /** A message's files: image thumbnails and document chips that open them; removable with `onRemove`. */

@@ -290,6 +290,9 @@
               "component": {
                 "type": "string",
                 "pattern": "^[A-Za-z_$][\\w$]*$"
+              },
+              "promote": {
+                "type": "boolean"
               }
             },
             "required": ["tool", "component"]

@@ -2,6 +2,8 @@ import type { AddonComponentProps, AddonUiContext } from "@jig/sdk";
 import {
   Button,
   Empty,
+  formatBytes,
+  HtmlThumbnail,
   IconButton,
   ProjectSwatch,
   SearchInput,
@@ -10,7 +12,7 @@ import {
   useHostCall,
   useProjectList,
 } from "@jig/sdk/ui";
-import { Eye, LayoutTemplate, MoreHorizontal } from "lucide-react";
+import { ExternalLink, Eye, LayoutTemplate, MoreHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Page } from "./lib/pages";
 
@@ -28,25 +30,34 @@ function ago(iso: string): string {
   return `${Math.round(h / 24)} days ago`;
 }
 
-type Where = { file: string; dir: string; title: string; version: number };
+type Where = {
+  file: string;
+  dir: string;
+  title: string;
+  version: number;
+  latest: number;
+  files: number;
+  bytes: number;
+  updatedAt: string;
+};
 
 /** Where the page's files are; says so when it is gone. */
-async function locate(ctx: AddonUiContext, id: string): Promise<Where | undefined> {
+async function locate(ctx: AddonUiContext, id: string, version?: number): Promise<Where | undefined> {
   try {
-    return await ctx.host.call<Where>("where", { id });
+    return await ctx.host.call<Where>("where", { id, version });
   } catch (e) {
     ctx.notify({ title: e instanceof Error ? e.message : String(e), tone: "danger" });
     return undefined;
   }
 }
 
-async function openInJig(ctx: AddonUiContext, id: string) {
-  const w = await locate(ctx, id);
+async function openInJig(ctx: AddonUiContext, id: string, version?: number) {
+  const w = await locate(ctx, id, version);
   if (w) ctx.openPreview(w.file);
 }
 
-async function saveAs(ctx: AddonUiContext, id: string, title: string) {
-  const w = await locate(ctx, id);
+async function saveAs(ctx: AddonUiContext, id: string, title: string, version?: number) {
+  const w = await locate(ctx, id, version);
   if (!w) return;
   try {
     const saved = await ctx.saveCopy(w.dir, { name: title, title: `Save "${title}" into…` });
@@ -63,7 +74,7 @@ async function saveAs(ctx: AddonUiContext, id: string, title: string) {
 /** The ⋯ entries of a page, in the card and in the list (`chatId` gives Open the chat). */
 function pageMenu(
   ctx: AddonUiContext,
-  page: { id: string; title: string; chatId?: string },
+  page: { id: string; title: string; chatId?: string; version?: number },
   manage: boolean,
 ) {
   return [
@@ -80,7 +91,7 @@ function pageMenu(
       label: "Open in browser",
       icon: "external-link",
       onSelect: async () => {
-        const w = await locate(ctx, page.id);
+        const w = await locate(ctx, page.id, page.version);
         if (w) ctx.openPath(w.file);
       },
     },
@@ -88,11 +99,11 @@ function pageMenu(
       label: "Show in folder",
       icon: "folder-open",
       onSelect: async () => {
-        const w = await locate(ctx, page.id);
+        const w = await locate(ctx, page.id, page.version);
         if (w) ctx.openPath(w.dir);
       },
     },
-    { label: "Save as…", icon: "save", onSelect: () => void saveAs(ctx, page.id, page.title) },
+    { label: "Save as…", icon: "save", onSelect: () => void saveAs(ctx, page.id, page.title, page.version) },
     ...(manage
       ? [
           { separator: true as const },
@@ -243,41 +254,98 @@ function parsePublished(output: string | undefined): Published | undefined {
   }
 }
 
-/** The card in the chat under a `publish` call: the page's title, Open in Jig and ⋯. */
+/** The card in the chat under a `publish` call: a picture of the page, its title and what to do with it. */
 export function PageCard({ ctx, item }: AddonComponentProps & { item: { status: string; output?: string } }) {
   const published = parsePublished(item.output);
-  if (item.status !== "done" || !published) return null;
+  const ready = item.status === "done" && !!published;
+  // The version this call published (the newest when an older one has been pruned).
+  const { data: info, error } = useHostCall<Where>(
+    "where",
+    { id: published?.page, version: published?.version },
+    { skip: !ready },
+  );
+  if (!ready || !published) return null;
+  const title = info?.title ?? published.title;
+  const newer = info && info.latest > info.version;
+  const meta = error
+    ? "This page was deleted"
+    : info
+      ? [
+          `${info.files} file${info.files === 1 ? "" : "s"} · ${formatBytes(info.bytes)}`,
+          info.version > 1 ? `version ${info.version}${newer ? " (newer ones exist)" : ""}` : undefined,
+          ago(info.updatedAt),
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : " ";
+  const open = () => void openInJig(ctx, published.page, published.version);
   return (
     <div
-      className="mx-2 mb-2 flex h-10 items-center gap-2 rounded-md border border-line bg-surface px-2"
+      className="@container overflow-hidden rounded-lg border border-line bg-surface"
       data-testid="page-card"
     >
-      <LayoutTemplate className="size-4 shrink-0 text-muted" />
-      <span className="min-w-0 flex-1 truncate text-sm text-fg">{published.title}</span>
-      <span className="w-8 shrink-0 text-right text-2xs tabular-nums text-muted">
-        {published.version > 1 ? `v${published.version}` : ""}
-      </span>
-      <Button
-        size="sm"
-        variant="secondary"
-        icon={Eye}
-        data-testid="page-open"
-        onClick={() => void openInJig(ctx, published.page)}
+      <button
+        type="button"
+        className="block w-full cursor-pointer border-b border-line text-left disabled:cursor-default"
+        aria-label={`Open ${title} in Jig`}
+        disabled={!!error}
+        onClick={open}
+        data-testid="page-thumbnail"
       >
-        Open in Jig
-      </Button>
-      <IconButton
-        icon={MoreHorizontal}
-        size="sm"
-        label="More"
-        data-testid="page-card-more"
-        onClick={(e) =>
-          ctx.menu(
-            pageMenu(ctx, { id: published.page, title: published.title, chatId: undefined }, false),
-            e.currentTarget,
-          )
-        }
-      />
+        <HtmlThumbnail path={error ? undefined : info?.file} />
+      </button>
+      <div className="flex h-12 items-center gap-2 px-3">
+        <LayoutTemplate className="size-4 shrink-0 text-muted" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm font-medium text-fg" data-testid="page-card-title">
+            {title}
+          </span>
+          <span className="truncate text-2xs text-muted">{meta}</span>
+        </div>
+        <Button
+          size="sm"
+          variant="primary"
+          icon={Eye}
+          disabled={!!error}
+          data-testid="page-open"
+          onClick={open}
+        >
+          Open in Jig
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={ExternalLink}
+          disabled={!!error}
+          className="@max-md:hidden"
+          data-testid="page-browser"
+          onClick={() =>
+            void (async () => {
+              const w = await locate(ctx, published.page, published.version);
+              if (w) ctx.openPath(w.file);
+            })()
+          }
+        >
+          Open in browser
+        </Button>
+        <IconButton
+          icon={MoreHorizontal}
+          size="sm"
+          label="More"
+          data-testid="page-card-more"
+          disabled={!!error}
+          onClick={(e) =>
+            ctx.menu(
+              pageMenu(
+                ctx,
+                { id: published.page, title, chatId: undefined, version: published.version },
+                false,
+              ),
+              e.currentTarget,
+            )
+          }
+        />
+      </div>
     </div>
   );
 }

@@ -6990,8 +6990,9 @@ stopped for good.
   the same page (the files it doesn't bring again carry over; the last 5 versions are kept; limits: 300
   files, 25 MB). `addon_pages_list` and `addon_pages_read` are read-only. `jigContext` makes it the default
   way to show visual output while the tool exists, and `publish` is `alwaysLoad` so it is never deferred.
-- **In the app:** a card under the publish call (`toolRenderers`: title, version, Open in Jig, ⋯ with Open
-  in browser, Show in folder, Save as…), and the Pages view (Tools → Pages, a Home tile; hidden by default,
+- **In the app:** a card for the publish call (`toolRenderers` with the new `promote` flag, so the compact
+  view shows it instead of folding it into "Used a tool": a picture of the page, title, Open in Jig, Open in
+  browser, ⋯ with Show in folder and Save as…), and the Pages view (Tools → Pages, a Home tile; hidden by default,
   sidebar or main tab by container size) with Open the chat, Rename and Delete (asks first) as well.
 - **Security:** a page is untrusted HTML. It opens in the Preview tab as every HTML file does: sandboxed
   frame, never same-origin, scripts off until turned on there, CSP with no network, no Node or IPC. Source
@@ -7148,3 +7149,8 @@ panel), and `browser.showWhenUsed` off still keeps the view closed.
 - **Timings:** in development the console prints `[voice timing]` per reply (your message → Claude's
   first text → voice asked → first audio → playing); the voice process logs its load time and each
   piece (characters, time to make, audio length; never the text) in the main log at debug level.
+
+## D-412: Workflows: provider and model per AI step
+
+- Status: accepted.
+- **Who:**

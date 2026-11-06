@@ -64,7 +64,7 @@ export interface AddonNotifyInput {
   title: string;
   message?: string;
   tone?: NotifyTone;
-  /** ms; 0 = stays until closed (danger toasts stay by default). */
+  /** ms; 0 = stays until closed (default 5 s, danger 8 s; paused while hovered). */
   timeout?: number;
   /**
    * Also a system notification when Jig isn't the window in front (a watcher found a failed pipeline
@@ -336,7 +336,7 @@ export interface AddonUiContext {
   /** Sends text to a chat (a new session in the active project unless `sessionId`). Needs `chat`. */
   sendToChat(text: string, options?: { sessionId?: string; send?: boolean }): Promise<void>;
   /**
-   * Shows a toast. `timeout` in ms (0 = stays until closed; danger toasts stay by default). Returns a
+   * Shows a toast. `timeout` in ms (0 = stays until closed; default 5 s, danger 8 s, paused while hovered). Returns a
    * function that closes it, e.g. a "Working…" toast replaced by the result.
    */
   notify(input: AddonNotifyInput & { actions?: Array<{ label: string; run: () => void }> }): () => void;

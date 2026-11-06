@@ -9,6 +9,8 @@ test("Pages: Claude publishes a page with an image, it opens in Jig, updates, an
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
+  // The compact view folds tool calls into one line: the page still stands in the chat.
+  await hostCall(page, "config.update", { chat: { view: "compact" } });
   await page.keyboard.press("Control+N");
   const visible = page.locator("[data-tab-id]:not(.hidden)");
   await visible.getByTestId("composer-input").fill("publish a page with the sales report");
@@ -19,6 +21,12 @@ test("Pages: Claude publishes a page with an image, it opens in Jig, updates, an
   // The card in the chat opens it in Preview: scripts off, and the image next to it came along.
   const card = chat.getByTestId("page-card");
   await expect(card).toContainText("Sales report");
+  await expect(chat.getByTestId("promoted-tool")).toHaveCount(1);
+  // A picture of the page, in a frame that runs nothing.
+  const thumb = card.getByTestId("page-thumbnail").frameLocator("iframe");
+  await expect(thumb.locator("h1")).toHaveText("Sales report", { timeout: 15000 });
+  await expect(card.locator("iframe")).toHaveAttribute("sandbox", "");
+  await expect(card.getByTestId("page-browser")).toBeVisible();
   await card.getByTestId("page-open").click();
   const frame = visible.frameLocator('[data-testid="preview-html"]');
   await expect(frame.locator("h1")).toHaveText("Sales report", { timeout: 15000 });
@@ -32,7 +40,7 @@ test("Pages: Claude publishes a page with an image, it opens in Jig, updates, an
   await visible.getByTestId("composer-input").fill("update the page with this quarter");
   await page.keyboard.press("Enter");
   await expect(visible.getByTestId("chat")).toContainText("Updated the page.", { timeout: 20000 });
-  await expect(visible.getByTestId("page-card")).toContainText("v2");
+  await expect(visible.getByTestId("page-card")).toContainText("version 2");
 
   // The Pages view lists one page; the whole row opens the new version.
   await page.getByTestId("goto-button").click();

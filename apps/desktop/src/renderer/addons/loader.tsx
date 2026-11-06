@@ -222,7 +222,12 @@ async function mount(addon: AddonInfo): Promise<void> {
     const Component = component(r.component, `card for ${r.tool}`);
     if (Component)
       cleanups.push(
-        registerToolRenderer({ tool: r.tool, owner, render: (item) => createElement(Component, { item }) }),
+        registerToolRenderer({
+          tool: r.tool,
+          owner,
+          promote: r.promote,
+          render: (item) => createElement(Component, { item }),
+        }),
       );
   }
   for (const r of c.permissionRenderers) {

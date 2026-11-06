@@ -97,7 +97,19 @@ export const ManifestSchema = z.object({
         )
         .default([]),
       chatToolbar: z.array(z.object({ id: Id, component: ExportName })).default([]),
-      toolRenderers: z.array(z.object({ tool: z.string(), component: ExportName })).default([]),
+      toolRenderers: z
+        .array(
+          z.object({
+            tool: z.string(),
+            component: ExportName,
+            /**
+             * Show the finished card in the chat even where steps are folded into one line (the compact
+             * view), without the tool's own header: for a result the user came for (a page), not a step.
+             */
+            promote: z.boolean().optional(),
+          }),
+        )
+        .default([]),
       /** Approval cards for this add-on's own tools (`tool` is the tool's id in `tools`). */
       permissionRenderers: z
         .array(z.object({ tool: z.string().regex(/^[a-z][a-z0-9_]*$/), component: ExportName }))

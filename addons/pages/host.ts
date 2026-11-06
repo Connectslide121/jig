@@ -303,18 +303,42 @@ export async function list(_args: undefined, api: AddonHostApi): Promise<Page[]>
   return pages.map((p) => ({ ...p, chatTitle: (p.chatId && titles.get(p.chatId)) || p.chatTitle }));
 }
 
-/** Where a page's files are (for Preview, the browser and Show in folder). */
+/** Where a page's files are (for Preview, the browser and Show in folder), and what it holds. */
 export async function where(
   args: { id: string; version?: number },
   api: AddonHostApi,
-): Promise<{ file: string; dir: string; title: string; version: number }> {
+): Promise<{
+  file: string;
+  dir: string;
+  title: string;
+  version: number;
+  latest: number;
+  files: number;
+  bytes: number;
+  updatedAt: string;
+}> {
   const id = pageId(args.id);
   const page = (await read(api)).find((p) => p.id === id);
   if (!page) throw new Error("That page is gone");
   const version = args.version && page.versions.includes(args.version) ? args.version : page.version;
   const dir = versionDir(api, page.id, version);
   if (!(await exists(join(dir, page.entry)))) throw new Error("The page's files are missing");
-  return { file: join(dir, page.entry), dir, title: page.title, version };
+  // Counted from the folder: an older version holds what it held then.
+  const held = version === page.version ? { files: page.files, bytes: page.bytes } : await sizeOf(dir);
+  return {
+    file: join(dir, page.entry),
+    dir,
+    title: page.title,
+    version,
+    latest: page.version,
+    ...held,
+    updatedAt: page.updatedAt,
+  };
+}
+
+async function sizeOf(dir: string): Promise<{ files: number; bytes: number }> {
+  const all = await walk(dir);
+  return { files: all.length, bytes: all.reduce((n, f) => n + f.bytes, 0) };
 }
 
 export async function retitle(args: { id: string; title: string }, api: AddonHostApi): Promise<void> {

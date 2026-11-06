@@ -1,5 +1,13 @@
 # Status
 
+Pages: a card you can see (2026-11-06, D-405, Jon): a chat's published page now stands in the chat as a card
+with a picture of the page and buttons (Open in Jig, Open in browser, ⋯), instead of hiding under "Used a
+tool" in the compact view. The slot behind it: a tool renderer can now say `promote`, so its finished card is
+a row of its own in the compact view (new `HtmlThumbnail` component for add-ons). Unit-free (UI): checked by
+`pages.spec.ts` and screenshots in Jig Dark and Light.
+**Check on your machine:** ask a chat for a page in the compact view: the card with the picture appears;
+open an older chat that made a page: its card shows too.
+
 Meeting actions one by one (2026-11-06, D-407, Jon): **Review actions** (meeting window and Meetings →
 a meeting) now handles each action from its card, besides ticking some for the queue. The icon left of
 the badge **runs it in a new chat** now: a Plan-mode chat in the action's project (choose one first),

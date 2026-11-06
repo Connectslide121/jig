@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { cn, IconButton } from "../ui";
 
@@ -11,7 +11,7 @@ export interface Toast {
   message?: string;
   tone: ToastTone;
   actions?: Array<{ label: string; run: () => void }>;
-  /** ms; 0 = stays until closed. Danger toasts stay by default. */
+  /** ms; 0 = stays until closed. Default 5 s, danger 8 s; paused while hovered. */
   timeout: number;
 }
 
@@ -27,7 +27,7 @@ export function notify(
     ...input,
     id: nextId++,
     tone,
-    timeout: input.timeout ?? (tone === "danger" ? 0 : 5000),
+    timeout: input.timeout ?? (tone === "danger" ? 8000 : 5000),
   };
   useToasts.setState((s) => ({ toasts: [...s.toasts.slice(-4), toast] }));
   return toast.id;
@@ -41,16 +41,20 @@ const icons = { info: Info, success: CircleCheck, warning: TriangleAlert, danger
 const tones = { info: "text-info", success: "text-success", warning: "text-warning", danger: "text-danger" };
 
 function ToastCard({ toast }: { toast: Toast }) {
+  const [hovered, setHovered] = useState(false);
+  // Hovering restarts the full timeout on leave, so a toast you were reading doesn't vanish at once.
   useEffect(() => {
-    if (!toast.timeout) return;
+    if (!toast.timeout || hovered) return;
     const timer = setTimeout(() => dismiss(toast.id), toast.timeout);
     return () => clearTimeout(timer);
-  }, [toast]);
+  }, [toast, hovered]);
   const Icon = icons[toast.tone];
   return (
     <div
       role="status"
       data-testid="toast"
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       className="pointer-events-auto flex w-80 gap-2 rounded-lg border border-line bg-elevated p-3 text-sm shadow-popover"
     >
       <Icon className={cn("mt-px size-4 shrink-0", tones[toast.tone])} />

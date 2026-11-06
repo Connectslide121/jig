@@ -27,7 +27,7 @@
         "run": "showPages"
       }
     ],
-    "toolRenderers": [{ "tool": "mcp__jig__addon_pages_publish", "component": "PageCard" }],
+    "toolRenderers": [{ "tool": "mcp__jig__addon_pages_publish", "component": "PageCard", "promote": true }],
     "tools": [
       {
         "id": "publish",

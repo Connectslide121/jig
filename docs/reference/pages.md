@@ -46,9 +46,13 @@ temp file opened in a browser; make it read well without scripts; publish again 
 
 ## In the app
 
-- **The card** (`toolRenderers` for `mcp__jig__addon_pages_publish`, `PageCard`): under the call, one row
-  of fixed height (icon, title, `vN` from the second version, Open in Jig, ⋯). ⋯ has Open in browser, Show
-  in folder and Save as… .
+- **The card** (`toolRenderers` for `mcp__jig__addon_pages_publish`, `PageCard`, `promote: true`): a
+  picture of the page (`HtmlThumbnail`, 168 px high, the page in a frame with scripts off, a click opens it),
+  then a row with the title, "N files · size · version · when", **Open in Jig** (primary), **Open in browser**
+  (hidden when the chat is narrow) and ⋯ (Open in browser, Show in folder, Save as…). `promote` makes the
+  compact chat view show it as a row of its own instead of folding it into "Used a tool" (the detailed view
+  shows it inside the tool's card). It shows the version that call published, and "This page was deleted"
+  (buttons off) when it is gone.
 - **The Pages view** (`addon.pages.pages`, hidden by default; Tools → Pages, the Home tile, or Go to): newest
   first. A row is the project's swatch (empty when the chat had no project), the title, the chat and when
   it changed: under 36 rem wide the chat and time move under the title, wider they get columns of their own

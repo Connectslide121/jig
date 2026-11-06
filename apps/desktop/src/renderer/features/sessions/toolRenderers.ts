@@ -6,6 +6,8 @@ import type { ChatItem } from "../../../shared/engine";
 export interface ToolRenderer {
   tool: string;
   owner?: string;
+  /** Shown in the chat even where steps fold into one line, without the tool's own header (`promote`). */
+  promote?: boolean;
   render: (item: Extract<ChatItem, { kind: "tool" }>) => ReactNode;
 }
 
@@ -22,6 +24,10 @@ export function registerToolRenderer(renderer: ToolRenderer): () => void {
 }
 
 export const useToolRenderers = () => useStore((s) => s.renderers);
+
+/** A finished tool call whose add-on asked for its card to stand in the chat (`promote`). */
+export const isPromoted = (renderers: Record<string, ToolRenderer>, item: ChatItem): boolean =>
+  item.kind === "tool" && item.status === "done" && Boolean(renderers[item.name]?.promote);
 
 /**
  * Approval cards for add-ons' own tools (`chat.permissionRenderer` slot), keyed by the tool's full

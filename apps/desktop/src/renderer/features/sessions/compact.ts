@@ -8,15 +8,22 @@ import { diffCounts, toolLabel } from "./ToolCard";
 export type Entry = { item: ChatItem; children: ChatItem[] };
 export type Row = { kind: "item"; entry: Entry } | { kind: "steps"; id: string; entries: Entry[] };
 
-/** A step folds into its line; a tool call waiting for your permission stays in view. */
-const isStep = (item: ChatItem, pending: Set<string>) =>
-  item.kind === "thinking" || (item.kind === "tool" && !pending.has(item.id));
+/**
+ * A step folds into its line; a tool call waiting for your permission stays in view, and so does one
+ * whose add-on promotes its card (a page the user came for, D-405).
+ */
+const isStep = (item: ChatItem, pending: Set<string>, promoted: (item: ChatItem) => boolean) =>
+  item.kind === "thinking" || (item.kind === "tool" && !pending.has(item.id) && !promoted(item));
 
-export function compactRows(entries: Entry[], pending: Set<string>): Row[] {
+export function compactRows(
+  entries: Entry[],
+  pending: Set<string>,
+  promoted: (item: ChatItem) => boolean = () => false,
+): Row[] {
   const rows: Row[] = [];
   for (const entry of entries) {
     const last = rows.at(-1);
-    if (!isStep(entry.item, pending)) rows.push({ kind: "item", entry });
+    if (!isStep(entry.item, pending, promoted)) rows.push({ kind: "item", entry });
     else if (last?.kind === "steps") last.entries.push(entry);
     else rows.push({ kind: "steps", id: `steps-${entry.item.id}`, entries: [entry] });
   }

@@ -45,6 +45,7 @@ import { providerName, useChatCapabilities } from "./provider";
 import { restoreFiles, rewindChat } from "./restore";
 import { useSessions } from "./store";
 import { ToolCard } from "./ToolCard";
+import { isPromoted, useToolRenderers } from "./toolRenderers";
 
 /** A message's menu: Copy, plus entries add-ons contribute (`context.message`). */
 function messageMenu(sessionId: string, text: string, own: MenuEntry[] = []): MenuEntry[] {
@@ -190,12 +191,15 @@ const Item = memo(function Item({
   sessionId,
   nested,
   waiting,
+  bare,
   prevAt,
   beforeHandoff,
 }: {
   item: ChatItem;
   sessionId: string;
   nested?: ChatItem[];
+  /** A promoted tool result in the compact view: its add-on's card alone, without the tool's header. */
+  bare?: boolean;
   /** A tool call waiting for your permission. */
   waiting?: boolean;
   /** When the event before it happened (its time's tooltip says how long after). */
@@ -207,6 +211,7 @@ const Item = memo(function Item({
   const cwd = useSessions((s) => s.metas[sessionId]?.cwd);
   const told = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
   const rewind = useChatCapabilities(sessionId).rewind && !beforeHandoff;
+  const renderers = useToolRenderers();
   const inlineCode = useMemo(() => chatInlineCode(cwd), [cwd]);
   switch (item.kind) {
     case "user":
@@ -291,6 +296,8 @@ const Item = memo(function Item({
     case "thinking":
       return <Thinking item={item} />;
     case "tool":
+      if (bare && renderers[item.name])
+        return <div data-testid="promoted-tool">{renderers[item.name]?.render(item)}</div>;
       return (
         <ToolCard item={item} sessionId={sessionId} waiting={waiting} agentModels={agentModels(nested ?? [])}>
           {nested && nested.length > 0
@@ -479,8 +486,15 @@ function TimeColumn({ at, prevAt }: { at?: string; prevAt?: string }) {
 }
 
 /** The transcript's rows: every item (detailed), or steps folded per run (compact, D-159). */
-function rowsOf(entries: Entry[], compact: boolean, pending: Set<string>): Row[] {
-  return compact ? compactRows(entries, pending) : entries.map((entry) => ({ kind: "item", entry }));
+function rowsOf(
+  entries: Entry[],
+  compact: boolean,
+  pending: Set<string>,
+  promoted: (item: ChatItem) => boolean,
+): Row[] {
+  return compact
+    ? compactRows(entries, pending, promoted)
+    : entries.map((entry) => ({ kind: "item", entry }));
 }
 
 export function Transcript({
@@ -534,7 +548,11 @@ export function Transcript({
     }
     return ids;
   }, [items, handoffAt]);
-  const rows = useMemo(() => rowsOf(groupItems(shown), compact, pending), [shown, compact, pending]);
+  const renderers = useToolRenderers();
+  const rows = useMemo(
+    () => rowsOf(groupItems(shown), compact, pending, (item) => isPromoted(renderers, item)),
+    [shown, compact, pending, renderers],
+  );
   const [start, setStart] = useState(() => Math.max(0, rows.length - WINDOW));
   const first = windowStart(rows.length, start);
   // A row on screen and where it was, while rows are added above it: it stays where it was.
@@ -653,6 +671,7 @@ export function Transcript({
                     sessionId={sessionId}
                     nested={row.entry.children}
                     waiting={row.entry.item.kind === "tool" && pending.has(row.entry.item.id)}
+                    bare={compact && isPromoted(renderers, row.entry.item)}
                     prevAt={prevAt}
                     beforeHandoff={earlier?.has(row.entry.item.id)}
                   />
