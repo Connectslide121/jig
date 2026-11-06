@@ -47,6 +47,7 @@ import { Review } from "./Review";
 const callLanguage = () =>
   SPEECH_LANGUAGES.find(([code]) => code === navigator.language.toLowerCase())?.[0] ?? "en-us";
 
+import { ToastHost } from "../../workbench/toasts";
 import { NotesPanel } from "./Notes";
 import { PeoplePanel, type TranscriptJump, TranscriptPanel } from "./Panels";
 import { AccountLabel, MeetingsShell, StatusBar, useConfigStore, useMeetingsData } from "./Shell";
@@ -362,6 +363,8 @@ function Room() {
   const notes = (r: MeetingRecord, menu?: MenuEntry[]) => (
     <NotesPanel
       record={r}
+      projects={projects}
+      boards={overview.boards}
       menu={menu}
       onGenerateNotes={() => generateNotes(r.id)}
       onCancelNotes={() => cancelNotes(r.id)}
@@ -550,6 +553,7 @@ function Room() {
         <Review
           record={record}
           projects={projects}
+          boards={overview.boards}
           busy={pending === "queue"}
           onClose={() => setReview(false)}
           onQueue={(actions, actionIds) =>
@@ -573,6 +577,8 @@ function Room() {
           }
         />
       )}
+      {/* What a meeting action's command did (D-425). */}
+      <ToastHost />
     </div>
   );
 

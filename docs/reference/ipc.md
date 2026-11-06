@@ -368,6 +368,8 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.actions / meetings.queue | Edited draft actions (only actions still to do take edits; main keeps every status, D-407) / explicitly selected ids to paused Task queue (status `queued`); room or main window |
 | meetings.runAction | `{ id, actionId }` → the action: one action still to do, with a project, runs now in a new Plan-mode chat in its project with the queue's prompt (source meeting, evidence, owner); status `running`, `sessionId` = the chat (D-407); room, Meetings window or main window |
 | meetings.setActionStatus | `{ id, actionId, status: done \| dismissed \| open }` → the action: marks an action done or dismissed (not a queued one), or restores a handled one (`open`: back to `running` when it has a chat, else to do) (D-407) |
+| meetings.cardForm / meetings.createCard | Create card… (D-425): the boards a project follows (types, backlog type), the description and the looked-up assignee / makes the card through the Boards add-on and stores `card` on the action |
+| meetings.showBoards | `{ projectId }` → main window shows that project's Boards view (event `meetings.boardsOpen`) |
 
 "Room" is the call window (D-217); "lobby" the Meetings lobby window (D-292), which never gets the
 calling credential.

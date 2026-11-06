@@ -242,7 +242,7 @@
         "links.spec.ts"
       ]
     },
-    { "files": ["addons/boards/**"], "specs": ["boards.spec.ts"] },
+    { "files": ["addons/boards/**"], "specs": ["boards.spec.ts", "meeting-history.spec.ts"] },
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
     {
       "files": ["addons/pages/**", "apps/desktop/src/main/addons/saveCopy.ts"],

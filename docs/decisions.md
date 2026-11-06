@@ -7590,3 +7590,18 @@ notes were free Markdown, every meeting's looked different, and the renderer wai
   the model picker shows that default and is disabled, and a saved model is ignored (it may belong to
   the other provider). Any feature can offer it with `followsChat: true`; only this one does.
 
+## D-425: Meeting actions: one menu per action, and Create card… through the Boards add-on
+
+- Status: accepted.
+- **Who:** Jon (design, 2026-11-06); details marked "Claude, on my own".
+- **What:** every meeting action row (notes' Action items, Review) has one menu (`features/meetings/actionMenu.tsx`):
+  Run in a chat, Queue (a project submenu when the action has none), Create card…, Mark as done,
+  Dismiss, Reopen. The whole row opens it; on hover its quick action and ⋯ take the status slot.
+  No "parked" state: unhandled actions stay in the notes.
+- **Create card…** is a modal: project, the board it follows in Boards (picker only for several),
+  type (the board's backlog type), title, description (prompt + evidence + meeting), assignee (mine →
+  signed-in ADO user; else one unambiguous identity match, else unassigned). Main calls the Boards
+  add-on's exports `cardTargets`/`cardAssignee`/`createCard` via `callShared`; the action keeps
+  `card { id, url, board }`. Hidden when Boards is off (`MeetingOverview.boards`).
+- Queued actions with a card tell the task it owns the card; regenerating notes keeps carded actions;
+  Review edits keep card/due/at (Claude, on my own: an action without a project takes the card's).

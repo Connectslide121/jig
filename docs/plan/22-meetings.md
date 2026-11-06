@@ -13,6 +13,7 @@ explicit project context, notes and reviewed multi-project tasks (Jon, D-217).
 - [x] Explicit project per question; frozen transcript snapshots, read-only paginated tool, normal Claude Code chats.
 - [x] Notes chat and save tool, editable owner/project/action review; idempotent paused Tasks integration.
 - [x] Review actions one by one: Run in a new chat, Mark as done, Dismiss; a status per action, a Handled tab with Restore (D-407).
+- [x] One menu per action row in the notes and Review (Run in a chat, Queue, Create card…, Mark as done, Dismiss, Reopen); Create card… makes an Azure DevOps card through the Boards add-on, and a queued action owns its card (D-425).
 - [x] Unit coverage and fake calling/engine regression for project switches, capture, notes and task destinations.
 - [x] Real Microsoft sign-in and keyless calling-credential issuance on the target machine.
 - [ ] Administrator approval for calendar consent; device preview, internal/external meeting join, screen sharing,

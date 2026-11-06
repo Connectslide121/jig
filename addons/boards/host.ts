@@ -6,8 +6,10 @@ import {
   attachmentName,
   type Board,
   type BoardData,
+  backlogType,
   boardQuery,
   boardTenant,
+  boardTypes,
   buildInfo,
   columnField,
   commitInfo,
@@ -22,6 +24,7 @@ import {
   orgName,
   orgUrl,
   parseRelations,
+  pickIdentity,
   pullRequestInfo,
   sniffImageMime,
   stateForColumn,
@@ -782,4 +785,107 @@ export async function toolDelete(args: ChatArgs & { id: number }, api: AddonHost
   const b = await chatBoard(args, api);
   await remove({ board: b, id: Number(args.id) }, api);
   return `Deleted #${args.id}: it's in Azure DevOps' recycle bin, where it can be restored.`;
+}
+
+// ── Shared with Jig (addon.json "exports"): cards made elsewhere, such as from a meeting's action ────
+
+/** A board a project follows, as a place for a new card: its types and the one a card gets by default. */
+export interface CardTarget {
+  id: string;
+  name: string;
+  org: string;
+  project: string;
+  types: string[];
+  type?: string;
+  /** Why a card can't go there now (another tenant's board, az signed out…). */
+  problem?: string;
+}
+
+/** The boards a Jig project follows, each with the card types it shows (from the cache when it has them). */
+export async function cardTargets(
+  { projectId }: { projectId: string },
+  api: AddonHostApi,
+): Promise<CardTarget[]> {
+  const boards = await followed({ chat: { projectId } }, api);
+  return Promise.all(
+    boards.map(async (b): Promise<CardTarget> => {
+      const base = { id: b.id, name: tabName(b), org: b.org, project: b.project };
+      if (inOtherTenant(b, api))
+        return {
+          ...base,
+          types: [],
+          problem: `It's in Azure tenant ${b.tenantLabel ?? boardTenant(b)}: switch tenants in Jig's top bar.`,
+        };
+      try {
+        const types = boardTypes((await boardData(b, api, HOUR)).columns);
+        return { ...base, types, ...(backlogType(types) ? { type: backlogType(types) } : {}) };
+      } catch (error) {
+        return { ...base, types: [], problem: error instanceof Error ? error.message : String(error) };
+      }
+    }),
+  );
+}
+
+const meCache = remembered<{ displayName?: string; emailAddress?: string }>(HOUR);
+const identityCache = remembered<{ name: string; email: string } | undefined>(HOUR);
+
+/**
+ * Who a card for `owner` goes to on a board: you (`mine`, the signed-in Azure DevOps user), or the one
+ * person in the board's organisation with that name. Nobody when it's unclear or az can't say.
+ */
+export async function cardAssignee(
+  { projectId, boardId, owner, mine }: { projectId: string; boardId: string; owner?: string; mine?: boolean },
+  api: AddonHostApi,
+): Promise<{ assignedTo?: string; name?: string }> {
+  const b = findBoard(await followed({ chat: { projectId } }, api), boardId);
+  if (!b || inOtherTenant(b, api)) return {};
+  try {
+    if (mine) {
+      const me = await meCache(api, "me", () =>
+        rest(api, "https://app.vssps.visualstudio.com/_apis/profile/profiles/me"),
+      );
+      return me?.emailAddress ? { assignedTo: me.emailAddress, name: me.displayName ?? me.emailAddress } : {};
+    }
+    const name = owner?.trim() ?? "";
+    if (!name || /^(unknown|someone|everyone|all)$/i.test(name)) return {};
+    const found = await identityCache(api, `${b.org.toLowerCase()}|${name.toLowerCase()}`, async () =>
+      pickIdentity(
+        await rest<unknown>(
+          api,
+          `https://vssps.dev.azure.com/${encodeURIComponent(b.org)}/_apis/identities`,
+          ["searchFilter=General", `filterValue=${name}`, "queryMembership=None"],
+        ),
+        name,
+      ),
+    );
+    return found ? { assignedTo: found.email, name: found.name } : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A new card on a board a Jig project follows (its id, or name); the card's number, link and board. */
+export async function createCard(
+  input: {
+    projectId: string;
+    boardId: string;
+    type: string;
+    title: string;
+    description?: string;
+    assignedTo?: string;
+  },
+  api: AddonHostApi,
+): Promise<{ id: number; url: string; board: string }> {
+  const b = await chatBoard({ chat: { projectId: input.projectId }, board: input.boardId }, api);
+  const made = await create(
+    {
+      board: b,
+      type: input.type,
+      title: input.title,
+      ...(input.description?.trim() ? { description: input.description } : {}),
+      ...(input.assignedTo?.trim() ? { assignedTo: input.assignedTo.trim() } : {}),
+    },
+    api,
+  );
+  return { id: made.id, url: made.url, board: tabName(b) };
 }

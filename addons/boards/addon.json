@@ -6,6 +6,7 @@
   "version": "2.2.0",
   "icon": "kanban",
   "permissions": ["exec:az", "fs:read", "chat"],
+  "exports": ["cardTargets", "cardAssignee", "createCard"],
   "storage": {
     "scope": "project"
   },

@@ -758,6 +758,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",
                 "Captions arrive live; no raw audio recording or full-meeting diarization job (local transcription keeps audio in memory only until it is transcribed)",
                 "Jig works only when you ask; reviewed actions are queued in Plan mode and the queue stays paused, or run one at once in a new chat; mark the rest done or dismiss them",
+                "Each action row in the notes has one menu: run it in a chat, queue it, make an Azure DevOps card for it (board, type and assignee filled in; a queued task owns its card), mark it done, dismiss or reopen it",
                 "PowerPoint Live, Whiteboard and breakout rooms need the regular Teams client",
               ]}
             />

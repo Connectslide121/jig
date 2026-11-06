@@ -297,6 +297,7 @@ function LobbyWindow() {
         ) : section === "meetings" ? (
           <MeetingHistory
             projects={projects}
+            boards={overview.boards}
             layout={layout}
             onResize={resize}
             onTranscript={(shown) => changeLayout((l) => setHistoryTranscript(l, shown))}

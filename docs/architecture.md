@@ -728,6 +728,9 @@ Generate notes runs one silent AI call (`featureOneShot("meetingNotes")`, D-424)
 inline in the prompt; `main/meetings/notes.ts` checks the JSON answer (zod, citations matched to captions) and
 the record keeps `notesDoc`, a Markdown copy in `notes` and the job's state (`notesJob`). Reviewed actions are sent to Tasks'
 shared addReviewed export with one project/source id per task; queueing pauses the queue and is idempotent.
+Create card… (D-425) goes the same way to the Boards add-on's exports `cardTargets`, `cardAssignee` and `createCard`
+(`meetings.cardForm` / `meetings.createCard`); the action keeps `card { id, url, board }`, which a queued task's prompt
+names as the card it owns. `MeetingOverview.boards` hides the command while Boards is off.
 See addons/meetings/README.md for the UI, setup, persistence and known SDK limits.
 
 **Project knowledge** (`main/knowledge/`, D-256, D-289) is core, not an add-on: per project, notes

@@ -189,6 +189,30 @@ describe("mergeDrafts", () => {
       ["n-0", "New one"],
     ]);
   });
+
+  it("keeps an open action that has a board card, once (D-425)", () => {
+    const base = { prompt: "", owner: "Sam", evidence: "" };
+    const card = {
+      id: 7,
+      url: "https://dev.azure.com/contoso/Shop/_workitems/edit/7",
+      board: "Web · Stories",
+    };
+    const merged = mergeDrafts(
+      [
+        { ...base, id: "c", title: "Fix login", card },
+        { ...base, id: "o", title: "Old open one" },
+      ],
+      [
+        { ...base, title: "Fix login" },
+        { ...base, title: "Another" },
+      ],
+      "n",
+    );
+    expect(merged.map((a) => [a.id, a.title, a.card?.id])).toEqual([
+      ["c", "Fix login", 7],
+      ["n-0", "Another", undefined],
+    ]);
+  });
 });
 
 describe("notes helpers", () => {

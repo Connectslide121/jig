@@ -1032,3 +1032,44 @@ export function toolDetail(d: WorkItemDetail): Record<string, unknown> {
 export function itemLine(item: WorkItem): string {
   return `#${item.id} ${item.type} ${JSON.stringify(item.title)} · ${item.state}${item.assignedTo ? ` · ${item.assignedTo}` : " · unassigned"}`;
 }
+
+/** The work item types a board shows: those its columns map to states, in the columns' order. */
+export function boardTypes(columns: Pick<BoardColumn, "stateMappings">[]): string[] {
+  return [...new Set(columns.flatMap((c) => Object.keys(c.stateMappings)))];
+}
+
+/** The type a new card gets unless you pick another: the board's backlog type (a story, backlog item or requirement), else its first. */
+export function backlogType(types: string[]): string | undefined {
+  return types.find((t) => /story|backlog item|requirement/i.test(t)) ?? types[0];
+}
+
+/**
+ * Who a name is in an organisation, from an identity search (`_apis/identities?searchFilter=General`):
+ * people only (no groups), the ones whose display name is the name (any case), else every person found.
+ * Only one person is an answer; none or several (two Annas) leave the card unassigned.
+ */
+export function pickIdentity(raw: unknown, name: string): { name: string; email: string } | undefined {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return undefined;
+  const list = (raw as { value?: unknown })?.value;
+  if (!Array.isArray(list)) return undefined;
+  const value = (v: unknown) =>
+    typeof v === "string"
+      ? v
+      : typeof (v as { $value?: unknown })?.$value === "string"
+        ? (v as { $value: string }).$value
+        : "";
+  const people = new Map<string, { name: string; email: string }>();
+  for (const i of list as Array<Record<string, unknown>>) {
+    if (!i || i.isContainer === true || i.isActive === false) continue;
+    const props = (i.properties ?? {}) as Record<string, unknown>;
+    const email = [value(props.Mail), value(props.Account)].find((e) => e.includes("@"));
+    const shown = String(i.customDisplayName || i.providerDisplayName || "").trim();
+    if (!email || !shown) continue;
+    people.set(email.toLowerCase(), { name: shown, email });
+  }
+  const all = [...people.values()];
+  const exact = all.filter((p) => p.name.toLowerCase() === wanted);
+  const found = exact.length ? exact : all;
+  return found.length === 1 ? found[0] : undefined;
+}

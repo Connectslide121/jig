@@ -37,6 +37,7 @@ const action = z
     sessionId: z.string().optional(),
     due: z.string().optional(),
     at: z.array(z.string()).optional(),
+    card: z.object({ id: z.number().int().positive(), url: z.string(), board: z.string() }).optional(),
     /** Before D-407: `queued: true` is read as status "queued" and dropped on the next save. */
     queued: z.boolean().optional(),
   })

@@ -22,7 +22,9 @@ import {
   type MeetingNotesDoc,
   type MeetingRecord,
 } from "../../../shared/meetings";
+import type { ProjectsState } from "../../../shared/projects";
 import { Button, CountBadge, cn, Empty, Markdown, type MenuEntry, Spinner } from "../../ui";
+import { ActionTools, CardLink, useActionCommands } from "./actionMenu";
 import { clock } from "./format";
 import { PanelHeader } from "./Panels";
 
@@ -34,6 +36,8 @@ import { PanelHeader } from "./Panels";
  */
 export function NotesPanel({
   record,
+  projects,
+  boards,
   menu,
   onGenerateNotes,
   onCancelNotes,
@@ -41,6 +45,9 @@ export function NotesPanel({
   onJump,
 }: {
   record: MeetingRecord;
+  projects: ProjectsState;
+  /** The Boards add-on is on: actions offer Create card… (D-425). */
+  boards: boolean;
   menu?: MenuEntry[];
   onGenerateNotes(): void;
   /** Stops notes being written, or puts away a failure. */
@@ -50,6 +57,7 @@ export function NotesPanel({
   onJump?(at: string): void;
 }) {
   const open = record.actions.filter(actionOpen).length;
+  const commands = useActionCommands({ record, projects, boards });
   const job = record.notesJob;
   const running = job?.state === "running";
   const failed = job?.state === "failed" ? job : undefined;
@@ -78,7 +86,7 @@ export function NotesPanel({
           data-testid="meeting-notes"
         >
           {doc ? (
-            <StructuredNotes doc={doc} actions={record.actions} onJump={onJump} />
+            <StructuredNotes doc={doc} actions={record.actions} commands={commands} onJump={onJump} />
           ) : record.notes.trim() ? (
             <Markdown text={record.notes} />
           ) : running || failed ? null : (
@@ -169,6 +177,7 @@ export function NotesPanel({
           </span>
         </Button>
       </div>
+      {commands.dialog}
     </section>
   );
 }
@@ -194,64 +203,115 @@ function NotesItem({
   text,
   who,
   at,
-  status,
   onJump,
 }: {
   icon: ReactNode;
   text: ReactNode;
   who: ReactNode;
   at: string[];
-  status?: string;
   onJump?(at: string): void;
 }) {
   return (
     <li className="flex gap-2">
       <span className="flex h-5 w-4 shrink-0 items-center justify-center">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <p className="leading-5">{text}</p>
-        <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted">
-          <span className="min-w-0 truncate">{who}</span>
-          {at.map((t) =>
-            onJump ? (
-              <button
-                key={t}
-                type="button"
-                className="text-accent tabular-nums hover:underline"
-                title="Show in the transcript"
-                onClick={() => onJump(t)}
-              >
-                {clock(t)}
-              </button>
-            ) : (
-              <span key={t} className="tabular-nums">
-                {clock(t)}
-              </span>
-            ),
-          )}
-        </div>
-      </div>
-      {status !== undefined && (
-        <span className="w-16 shrink-0 text-right text-xs leading-5 text-hint">{status}</span>
-      )}
+      <ItemText text={text} who={who} at={at} onJump={onJump} />
     </li>
   );
 }
 
-const STATUS_LABELS: Record<NonNullable<MeetingAction["status"]>, string> = {
-  queued: "Queued",
-  running: "Running",
-  done: "Done",
-  dismissed: "Dismissed",
-};
+/** An item's text over who said it and when (timestamps jump to the transcript). */
+function ItemText({
+  text,
+  who,
+  at,
+  onJump,
+}: {
+  text: ReactNode;
+  who: ReactNode;
+  at: string[];
+  onJump?(at: string): void;
+}) {
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="leading-5">{text}</p>
+      <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted">
+        <span className="min-w-0 truncate">{who}</span>
+        {at.map((t) =>
+          onJump ? (
+            <button
+              key={t}
+              type="button"
+              className="text-accent tabular-nums hover:underline"
+              title="Show in the transcript"
+              onClick={(e) => {
+                e.stopPropagation();
+                onJump(t);
+              }}
+            >
+              {clock(t)}
+            </button>
+          ) : (
+            <span key={t} className="tabular-nums">
+              {clock(t)}
+            </span>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * An action item (D-425): the whole row opens its menu (Run in a chat, Queue, Create card…, Mark as
+ * done, Dismiss); on hover its quick action and ⋯ take the status's slot. Its card number and status
+ * sit in fixed slots at the far right, so every row's line up.
+ */
+function ActionItem({
+  action: a,
+  commands,
+  onJump,
+}: {
+  action: MeetingAction;
+  commands: ReturnType<typeof useActionCommands>;
+  onJump?(at: string): void;
+}) {
+  return (
+    <li
+      {...commands.rowProps(a)}
+      data-testid="notes-action"
+      className="group -mx-2 flex cursor-pointer gap-2 rounded-md px-2 py-1 outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      <span className="flex h-5 w-4 shrink-0 items-center justify-center">
+        {a.status === "done" ? (
+          <SquareCheck className="size-3.5 text-success" />
+        ) : (
+          <Square className="size-3.5 text-muted" />
+        )}
+      </span>
+      <ItemText
+        text={a.title}
+        who={`${a.mine ? "You" : a.owner || "Unknown"}${a.due ? ` · due ${a.due}` : ""}`}
+        at={a.at ?? []}
+        onJump={onJump}
+      />
+      <span className="flex h-5 w-12 shrink-0 items-center justify-end">
+        {a.card && <CardLink card={a.card} />}
+      </span>
+      <ActionTools action={a} commands={commands} />
+    </li>
+  );
+}
 
 /** Generated notes, laid out by Jig the same way for every meeting (D-424). */
 function StructuredNotes({
   doc,
   actions,
+  commands,
   onJump,
 }: {
   doc: MeetingNotesDoc;
   actions: MeetingAction[];
+  commands: ReturnType<typeof useActionCommands>;
   onJump?(at: string): void;
 }) {
   const listed = notesActions(actions);
@@ -275,21 +335,7 @@ function StructuredNotes({
       {listed.length > 0 && (
         <NotesSection title="Action items">
           {listed.map((a) => (
-            <NotesItem
-              key={a.id}
-              icon={
-                a.status === "done" ? (
-                  <SquareCheck className="size-3.5 text-success" />
-                ) : (
-                  <Square className="size-3.5 text-muted" />
-                )
-              }
-              text={a.title}
-              who={`${a.mine ? "You" : a.owner || "Unknown"}${a.due ? ` · due ${a.due}` : ""}`}
-              at={a.at ?? []}
-              status={a.status ? STATUS_LABELS[a.status] : ""}
-              onJump={onJump}
-            />
+            <ActionItem key={a.id} action={a} commands={commands} onJump={onJump} />
           ))}
         </NotesSection>
       )}

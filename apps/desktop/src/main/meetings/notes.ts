@@ -270,14 +270,15 @@ const titleKey = (title: string) => oneLine(title).toLowerCase();
 
 /**
  * New drafts replace the actions still to do; queued, running, done and dismissed ones stay (D-407),
- * and a draft with the same title as one of them isn't added again (D-424).
+ * and so do ones with a board card (D-425); a draft with the same title as one of them isn't added
+ * again (D-424).
  */
 export function mergeDrafts(
   existing: MeetingAction[],
   drafted: Array<Omit<MeetingAction, "id">>,
   idPrefix: string,
 ): MeetingAction[] {
-  const kept = existing.filter((a) => !actionOpen(a));
+  const kept = existing.filter((a) => !actionOpen(a) || a.card);
   const seen = new Set(kept.map((a) => titleKey(a.title)));
   const fresh: MeetingAction[] = [];
   for (const d of drafted) {

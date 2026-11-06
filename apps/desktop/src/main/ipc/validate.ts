@@ -106,6 +106,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     })
     .strict(),
   "meetings.revealChat": z.object({ sessionId: id }).strict(),
+  "meetings.showBoards": z.object({ projectId: id }).strict(),
   "meetings.open": z
     .object({
       tab: z.enum(["calendar", "chats", "meetings"]).optional(),
@@ -272,6 +273,19 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.runAction": z.object({ id, actionId: id }).strict(),
   "meetings.setActionStatus": z
     .object({ id, actionId: id, status: z.enum(["done", "dismissed", "open"]) })
+    .strict(),
+  "meetings.cardForm": z.object({ id, actionId: id, projectId: id, boardId: id.optional() }).strict(),
+  "meetings.createCard": z
+    .object({
+      id,
+      actionId: id,
+      projectId: id,
+      boardId: id,
+      type: z.string().min(1).max(200),
+      title: z.string().trim().min(1).max(500),
+      description: z.string().max(50_000),
+      assignedTo: z.string().max(300).optional(),
+    })
     .strict(),
   "meetings.selectShare": z.object({ sourceId: id }).strict(),
   "skills.details": z.object({ id }),

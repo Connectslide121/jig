@@ -46,13 +46,14 @@ import { presenceIds, type TeamsPresence, type TeamsPresenceResult } from "../..
 import {
   actionOpen,
   type MeetingAction,
+  type MeetingCardTarget,
   type MeetingEvent,
   type MeetingRecord,
   type MeetingStart,
   type MeetingsTarget,
 } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
-import { addonService } from "../addons";
+import { addonService, onAddonsChange } from "../addons";
 import {
   appWindows,
   closeHelpersIfAlone,
@@ -75,7 +76,7 @@ import { registerQuitGuard } from "../quit";
 import { createChat, sessionManager } from "../sessions";
 import { jigHome } from "../state/paths";
 import { APP_ICON } from "../window";
-import { actionPrompt, changeStatus, mergeEdits } from "./actions";
+import { actionPrompt, cardDescription, changeStatus, mergeEdits } from "./actions";
 import { MeetingAuth } from "./auth";
 import { mergeDrafts, NOTES_TIMEOUT, notesPrompt, notesTranscript, parseNotes } from "./notes";
 import { closeMeetingPage, meetingPage, meetingPageOrigin } from "./page";
@@ -510,6 +511,11 @@ const meetingsOn = () =>
 function enabled(): void {
   if (!meetingsOn()) throw new JigError("meeting_disabled", "Enable the Meetings add-on first");
 }
+/** The Boards add-on is on: actions offer Create card… (D-425). */
+const boardsOn = () =>
+  addonService()
+    .list()
+    .some((a) => a.id === "boards" && a.enabled && !a.errors.length);
 /** The call window only: media, the calling credential, captions, the call's status and chat. */
 function own(context: CallContext): void {
   if (!room || context.sender.id !== room.webContents.id)
@@ -770,6 +776,13 @@ function ring(name: string | undefined): void {
 
 export async function startMeetings(): Promise<void> {
   await store.load();
+  // Turning Boards on or off shows or hides Create card… in open meeting windows.
+  let boardsWere = boardsOn();
+  onAddonsChange(() => {
+    if (boardsOn() === boardsWere) return;
+    boardsWere = boardsOn();
+    changed();
+  });
   if (!store.settings().clientId && !process.env.JIG_HOME) {
     const setup = await readFile(join(app.getAppPath(), "../../.azure-local/meetings.json"), "utf8").catch(
       () => "",
@@ -900,6 +913,12 @@ export async function startMeetings(): Promise<void> {
     const workbench = mainWindow();
     if (workbench && workbench !== room && workbench !== lobby) revealWindow(workbench);
   });
+  handle("meetings.showBoards", ({ projectId }, ctx) => {
+    lobbyOrCall(ctx);
+    emit("meetings.boardsOpen", { projectId });
+    const workbench = mainWindow();
+    if (workbench && workbench !== room && workbench !== lobby) revealWindow(workbench);
+  });
   handle("meetings.overview", async () => {
     enabled();
     if (!fake()) await auth.restore();
@@ -907,6 +926,7 @@ export async function startMeetings(): Promise<void> {
       settings: store.settings(),
       account: fake() ? "Test account" : auth.name,
       fake: fake(),
+      boards: boardsOn(),
       activeId,
       ringing: store.ringing(),
       records: store.records(),
@@ -1628,6 +1648,61 @@ export async function startMeetings(): Promise<void> {
     });
     changed();
     return result!;
+  });
+  // Create card… (D-425): the Boards add-on's shared methods make the card; the action keeps its number.
+  const actionOf = (id: string, actionId: string) => {
+    const record = store.get(id);
+    const a = record.actions.find((x) => x.id === actionId);
+    if (!a) throw new JigError("not_found", "That action is no longer in the meeting");
+    return { record, a };
+  };
+  const boardsCall = <T>(method: string, args: unknown) => {
+    if (!boardsOn()) throw new JigError("addon_disabled", "Turn on the Boards add-on to make cards");
+    return addonService().callShared("meetings", "boards", method, args) as Promise<T>;
+  };
+  handle("meetings.cardForm", async ({ id, actionId, projectId, boardId }, ctx) => {
+    fromJig(ctx);
+    const { record, a } = actionOf(id, actionId);
+    const boards = await boardsCall<MeetingCardTarget[]>("cardTargets", { projectId });
+    const board = boards.find((b) => b.id === boardId) ?? boards.find((b) => !b.problem);
+    const who = board
+      ? await boardsCall<{ assignedTo?: string; name?: string }>("cardAssignee", {
+          projectId,
+          boardId: board.id,
+          owner: a.owner,
+          mine: Boolean(a.mine),
+        })
+      : {};
+    return {
+      boards,
+      ...(board ? { boardId: board.id } : {}),
+      ...(who.assignedTo ? { assignedTo: who.assignedTo, assigneeName: who.name ?? who.assignedTo } : {}),
+      description: cardDescription(record, a),
+    };
+  });
+  handle("meetings.createCard", async ({ id, actionId, projectId, boardId, ...card }, ctx) => {
+    fromJig(ctx);
+    if (actionOf(id, actionId).a.card)
+      throw new JigError("meeting_actions", "This action already has a card");
+    const made = await boardsCall<{ id: number; url: string; board: string }>("createCard", {
+      projectId,
+      boardId,
+      ...card,
+    });
+    let result: MeetingAction | undefined;
+    await store.update(id, (r) => {
+      const a = r.actions.find((x) => x.id === actionId);
+      if (!a) return;
+      a.card = { id: made.id, url: made.url, board: made.board };
+      // An action without a project gets the card's, so Run and Queue go there too.
+      if (!a.projectId && actionOpen(a)) a.projectId = projectId;
+      result = { ...a };
+    });
+    activity("create-card");
+    changed();
+    if (!result)
+      throw new JigError("not_found", `Made card #${made.id}, but the action is no longer in the meeting`);
+    return result;
   });
   handle("meetings.shareSources", async (_args, ctx) => {
     own(ctx);

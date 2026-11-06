@@ -52,6 +52,7 @@ import { SizedBox } from "./Slots";
  */
 export function MeetingHistory({
   projects,
+  boards,
   layout,
   onResize,
   onTranscript,
@@ -59,6 +60,8 @@ export function MeetingHistory({
   extraMenu,
 }: {
   projects: ProjectsState;
+  /** The Boards add-on is on: actions offer Create card… (D-425). */
+  boards: boolean;
   layout: MeetingLayout;
   onResize(key: MeetingSizeKey, size: number): void;
   /** Shows or hides the transcript beside the notes. */
@@ -375,6 +378,8 @@ export function MeetingHistory({
                 >
                   <NotesPanel
                     record={record}
+                    projects={projects}
+                    boards={boards}
                     onGenerateNotes={() =>
                       void run("Couldn't write the notes", () => call("meetings.notes", { id: record.id }))
                     }
@@ -420,6 +425,7 @@ export function MeetingHistory({
         <Review
           record={record}
           projects={projects}
+          boards={boards}
           busy={busy === "queue"}
           onClose={() => setReview(false)}
           onQueue={(actions, actionIds) =>

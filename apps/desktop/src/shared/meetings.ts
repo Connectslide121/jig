@@ -59,6 +59,36 @@ export interface MeetingAction {
   due?: string;
   /** Where in the transcript it was said: caption timestamps (ISO) Jig matched (D-424). */
   at?: string[];
+  /** The Azure DevOps card made for it with Create card… (D-425): kept through regenerated notes. */
+  card?: MeetingActionCard;
+}
+/** A board card made for a meeting action: its number, link and the board's name in Jig. */
+export interface MeetingActionCard {
+  id: number;
+  url: string;
+  board: string;
+}
+/** A board the action's project follows in the Boards add-on, as Create card… offers it. */
+export interface MeetingCardTarget {
+  id: string;
+  name: string;
+  types: string[];
+  /** The board's backlog type, picked first. */
+  type?: string;
+  /** Why a card can't go there now. */
+  problem?: string;
+}
+/** What Create card… starts from: the project's boards, and who the card goes to when that's clear. */
+export interface MeetingCardForm {
+  boards: MeetingCardTarget[];
+  /** The board the assignee was looked up on. */
+  boardId?: string;
+  /** For Azure DevOps (an e-mail); missing when the owner isn't one clear person there. */
+  assignedTo?: string;
+  /** Their name, to show. */
+  assigneeName?: string;
+  /** The description the card gets: the prompt, the evidence and where it came from. */
+  description: string;
 }
 /**
  * A reviewed action (D-407): added to the task queue, running in a chat of its own, done by you, or
@@ -195,6 +225,8 @@ export interface MeetingOverview {
   settings: MeetingSettings;
   account?: string;
   fake: boolean;
+  /** The Boards add-on is on: meeting actions offer Create card… (D-425). */
+  boards: boolean;
   activeId?: string;
   /** Jig rings for Teams calls while it runs (the meeting window listens hidden). */
   ringing: boolean;

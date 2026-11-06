@@ -83,6 +83,17 @@ a row of its own in the compact view (new `HtmlThumbnail` component for add-ons)
 **Check on your machine:** ask a chat for a page in the compact view: the card with the picture appears;
 open an older chat that made a page: its card shows too.
 
+Meeting action menu and board cards (2026-11-06, D-425, Jon): every action row in a meeting's notes
+(Action items) and in Review has one menu: click the row (or ⋯ on hover) for **Run in a chat**,
+**Queue** (a project submenu when it has none), **Create card…**, **Mark as done**, **Dismiss** and
+**Reopen**; on hover the row's quick action and ⋯ take the status badge's slot. **Create card…** (Boards
+add-on on) opens a modal: project, the board it follows (picker only for several; "Open Boards" when
+none), type (the board's backlog type), title, description (prompt, evidence, "From meeting …"), and
+the assignee (yours → your Azure DevOps sign-in; someone else → only one clear match in the
+organisation, else unassigned). The card's number sits in its own column and opens the work item;
+queueing a carded action tells the task it owns the card; regenerating notes keeps carded actions.
+Needs a real machine: identity lookup against a real organisation and tenant.
+
 Meeting actions one by one (2026-11-06, D-407, Jon): **Review actions** (meeting window and Meetings →
 a meeting) now handles each action from its card, besides ticking some for the queue. The icon left of
 the badge **runs it in a new chat** now: a Plan-mode chat in the action's project (choose one first),
