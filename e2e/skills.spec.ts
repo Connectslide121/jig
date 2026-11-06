@@ -21,9 +21,24 @@ test("Skills library: topbar access, stable details, global switches and project
   };
   await openLibrary();
   const library = page.getByTestId("skills-library");
-  await expect(library.getByRole("switch")).toHaveCount(9);
-  for (const toggle of await library.getByRole("switch").all())
-    await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await expect(library.getByRole("switch")).toHaveCount(14);
+  // Jig factory's skills start off (D-441); the others start on.
+  const factorySkills = [
+    "web-artifacts",
+    "theme-factory",
+    "webapp-testing",
+    "web-design-guidelines",
+    "demo-quality",
+  ];
+  for (const id of factorySkills)
+    await expect(library.getByTestId(`skill-${id}`).getByRole("switch")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  await expect(library.getByRole("switch", { checked: true })).toHaveCount(9);
+  const critic = library.getByTestId("skill-demo-quality").getByRole("switch");
+  await critic.click();
+  await expect(critic).toHaveAttribute("aria-checked", "true");
   const row = library.getByTestId("skill-frontend-design");
   const position = await row.boundingBox();
   await row.getByTestId("skill-name-frontend-design").click();

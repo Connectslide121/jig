@@ -7701,7 +7701,8 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   settings join this page in later sessions.
 - **Skills off by default:** the vendored `web-artifacts`, `theme-factory` and `webapp-testing`
   rely on upstream scripts and files Jig does not bundle (D-430), so in an ordinary chat they would
-  point at things that aren't there. A catalog entry may say `defaultEnabled: false`: off until you
+  point at things that aren't there; `web-design-guidelines` (with a pinned copy of the guidelines,
+  so it works offline) and the Jig-authored critic rubric `demo-quality` are the factory's too. A catalog entry may say `defaultEnabled: false`: off until you
   switch it on in Settings → Skills; Jig factory's stage chats ask for them by name. The skill
   overrides' `enabled` became optional (missing = the catalog's default).
 

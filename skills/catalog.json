@@ -44,6 +44,54 @@
     "author": "dotnet"
   },
   {
+    "id": "web-artifacts",
+    "title": "Web artifacts builder",
+    "category": "Frontend",
+    "description": "Multi-screen React, Tailwind and shadcn/ui front ends bundled into one HTML file.",
+    "skillName": "web-artifacts-builder",
+    "source": "https://github.com/anthropics/skills/tree/ca45fc496a3436251f191354091d557da31c15b5/skills/web-artifacts-builder",
+    "revision": "ca45fc496a3436251f191354091d557da31c15b5",
+    "license": "Apache-2.0",
+    "author": "anthropics",
+    "defaultEnabled": false
+  },
+  {
+    "id": "theme-factory",
+    "title": "Theme factory",
+    "category": "Design",
+    "description": "Colour and font themes applied consistently to slides, documents and pages.",
+    "skillName": "theme-factory",
+    "source": "https://github.com/anthropics/skills/tree/ca45fc496a3436251f191354091d557da31c15b5/skills/theme-factory",
+    "revision": "ca45fc496a3436251f191354091d557da31c15b5",
+    "license": "Apache-2.0",
+    "author": "anthropics",
+    "defaultEnabled": false
+  },
+  {
+    "id": "webapp-testing",
+    "title": "Web app testing",
+    "category": "Testing",
+    "description": "Checking a local web app with Playwright: screenshots, console logs, flows.",
+    "skillName": "webapp-testing",
+    "source": "https://github.com/anthropics/skills/tree/ca45fc496a3436251f191354091d557da31c15b5/skills/webapp-testing",
+    "revision": "ca45fc496a3436251f191354091d557da31c15b5",
+    "license": "Apache-2.0",
+    "author": "anthropics",
+    "defaultEnabled": false
+  },
+  {
+    "id": "web-design-guidelines",
+    "title": "Web design guidelines",
+    "category": "Design",
+    "description": "Reviewing UI code against the Web Interface Guidelines.",
+    "skillName": "web-design-guidelines",
+    "source": "https://github.com/vercel-labs/agent-skills/tree/1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62/skills/web-design-guidelines",
+    "revision": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "license": "MIT",
+    "author": "vercel-labs",
+    "defaultEnabled": false
+  },
+  {
     "id": "ui-ux-review",
     "title": "UI and UX review",
     "category": "Design",
@@ -97,5 +145,17 @@
     "revision": "1.0.0",
     "license": "Jig-authored guidance",
     "author": "Jig"
+  },
+  {
+    "id": "demo-quality",
+    "title": "Demo quality critic",
+    "category": "Design",
+    "description": "Score a clickable demo against Jig factory's quality bar and return a scorecard and a concrete fix list.",
+    "skillName": "demo-quality",
+    "source": "https://github.com/vercel-labs/web-interface-guidelines",
+    "revision": "1.0.0",
+    "license": "Jig-authored guidance",
+    "author": "Jig",
+    "defaultEnabled": false
   }
 ]

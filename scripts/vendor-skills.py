@@ -12,6 +12,17 @@ SOURCES = [
  ('react-performance', 'React performance', 'Frontend', 'React and Next.js rendering, data fetching and bundle performance.', 'vercel-labs/agent-skills', '1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62', 'skills/react-best-practices', 'vercel-react-best-practices', 'MIT', None),
  ('angular-development', 'Angular development', 'Frontend', 'Version-aware Angular components, signals, forms, routing and accessibility.', 'angular/angular', 'fdb4517612cf191da3c3e2df251f9f79f026448b', 'skills/dev-skills/angular-developer', 'angular-developer', 'MIT', 'LICENSE'),
  ('aspnet-api', 'ASP.NET Core APIs', 'Backend', 'HTTP APIs, validation, OpenAPI contracts and consistent error responses.', 'dotnet/skills', '95e7d0cb7994d47b5789baa68e13f7a2f348b956', 'plugins/dotnet-aspnetcore/skills/dotnet-webapi', 'dotnet-webapi', 'MIT', 'LICENSE'),
+ # Jig factory's (D-430): text only, off by default (D-441); their upstream scripts are not bundled.
+ ('web-artifacts', 'Web artifacts builder', 'Frontend', 'Multi-screen React, Tailwind and shadcn/ui front ends bundled into one HTML file.', 'anthropics/skills', 'ca45fc496a3436251f191354091d557da31c15b5', 'skills/web-artifacts-builder', 'web-artifacts-builder', 'Apache-2.0', 'skills/web-artifacts-builder/LICENSE.txt'),
+ ('theme-factory', 'Theme factory', 'Design', 'Colour and font themes applied consistently to slides, documents and pages.', 'anthropics/skills', 'ca45fc496a3436251f191354091d557da31c15b5', 'skills/theme-factory', 'theme-factory', 'Apache-2.0', 'skills/theme-factory/LICENSE.txt'),
+ ('webapp-testing', 'Web app testing', 'Testing', 'Checking a local web app with Playwright: screenshots, console logs, flows.', 'anthropics/skills', 'ca45fc496a3436251f191354091d557da31c15b5', 'skills/webapp-testing', 'webapp-testing', 'Apache-2.0', 'skills/webapp-testing/LICENSE.txt'),
+ ('web-design-guidelines', 'Web design guidelines', 'Design', 'Reviewing UI code against the Web Interface Guidelines.', 'vercel-labs/agent-skills', '1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62', 'skills/web-design-guidelines', 'web-design-guidelines', 'MIT', None),
+]
+OFF_BY_DEFAULT = {'web-artifacts', 'theme-factory', 'webapp-testing', 'web-design-guidelines'}
+# Extra pinned files: (skill id, repo, revision, upstream path, path inside the skill folder).
+EXTRAS = [
+ ('web-design-guidelines', 'vercel-labs/web-interface-guidelines', '434b7f91364665f2f733b310ec54809bf8f37937', 'command.md', 'references/web-interface-guidelines.md'),
+ ('web-design-guidelines', 'vercel-labs/web-interface-guidelines', '434b7f91364665f2f733b310ec54809bf8f37937', 'LICENSE', 'references/LICENSE-web-interface-guidelines.txt'),
 ]
 
 def fetch(url):
@@ -77,10 +88,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """, encoding='utf-8', newline='\n')
+    for extra_id, extra_repo, extra_revision, upstream, relative in EXTRAS:
+        if extra_id == id:
+            target = folder / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(download(extra_repo, extra_revision, upstream))
     plugin = dest / '.claude-plugin' / 'plugin.json'
     plugin.parent.mkdir(parents=True, exist_ok=True)
     plugin.write_text(json.dumps({'name': 'jig-' + id, 'version': '1.0.0', 'description': description, 'author': {'name': repo.split('/')[0]}}, indent=2) + '\n', encoding='utf-8', newline='\n')
-    catalog.append(dict(id=id,title=title,category=category,description=description,skillName=name,source=f'https://github.com/{repo}/tree/{revision}/{directory}',revision=revision,license=license,author=repo.split('/')[0]))
+    catalog.append(dict(id=id,title=title,category=category,description=description,skillName=name,source=f'https://github.com/{repo}/tree/{revision}/{directory}',revision=revision,license=license,author=repo.split('/')[0],**({'defaultEnabled': False} if id in OFF_BY_DEFAULT else {})))
     print(id, len(files), 'reference files')
 existing = json.loads((ROOT / 'catalog.json').read_text(encoding='utf-8')) if (ROOT / 'catalog.json').exists() else []
 catalog += [skill for skill in existing if skill['author'] == 'Jig']

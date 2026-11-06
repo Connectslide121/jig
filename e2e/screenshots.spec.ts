@@ -514,7 +514,7 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
 
   await page.getByTestId("tools-group-Chats").click();
   await page.getByRole("menuitem", { name: "Skills library", exact: true }).click();
-  await expect(page.getByTestId("skills-library").getByRole("switch")).toHaveCount(9);
+  await expect(page.getByTestId("skills-library").getByRole("switch")).toHaveCount(14);
   await page.screenshot({ path: join(OUT, "skills.png") });
   await app.close();
 });

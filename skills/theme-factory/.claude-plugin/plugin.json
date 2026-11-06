@@ -1,0 +1,8 @@
+{
+  "name": "jig-theme-factory",
+  "version": "1.0.0",
+  "description": "Colour and font themes applied consistently to slides, documents and pages.",
+  "author": {
+    "name": "anthropics"
+  }
+}

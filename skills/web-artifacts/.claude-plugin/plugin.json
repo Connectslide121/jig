@@ -1,0 +1,8 @@
+{
+  "name": "jig-web-artifacts",
+  "version": "1.0.0",
+  "description": "Multi-screen React, Tailwind and shadcn/ui front ends bundled into one HTML file.",
+  "author": {
+    "name": "anthropics"
+  }
+}

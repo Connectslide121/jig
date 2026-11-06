@@ -1,0 +1,8 @@
+{
+  "name": "jig-demo-quality",
+  "version": "1.0.0",
+  "description": "Score a clickable demo against Jig factory's quality bar and return a scorecard and a concrete fix list.",
+  "author": {
+    "name": "Jig"
+  }
+}

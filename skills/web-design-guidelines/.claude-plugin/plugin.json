@@ -1,0 +1,8 @@
+{
+  "name": "jig-web-design-guidelines",
+  "version": "1.0.0",
+  "description": "Reviewing UI code against the Web Interface Guidelines.",
+  "author": {
+    "name": "vercel-labs"
+  }
+}

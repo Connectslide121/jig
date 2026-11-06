@@ -1,0 +1,8 @@
+{
+  "name": "jig-webapp-testing",
+  "version": "1.0.0",
+  "description": "Checking a local web app with Playwright: screenshots, console logs, flows.",
+  "author": {
+    "name": "anthropics"
+  }
+}

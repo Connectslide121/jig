@@ -1,18 +1,25 @@
 # Skills library (D-205)
 
-Open **Chats → Skills library** or search for Skills library. The single page lists nine bundled
+Open **Chats → Skills library** or search for Skills library. The single page lists fourteen bundled
 skills with a clickable name (instructions/source/version/licence in a modal), category, Projects
-picker and global switch. All are enabled by default. The searchable project picker uses checkboxes
+picker and global switch. All are enabled by default except Jig factory's five (below), which a
+catalog entry marks `"defaultEnabled": false` (D-441): they start off until you switch them on, and
+Jig factory's stage chats ask for them by name. An override's `enabled` missing = the catalog's
+default. The searchable project picker uses checkboxes
 and Apply/Cancel; new projects are included automatically. Global off wins while preserving project
 choices. Personal and repository Claude Code skills are independent.
 
 ## Contents and provenance
 
 `skills/catalog.json` is Jig's curated catalog, not a replacement for Claude Code's runtime skill
-or command discovery. Four pinned snapshots retain their reference files and licences: Anthropic
-frontend-design, Vercel React best practices, Angular developer and .NET Web API. Five Jig-authored
-skills cover UI/UX review, backend architecture, application security, browser verification and AI
-feature UX. Source links, author, revision and licence appear in the details modal. See
+or command discovery. Eight pinned snapshots retain their reference files and licences: Anthropic
+frontend-design, Vercel React best practices, Angular developer and .NET Web API, and for Jig
+factory (D-430, off by default) Anthropic web-artifacts-builder, theme-factory and webapp-testing
+(their scripts and PDF are not bundled; the demo kit does their jobs) and Vercel
+web-design-guidelines with a pinned copy of the Web Interface Guidelines as a reference file. Six
+Jig-authored skills cover UI/UX review, backend architecture, application security, browser
+verification, AI feature UX and Jig factory's demo critic (`demo-quality`, its rubric in
+`references/rubric.md`, off by default). Source links, author, revision and licence appear in the details modal. See
 `skills/NOTICE.md` and `scripts/vendor-skills.py` for provenance and deliberate refreshes.
 
 Only instruction/reference text is shipped. No upstream hooks, custom agents, MCP servers or
