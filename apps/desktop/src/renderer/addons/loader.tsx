@@ -2,7 +2,7 @@ import { type AddonUiContext, addonActionId, addonTabType, addonToolName, addonV
 import { Puzzle } from "lucide-react";
 import { type ComponentType, createElement, useEffect } from "react";
 import { create } from "zustand";
-import type { AddonInfo } from "../../shared/addons";
+import { type AddonInfo, addonLoadFailures } from "../../shared/addons";
 import { registerDashboardWidget } from "../features/projects/widgets";
 import { registerPrompt } from "../features/sessions/prompts";
 import { registerPermissionRenderer, registerToolRenderer } from "../features/sessions/toolRenderers";
@@ -20,6 +20,7 @@ import {
   registerView,
   unregisterOwner,
 } from "../workbench/registry";
+import { workbench } from "../workbench/store";
 import { notify } from "../workbench/toasts";
 import { AddonBoundary } from "./AddonBoundary";
 import { AddonContext, dispatchAddonEvent, iconByName, makeContext, toEntries } from "./context";
@@ -323,6 +324,37 @@ async function doSync(addons: AddonInfo[]): Promise<void> {
       unmount(addon.id);
       useAddons.setState((s) => ({ loadErrors: { ...s.loadErrors, [addon.id]: (error as Error).message } }));
     }
+  }
+  clearTimeout(tellTimer);
+  tellTimer = setTimeout(tellLoadFailures, TELL_AFTER_MS);
+}
+
+/**
+ * A switched-on add-on that didn't load loses all its views and tabs, so say so (D-417), once per
+ * add-on and error while Jig runs; the full error stays in Settings → Add-ons. Told only when it's
+ * still failing a moment after the last sync: while add-ons reload, importing a `ui.js` whose hash
+ * was just replaced fails, and the next sync loads the new one.
+ */
+const TELL_AFTER_MS = 2000;
+let tellTimer: ReturnType<typeof setTimeout> | undefined;
+const told = new Set<string>();
+function tellLoadFailures(): void {
+  const { addons, loadErrors } = useAddons.getState();
+  for (const failure of addonLoadFailures(addons, loadErrors)) {
+    if (told.has(failure.key)) continue;
+    told.add(failure.key);
+    notify({
+      title: `${failure.name} couldn't load`,
+      message: failure.error.split("\n")[0],
+      tone: "danger",
+      timeout: 15_000,
+      actions: [
+        {
+          label: "Show in Settings",
+          run: () => void workbench.openTab("jig.settings", { section: "addons" }),
+        },
+      ],
+    });
   }
 }
 

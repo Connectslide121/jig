@@ -26,6 +26,21 @@ describe("checkTokens", () => {
     expect(checkTokens(`className="w-[13px]"`).map((v) => v.rule)).toEqual(["arbitrary-value"]);
   });
 
+  it("does not flag variants with brackets, which select instead of setting a value", () => {
+    expect(
+      checkTokens(`className="w-44 data-[tone=danger]:text-danger aria-[sort=asc]:font-medium"`),
+    ).toEqual([]);
+    expect(checkTokens(`className="data-[tone=danger]:w-[13px]"`).map((v) => v.match)).toEqual(["w-[13px]"]);
+  });
+
+  it("does not read numbers in comments as hex colours", () => {
+    expect(checkTokens(`/** A card as one line: \`#101 Bug "Checkout fails"\`. */`)).toEqual([]);
+    expect(checkTokens(`  * The run #412 on main.`)).toEqual([]);
+    expect(checkTokens(`// see #abc`)).toEqual([]);
+    expect(checkTokens(`const c = "#fff"; // a colour`).map((v) => v.rule)).toEqual(["hex-colour"]);
+    expect(checkTokens(`* { color: #fff; }`).map((v) => v.rule)).toEqual(["hex-colour"]);
+  });
+
   it("does not flag token names that contain palette words", () => {
     expect(checkTokens(`className="text-text bg-bg border-border-strong"`)).toEqual([]);
   });

@@ -131,13 +131,17 @@ test("a crashing add-on is contained and can be turned off", async ({ page, jigH
   await expect(page.getByTestId("view-tab-addon.hello.main")).toBeVisible({ timeout: 15000 });
 });
 
-test("build errors are shown instead of loading a broken add-on", async ({ page, jigHome }) => {
+test("build errors are shown instead of loading a broken add-on, and a notice says so (D-417)", async ({
+  page,
+  jigHome,
+}) => {
   const dir = await install(jigHome);
   await expect(page.getByTestId("hello-view")).toBeVisible({ timeout: 15000 });
   await writeFile(join(dir, "ui.tsx"), "export const HelloView = () => <div>;");
   await expect(page.getByTestId("view-tab-addon.hello.main")).toHaveCount(0, { timeout: 15000 });
-  await page.getByTestId("settings-button").click();
-  await page.getByTestId("settings-nav-addons").click();
+  const toast = page.getByTestId("toast").filter({ hasText: "Hello couldn't load" });
+  await expect(toast).toContainText("ui.tsx:1:", { timeout: 10000 });
+  await toast.getByRole("button", { name: "Show in Settings" }).click();
   await expect(page.getByTestId("addon-hello").getByTestId("addon-errors")).toContainText("ui.tsx:1:");
 });
 

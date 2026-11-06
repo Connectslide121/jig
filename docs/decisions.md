@@ -7278,3 +7278,21 @@ own**.
   the plain icon. Reduced motion keeps the marks still.
 - **Dropped:** the tab's "unread" status (a finished turn not seen yet). The Chats board's Finished
   column still tracks it (`useSeenTurns`).
+
+## D-417: Jig says when a switched-on add-on fails to load
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06) asked for it after the Task queue vanished in 0.17.0 (D-415) with its
+  error shown only in Settings → Add-ons; the form is Claude, on my own.
+- **What:** 2 s after the last add-on sync (an import of a `ui.js` whose hash a reload just replaced
+  fails once and loads on the next sync), every switched-on add-on with host errors (manifest, bundling)
+  or a renderer load error gets a danger toast: "<name> couldn't load", the first error line, and
+  Show in Settings (Settings → Add-ons, where the full error is). Told once per add-on and error
+  text while Jig runs (`addonLoadFailures` in `shared/addons.ts` gives the key), so reloads and
+  syncs don't repeat it; a new error tells again. An add-on the builder is previewing is left out:
+  the build shows its own errors. A toast, not a banner in the views: the add-on's views are gone,
+  so there is nowhere in them to say it, and a toast moves nothing on screen.
+- **Also (same day):** `scripts/check-tokens.ts` checked nothing on Windows (`URL.pathname` gave
+  `/E:/…`, and a try/catch turned the unreadable folder into "OK"). It now resolves the path with
+  `fileURLToPath` and fails on a folder it can't read. The checker no longer reads `#101` in a
+  comment as a hex colour, nor a bracket variant (`data-[tone=danger]:`) as an arbitrary value.

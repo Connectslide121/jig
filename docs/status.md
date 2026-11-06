@@ -9,6 +9,13 @@ import that leaves `addons/`. Needs a release to reach the installed app.
 **Check on your machine:** after updating, the Task queue view and its All queues tab open, and
 Settings → Add-ons → Tasks shows no red error.
 
+A switched-on add-on that fails to load now says so (2026-11-06, D-417, Jon): a toast "<name>
+couldn't load" with the first error line and Show in Settings, once per add-on and error while Jig
+runs, instead of the views silently disappearing. The design-token check works on Windows again
+(it had checked nothing there) and no longer flags `#101` in comments or `data-[…]:` variants.
+**Check on your machine:** break a copy of an add-on of yours (a syntax error in its `ui.tsx`): the
+toast appears once; Show in Settings opens Settings → Add-ons with the error.
+
 ChatGPT runs have a cost estimate (2026-11-06, D-414, Jon): ChatGPT chats and queue tasks no longer show
 $0.00. Each Codex turn's tokens are priced at OpenAI's API prices for its model (`shared/openaiPrices.ts`,
 cache reads at the cached price, long-context rate above 272K input tokens), so the chat overview, the

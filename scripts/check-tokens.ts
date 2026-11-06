@@ -4,22 +4,18 @@
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { checkTokens } from "../packages/sdk/src/tokenCheck.ts";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const roots = ["apps/desktop/src/renderer", "addons"];
 // Files that *define* the tokens are allowed to contain raw colours.
 const allowed = [/apps\/desktop\/src\/renderer\/styles\/tokens\.css$/];
 const extensions = /\.(tsx?|css)$/;
 
 function walk(dir: string, out: string[]): string[] {
-  let entries: string[];
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    return out;
-  }
-  for (const entry of entries) {
+  // No try/catch: a folder it can't read fails the check instead of passing it unchecked.
+  for (const entry of readdirSync(dir)) {
     if (entry === "node_modules" || entry === "dist") continue;
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) walk(path, out);

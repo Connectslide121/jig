@@ -38,7 +38,9 @@ as a commit and keeps its stored data; deleting your copy of a built-in brings t
 ```
 
 Problems (invalid manifest, a missing export, a build error) are shown in Settings → Add-ons; the
-add-on isn't loaded until they are fixed. Hard-coded colours or arbitrary Tailwind values show as
+add-on isn't loaded until they are fixed. A switched-on add-on with a problem also gets a notice
+("<name> couldn't load", with Show in Settings), once per add-on and error while Jig runs; one the
+builder is previewing doesn't, the build shows its errors (D-417). Hard-coded colours or arbitrary Tailwind values show as
 design-token warnings (the builder must fix them; the add-on still loads).
 
 ## UI (`ui.tsx`)

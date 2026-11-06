@@ -27,6 +27,35 @@ export interface AddonInfo {
   readme?: string;
 }
 
+/** An add-on that is switched on but didn't load, for the notice that says so (D-417). */
+export interface AddonLoadFailure {
+  id: string;
+  name: string;
+  error: string;
+  /** The same add-on with the same error gives the same key: tell it once, not on every reload. */
+  key: string;
+}
+
+/**
+ * The add-ons that are switched on but failed: the host's errors (manifest, bundling) and the
+ * renderer's (`loadErrors`: loading `ui.js`, missing exports). An add-on the builder is previewing is
+ * left out: the build shows its own errors.
+ */
+export function addonLoadFailures(
+  addons: AddonInfo[],
+  loadErrors: Record<string, string>,
+): AddonLoadFailure[] {
+  const out: AddonLoadFailure[] = [];
+  for (const a of addons) {
+    if (!a.enabled || a.preview) continue;
+    const errors = [...a.errors, ...(loadErrors[a.id] ? [loadErrors[a.id] as string] : [])];
+    if (errors.length === 0) continue;
+    const error = errors.join("\n");
+    out.push({ id: a.id, name: a.name, error, key: `${a.id}\n${error}` });
+  }
+  return out;
+}
+
 export interface AddonCommit {
   hash: string;
   date: string;

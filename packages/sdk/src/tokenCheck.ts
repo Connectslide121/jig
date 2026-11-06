@@ -43,18 +43,29 @@ const RULES: Array<{ rule: TokenViolation["rule"]; pattern: RegExp; message: str
   },
   {
     rule: "arbitrary-value",
-    pattern: /(?<![\w])[a-z][\w-]*-\[(?!var\(--jig-)[^\]\s]+\]/g,
+    // Not a variant (`data-[tone=danger]:`, `aria-[sort=asc]:`): those select, they set no value.
+    pattern: /(?<![\w])[a-z][\w-]*-\[(?!var\(--jig-)[^\]\s]+\](?!:)/g,
     message: "Arbitrary Tailwind value — use the spacing/type scale or a token.",
   },
 ];
 
-/** Returns every violation in `source`. Lines containing `jig-tokens-ignore-line` are skipped. */
+/** A comment line (`//`, `/*`, ` * `), where `#101` is a work item or run number, not a colour. */
+function isCommentLine(text: string): boolean {
+  return /^\s*(\/\/|\/\*)/.test(text) || (/^\s*\*(\s|\/|$)/.test(text) && !text.includes("{"));
+}
+
+/**
+ * Returns every violation in `source`. Lines containing `jig-tokens-ignore-line` are skipped, and
+ * comment lines aren't checked for hex colours.
+ */
 export function checkTokens(source: string): TokenViolation[] {
   const violations: TokenViolation[] = [];
   const lines = source.split(/\r?\n/);
   lines.forEach((text, index) => {
     if (text.includes(IGNORE_LINE)) return;
+    const comment = isCommentLine(text);
     for (const { rule, pattern, message } of RULES) {
+      if (comment && rule === "hex-colour") continue;
       pattern.lastIndex = 0;
       for (const match of text.matchAll(pattern)) {
         violations.push({ line: index + 1, column: (match.index ?? 0) + 1, rule, match: match[0], message });
