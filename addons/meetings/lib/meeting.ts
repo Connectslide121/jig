@@ -131,8 +131,11 @@ export function meetingMarkdown(record: MeetingRecord): string {
   if (record.notes.trim()) out.push("## Notes", "", record.notes.trim(), "");
   if (record.actions.length) {
     out.push("## Actions", "");
+    // Done is ticked; queued, running and dismissed say so after the owner (D-407).
     for (const a of record.actions)
-      out.push(`- [${a.queued ? "x" : " "}] ${a.title} (${a.owner || "Unknown"})`);
+      out.push(
+        `- [${a.status === "done" ? "x" : " "}] ${a.title} (${a.owner || "Unknown"})${a.status && a.status !== "done" ? ` · ${a.status}` : ""}`,
+      );
     out.push("");
   }
   out.push("## Transcript", "");

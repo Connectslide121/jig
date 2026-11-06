@@ -758,7 +758,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Remembers Agenda/Week and restores your Microsoft sign-in using protected storage",
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",
                 "Captions arrive live; no raw audio recording or full-meeting diarization job (local transcription keeps audio in memory only until it is transcribed)",
-                "Claude runs only when you ask; reviewed actions are queued in Plan mode and the queue stays paused",
+                "Claude runs only when you ask; reviewed actions are queued in Plan mode and the queue stays paused, or run one at once in a new chat; mark the rest done or dismiss them",
                 "PowerPoint Live, Whiteboard and breakout rooms need the regular Teams client",
               ]}
             />

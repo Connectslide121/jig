@@ -15,7 +15,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "reac
 import { meetingMention } from "../../../../../../addons/meetings/lib/meeting";
 import type { MeetingFolder } from "../../../shared/meetingFolders";
 import type { MeetingLayout, MeetingSizeKey } from "../../../shared/meetingLayout";
-import type { MeetingRecord } from "../../../shared/meetings";
+import { actionOpen, type MeetingRecord } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { copyText } from "../../lib/clipboard";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
@@ -36,10 +36,10 @@ import {
 } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { ProjectSwatch } from "../projects/colors";
-import { Review } from "./dialogs";
 import { FolderRow, useMeetingFolders } from "./folders";
 import { dayAndTime, duration } from "./format";
 import { NotesPanel, TranscriptPanel } from "./Panels";
+import { Review } from "./Review";
 import { SizedBox } from "./Slots";
 
 /**
@@ -471,7 +471,7 @@ function MeetingRow({
   menu?: () => MenuEntry[];
   drag?: React.HTMLAttributes<HTMLButtonElement> & { draggable: boolean };
 }) {
-  const open = record.actions.filter((a) => !a.queued).length;
+  const open = record.actions.filter(actionOpen).length;
   return (
     <button
       type="button"

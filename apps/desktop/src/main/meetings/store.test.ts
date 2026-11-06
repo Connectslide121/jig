@@ -28,6 +28,25 @@ describe("global meeting persistence", () => {
     expect(next.chatPins()).toEqual([b, a]);
     expect(await next.pinChat(b, false)).toEqual([a]);
   });
+  it("reads an old queued action as status queued, and keeps statuses and chats (D-407)", async () => {
+    const { store, file } = await setup();
+    const record = await store.create("https://teams.microsoft.com/l/meetup-join/test", "Weekly products");
+    const action = { title: "Fix login", prompt: "Fix it", owner: "Sam", evidence: "" };
+    await store.update(record.id, (r) => {
+      r.actions = [
+        { ...action, id: "old", queued: true } as never,
+        { ...action, id: "run", status: "running", sessionId: "s1" },
+        { ...action, id: "todo" },
+      ];
+    });
+    const next = new MeetingStore(file);
+    await next.load();
+    expect(next.get(record.id).actions.map((a) => [a.id, a.status, a.sessionId, "queued" in a])).toEqual([
+      ["old", "queued", undefined, false],
+      ["run", "running", "s1", false],
+      ["todo", undefined, undefined, false],
+    ]);
+  });
   it("serializes caption and note updates and marks an active call interrupted on restart", async () => {
     const { store, file } = await setup();
     const record = await store.create("https://teams.microsoft.com/l/meetup-join/test", "Weekly products");

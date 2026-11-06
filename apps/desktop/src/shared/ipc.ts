@@ -330,6 +330,16 @@ export interface HostMethods {
   "meetings.notes": { args: { id: string }; result: { sessionId: string } };
   "meetings.actions": { args: { id: string; actions: import("./meetings").MeetingAction[] }; result: void };
   "meetings.queue": { args: { id: string; actionIds: string[] }; result: void };
+  /** Runs one reviewed action in a new Plan-mode chat in its project, now (D-407); the action is "running". */
+  "meetings.runAction": {
+    args: { id: string; actionId: string };
+    result: import("./meetings").MeetingAction;
+  };
+  /** Marks an action done or dismissed, or restores a handled one ("open"; back to running if it has a chat). */
+  "meetings.setActionStatus": {
+    args: { id: string; actionId: string; status: "done" | "dismissed" | "open" };
+    result: import("./meetings").MeetingAction;
+  };
   "meetings.shareSources": { args: void; result: Array<{ id: string; name: string; thumbnail: string }> };
   "meetings.selectShare": { args: { sourceId: string }; result: void };
   "meetings.shareStopped": { args: void; result: void };

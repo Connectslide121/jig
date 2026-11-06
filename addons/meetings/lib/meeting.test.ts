@@ -135,8 +135,16 @@ describe("meetings in chats and exports (D-250)", () => {
       endedAt: "2026-01-01T12:30:00.000Z",
       notes: "Ship it.",
       actions: [
-        { id: "a", title: "Fix login", prompt: "", owner: "Sam", evidence: "", queued: true },
+        { id: "a", title: "Fix login", prompt: "", owner: "Sam", evidence: "", status: "done" as const },
         { id: "b", title: "Write docs", prompt: "", owner: "", evidence: "" },
+        {
+          id: "c",
+          title: "Plan release",
+          prompt: "",
+          owner: "Alex",
+          evidence: "",
+          status: "queued" as const,
+        },
       ],
       captions: [
         caption("one", "Review the API", true),
@@ -146,7 +154,7 @@ describe("meetings in chats and exports (D-250)", () => {
     };
     expect(meetingMarkdown(record)).toBe(
       "# Weekly products\n\n2026-01-01 12:00 UTC · 30 min\n\n## Notes\n\nShip it.\n\n## Actions\n\n" +
-        "- [x] Fix login (Sam)\n- [ ] Write docs (Unknown)\n\n## Transcript\n\n**Alex** (12:00)\nReview the API\nAnd the docs\n",
+        "- [x] Fix login (Sam)\n- [ ] Write docs (Unknown)\n- [ ] Plan release (Alex) · queued\n\n## Transcript\n\n**Alex** (12:00)\nReview the API\nAnd the docs\n",
     );
   });
 });

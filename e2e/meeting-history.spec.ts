@@ -18,8 +18,8 @@ async function meetingsWindow(app: ElectronApplication): Promise<Page> {
 const tab = (lobby: Page, name: string) =>
   lobby.getByRole("navigation", { name: "Sections" }).getByRole("button", { name, exact: true });
 
-/** Two past meetings in JIG_HOME before Jig starts: the history needs no call. */
-async function seed(jigHome: string): Promise<void> {
+/** Two past meetings in JIG_HOME before Jig starts: the history needs no call; `actions` go to the newer one. */
+async function seed(jigHome: string, actions: unknown[] = []): Promise<void> {
   const caption = (id: string, speaker: string, at: string, text: string) => ({
     id,
     speakerId: speaker,
@@ -28,7 +28,14 @@ async function seed(jigHome: string): Promise<void> {
     text,
     final: true,
   });
-  const meeting = (id: string, title: string, day: string, notes: string, text: string) => ({
+  const meeting = (
+    id: string,
+    title: string,
+    day: string,
+    notes: string,
+    text: string,
+    drafted: unknown[] = [],
+  ) => ({
     id,
     title,
     joinUrl: "https://teams.microsoft.com/l/meetup-join/x",
@@ -39,7 +46,7 @@ async function seed(jigHome: string): Promise<void> {
     captions: [caption(`${id}-c1`, "Alex", `${day}T09:01:00.000Z`, text)],
     gaps: [],
     notes,
-    actions: [],
+    actions: drafted,
   });
   await mkdir(join(jigHome, "addon-data"), { recursive: true });
   await writeFile(
@@ -47,7 +54,14 @@ async function seed(jigHome: string): Promise<void> {
     JSON.stringify({
       records: [
         meeting(OLD, "Shop planning", "2026-01-05", "", "Ship the checkout first."),
-        meeting(NEW, "Portal review", "2026-02-10", "**Summary** Portal is ready.", "Portal looks good."),
+        meeting(
+          NEW,
+          "Portal review",
+          "2026-02-10",
+          "**Summary** Portal is ready.",
+          "Portal looks good.",
+          actions,
+        ),
       ],
     }),
   );
@@ -140,6 +154,118 @@ test("Meeting history: a chat started from a meeting mentions it, and Claude rea
       timeout: 20_000,
     });
     await expect(page.getByTestId("assistant-message").last()).toContainText("Portal looks good.");
+  } finally {
+    await app.close();
+  }
+});
+
+test("Meeting actions: run one in a new chat, mark one done, dismiss one, and restore it (D-407)", async ({
+  jigHome,
+}) => {
+  const drafted = (id: string, title: string, extra: object = {}) => ({
+    id,
+    title,
+    prompt: `${title} for the portal`,
+    owner: "Alex",
+    mine: true,
+    evidence: "09:01 Portal looks good.",
+    ...extra,
+  });
+  // An action queued before D-407 (`queued: true`) still reads as Queued.
+  await seed(jigHome, [
+    drafted("a1", "Write release notes"),
+    drafted("a2", "Email the team"),
+    drafted("a3", "Book a demo"),
+    drafted("a4", "Old queued task", { queued: true }),
+  ]);
+  await mkdir(join(jigHome, "shop"));
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    const added = await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
+    const projectId = (added as { value: { id: string } }).value.id;
+    const actions = async () =>
+      (
+        (await hostCall(page, "meetings.overview")) as {
+          value: {
+            records: Array<{
+              id: string;
+              actions: Array<{ id: string; status?: string; sessionId?: string }>;
+            }>;
+          };
+        }
+      ).value.records.find((r) => r.id === NEW)!.actions;
+
+    await hostCall(page, "meetings.open", { tab: "meetings", select: NEW });
+    const lobby = await meetingsWindow(app);
+    await lobby.getByRole("button", { name: "Review actions", exact: true }).click();
+    const review = lobby.getByRole("dialog", { name: "Review meeting actions" });
+    const card = (title: string) => review.getByTestId("action-card").filter({ hasText: title });
+    // To-do cards show their title in an input; handled ones as text.
+    const todo = (title: string) =>
+      review
+        .getByTestId("action-card")
+        .filter({ has: lobby.getByRole("checkbox", { name: `Select ${title}` }) });
+    await expect(todo("Old queued task").getByTestId("action-status")).toHaveText("Queued");
+    await expect(review.getByRole("tab", { name: "To do · 4" })).toBeVisible();
+
+    // Run in a new chat needs a project first, like the queue.
+    const run = review.getByRole("button", { name: "Run in a new chat" }).first();
+    await run.click();
+    await expect(review.getByTestId("review-message")).toContainText("Choose a project");
+    await review.getByLabel("Project for Write release notes").selectOption(projectId);
+    const box = await review.getByTestId("review-list").boundingBox();
+    await run.click();
+    await expect(review.getByTestId("review-message")).toContainText(
+      "Started “Write release notes” in a new chat",
+    );
+    await expect(todo("Write release notes").getByTestId("action-status")).toHaveText("Running");
+    const started = (await actions()).find((a) => a.id === "a1")!;
+    expect(started.status).toBe("running");
+    const chats = (await hostCall(page, "sessions.list")) as {
+      value: Array<{ id: string; projectId?: string; title: string }>;
+    };
+    expect(chats.value.find((c) => c.id === started.sessionId)).toMatchObject({ projectId });
+    // The running action opens its chat in Jig's main window.
+    await review.getByRole("button", { name: "Open the chat" }).click();
+    await expect(page.getByTestId("user-message-text").first()).toContainText(
+      "Write release notes for the portal",
+    );
+
+    // Done and Dismiss move actions to Handled; the list keeps its size.
+    await review.getByRole("button", { name: "More for Email the team" }).click();
+    await lobby.getByTestId("action-done").click();
+    await review.getByRole("button", { name: "More for Book a demo" }).click();
+    await lobby.getByTestId("action-dismiss").click();
+    await expect(review.getByRole("tab", { name: "To do · 2" })).toBeVisible();
+    await expect(todo("Email the team")).toHaveCount(0);
+    expect(await review.getByTestId("review-list").boundingBox()).toEqual(box);
+    await review.getByRole("tab", { name: "Handled · 2" }).click();
+    await expect(card("Email the team").getByTestId("action-status")).toHaveText("Done");
+    await expect(card("Book a demo").getByTestId("action-status")).toHaveText("Dismissed");
+    expect(await review.getByTestId("review-list").boundingBox()).toEqual(box);
+    await lobby.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/action-handled.png",
+    });
+    expect((await actions()).map((a) => [a.id, a.status])).toEqual([
+      ["a1", "running"],
+      ["a2", "done"],
+      ["a3", "dismissed"],
+      ["a4", "queued"],
+    ]);
+
+    // Restore brings a dismissed one back to the to-do list.
+    await review.getByRole("button", { name: "Restore Book a demo" }).click();
+    await expect(review.getByRole("tab", { name: "Handled · 1" })).toBeVisible();
+    await review.getByRole("tab", { name: "To do · 3" }).click();
+    await expect(todo("Book a demo").getByTestId("action-status")).toHaveText("Your action");
+    await lobby.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/action-todo.png",
+    });
+    expect((await actions()).find((a) => a.id === "a3")!.status).toBeUndefined();
   } finally {
     await app.close();
   }

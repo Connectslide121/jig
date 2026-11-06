@@ -51,8 +51,21 @@ export interface MeetingAction {
   mine?: boolean;
   projectId?: string;
   evidence: string;
-  queued?: boolean;
+  /** Where it stands (D-407); missing = still to do. Old records' `queued: true` load as "queued". */
+  status?: MeetingActionStatus;
+  /** The chat "Run in a new chat" started for it. */
+  sessionId?: string;
 }
+/**
+ * A reviewed action (D-407): added to the task queue, running in a chat of its own, done by you, or
+ * dismissed. Done and dismissed ones are "handled": out of the to-do list, restorable.
+ */
+export type MeetingActionStatus = "queued" | "running" | "done" | "dismissed";
+/** Still to do: no status yet, so it can be edited, queued, run, marked done or dismissed. */
+export const actionOpen = (a: Pick<MeetingAction, "status">): boolean => !a.status;
+/** Marked done or dismissed: shown under Handled, with Restore. */
+export const actionHandled = (a: Pick<MeetingAction, "status">): boolean =>
+  a.status === "done" || a.status === "dismissed";
 export interface MeetingRecord {
   id: string;
   title: string;

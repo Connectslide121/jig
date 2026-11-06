@@ -21,10 +21,10 @@ import {
   rememberedChoices,
   systemDefaultLabel,
 } from "../../../shared/meetingDevices";
-import type { MeetingAction, MeetingRecord, MeetingSettings } from "../../../shared/meetings";
+import type { MeetingRecord, MeetingSettings } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { errorMessage } from "../../lib/host";
-import { Badge, Button, Card, cn, Dialog, Input, Select, Spinner, Switch, Textarea } from "../../ui";
+import { Button, Card, cn, Dialog, Input, Select, Spinner, Switch, Textarea } from "../../ui";
 import { ProjectSwatch } from "../projects/colors";
 import { NOISE_SUPPRESSION_TEXT, SPEECH_LANGUAGES } from "./format";
 import type { MeetingMedia, NoiseSuppression } from "./media";
@@ -32,7 +32,8 @@ import type { MeetingMedia, NoiseSuppression } from "./media";
 type Devices = MeetingDeviceList;
 const DEVICE_LABELS = { microphone: "Microphone", speaker: "Speakers", camera: "Camera" } as const;
 
-function Field({
+/** A labelled form field (its label above, an optional hint below). */
+export function Field({
   id,
   label,
   hint,
@@ -672,145 +673,6 @@ export function Ask({
           Opens a Claude Code chat in Plan mode; the meeting keeps running. The chat stays in this project
           even if you switch projects later.
         </p>
-      </div>
-    </Dialog>
-  );
-}
-
-export function Review({
-  record,
-  projects,
-  busy,
-  onClose,
-  onQueue,
-}: {
-  record: MeetingRecord;
-  projects: ProjectsState;
-  busy: boolean;
-  onClose(): void;
-  onQueue(actions: MeetingAction[], selected: string[]): Promise<void>;
-}) {
-  const [actions, setActions] = useState(record.actions);
-  const [selected, setSelected] = useState<string[]>([]);
-  const update = (id: string, patch: Partial<MeetingAction>) =>
-    setActions((list) => list.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-  const missingProject = actions.some((a) => selected.includes(a.id) && !a.projectId);
-  return (
-    <Dialog
-      open
-      title="Review meeting actions"
-      width="xl"
-      column
-      onClose={onClose}
-      footer={
-        <>
-          <span className={cn("mr-auto text-xs", missingProject ? "text-danger" : "text-muted")}>
-            {missingProject
-              ? "Choose a project for every selected task."
-              : `${selected.length} selected · added in Plan mode; the queue stays paused until you start it.`}
-          </span>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            busy={busy}
-            disabled={!selected.length || missingProject}
-            onClick={() => void onQueue(actions, selected)}
-          >
-            Add selected to queue
-          </Button>
-        </>
-      }
-    >
-      <p className="mb-3 shrink-0 text-sm text-muted">
-        Claude drafted these from the transcript — check them before queuing. Only the tasks you tick are
-        added, each to its own project; other people's actions can stay in the notes.
-      </p>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-        {actions.map((a) => {
-          const picked = selected.includes(a.id);
-          return (
-            <Card
-              key={a.id}
-              className={cn("space-y-2 p-3 shadow-none", picked && "border-accent", a.queued && "opacity-60")}
-            >
-              <div className="flex items-center gap-3">
-                <input
-                  aria-label={`Select ${a.title}`}
-                  type="checkbox"
-                  className="size-4 shrink-0 accent-accent"
-                  disabled={a.queued}
-                  checked={picked}
-                  onChange={(e) =>
-                    setSelected((ids) =>
-                      e.target.checked ? [...ids, a.id] : ids.filter((id) => id !== a.id),
-                    )
-                  }
-                />
-                <Input
-                  aria-label="Action title"
-                  className="flex-1 font-medium"
-                  value={a.title}
-                  disabled={a.queued}
-                  onChange={(e) => update(a.id, { title: e.target.value })}
-                />
-                <span className="flex w-24 shrink-0 justify-end">
-                  {a.queued ? (
-                    <Badge tone="success">Queued</Badge>
-                  ) : a.mine ? (
-                    <Badge tone="accent">Your action</Badge>
-                  ) : (
-                    <Badge>Someone else</Badge>
-                  )}
-                </span>
-              </div>
-              <div className="flex gap-3 pr-27 pl-7">
-                <div className="w-48 shrink-0">
-                  <Field id={`owner-${a.id}`} label="Owner">
-                    <Input
-                      id={`owner-${a.id}`}
-                      disabled={a.queued}
-                      value={a.owner}
-                      onChange={(e) => update(a.id, { owner: e.target.value })}
-                    />
-                  </Field>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Field id={`project-${a.id}`} label="Project">
-                    <Select
-                      id={`project-${a.id}`}
-                      aria-label={`Project for ${a.title}`}
-                      className={cn(picked && !a.projectId && "border-danger")}
-                      disabled={a.queued}
-                      value={a.projectId ?? ""}
-                      onChange={(e) => update(a.id, { projectId: e.target.value || undefined })}
-                    >
-                      <option value="">Choose project…</option>
-                      {projects.projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-              </div>
-              <div className="space-y-2 pr-27 pl-7">
-                <Field id={`prompt-${a.id}`} label="Task prompt">
-                  <Textarea
-                    id={`prompt-${a.id}`}
-                    rows={3}
-                    disabled={a.queued}
-                    value={a.prompt}
-                    onChange={(e) => update(a.id, { prompt: e.target.value })}
-                  />
-                </Field>
-                <p className="border-l-2 border-line pl-2 text-xs text-muted">
-                  {a.evidence ? `“${a.evidence}”` : "No quote from the transcript"}
-                </p>
-              </div>
-            </Card>
-          );
-        })}
       </div>
     </Dialog>
   );

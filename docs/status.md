@@ -1,5 +1,16 @@
 # Status
 
+Meeting actions one by one (2026-11-06, D-407, Jon): **Review actions** (meeting window and Meetings →
+a meeting) now handles each action from its card, besides ticking some for the queue. The icon left of
+the badge **runs it in a new chat** now: a Plan-mode chat in the action's project (choose one first),
+with the same prompt the queue gives; the action shows **Running** and the icon becomes **Open the
+chat**. ⋯ has **Mark as done** (you did it yourself) and **Dismiss**: both move it to the **Handled**
+tab, where **Restore** brings it back. Every action has a status badge (Queued, Running, Done,
+Dismissed); actions queued before keep showing Queued. The open-actions count only counts actions still
+to do. Unit tests (`actions.test.ts`, the store's migration) and `meeting-history.spec.ts` cover it.
+**Check on your machine:** after a real meeting's notes, run one action in a new chat, open it from the
+dialog, mark another done and dismiss a third, close and reopen the dialog: statuses are kept.
+
 Pages: Jig's own artifacts (2026-11-06, D-405, Jon): the new built-in add-on **Pages**. Ask a chat (Claude or
 ChatGPT) to show you a report, mockup, dashboard, comparison or the release notes and it publishes one
 self-contained HTML page, with the images and files it loads, into Jig (`addon_pages_publish`; the chat is

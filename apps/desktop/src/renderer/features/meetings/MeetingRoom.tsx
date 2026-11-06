@@ -38,9 +38,10 @@ import { updateConfig, useConfig } from "../../stores/config";
 import { Button, cn, Empty, type MenuEntry, openMenuAt, Select, Spinner } from "../../ui";
 import { IncomingCall } from "./Calls";
 import { ChatPanel, type ChatStatus } from "./Chat";
-import { Ask, DevicePicker, Prejoin, Review, ShareSources } from "./dialogs";
+import { Ask, DevicePicker, Prejoin, ShareSources } from "./dialogs";
 import { SPEECH_LANGUAGES } from "./format";
 import { INITIAL_MEDIA, type MediaState, MeetingMedia, type Ringing, selfPerson } from "./media";
+import { Review } from "./Review";
 
 /** Captions of a call follow the system language when Teams supports it. */
 const callLanguage = () =>

@@ -11,7 +11,7 @@ import {
   VideoOff,
 } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { MeetingCaption, MeetingRecord } from "../../../shared/meetings";
+import { actionOpen, type MeetingCaption, type MeetingRecord } from "../../../shared/meetings";
 import {
   Button,
   CountBadge,
@@ -306,7 +306,7 @@ export function NotesPanel({
   onGenerateNotes(): void;
   onReview(): void;
 }) {
-  const open = record.actions.filter((a) => !a.queued).length;
+  const open = record.actions.filter(actionOpen).length;
   return (
     <section className="flex size-full min-h-0 min-w-0 flex-col" aria-label="Notes">
       <PanelHeader title="Notes" menu={menu}>

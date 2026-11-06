@@ -7024,3 +7024,28 @@ stopped for good.
   `history.transcript` belong to the lobby, like `history.list` (`LOBBY_SIZES`); the call window keeps
   the saved values when it saves its own layout. The lobby queues its layout changes and applies them all
   to the saved layout, so a drag and a toggle within the save delay both stick.
+
+## D-407: Meeting actions: a status per action; run in a new chat, mark done, dismiss
+
+- Status: accepted. Replaces the action's `queued` flag (D-217).
+- **Who:** Jon asked for it (2026-11-06): per action, Run in a new chat (in the action's project, Plan
+  mode, without waiting for the queue, the chat reachable from the action), Mark as done and Dismiss,
+  with done and dismissed ones out of the to-do list but restorable, the actions in a fixed right-aligned
+  slot and a status badge. The tabs, icons, which transitions are allowed and the messages are
+  **Claude, on my own**.
+- **What:** `MeetingAction.status` is `queued | running | done | dismissed` (missing = still to do) with
+  `sessionId` for the chat Run in a new chat started. Old records' `queued: true` load as `queued`
+  (`store.ts` transform). Only actions still to do can be edited, ticked, queued or run; the dialog's
+  edits never set a status (`mergeEdits`). Run uses the queue's project check and prompt
+  (`actionPrompt`: source meeting, evidence, owner) and opens nothing by itself; the card's primary
+  button becomes Open the chat. Done and Dismiss are for actions still to do or running; a queued action
+  belongs to the Tasks queue and is changed there. Restore (`open`) brings a handled action back to
+  running when it has a chat, else to do. New drafts from Generate notes replace only the actions still
+  to do.
+- **UI:** the Review dialog has two tabs, To do (open, queued, running) and Handled (done, dismissed: a
+  compact row with Restore), over a list of fixed height, so switching tabs or handling an action never
+  resizes the dialog. Each card's header has a fixed 60 px slot left of the badge column: the primary
+  icon button (Run in a new chat / Open the chat; empty for queued) and ⋯ (Run or Open, Mark as done,
+  Dismiss); the badge stays at the far right (Queued, Running, Done, Dismissed, or Your action /
+  Someone else while to do). What a card's action did, or why it failed, shows in the footer's
+  existing text slot. The Markdown export ticks done actions and names the other statuses.

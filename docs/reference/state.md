@@ -217,7 +217,7 @@ and `folders` [{id, name}]: your meeting history folders (D-295). A record's `fo
 `null` when you took it out of every folder, or missing to let it go to its recurring meeting's folder (meetings
 whose join links name the same Teams meeting thread, two or more of them; worked out, not stored).
 `chat` is the meeting's Teams chat read while you were in it ({id, from, fromId?, at, text, mine?}, D-270). A record
-has no project id; actions may have one. Captions carry id/speakerId/speaker/timestamp/text/final, `source: "local"` when Whisper transcribed them on this computer (D-321); gap reasons include Teams' error message and codes;
+has no project id; actions may have one. An action is {id, title, prompt, owner, mine?, projectId?, evidence, status?, sessionId?}: `status` `queued` \| `running` \| `done` \| `dismissed` (missing = still to do), `sessionId` the chat Run in a new chat started (D-407). Records from before D-407 with `queued: true` load as `status: "queued"`; the old field is dropped on the next save. Captions carry id/speakerId/speaker/timestamp/text/final, `source: "local"` when Whisper transcribed them on this computer (D-321); gap reasons include Teams' error message and codes;
 actions carry id/title/prompt/owner/projectId?/evidence/queued?. Writes use state/jsonStore atomically
 and are serialized across captions, notes and queue acknowledgements. Active records become interrupted
 with a gap on restart. Immutable question snapshots live in addon-data/meeting-snapshots/<sha256>.json.

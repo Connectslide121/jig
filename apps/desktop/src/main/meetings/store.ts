@@ -24,16 +24,21 @@ const caption = z.object({
   untranslated: z.enum(["skipped", "failed"]).optional(),
   source: z.literal("local").optional(),
 });
-const action = z.object({
-  id: z.string(),
-  title: z.string(),
-  prompt: z.string(),
-  owner: z.string(),
-  mine: z.boolean().optional(),
-  projectId: z.string().optional(),
-  evidence: z.string(),
-  queued: z.boolean().optional(),
-});
+const action = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    prompt: z.string(),
+    owner: z.string(),
+    mine: z.boolean().optional(),
+    projectId: z.string().optional(),
+    evidence: z.string(),
+    status: z.enum(["queued", "running", "done", "dismissed"]).optional(),
+    sessionId: z.string().optional(),
+    /** Before D-407: `queued: true` is read as status "queued" and dropped on the next save. */
+    queued: z.boolean().optional(),
+  })
+  .transform(({ queued, ...a }) => (queued && !a.status ? { ...a, status: "queued" as const } : a));
 const record = z.object({
   id: z.uuid(),
   title: z.string(),

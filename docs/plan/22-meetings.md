@@ -12,6 +12,7 @@ explicit project context, notes and reviewed multi-project tasks (Jon, D-217).
 - [x] Speaker-attributed caption revisions, durable text, gap/restart handling, no raw audio or batch processing.
 - [x] Explicit project per question; frozen transcript snapshots, read-only paginated tool, normal Claude Code chats.
 - [x] Notes chat and save tool, editable owner/project/action review; idempotent paused Tasks integration.
+- [x] Review actions one by one: Run in a new chat, Mark as done, Dismiss; a status per action, a Handled tab with Restore (D-407).
 - [x] Unit coverage and fake calling/engine regression for project switches, capture, notes and task destinations.
 - [x] Real Microsoft sign-in and keyless calling-credential issuance on the target machine.
 - [ ] Administrator approval for calendar consent; device preview, internal/external meeting join, screen sharing,

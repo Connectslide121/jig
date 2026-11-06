@@ -53,7 +53,9 @@ const meetingAction = z.object({
   mine: z.boolean().optional(),
   projectId: id.optional(),
   evidence: z.string().max(4000),
-  queued: z.boolean().optional(),
+  // Shown back as the dialog has them; main keeps its own status for every saved action (D-407).
+  status: z.enum(["queued", "running", "done", "dismissed"]).optional(),
+  sessionId: id.optional(),
 });
 
 /** What a project's settings may hold (the store trims and checks the rest). */
@@ -266,6 +268,10 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.export": z.object({ id }).strict(),
   "meetings.actions": z.object({ id, actions: z.array(meetingAction).max(200) }).strict(),
   "meetings.queue": z.object({ id, actionIds: z.array(id).min(1).max(200) }).strict(),
+  "meetings.runAction": z.object({ id, actionId: id }).strict(),
+  "meetings.setActionStatus": z
+    .object({ id, actionId: id, status: z.enum(["done", "dismissed", "open"]) })
+    .strict(),
   "meetings.selectShare": z.object({ sourceId: id }).strict(),
   "skills.details": z.object({ id }),
   "files.image": z.object({ path }),
