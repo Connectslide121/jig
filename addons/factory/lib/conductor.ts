@@ -51,14 +51,19 @@ export function advance(track: Track, input: Run, at = now()): { run: Run; opene
           ? setStageStatus(run, step.stage, "skipped")
           : addStage(run, { id: step.stage, recipe: step.stage, status: "skipped" });
       } else if (step.kind === "person") {
+        // A plan you already confirmed (the start dialog) needs no second asking.
+        const planned = step.recipe === "plan" && run.plan?.confirmed;
         run = addStage(run, {
           ...stageOf(run, step.stage),
           id: step.stage,
           recipe: step.recipe,
-          status: "needs-you",
+          status: planned ? "done" : "needs-you",
           attempt: 0,
           version: 1,
           startedAt: at,
+          ...(planned
+            ? { endedAt: at, report: { summary: "Planned in the start dialog", outputs: [], notes: [] } }
+            : {}),
         });
       } else if (step.kind === "start") {
         const old = stageOf(run, step.stage);

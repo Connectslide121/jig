@@ -68,8 +68,18 @@ export async function runFakeFactory(text: string, hooks: FakeFactoryHooks): Pro
   }
 
   if (recipe === "interview" && (kind === "stage" || kind === "answers")) {
-    const round = kind === "answers" ? Number(/round (\d+)\]/.exec(head)?.[1] ?? 1) : 0;
-    if (round < 2) {
+    const [, n, enough] = kind === "answers" ? (/round (\d+)( enough)?\]/.exec(head) ?? []) : [];
+    const round = Number(n ?? 0);
+    const idea = await readFile(join(folder, "input", "idea.md"), "utf8").catch(() => "An idea");
+    const title =
+      idea
+        .split("\n")
+        .find((l) => l.trim())
+        ?.replace(/^#\s*/, "")
+        .trim() ?? "An idea";
+    if (round < 2 && !enough) {
+      // After the first round the brief is half written (D-461): coverage shows it.
+      if (round === 1) await write(folder, "brief.md", fakeBrief(title, idea, false));
       const cards =
         round === 0
           ? [
@@ -85,18 +95,7 @@ export async function runFakeFactory(text: string, hooks: FakeFactoryHooks): Pro
       await hooks.say(`Posted round ${round + 1} of the questions.`);
       return;
     }
-    const idea = await readFile(join(folder, "input", "idea.md"), "utf8").catch(() => "An idea");
-    const title =
-      idea
-        .split("\n")
-        .find((l) => l.trim())
-        ?.replace(/^#\s*/, "")
-        .trim() ?? "An idea";
-    await write(
-      folder,
-      "brief.md",
-      `---\ntitle: ${title}\nlevel: L1\nproductExists: false\naudience: an internal go / no-go\n---\n# ${title}\n\n## Problem\n${idea.trim()}\n\n## Value\nPeople get it done in two taps.\n`,
-    );
+    await write(folder, "brief.md", fakeBrief(title, idea, true, !!enough));
     await report(hooks, "Wrote the one-page brief from your answers.", ["brief.md"]);
     return;
   }
@@ -177,4 +176,30 @@ async function contentOf(recipe: string, path: string, version: number, fails: b
   if (recipe === "scout")
     return "# Scout\n\nThree similar products; none lets staff swap without the planner. Suggested level: L1.\n";
   return `# ${path}\n\nWritten by the fake ${recipe} (version ${version}).\n`;
+}
+
+/** The fake interviewer's brief: half of it after round 1, all of it (or what it has, on Good enough) at the end. */
+function fakeBrief(title: string, idea: string, full: boolean, enough = false): string {
+  const head = full
+    ? `---\ntitle: ${title}\nstatus: draft\nlevel: L1\nlevelWhy: A go / no-go needs clickable screens, not working flows\nlanguages: docs: en, sales: sv, learning: en, marketing: sv\nproductExists: false\naudience: an internal go / no-go\n---\n`
+    : `---\ntitle: ${title}\nstatus: draft\n---\n`;
+  const parts = [
+    `# ${title}`,
+    `## Problem\n${idea.trim()}`,
+    "## Value\nPeople get it done in two taps.",
+    "## Users\nStaff on their phones; the planner approves.",
+    "## Main flow\nOffer a shift → a colleague takes it → the planner approves.",
+  ];
+  if (full)
+    parts.push(
+      "## Key screens\nMy shifts, Offer a shift, Open shifts, Approvals.",
+      "## Scope\nOffering, taking and approving swaps.",
+      enough ? "## Out of scope\n" : "## Out of scope\nPay and overtime rules.",
+      "## Data\nShifts and staff from the planning system.",
+      "## Rules\nThe product's own words: shift, swap, planner.",
+      enough
+        ? "## Open points\n- What is out of scope\n- Who approves on weekends"
+        : "## Open points\n- Who approves on weekends",
+    );
+  return `${head}${parts.join("\n\n")}\n`;
 }

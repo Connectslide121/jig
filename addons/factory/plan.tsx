@@ -69,7 +69,7 @@ export function PlanDialog({
           <Select
             value={level}
             onChange={(e) => setLevel(e.target.value as Level)}
-            className="w-44"
+            className="w-48"
             data-testid="factory-plan-level"
           >
             <option value="L1">L1 · clickable screens</option>
@@ -131,112 +131,117 @@ export function PlanDialog({
         </>
       }
     >
-      <div className="grid grid-cols-1 gap-6 text-xs md:grid-cols-3">
-        <Column title="Stages">
-          <div className="flex flex-col gap-2">
-            <Select
-              value={exists ? "existing" : "new"}
-              onChange={(e) => setExists(e.target.value === "existing")}
-              data-testid="factory-plan-product"
-            >
-              <option value="existing">An existing product (extract its kit)</option>
-              <option value="new">A new product (three directions)</option>
-            </Select>
-            <Switch checked={build} onChange={setBuild} label="Build it after the docs are approved" />
-          </div>
-          <ol className="flex flex-col" data-testid="factory-plan-stages">
-            {(track?.stages ?? []).map((i) => {
-              const id = i.id ?? i.gate ?? i.fanout ?? "";
-              const off =
-                (i.when === "product.exists" && !exists) ||
-                (i.when === "!product.exists" && exists) ||
-                (i.when === "build.requested" && !build) ||
-                (i.gate === "GD" && exists) ||
-                (i.gate === "G3" && !build);
-              const name = i.gate ? GATES[i.gate].label : (i.title ?? id);
-              return (
-                <li key={id} className="flex h-7 items-center gap-2">
-                  <span className="w-9 shrink-0 font-mono text-hint">{id}</span>
-                  <span
-                    className={
-                      off
-                        ? "min-w-0 flex-1 truncate text-hint line-through"
-                        : "min-w-0 flex-1 truncate text-fg"
-                    }
+      <div className="@container">
+        <div className="grid gap-6 text-xs @max-3xl:grid-cols-1 @3xl:grid-cols-3">
+          <Column title="Stages">
+            <div className="flex flex-col gap-2">
+              <Select
+                value={exists ? "existing" : "new"}
+                onChange={(e) => setExists(e.target.value === "existing")}
+                data-testid="factory-plan-product"
+              >
+                <option value="existing">An existing product (extract its kit)</option>
+                <option value="new">A new product (three directions)</option>
+              </Select>
+              <div className="flex h-7 items-center gap-2">
+                <Switch checked={build} onChange={setBuild} label="Build it after the docs are approved" />
+                <span className="min-w-0 flex-1 truncate text-fg">Build it after the docs are approved</span>
+              </div>
+            </div>
+            <ol className="flex flex-col" data-testid="factory-plan-stages">
+              {(track?.stages ?? []).map((i) => {
+                const id = i.id ?? i.gate ?? i.fanout ?? "";
+                const off =
+                  (i.when === "product.exists" && !exists) ||
+                  (i.when === "!product.exists" && exists) ||
+                  (i.when === "build.requested" && !build) ||
+                  (i.gate === "GD" && exists) ||
+                  (i.gate === "G3" && !build);
+                const name = i.gate ? GATES[i.gate].label : (i.title ?? id);
+                return (
+                  <li key={id} className="flex h-7 items-center gap-2">
+                    <span className="w-9 shrink-0 font-mono text-hint">{id}</span>
+                    <span
+                      className={
+                        off
+                          ? "min-w-0 flex-1 truncate text-hint line-through"
+                          : "min-w-0 flex-1 truncate text-fg"
+                      }
+                    >
+                      {name}
+                    </span>
+                    <span className="w-12 shrink-0 text-right text-hint">
+                      {i.gate ? "gate" : i.person ? "you" : ""}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </Column>
+          <Column title="Outputs">
+            {LANGUAGE_GROUPS.map((g) => (
+              <div key={g} className="flex flex-col gap-1">
+                <div className="flex h-7 items-center gap-2">
+                  <span className="min-w-0 flex-1 font-semibold text-muted">{LANGUAGE_GROUP_LABELS[g]}</span>
+                  <Select
+                    value={languages[g]}
+                    onChange={(e) => setLanguages((l) => ({ ...l, [g]: e.target.value }))}
+                    className="w-32"
+                    aria-label={`${LANGUAGE_GROUP_LABELS[g]} language`}
+                    data-testid={`factory-plan-lang-${g}`}
                   >
-                    {name}
-                  </span>
-                  <span className="w-12 shrink-0 text-right text-hint">
-                    {i.gate ? "gate" : i.person ? "you" : ""}
-                  </span>
-                </li>
+                    {LANGUAGES.map((l) => (
+                      <option key={l.code} value={l.code}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                {PLAN_OUTPUTS.filter((o) => o.group === g).map((o) => (
+                  <label key={o.id} className="flex h-6 cursor-pointer items-center gap-2 pl-2 text-fg">
+                    <input
+                      type="checkbox"
+                      className="accent-accent"
+                      checked={outputs.includes(o.id)}
+                      onChange={(e) => toggle(o.id, e.target.checked)}
+                      data-testid={`factory-plan-output-${o.id}`}
+                    />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+            ))}
+          </Column>
+          <Column title="Gates">
+            {gates.map((g: GateId) => {
+              const o = owners[g] ?? { kind: "me", name: "" };
+              const set = (v: Partial<OwnerDraft>) => setOwners((m) => ({ ...m, [g]: { ...o, ...v } }));
+              return (
+                <div key={g} className="flex h-8 items-center gap-2">
+                  <span className="w-28 shrink-0 truncate text-fg">{GATES[g].label}</span>
+                  <Select
+                    value={o.kind}
+                    onChange={(e) => set({ kind: e.target.value as Owner["kind"] })}
+                    className="w-20 shrink-0"
+                    aria-label={`${GATES[g].label} owner`}
+                    data-testid={`factory-plan-owner-${g}`}
+                  >
+                    <option value="me">Me</option>
+                    <option value="person">A person</option>
+                  </Select>
+                  <Input
+                    value={o.kind === "me" ? "" : o.name}
+                    disabled={o.kind === "me"}
+                    placeholder={o.kind === "me" ? "" : "Name"}
+                    onChange={(e) => set({ name: e.target.value })}
+                    className="min-w-0 flex-1"
+                    aria-label={`${GATES[g].label} person`}
+                  />
+                </div>
               );
             })}
-          </ol>
-        </Column>
-        <Column title="Outputs">
-          {LANGUAGE_GROUPS.map((g) => (
-            <div key={g} className="flex flex-col gap-1">
-              <div className="flex h-7 items-center gap-2">
-                <span className="min-w-0 flex-1 font-semibold text-muted">{LANGUAGE_GROUP_LABELS[g]}</span>
-                <Select
-                  value={languages[g]}
-                  onChange={(e) => setLanguages((l) => ({ ...l, [g]: e.target.value }))}
-                  className="w-32"
-                  aria-label={`${LANGUAGE_GROUP_LABELS[g]} language`}
-                  data-testid={`factory-plan-lang-${g}`}
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              {PLAN_OUTPUTS.filter((o) => o.group === g).map((o) => (
-                <label key={o.id} className="flex h-6 cursor-pointer items-center gap-2 pl-2 text-fg">
-                  <input
-                    type="checkbox"
-                    className="accent-accent"
-                    checked={outputs.includes(o.id)}
-                    onChange={(e) => toggle(o.id, e.target.checked)}
-                    data-testid={`factory-plan-output-${o.id}`}
-                  />
-                  {o.label}
-                </label>
-              ))}
-            </div>
-          ))}
-        </Column>
-        <Column title="Gates">
-          {gates.map((g: GateId) => {
-            const o = owners[g] ?? { kind: "me", name: "" };
-            const set = (v: Partial<OwnerDraft>) => setOwners((m) => ({ ...m, [g]: { ...o, ...v } }));
-            return (
-              <div key={g} className="flex h-8 items-center gap-2">
-                <span className="w-24 shrink-0 truncate text-fg">{GATES[g].label}</span>
-                <Select
-                  value={o.kind}
-                  onChange={(e) => set({ kind: e.target.value as Owner["kind"] })}
-                  className="w-24 shrink-0"
-                  aria-label={`${GATES[g].label} owner`}
-                  data-testid={`factory-plan-owner-${g}`}
-                >
-                  <option value="me">Me</option>
-                  <option value="person">A person</option>
-                </Select>
-                <Input
-                  value={o.kind === "me" ? "" : o.name}
-                  disabled={o.kind === "me"}
-                  placeholder={o.kind === "me" ? "" : "Name"}
-                  onChange={(e) => set({ name: e.target.value })}
-                  className="min-w-0 flex-1"
-                  aria-label={`${GATES[g].label} person`}
-                />
-              </div>
-            );
-          })}
-        </Column>
+          </Column>
+        </div>
       </div>
     </Dialog>
   );

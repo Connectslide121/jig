@@ -76,6 +76,17 @@ const plan = (run: Run) =>
   advance(TRACK, { ...finishStage(run, "S3", report(), T(5)), state: "running" }, T(5)).run;
 
 describe("the Conductor's moves", () => {
+  it("passes the Plan step by itself when the start dialog was the plan, but only after G0", () => {
+    const start = fresh();
+    let r = advance(TRACK, { ...start, plan: { ...start.plan!, confirmed: true } }).run;
+    r = work(work(r));
+    expect(r.stages.find((s) => s.id === "S3")).toBeUndefined();
+    expect(r.stages.find((s) => s.id === "S4b")).toBeUndefined();
+    r = approve(r, "G0");
+    expect(statuses(r)).toMatchObject({ S3: "done@1", S4b: "ready@1" });
+    expect(r.state).not.toBe("planning");
+  });
+
   it("walks a new-idea run through every stage, in parallel where the graph allows", () => {
     let r = advance(TRACK, fresh()).run;
     expect(statuses(r)).toEqual({ S1: "ready@1" });

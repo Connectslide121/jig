@@ -110,7 +110,7 @@ export function InterviewTab({ ctx, params }: AddonTabProps) {
           }}
         />
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @3xl:grid-cols-2 @3xl:overflow-hidden">
+      <div className="grid min-h-0 flex-1 @max-3xl:grid-cols-1 @max-3xl:content-start @max-3xl:overflow-y-auto @3xl:grid-cols-2 @3xl:overflow-hidden">
         <Questions ctx={ctx} run={run} />
         <Brief ctx={ctx} run={run} brief={brief ?? null} onPlan={() => setPlanning(true)} />
       </div>
@@ -159,7 +159,10 @@ function Questions({ ctx, run }: { ctx: AddonUiContext; run: Run }) {
           {answeredLine(run)}
         </span>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-2 @3xl:overflow-y-auto" data-testid="factory-cards">
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-2 @3xl:overflow-y-auto"
+        data-testid="factory-questions"
+      >
         {cards.length ? (
           cards.map((q) => (
             <Card
@@ -229,7 +232,7 @@ function Card({ q, value, onChange }: { q: Question; value: string; onChange: (v
   return (
     <div
       className="flex h-32 shrink-0 flex-col gap-2 rounded-md border border-line bg-surface p-3"
-      data-testid="factory-card"
+      data-testid="factory-question"
     >
       <span className="line-clamp-2 h-8 text-xs text-fg">{q.text}</span>
       <div className="flex items-center gap-1">
@@ -238,7 +241,7 @@ function Card({ q, value, onChange }: { q: Question; value: string; onChange: (v
           onChange={(e) => onChange(e.target.value)}
           className="min-w-0 flex-1"
           aria-label={q.text}
-          data-testid="factory-card-answer"
+          data-testid="factory-question-answer"
         />
         <IconButton
           icon={Check}

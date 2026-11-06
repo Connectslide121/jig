@@ -106,6 +106,49 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
     stages: [st("S1", "interview", "running", 25)],
     outputs: [out("o-brief", "brief", "brief.md", 1, [h("draft", "jig", 5)])],
     gates: [],
+    questions: [
+      ...[
+        ["Who checks guests in today?", "The front desk, on paper"],
+        ["What should a guest see on arrival?", "A QR code at the door"],
+        ["Which product does it belong to?", "Booking suite"],
+        ["Who sees the demo?", "The hotel's operations lead"],
+      ].map(([text, answer], i) => ({
+        id: `q1-${i}`,
+        stage: "S1",
+        round: 1,
+        text: text ?? "",
+        suggestion: answer,
+        askedAt: ago(24),
+        answer,
+        answeredAt: ago(20),
+      })),
+      {
+        id: "q2-0",
+        stage: "S1",
+        round: 2,
+        text: "Can a guest check in before the room is ready?",
+        suggestion: "Yes, and they get a message when it is",
+        options: ["Yes", "No", "Only with a booking"],
+        askedAt: ago(6),
+      },
+      {
+        id: "q2-1",
+        stage: "S1",
+        round: 2,
+        text: "Which ID does the hotel need to see?",
+        suggestion: "A passport or national ID card, photographed",
+        askedAt: ago(6),
+      },
+      {
+        id: "q2-2",
+        stage: "S1",
+        round: 2,
+        text: "Languages for the guest-facing material?",
+        suggestion: "English and Swedish",
+        options: ["English", "Swedish", "Both"],
+        askedAt: ago(6),
+      },
+    ],
   };
 
   const shift: Run = {
@@ -267,6 +310,34 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
 
 /** The Markdown a sample output file holds: its front-matter (status, by) and a short body. */
 export function sampleMarkdown(run: Run, output: Output): string {
+  if (output.kind === "brief" && run.state === "interview")
+    return [
+      "---",
+      `title: ${run.title}`,
+      "status: draft",
+      `level: ${run.level ?? "L1"}`,
+      "levelWhy: The operations lead wants to try the flow on a phone, not just see screens",
+      "languages: docs: en, sales: en, learning: en, marketing: sv",
+      "---",
+      `# ${run.title}`,
+      "",
+      "## Problem",
+      "Guests queue at the front desk to check in, and the desk fills in paper forms. (Sample text.)",
+      "## Value",
+      "Guests walk straight to their room; the desk has time for the guests who need it.",
+      "## Users",
+      "Guests on their phones; the front desk sees who has arrived.",
+      "## Main flow",
+      "Scan the QR code → confirm the booking → photograph the ID → get the room key.",
+      "## Key screens",
+      "Welcome, Your booking, ID check, Room key.",
+      "## Data",
+      "Bookings and rooms from Booking suite.",
+      "## Open points",
+      "- What happens when the room isn't ready",
+      "- Which ID the hotel must see",
+      "",
+    ].join("\n");
   const title = `${run.title} · ${output.kind}`;
   return [
     "---",

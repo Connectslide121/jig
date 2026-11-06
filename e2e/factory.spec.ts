@@ -241,6 +241,80 @@ test("Jig factory: the interview asks two rounds of questions, then writes the b
   expect(r.outputs.map((o) => o.id)).toContain("brief-v1");
 });
 
+test("Jig factory: a new idea, its interview with Good enough, and the Plan step", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const projectId = await shop(page, jigHome);
+
+  // New idea from the top bar: the idea, a new product; Start interview opens the Interview tab.
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-new-idea").click();
+  const dialog = page.getByTestId("factory-new-idea");
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId("factory-idea-text").fill("Shift swap for Shop's staff");
+  await dialog.getByTestId("factory-idea-product").selectOption("new");
+  await dialog.getByTestId("factory-idea-start").click();
+  const tab = page.getByTestId("factory-interview");
+  await expect(tab).toBeVisible();
+
+  // Round 1's three cards, prefilled with their suggestions; answering them all half-writes the brief.
+  const cards = tab.getByTestId("factory-question");
+  await expect(cards).toHaveCount(3, { timeout: 20000 });
+  await expect(cards.first().getByTestId("factory-question-answer")).toHaveValue("Staff on their phones");
+  const first = await cards.first().boundingBox();
+  await expect(tab.getByTestId("factory-answer")).toHaveText("Answer all suggested");
+  await cards.nth(1).getByTestId("factory-question-answer").fill("Nobody has to phone around");
+  await expect(tab.getByTestId("factory-answer")).toHaveText("Send answers");
+  await tab.getByTestId("factory-answer").click();
+  await expect(cards).toHaveCount(2, { timeout: 20000 });
+  // A new round replaces the cards in place.
+  expect((await cards.first().boundingBox())?.y).toBe(first?.y);
+  await expect(tab.getByTestId("factory-rounds")).toHaveText("Round 1 answered · 3 questions");
+  await expect(tab.getByTestId("factory-coverage")).toContainText("4/9");
+
+  // Good enough: the brief is written from what there is, its gaps listed.
+  await tab.getByTestId("factory-enough").click();
+  await expect(tab.getByTestId("factory-coverage")).toContainText("8/9", { timeout: 20000 });
+  await expect(tab.getByTestId("factory-brief-gaps")).toContainText("What is out of scope");
+  await expect(tab.getByTestId("factory-brief-languages")).toContainText("Sales Swedish");
+
+  // The scout runs, G0 waits: Looks right approves it and opens the Plan step.
+  await expect(tab.getByTestId("factory-looks-right")).toBeEnabled({ timeout: 20000 });
+  await tab.getByTestId("factory-looks-right").click();
+  const plan = page.getByTestId("factory-plan");
+  await expect(plan).toBeVisible();
+  await expect(plan.getByTestId("factory-plan-lang-sales")).toHaveValue("sv");
+  await expect(plan.getByTestId("factory-plan-product")).toHaveValue("new");
+  if (process.env.JIG_UI_SHOTS) {
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: join(SHOTS_DIR, "factory-plan.png") });
+  }
+  await plan.getByTestId("factory-plan-output-stories").uncheck();
+  await plan.getByTestId("factory-plan-level").selectOption("L2");
+  await plan.getByTestId("factory-plan-start").click();
+
+  // The run goes on from the plan: a new product starts with its three directions.
+  await expect(page.getByTestId("factory-run")).toBeVisible();
+  const runs = (await factory(page, "runs", { projectId })) as { value: RunLike[] };
+  const id = runs.value[0]!.id;
+  await expect
+    .poll(async () => (await runOf(page, projectId, id)).stages.find((s) => s.id === "S4b")?.status, {
+      timeout: 20000,
+    })
+    .toMatch(/running|done/);
+  const r = (await runOf(page, projectId, id)) as RunLike & {
+    level?: string;
+    languages: Record<string, string>;
+    plan?: { outputs: string[] };
+  };
+  expect(r.level).toBe("L2");
+  expect(r.languages.sales).toBe("sv");
+  expect(r.plan?.outputs).not.toContain("stories");
+  expect(r.stages.find((s) => s.id === "S3")?.status).toBe("done");
+});
+
 test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({
   page,
   app,
@@ -302,7 +376,25 @@ test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS
         }
       }
       await tab("factory-menu-inbox", "factory-inbox", `inbox-${label}`);
+      // A run in its interview opens its Interview tab.
+      await tab("factory-menu-floor", "factory-floor", `floor-${label}`);
+      await main.locator("[data-testid=factory-card][data-run=fx-sample-1]:visible").click();
+      await expect(main.getByTestId("factory-interview")).toBeVisible();
+      await expect(main.getByTestId("factory-question")).toHaveCount(3);
+      await page.waitForTimeout(600);
+      await main.screenshot({
+        path: join(SHOTS_DIR, `factory-interview-${label}-${theme}.png`),
+        animations: "disabled",
+      });
     }
+    await size(1600, 900);
+    await page.getByTestId("factory-topbar").click();
+    await page.getByTestId("factory-menu-new-idea").click();
+    await expect(page.getByTestId("factory-new-idea")).toBeVisible();
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: join(SHOTS_DIR, `factory-new-idea-${theme}.png`) });
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("factory-new-idea")).toBeHidden();
   }
 });
 

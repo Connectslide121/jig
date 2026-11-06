@@ -447,6 +447,8 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
       productExists:
         a.productExists ??
         (typeof brief?.data.productExists === "boolean" ? brief.data.productExists : false),
+      // The start dialog is the plan (D-460); a new idea plans after its brief.
+      ...(brief ? { confirmed: true } : {}),
     };
     let r: Run = {
       id,
@@ -494,17 +496,6 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
         report: { summary: "Brief given", outputs: ["brief.md"], notes: [] },
       });
       r = addOutput(r, { id: "brief-v1", kind: "brief", stage: "S1", path: "brief.md", version: 1 }, at);
-      // The start dialog was the plan (D-460).
-      r = addStage(r, {
-        id: "S3",
-        recipe: "plan",
-        status: "done",
-        attempt: 0,
-        version: 1,
-        startedAt: at,
-        endedAt: at,
-        report: { summary: "Planned in the start dialog", outputs: [], notes: [] },
-      });
       r = {
         ...r,
         brief: {
@@ -666,6 +657,7 @@ export async function plan(a: PlanArgs, api: AddonHostApi): Promise<Run> {
         build: a.build ?? r.plan?.build ?? false,
         permissionMode: a.permissionMode === "bypassPermissions" ? "bypassPermissions" : "acceptEdits",
         productExists: a.productExists ?? r.plan?.productExists ?? false,
+        confirmed: true,
       },
     };
     r = finishStage(

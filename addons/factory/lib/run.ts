@@ -61,6 +61,8 @@ export interface RunPlan {
   permissionMode: "acceptEdits" | "bypassPermissions";
   /** An existing product (its kit is extracted) or a new one (three directions). */
   productExists: boolean;
+  /** Confirmed by a person: the start dialog, or the Plan step (D-460). The Plan step then passes by itself. */
+  confirmed?: boolean;
 }
 
 export interface Question {
