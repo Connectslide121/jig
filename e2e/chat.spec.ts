@@ -200,8 +200,11 @@ test("chat: the Send menu parks a message; parked ones wait for you, even across
     .getByTestId("parked-remove")
     .click();
   await expect(page.getByTestId("parked-item")).toHaveCount(1);
-  // The turn ends: the queued one is sent, the parked one stays.
-  await hostCall(page, "fake.release", {});
+  // The turn ends: the queued one is sent, the parked one stays. Under load the fake turn may not be
+  // held yet (it streams "Thinking" first), and a release then lets nothing go: retry until it does.
+  await expect
+    .poll(async () => ((await hostCall(page, "fake.release", {})) as { value: number }).value)
+    .toBeGreaterThan(0);
   await expect(page.getByTestId("user-message-text").last()).toHaveText("second thought");
   await expect(page.getByTestId("queue-item")).toHaveCount(0);
   await expect(page.getByTestId("parked-item")).toHaveText(/answer this first/);
