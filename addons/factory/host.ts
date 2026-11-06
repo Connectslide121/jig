@@ -288,7 +288,9 @@ async function commitFolder(api: AddonHostApi, r: Run, message: string): Promise
   if (!dir || r.worktree === undefined) return;
   if (!(await git(api, dir, ["rev-parse", "--verify", "-q", "HEAD"])).ok) return;
   await git(api, dir, ["add", "--", folderOf(r.slug)]);
-  await git(api, dir, ["commit", "-q", "-m", message, "--", folderOf(r.slug)]);
+  const done = await git(api, dir, ["commit", "-q", "-m", message, "--", folderOf(r.slug)]);
+  if (!done.ok && !/nothing (added )?to commit|no changes added/i.test(done.out))
+    await log(api, r, { kind: "error", text: `Couldn't commit the run's files: ${done.out.slice(0, 500)}` });
 }
 
 /** The repository a project's run works in: its focus repository, itself, or its first one. */
@@ -968,9 +970,12 @@ export async function stop(a: RunArgs, api: AddonHostApi): Promise<Run> {
   });
 }
 
-/** Your answers to a stage's question cards: recorded, and sent to its chat as one message. */
+/**
+ * Your answers to a stage's question cards, and your `reply` to the question it asked with
+ * `factory_ask`: recorded, and sent to its chat as one message.
+ */
 export async function answer(
-  a: RunArgs & { stageId: string; answers: Array<{ id: string; answer: string }> },
+  a: RunArgs & { stageId: string; answers?: Array<{ id: string; answer: string }>; reply?: string },
   api: AddonHostApi,
 ): Promise<Run> {
   const r = await serial(async () => {
@@ -978,7 +983,8 @@ export async function answer(
     const s = r.stages.find((x) => x.id === a.stageId);
     if (!s?.chatId) throw new Error(`Stage ${a.stageId} has no chat`);
     const at = new Date().toISOString();
-    const given = new Map(a.answers.map((x) => [x.id, x.answer.trim()]));
+    const given = new Map((a.answers ?? []).map((x) => [x.id, String(x.answer ?? "").trim()]));
+    const reply = s.question ? a.reply?.trim() : undefined;
     const answered: Question[] = [];
     const questions = (r.questions ?? []).map((q) => {
       const v = given.get(q.id);
@@ -987,15 +993,12 @@ export async function answer(
       answered.push(next);
       return next;
     });
-    if (!answered.length) throw new Error("No answers");
+    if (!answered.length && !reply) throw new Error("No answers");
     r = { ...r, questions, brief: coverageOf(r, questions) };
-    const round = Math.max(...answered.map((q) => q.round));
-    const text = answersText(
-      r,
-      s,
-      round,
-      answered.map((q) => ({ text: q.text, answer: q.answer ?? "" })),
-    );
+    const round = answered.length ? Math.max(...answered.map((q) => q.round)) : 0;
+    const list = answered.map((q) => ({ text: q.text, answer: q.answer ?? "" }));
+    if (reply && s.question) list.push({ text: s.question, answer: reply });
+    const text = answersText(r, s, round, list);
     const sent = await api.chats.send({ sessionId: s.chatId, text, from: "Jig factory: your answers" });
     if (s.status === "needs-you") r = resumeStage(r, s.id);
     r = patchStage(r, s.id, { sentAt: sent.sentAt, nudgedAt: undefined, question: undefined });

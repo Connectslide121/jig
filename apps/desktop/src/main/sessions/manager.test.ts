@@ -82,6 +82,17 @@ describe("SessionManager", () => {
     expect((await manager().list()).map((meta) => meta.id)).toEqual([draft.id]);
     await expect(readFile(join(dir, "legacy-empty.json"))).resolves.toBeTruthy();
   });
+  it("keeps a new chat whose first message comes from Jig or an add-on", async () => {
+    const m = manager();
+    const draft = await create(m);
+    await m.notify(draft.id, "Write the scout's notes", "Jig factory: Scout");
+    await until(async () => (await metaOf(m, draft.id)).turns === 1);
+    await m.shutdown();
+    const saved = JSON.parse(await readFile(join(dir, `${draft.id}.json`), "utf8"));
+    expect(saved.meta.draft).toBe(false);
+    expect((await manager().list()).map((meta) => meta.id)).toEqual([draft.id]);
+  });
+
   it("runs a turn: user item, streamed reply, result, title and persisted cache", async () => {
     const m = manager();
     const session = await create(m);

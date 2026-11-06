@@ -815,6 +815,8 @@ export class SessionManager {
     const live = await this.live(id).catch(() => undefined);
     if (!live) return;
     if (live.starting) await live.starting;
+    // A new chat an add-on starts with its own message (Jig factory's stage chats) is kept from then on.
+    if (live.state.meta.draft) this.setMeta(live, { draft: false });
     if (["working", "needs_you", "starting"].includes(live.state.meta.status) && live.engine) {
       const item: ChatItem = {
         kind: "user",

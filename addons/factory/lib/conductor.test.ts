@@ -231,6 +231,10 @@ describe("after a stage's turn", () => {
 
   it("tells a chat cut off by a restart to carry on, once", () => {
     expect(afterTurn(stage(), chat({ cutOffAt: T(1), lastAnswerAt: undefined }))).toBe("resume");
+    // Cut off by a restart, its turn ended with an error: still told to carry on, not retried.
+    expect(afterTurn(stage(), chat({ status: "error", cutOffAt: T(1), lastAnswerAt: undefined }))).toBe(
+      "resume",
+    );
     expect(afterTurn(stage({ sentAt: T(2) }), chat(), { catchingUp: true })).toBe("resume");
     expect(afterTurn(stage({ sentAt: T(0), resumedAt: T(2) }), chat(), { catchingUp: true })).toBe("ask");
   });

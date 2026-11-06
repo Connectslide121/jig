@@ -1,7 +1,9 @@
-import { mkdir } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, launchJig, test } from "./fixtures";
 import { SHOTS_DIR, shootView } from "./shots";
 
 /** A project ("shop") made active, as Jig factory works on the active project. */
@@ -77,6 +79,168 @@ test("Jig factory: removing the sample runs empties the views", async ({ page, j
   expect(((await factory(page, "runs", { projectId })) as { value: unknown[] }).value).toHaveLength(0);
 });
 
+interface RunLike {
+  id: string;
+  state: string;
+  slug: string;
+  worktree?: string;
+  stages: Array<{ id: string; status: string; version?: number; chatId?: string; question?: string }>;
+  gates: Array<{ id: string; status: string }>;
+  outputs: Array<{ id: string; path: string; status: string }>;
+  questions?: Array<{ id: string; stage: string; answer?: string }>;
+}
+
+/** A Git repository with one commit, so runs get a worktree on their own branch. */
+async function gitShop(page: Page, jigHome: string): Promise<string> {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  const env = {
+    ...process.env,
+    GIT_AUTHOR_NAME: "Test",
+    GIT_AUTHOR_EMAIL: "t@example.com",
+    GIT_COMMITTER_NAME: "Test",
+    GIT_COMMITTER_EMAIL: "t@example.com",
+  };
+  execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
+  // The run's commits need an author, as on a real machine.
+  execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+  execFileSync("git", ["config", "user.email", "t@example.com"], { cwd: dir });
+  await writeFile(join(dir, "README.md"), "# Shop\n");
+  execFileSync("git", ["add", "."], { cwd: dir });
+  execFileSync("git", ["commit", "-q", "-m", "first"], { cwd: dir, env });
+  return shop(page, jigHome);
+}
+
+const runOf = async (page: Page, projectId: string, runId: string) =>
+  ((await factory(page, "run", { projectId, runId })) as { value: RunLike }).value;
+
+test("Jig factory: a golden brief's run goes through every stage and gate with the fake roles", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const projectId = await gitShop(page, jigHome);
+  const started = (await factory(page, "startRun", { projectId, brief: "shift-swap" })) as { value: RunLike };
+  const id = started.value.id;
+  expect(started.value.worktree).toBeTruthy();
+  // Approve every gate as it opens, until the run is done.
+  await expect
+    .poll(
+      async () => {
+        const r = await runOf(page, projectId, id);
+        for (const g of r.gates.filter((g) => g.status === "waiting"))
+          await factory(page, "decide", { projectId, runId: id, gateId: g.id, kind: "approve" });
+        return r.state;
+      },
+      { timeout: 75_000, intervals: [300] },
+    )
+    .toBe("done");
+  const r = await runOf(page, projectId, id);
+  // The critic failed v1, so the demo was built twice; every pack stage ran.
+  expect(r.stages.find((s) => s.id === "S5")?.version).toBe(2);
+  expect(r.outputs.find((o) => o.id === "demo-v1")?.status).toBe("superseded");
+  expect(r.stages.filter((s) => s.id.startsWith("S7:")).every((s) => s.status === "done")).toBe(true);
+  const folder = join(r.worktree!, "docs", "factory", r.slug);
+  expect(await readFile(join(folder, "demo", "v2", "index.html"), "utf8")).toContain(
+    "Prototype · sample data",
+  );
+  expect(await readFile(join(folder, "spec.md"), "utf8")).toMatch(/status: approved/);
+  // Each stage's files are committed on the run's branch; the repository's checkout is untouched.
+  const branch = execFileSync("git", ["-C", r.worktree!, "branch", "--show-current"]).toString().trim();
+  expect(branch).toBe("factory/shift-swap");
+  expect(execFileSync("git", ["-C", r.worktree!, "status", "--porcelain"]).toString()).toBe("");
+  expect(
+    execFileSync("git", ["-C", join(jigHome, "shop"), "branch", "--show-current"])
+      .toString()
+      .trim(),
+  ).toBe("main");
+});
+
+test("Jig factory: a stage Jig closed in the middle of carries on after the restart", async ({
+  app,
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const projectId = await shop(page, jigHome);
+  const brief =
+    (await readFile(
+      fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
+      "utf8",
+    )) + "\n[hold scout]\n";
+  const started = (await factory(page, "startRun", { projectId, briefText: brief })) as { value: RunLike };
+  const id = started.value.id;
+  const chatId = started.value.stages.find((s) => s.id === "S2")?.chatId;
+  expect(chatId).toBeTruthy();
+  await expect
+    .poll(
+      async () =>
+        (
+          (await hostCall(page, "addons.call", {
+            id: "factory",
+            method: "inspect",
+            args: { projectId, runId: id },
+          })) as { value: Array<{ kind: string }> }
+        ).value.length,
+      { timeout: 20000 },
+    )
+    .toBeGreaterThan(1);
+  await page.waitForTimeout(1000);
+  await app.close();
+  const again = await launchJig(jigHome);
+  try {
+    const page2 = await again.firstWindow();
+    await page2.waitForSelector("[data-testid=app-root] [data-testid=main-area]");
+    await expect
+      .poll(async () => (await runOf(page2, projectId, id)).gates.map((g) => `${g.id}:${g.status}`).join(), {
+        timeout: 30000,
+        intervals: [500],
+      })
+      .toBe("G0:waiting");
+    const r = await runOf(page2, projectId, id);
+    expect(r.stages.find((s) => s.id === "S2")).toMatchObject({ status: "done", chatId });
+  } finally {
+    await again.close();
+  }
+});
+
+test("Jig factory: the interview asks two rounds of questions, then writes the brief", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(60_000);
+  const projectId = await shop(page, jigHome);
+  const started = (await factory(page, "startRun", { projectId, text: "Loyalty points for Shop" })) as {
+    value: RunLike;
+  };
+  const id = started.value.id;
+  expect(started.value.state).toBe("interview");
+  for (const round of [3, 5]) {
+    await expect
+      .poll(async () => (await runOf(page, projectId, id)).questions?.length ?? 0, { timeout: 20000 })
+      .toBe(round);
+    await expect
+      .poll(async () => (await runOf(page, projectId, id)).stages[0]?.status, { timeout: 20000 })
+      .toBe("needs-you");
+    const open = ((await runOf(page, projectId, id)).questions ?? []).filter((q) => !q.answer);
+    await factory(page, "answer", {
+      projectId,
+      runId: id,
+      stageId: "S1",
+      answers: open.map((q) => ({ id: q.id, answer: "Yes" })),
+    });
+  }
+  await expect
+    .poll(async () => (await runOf(page, projectId, id)).stages.find((s) => s.id === "S2")?.status, {
+      timeout: 20000,
+    })
+    .toMatch(/running|done/);
+  const r = await runOf(page, projectId, id);
+  expect(r.stages[0]?.status).toBe("done");
+  expect(r.state).not.toBe("interview");
+  expect(r.outputs.map((o) => o.id)).toContain("brief-v1");
+});
+
 test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({
   page,
   app,
@@ -128,4 +292,22 @@ test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS
       await tab("factory-menu-inbox", "factory-inbox", `inbox-${label}`);
     }
   }
+});
+
+test("Jig factory: a stage that asks waits for your reply, then carries on", async ({ page, jigHome }) => {
+  test.setTimeout(60_000);
+  const projectId = await shop(page, jigHome);
+  const brief =
+    (await readFile(
+      fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
+      "utf8",
+    )) + "\n[ask scout]\n";
+  const started = (await factory(page, "startRun", { projectId, briefText: brief })) as { value: RunLike };
+  const id = started.value.id;
+  const stage = async () => (await runOf(page, projectId, id)).stages.find((s) => s.id === "S2");
+  await expect.poll(async () => (await stage())?.status, { timeout: 20000 }).toBe("needs-you");
+  expect(await stage()).toMatchObject({ question: "Which shift types should scout cover?" });
+  await factory(page, "answer", { projectId, runId: id, stageId: "S2", reply: "Day and night" });
+  await expect.poll(async () => (await stage())?.status, { timeout: 20000 }).toBe("done");
+  expect((await stage())?.question).toBeUndefined();
 });

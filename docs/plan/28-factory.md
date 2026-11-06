@@ -110,10 +110,11 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 2: the Conductor (`host.ts`), recipes, tools and host tests are
-  in; next the fake engine's factory roles, the Run tab live (gate and stage sheets, Inspector,
-  Start from a brief…), the e2e run and the docs. Built-in add-ons read core settings with
-  `api.config()` (D-450).
+- **Half done / next step:** session 2: the Conductor (`host.ts`), recipes, tools, host tests, the
+  fake engine's factory roles (`engine/fakeFactory.ts`, markers `[fail|noreport|hold|ask <recipe>]`)
+  and e2e runs (golden brief end to end, restart mid-stage, interview, ask/reply) are in and pass.
+  Next: the Run tab live (gate and stage sheets, Inspector, Start from a brief…), its e2e
+  click-through and the docs. Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -203,7 +204,7 @@ by default (`defaultEnabled: false`).
       ([architecture.md](28-factory/architecture.md) → The stage runner).
 - [x] Recipes loader (`lib/recipes.ts`): built-in `addons/factory/recipes/*.md`, overrides in
       `<repo>/.jig/factory/recipes/`, validation, hot reload; tracks as data (`tracks/*.json`).
-- [ ] Jig's tools for stage chats (`claude.tool` slot): `factory_brief`, `factory_report`,
+- [x] Jig's tools for stage chats (`claude.tool` slot): `factory_brief`, `factory_report`,
       `factory_ask`, `factory_questions` (interview), and `claude.context` telling a stage chat its
       role, run and what to report. All engine-neutral (Claude and ChatGPT chats); fake-engine rows
       for each. A recipe's provider and model come from `addons/shared/providers.ts` (D-412).

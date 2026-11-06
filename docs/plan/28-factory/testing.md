@@ -26,10 +26,10 @@ stage chat plays its role without AI. A stage prompt carries a marker line
 | `interview` | calls `factory_questions` with 2 rounds of fixed cards, then writes `brief.md` from a fixture |
 | `scout` | writes `scout.md` (fixture), suggests L1 |
 | `directions` | writes 3 direction folders (fixture images) |
-| `demo-l1` | copies `e2e/fixtures/factory/demo/` into `demo/v<N>/` |
+| `demo-l1` | copies `addons/factory/fixtures/demo/index.html` into `demo/v<N>/` with a `CHANGES.md` |
 | `critique` | fails v1 with a fix list, passes v2 (tests the loop) |
 | any pack recipe | writes its output file with front-matter `status: draft` |
-| marker `[fail]` in the brief | the stage fails once (tests the retry) |
+| marker `[fail <recipe>]` in the brief | that stage fails once (tests the retry); `[noreport <recipe>]` skips its report once (the nudge), `[hold <recipe>]` holds it until released (a restart), `[ask <recipe>]` asks you once with `factory_ask` |
 
 Every `factory_*` tool also gets a direct fake trigger, as other tools do.
 

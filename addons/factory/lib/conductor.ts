@@ -266,11 +266,12 @@ export function afterTurn(
   const nowMs = input.now ?? Date.now();
   const sent = lastSent(stage);
   if (chat.limit) return "wait";
+  // Jig closed in the middle of its turn (D-394): the chat may show the turn's error, but it carries on.
+  const cutOff = !!chat.cutOffAt && chat.cutOffAt >= sent;
+  if (cutOff && chat.status !== "working" && !stage.resumedAt && !stage.report) return "resume";
   if (chat.status === "error") return stage.report ? (stage.report.failed ? "fail" : "finish") : "error";
   if (chat.status !== "idle") return "wait";
   const answered = !!chat.lastAnswerAt && chat.lastAnswerAt >= sent;
-  const cutOff = !!chat.cutOffAt && chat.cutOffAt >= sent;
-  if (cutOff && !stage.resumedAt && !stage.report) return "resume";
   if (!answered) {
     // Idle without an answer since the last message: after a restart, Jig closed before it got to it.
     if (input.catchingUp && !chat.background && !chat.queued && !stage.report)

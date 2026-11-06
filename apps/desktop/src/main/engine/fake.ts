@@ -23,6 +23,7 @@ import { savedThread, threadMessages } from "./codexHistory";
 import { ASK_USER_TOOL, EXIT_PLAN_TOOL, PLAN_MODE_PROMPT, standInTools, withStandIns } from "./codexTools";
 import { runFakeBuilder } from "./fakeBuilder";
 import { FakeCloud } from "./fakeCloud";
+import { FACTORY_MESSAGE, runFakeFactory } from "./fakeFactory";
 import { FakeMcpClient } from "./fakeMcp";
 import { contextFrom, patchText } from "./normalize";
 import type { ToolCallRequest, ToolCallResult } from "./toolCall";
@@ -399,7 +400,36 @@ export class FakeEngine implements Engine {
         }
         if (handoffGoal)
           await stream(`${msg}:text:handoff`, `Picked up from the handoff: “${handoffGoal}”.`, signal);
-        if (toolHandlers?.jig_meeting_read && text.startsWith("Question about meeting ")) {
+        if (toolHandlers?.addon_factory_report && FACTORY_MESSAGE.test(text)) {
+          // A Jig factory stage chat plays its recipe (D-426): see fakeFactory.ts.
+          let line = 0;
+          await runFakeFactory(text, {
+            call: async (tool, input) => {
+              const toolId = `tool-${randomUUID()}`;
+              onEvent({ type: "tool_use", id: toolId, name: `mcp__jig__${tool}`, input });
+              const output =
+                mcpClient && this.provider === "codex"
+                  ? await mcpClient
+                      .call("jig", tool, input)
+                      .then((o) => (o.isError ? `Error: ${o.text}` : o.text))
+                      .catch((e: Error) => `Error: ${e.message}`)
+                  : outputText(
+                      await (toolHandlers[tool]?.(input) ?? Promise.resolve(`Error: no tool ${tool}`)).catch(
+                        (e: Error) => `Error: ${e.message}`,
+                      ),
+                    );
+              onEvent({
+                type: "tool_result",
+                toolUseId: toolId,
+                output,
+                isError: output.startsWith("Error"),
+              });
+              return output;
+            },
+            say: (said) => stream(`${msg}:text:factory-${line++}`, said, signal),
+            hold: () => holdUntilReleased(text, signal),
+          });
+        } else if (toolHandlers?.jig_meeting_read && text.startsWith("Question about meeting ")) {
           const match = /\(([a-f\d-]{36})\), captured through ([^\n]+)\.\n/.exec(text);
           if (!match) throw new Error("Missing meeting snapshot");
           const id = match[1]!;

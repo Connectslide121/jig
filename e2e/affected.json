@@ -313,7 +313,14 @@
     { "files": ["addons/shared/**"], "specs": ["workflows.spec.ts", "tasks.spec.ts"] },
     { "files": ["addons/tests/**"], "specs": ["tests-addon.spec.ts"] },
     { "files": ["addons/chat-time/**", "e2e/chatTimeSeed.ts"], "specs": ["chat-time.spec.ts"] },
-    { "files": ["addons/factory/**"], "specs": ["factory.spec.ts"] },
+    {
+      "files": [
+        "addons/factory/**",
+        "apps/desktop/src/main/engine/fakeFactory.ts",
+        "apps/desktop/src/main/engine/fake.ts"
+      ],
+      "specs": ["factory.spec.ts"]
+    },
     {
       "files": [
         "apps/desktop/src/main/lsp/**",
