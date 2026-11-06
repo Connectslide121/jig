@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { create } from "zustand";
 import type { ClaudeExportSummary } from "../../../shared/knowledge";
 import { call, errorMessage } from "../../lib/host";
-import { Button, cn, Dialog, Select, Spinner } from "../../ui";
+import { Button, cn, Dialog, Empty, Select, Spinner } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -228,13 +228,16 @@ function Body() {
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-              <FileArchive className="size-7 text-hint" />
-              <div className="text-sm">Drop the zip here</div>
-              <Button size="sm" onClick={() => void open()} data-testid="claude-import-browse">
-                Browse…
-              </Button>
-            </div>
+            <Empty
+              icon={FileArchive}
+              title="Drop the zip here"
+              className="h-full"
+              actions={
+                <Button size="sm" onClick={() => void open()} data-testid="claude-import-browse">
+                  Browse…
+                </Button>
+              }
+            />
           )}
         </div>
         <div className="flex gap-2 text-xs text-muted">

@@ -479,20 +479,26 @@ function BoardBody({
   // Signed out or expired, or nothing to show: the board says why, as it did before the cache.
   if (view.error && (view.signIn || !data))
     return (
-      <Empty icon={TriangleAlert} title="Couldn't load this board" className="h-full">
-        <p className="max-w-sm text-xs whitespace-pre-wrap text-muted" data-testid="board-error">
+      <Empty
+        icon={TriangleAlert}
+        title="Couldn't load this board"
+        className="h-full"
+        actions={
+          <Button size="sm" icon={RefreshCw} disabled={refreshing} onClick={() => void load()}>
+            Try again
+          </Button>
+        }
+      >
+        <p className="whitespace-pre-wrap" data-testid="board-error">
           {view.error}
         </p>
-        <Button size="sm" icon={RefreshCw} disabled={refreshing} onClick={() => void load()}>
-          Try again
-        </Button>
       </Empty>
     );
   if (!data) return <Spinner center className="h-full" />;
   if (data.columns.length === 0)
     return (
       <Empty icon={Kanban} title="This board has no columns" className="h-full">
-        <p className="text-xs text-muted">Azure DevOps didn't return any columns for it.</p>
+        Azure DevOps didn't return any columns for it.
       </Empty>
     );
   return (
@@ -565,7 +571,7 @@ function InOtherTenant({ ctx, board, tenant }: { ctx: AddonUiContext; board: Boa
   if (!known)
     return (
       <Empty icon={Building2} title={`In tenant ${label}`} className="h-full">
-        <p className="max-w-xs text-xs text-muted" data-testid="board-elsewhere">
+        <p data-testid="board-elsewhere">
           That tenant was removed from Jig. Add it again with the tenant avatar at the top right, or remove
           this board.
         </p>
@@ -671,7 +677,7 @@ function AddBoards({
   if (failure)
     list = (
       <Empty icon={TriangleAlert} title="Couldn't reach Azure DevOps" className="h-full">
-        <p className="max-w-sm text-xs whitespace-pre-wrap text-muted" data-testid="boards-find-error">
+        <p className="whitespace-pre-wrap" data-testid="boards-find-error">
           {failure}
         </p>
       </Empty>
@@ -1065,13 +1071,17 @@ export function BoardsView({ ctx }: AddonComponentProps) {
             me={me}
           />
         ) : (
-          <Empty icon={Kanban} title="No boards yet" className="h-full">
-            <p className="max-w-xs text-xs text-muted">
-              Pick the Azure DevOps boards this project works on; each gets a tab here.
-            </p>
-            <Button size="sm" icon={Plus} data-testid="boards-add-first" onClick={() => setAdding(true)}>
-              Add boards
-            </Button>
+          <Empty
+            icon={Kanban}
+            title="No boards yet"
+            className="h-full"
+            actions={
+              <Button size="sm" icon={Plus} data-testid="boards-add-first" onClick={() => setAdding(true)}>
+                Add boards
+              </Button>
+            }
+          >
+            Pick the Azure DevOps boards this project works on; each gets a tab here.
           </Empty>
         )}
       </div>

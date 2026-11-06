@@ -415,19 +415,23 @@ function Room() {
           {starting || pending === "join" ? (
             <Spinner center />
           ) : (
-            <Empty icon={Video} title="No call">
-              <p>Join a meeting or call someone from the Meetings lobby.</p>
-              <Button
-                className="mt-3"
-                onClick={() =>
-                  void run(async () => {
-                    await call("meetings.open");
-                    await call("meetings.callIdle");
-                  })
-                }
-              >
-                Open Meetings
-              </Button>
+            <Empty
+              icon={Video}
+              title="No call"
+              actions={
+                <Button
+                  onClick={() =>
+                    void run(async () => {
+                      await call("meetings.open");
+                      await call("meetings.callIdle");
+                    })
+                  }
+                >
+                  Open Meetings
+                </Button>
+              }
+            >
+              Join a meeting or call someone from the Meetings lobby.
             </Empty>
           )}
         </main>

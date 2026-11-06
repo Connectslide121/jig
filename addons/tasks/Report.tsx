@@ -110,7 +110,7 @@ export function RunReportTab({ ctx, params }: AddonTabProps) {
   if (runs.error || saved.error)
     body = (
       <Empty icon={FileText} title="The report couldn't be read" className="flex-1">
-        <div className="text-xs text-muted">{runs.error ?? saved.error}</div>
+        {runs.error ?? saved.error}
       </Empty>
     );
   else if (!loaded || busy) body = <Spinner center />;
@@ -118,33 +118,41 @@ export function RunReportTab({ ctx, params }: AddonTabProps) {
     body = <Empty icon={FileText} title="This run is no longer in the history" className="flex-1" />;
   else if (error)
     body = (
-      <Empty icon={FileText} title="The report couldn't be made" className="flex-1">
-        <div className="max-w-md text-xs text-muted" data-testid="run-report-error">
-          {error}
-        </div>
-        <Button size="sm" icon={RefreshCw} onClick={() => void makeReport(ctx, projectId, run)}>
-          Retry
-        </Button>
+      <Empty
+        icon={FileText}
+        title="The report couldn't be made"
+        className="flex-1"
+        actions={
+          <Button size="sm" icon={RefreshCw} onClick={() => void makeReport(ctx, projectId, run)}>
+            Retry
+          </Button>
+        }
+      >
+        <p data-testid="run-report-error">{error}</p>
       </Empty>
     );
   else if (!report)
     body = (
-      <Empty icon={FileText} title="No report for this run yet" className="flex-1">
-        <div className="max-w-sm text-xs text-muted">
-          An AI reads the run's task reports and writes a summary, what to be aware of, what needs you, and
-          its follow-ups merged into proposals you can queue.
-        </div>
-        <span title={canReport(run) ? undefined : REPORT_OPEN_RUN}>
-          <Button
-            size="sm"
-            icon={Sparkles}
-            disabled={!canReport(run)}
-            onClick={() => void makeReport(ctx, projectId, run)}
-            data-testid="run-report-make"
-          >
-            Make the report
-          </Button>
-        </span>
+      <Empty
+        icon={FileText}
+        title="No report for this run yet"
+        className="flex-1"
+        actions={
+          <span title={canReport(run) ? undefined : REPORT_OPEN_RUN}>
+            <Button
+              size="sm"
+              icon={Sparkles}
+              disabled={!canReport(run)}
+              onClick={() => void makeReport(ctx, projectId, run)}
+              data-testid="run-report-make"
+            >
+              Make the report
+            </Button>
+          </span>
+        }
+      >
+        An AI reads the run's task reports and writes a summary, what to be aware of, what needs you, and its
+        follow-ups merged into proposals you can queue.
       </Empty>
     );
   else body = <ReportBody ctx={ctx} projectId={projectId} run={run} report={report} />;

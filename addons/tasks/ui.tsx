@@ -508,7 +508,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
   if (!project)
     return (
       <Empty icon={ListTodo} title="No projects yet" className="h-full">
-        <div className="max-w-sm text-xs text-muted">Add a project; each project has its own task queue.</div>
+        Add a project; each project has its own task queue.
       </Empty>
     );
 
@@ -867,20 +867,24 @@ function QueuePanel({
         </div>
       </div>
       {queue.tasks.length === 0 ? (
-        <Empty icon={ListTodo} title="No tasks queued" className="flex-1">
-          <div className="max-w-sm text-xs text-muted">
-            Add prompts and press Start: Claude does them one after another, each in its own chat or
-            continuing the one before, and reports how each went here. Claude can queue tasks too (ask it in a
-            chat, e.g. "queue a task for each spec in docs/"). Every run is kept in History.
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" icon={Plus} onClick={() => setAdding(true)}>
-              Add tasks
-            </Button>
-            <Button size="sm" variant="ghost" icon={Pause} onClick={() => setIdea(true)}>
-              Add an idea
-            </Button>
-          </div>
+        <Empty
+          icon={ListTodo}
+          title="No tasks queued"
+          className="flex-1"
+          actions={
+            <>
+              <Button size="sm" icon={Plus} onClick={() => setAdding(true)}>
+                Add tasks
+              </Button>
+              <Button size="sm" variant="ghost" icon={Pause} onClick={() => setIdea(true)}>
+                Add an idea
+              </Button>
+            </>
+          }
+        >
+          Add prompts and press Start: Claude does them one after another, each in its own chat or continuing
+          the one before, and reports how each went here. Claude can queue tasks too (ask it in a chat, e.g.
+          "queue a task for each spec in docs/"). Every run is kept in History.
         </Empty>
       ) : (
         <TaskTable
@@ -1385,10 +1389,8 @@ function HistoryPanel({
   if (!runs.length)
     return (
       <Empty icon={History} title="No runs yet" className="flex-1">
-        <div className="max-w-sm text-xs text-muted">
-          Every time this project's queue runs, its tasks and reports are kept here, so you can come back to
-          the results later.
-        </div>
+        Every time this project's queue runs, its tasks and reports are kept here, so you can come back to the
+        results later.
       </Empty>
     );
   return (
@@ -1539,11 +1541,16 @@ function RunPanel({
   const run = runs.find((r) => r.id === runId);
   if (!run)
     return (
-      <Empty icon={History} title="This run is no longer in the history" className="flex-1">
-        <Button size="sm" icon={ArrowLeft} onClick={onBack}>
-          All runs
-        </Button>
-      </Empty>
+      <Empty
+        icon={History}
+        title="This run is no longer in the history"
+        className="flex-1"
+        actions={
+          <Button size="sm" icon={ArrowLeft} onClick={onBack}>
+            All runs
+          </Button>
+        }
+      />
     );
   const queue: Queue = { tasks: run.tasks, running: false, stopOnFailure: false, seq: 0 };
   const openTask = run.tasks.find((t) => t.id === open);

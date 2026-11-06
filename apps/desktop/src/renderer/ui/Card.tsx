@@ -61,22 +61,38 @@ export function Kbd({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * An empty or error state: icon, title, a short description (`children`) and the buttons that get
+ * the user going (`actions`), always centred as a group below the text and wrapping in a narrow
+ * sidebar. Put buttons in `actions`, never in `children`.
+ */
 export function Empty({
   icon: Icon,
   title,
   children,
+  actions,
   className,
 }: {
   icon?: React.ComponentType<{ className?: string }>;
   title: string;
   children?: ReactNode;
+  actions?: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-2 p-6 text-center", className)}>
-      {Icon && <Icon className="size-6 text-hint" />}
-      <div className="text-sm font-medium text-fg">{title}</div>
-      {children && <div className="max-w-sm text-xs text-muted">{children}</div>}
+    <div className={cn("flex flex-col items-center justify-center p-6 text-center", className)}>
+      {Icon && (
+        <div className="mb-3 grid size-10 shrink-0 place-items-center rounded-full bg-active">
+          <Icon className="size-5 text-hint" />
+        </div>
+      )}
+      <div className="max-w-sm text-sm font-medium text-balance text-fg">{title}</div>
+      {children && (
+        <div className="mt-1.5 max-w-sm space-y-1.5 text-xs leading-relaxed text-pretty text-muted">
+          {children}
+        </div>
+      )}
+      {actions && <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{actions}</div>}
     </div>
   );
 }

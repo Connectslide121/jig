@@ -12,7 +12,16 @@ import {
 import { shellName } from "../../../shared/shellNames";
 import type { TerminalInfo } from "../../../shared/terminals";
 import { call } from "../../lib/host";
-import { cn, contextMenu, Empty, IconButton, type MenuEntry, openMenuAt, promptDialog } from "../../ui";
+import {
+  Button,
+  cn,
+  contextMenu,
+  Empty,
+  IconButton,
+  type MenuEntry,
+  openMenuAt,
+  promptDialog,
+} from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import { useActiveProject } from "../../workbench/projects";
 import type { ViewProps } from "../../workbench/registry";
@@ -85,11 +94,15 @@ export function TerminalsView(_props: ViewProps) {
   const project = useActiveProject();
   if (terminals.length === 0)
     return (
-      <Empty icon={SquareTerminal} title="No terminals">
-        <button type="button" className="text-accent hover:underline" onClick={() => void newTerminal()}>
-          New terminal{project ? ` in ${project.name}` : ""}
-        </button>
-      </Empty>
+      <Empty
+        icon={SquareTerminal}
+        title="No terminals"
+        actions={
+          <Button size="sm" icon={Plus} onClick={() => void newTerminal()}>
+            New terminal{project ? ` in ${project.name}` : ""}
+          </Button>
+        }
+      />
     );
   return (
     <div className="flex h-full" data-testid="terminals-view">

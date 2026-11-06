@@ -908,13 +908,16 @@ export function GitView({ ctx }: AddonComponentProps) {
   if (project.isGitRepo) return <RepoPanel ctx={ctx} project={project} />;
   if (project.repos.length > 0) return <WorkspaceGit ctx={ctx} project={project} />;
   return (
-    <Empty icon={GitBranch} title={`${project.name} is not a git repository`}>
-      <span className="flex flex-col items-center gap-2">
-        No repositories were found inside it either (Jig looks two folders deep).
+    <Empty
+      icon={GitBranch}
+      title={`${project.name} is not a git repository`}
+      actions={
         <Button size="sm" icon={RefreshCw} onClick={() => void ctx.projects.rescanRepos(project.id)}>
           Look again
         </Button>
-      </span>
+      }
+    >
+      No repositories were found inside it either (Jig looks two folders deep).
     </Empty>
   );
 }

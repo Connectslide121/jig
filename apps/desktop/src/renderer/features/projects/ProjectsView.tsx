@@ -1,6 +1,6 @@
-import { FolderGit2, FolderInput, FolderPlus, FolderX, GitBranch, MoreHorizontal } from "lucide-react";
+import { FolderGit2, FolderInput, FolderPlus, FolderX, GitBranch, MoreHorizontal, Plus } from "lucide-react";
 import { call } from "../../lib/host";
-import { contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
+import { Button, contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
 import { addProject, addWorkspace } from "../../workbench/actions";
 import { useProjects } from "../../workbench/projects";
 import { workbench } from "../../workbench/store";
@@ -12,16 +12,16 @@ export function ProjectsView() {
   const workspaces = useProjects((s) => s.workspaces);
   if (projects.length === 0)
     return (
-      <Empty icon={FolderPlus} title="No projects yet">
-        <p>A project groups your chats, with a default folder, Git repository and settings for Claude.</p>
-        <button
-          type="button"
-          className="mt-2 text-accent hover:underline"
-          data-testid="projects-new"
-          onClick={() => void addProject()}
-        >
-          New project…
-        </button>
+      <Empty
+        icon={FolderPlus}
+        title="No projects yet"
+        actions={
+          <Button size="sm" icon={Plus} data-testid="projects-new" onClick={() => void addProject()}>
+            New project…
+          </Button>
+        }
+      >
+        A project groups your chats, with a default folder, Git repository and settings for Claude.
       </Empty>
     );
   const where = (project: (typeof projects)[number]) => {

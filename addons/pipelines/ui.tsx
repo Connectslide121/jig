@@ -861,6 +861,11 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
             <Empty
               icon={Rocket}
               title={found.errors.length ? "Couldn't list pipelines" : "No pipelines found"}
+              actions={
+                <Button size="sm" icon={SearchCheck} busy={finding} onClick={() => void find(true)}>
+                  Find pipelines again
+                </Button>
+              }
             >
               {found.errors.length ? (
                 found.errors.map((e) => (
@@ -874,15 +879,6 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
                   your own az CLI.
                 </p>
               )}
-              <Button
-                size="sm"
-                className="mt-2"
-                icon={SearchCheck}
-                busy={finding}
-                onClick={() => void find(true)}
-              >
-                Find pipelines again
-              </Button>
             </Empty>
           )}
           <ArrangeList

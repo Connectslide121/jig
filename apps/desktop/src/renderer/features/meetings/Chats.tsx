@@ -265,20 +265,25 @@ export function ChatsView({
           </div>
           <div className="relative min-h-0 flex-1 overflow-y-auto" data-testid="teams-chats">
             {!connected ? (
-              <Empty icon={Plug} title="Connect Microsoft to see your Teams chats" className="h-full">
-                <Button className="mt-2" onClick={onConnectAccount}>
-                  Connect…
-                </Button>
-              </Empty>
+              <Empty
+                icon={Plug}
+                title="Connect Microsoft to see your Teams chats"
+                className="h-full"
+                actions={<Button onClick={onConnectAccount}>Connect…</Button>}
+              />
             ) : list?.state === "consent" ? (
-              <Empty icon={ShieldCheck} title="Needs your admin's approval" className="h-full">
-                <span className="block">
-                  Jig reads your chats and writes in them as you, with Microsoft's Chat.Read and
-                  ChatMessage.Send permissions. Once your administrator approves them for Jig, connect once.
-                </span>
-                <Button className="mt-2" busy={connecting} onClick={() => void connectChat()}>
-                  Connect chat…
-                </Button>
+              <Empty
+                icon={ShieldCheck}
+                title="Needs your admin's approval"
+                className="h-full"
+                actions={
+                  <Button busy={connecting} onClick={() => void connectChat()}>
+                    Connect chat…
+                  </Button>
+                }
+              >
+                Jig reads your chats and writes in them as you, with Microsoft's Chat.Read and
+                ChatMessage.Send permissions. Once your administrator approves them for Jig, connect once.
               </Empty>
             ) : !list ? (
               <Spinner center />

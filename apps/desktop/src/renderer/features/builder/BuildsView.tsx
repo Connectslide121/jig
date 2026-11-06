@@ -1,5 +1,5 @@
 import { Hammer, Plus } from "lucide-react";
-import { Badge, Empty, IconButton, ListRow } from "../../ui";
+import { Badge, Button, Empty, IconButton, ListRow } from "../../ui";
 import { workbench } from "../../workbench/store";
 import { openBuildDialog } from "./BuildDialog";
 import { buildTitle, STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
@@ -8,15 +8,15 @@ export function BuildsView() {
   const jobs = useBuilds((s) => s.jobs);
   if (jobs.length === 0)
     return (
-      <Empty icon={Hammer} title="No builds yet">
-        <button
-          type="button"
-          className="text-accent hover:underline"
-          onClick={() => openBuildDialog({ goal: "", origin: "tools" })}
-        >
-          Build something…
-        </button>
-      </Empty>
+      <Empty
+        icon={Hammer}
+        title="No builds yet"
+        actions={
+          <Button size="sm" icon={Plus} onClick={() => openBuildDialog({ goal: "", origin: "tools" })}>
+            Build something…
+          </Button>
+        }
+      />
     );
   return (
     <div

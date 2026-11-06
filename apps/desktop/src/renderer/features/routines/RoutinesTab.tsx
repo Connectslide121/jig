@@ -280,11 +280,11 @@ export function RoutinesTab({ active }: TabProps) {
       </header>
       {error ? (
         <Empty title="Couldn't load your routines" icon={CalendarClock}>
-          <span className="block">{error}</span>
-          <span className="mt-2 block">
+          <p>{error}</p>
+          <p>
             Routines need Claude Code signed in with your Claude subscription, and routines turned on for your
             account. Jig asks Claude Code for them; it never uses your login itself.
-          </span>
+          </p>
         </Empty>
       ) : !data ? (
         <div className="flex flex-1 items-center justify-center">

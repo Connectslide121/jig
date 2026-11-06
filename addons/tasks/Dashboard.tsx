@@ -65,14 +65,18 @@ export function DashboardView({ ctx, onAdd }: { ctx: AddonUiContext; onAdd: () =
   if (!data) return error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
   if (!data.cards.length)
     return (
-      <Empty icon={LayoutDashboard} title="No task queues yet" className="h-full">
-        <div className="max-w-sm text-xs text-muted">
-          Each project has its own task queue. Add prompts and press Start: Claude does them one after
-          another, and every queue shows here.
-        </div>
-        <Button size="sm" icon={Plus} onClick={onAdd} data-testid="tasks-dashboard-add">
-          Add tasks
-        </Button>
+      <Empty
+        icon={LayoutDashboard}
+        title="No task queues yet"
+        className="h-full"
+        actions={
+          <Button size="sm" icon={Plus} onClick={onAdd} data-testid="tasks-dashboard-add">
+            Add tasks
+          </Button>
+        }
+      >
+        Each project has its own task queue. Add prompts and press Start: Claude does them one after another,
+        and every queue shows here.
       </Empty>
     );
 

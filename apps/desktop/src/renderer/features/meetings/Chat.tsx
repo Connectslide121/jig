@@ -329,25 +329,28 @@ export function ChatPanel({
         className="@container relative min-h-0 flex-1 overflow-y-auto"
       >
         {status?.state === "consent" && !messages.length ? (
-          <Empty icon={ShieldCheck} title="Needs your admin's approval" className="h-full">
-            <span className="block">
-              Jig reads and writes this chat as you, with Microsoft's Chat.Read and ChatMessage.Send
-              permissions. Once your administrator approves them for Jig, connect once.
-            </span>
-            <Button
-              className="mt-2"
-              busy={connecting}
-              onClick={async () => {
-                setConnecting(true);
-                try {
-                  await onConnect();
-                } finally {
-                  setConnecting(false);
-                }
-              }}
-            >
-              Connect chat…
-            </Button>
+          <Empty
+            icon={ShieldCheck}
+            title="Needs your admin's approval"
+            className="h-full"
+            actions={
+              <Button
+                busy={connecting}
+                onClick={async () => {
+                  setConnecting(true);
+                  try {
+                    await onConnect();
+                  } finally {
+                    setConnecting(false);
+                  }
+                }}
+              >
+                Connect chat…
+              </Button>
+            }
+          >
+            Jig reads and writes this chat as you, with Microsoft's Chat.Read and ChatMessage.Send
+            permissions. Once your administrator approves them for Jig, connect once.
           </Empty>
         ) : !status && !messages.length ? (
           <Spinner center />

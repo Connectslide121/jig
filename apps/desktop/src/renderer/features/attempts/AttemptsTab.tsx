@@ -274,13 +274,14 @@ export function AttemptsTab({ params, active }: TabProps) {
                 ? `Attempt ${run.kept} is in your working copy`
                 : "The attempts were discarded"
             }
-          >
-            {run.status === "kept" && (
-              <Button size="sm" onClick={() => workbench.showView("addon.git.git")}>
-                Review it in Git
-              </Button>
-            )}
-          </Empty>
+            actions={
+              run.status === "kept" && (
+                <Button size="sm" onClick={() => workbench.showView("addon.git.git")}>
+                  Review it in Git
+                </Button>
+              )
+            }
+          />
         ) : diff !== undefined ? (
           <DiffLines text={diff} testId="attempts-diff" />
         ) : (
