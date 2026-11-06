@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shift swap · sample demo</title>
+<!-- A static sample demo for Jig factory's sample runs (D-440): no scripts, invented data. -->
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f7f6f3;color:#1d1c1a}
+  .banner{background:#1d1c1a;color:#f7f6f3;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:6px 16px;display:flex;justify-content:space-between}
+  .app{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 28px)}
+  nav{background:#ecebe6;padding:20px 14px;display:flex;flex-direction:column;gap:4px}
+  nav b{font-size:15px;margin:0 8px 16px}
+  nav a{padding:8px 10px;border-radius:8px;color:#4a4740;text-decoration:none}
+  nav a.on{background:#2f6f5e;color:#fff}
+  main{padding:28px 36px}
+  h1{margin:0 0 4px;font-size:24px}
+  .sub{color:#77736b;margin-bottom:22px}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+  .kpi{background:#fff;border:1px solid #e6e3dc;border-radius:12px;padding:14px 16px}
+  .kpi b{display:block;font-size:22px}
+  .kpi span{color:#77736b;font-size:12px}
+  .row{display:grid;grid-template-columns:1fr 160px 120px 110px;gap:12px;align-items:center;background:#fff;border:1px solid #e6e3dc;border-radius:10px;padding:12px 16px;margin-bottom:8px}
+  .row small{color:#77736b}
+  .chip{font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;text-align:center;background:#e3efe9;color:#2f6f5e}
+  .chip.w{background:#f5ead6;color:#8a5a00}
+  .num{text-align:right;font-variant-numeric:tabular-nums;color:#4a4740}
+</style>
+</head>
+<body>
+<div class="banner"><span>Prototype · sample data</span><span>v1</span></div>
+<div class="app">
+  <nav>
+    <b>Booking suite</b>
+    <a href="#/today">Today</a>
+    <a href="#/swaps" class="on">Shift swaps</a>
+    <a href="#/schedule">Schedule</a>
+    <a href="#/staff">Staff</a>
+  </nav>
+  <main>
+    <h1>Shift swaps</h1>
+    <div class="sub">Swaps your team asked for this week</div>
+    <div class="kpis">
+      <div class="kpi"><b>6</b><span>waiting for a manager</span></div>
+      <div class="kpi"><b>14</b><span>approved this week</span></div>
+      <div class="kpi"><b>2 h</b><span>median time to approve</span></div>
+    </div>
+    <div class="row"><span>Morning desk · Tue 07:00<br><small>Alex asks Sam</small></span><span>Front office</span><span class="num">8 h</span><span class="chip w">Waiting</span></div>
+    <div class="row"><span>Late desk · Wed 15:00<br><small>Robin asks Kim</small></span><span>Front office</span><span class="num">6 h</span><span class="chip">Approved</span></div>
+    <div class="row"><span>Night check · Fri 22:00<br><small>Jo asks Lee</small></span><span>Housekeeping</span><span class="num">8 h</span><span class="chip w">Waiting</span></div>
+    <div class="row"><span>Breakfast · Sat 06:30<br><small>Max asks Ali</small></span><span>Restaurant</span><span class="num">5 h</span><span class="chip">Approved</span></div>
+  </main>
+</div>
+</body>
+</html>

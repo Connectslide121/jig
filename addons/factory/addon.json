@@ -1,0 +1,44 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "factory",
+  "name": "Jig factory",
+  "description": "Turns an idea into an interview, a polished demo and a full pack of documents and material: runs on a floor in lanes (Interview, Demo, Review, Pack, Launch, Done), each run's stages, outputs and timeline, and an inbox of everything waiting for a person across projects. Starting runs comes in a later version; sample runs show how it works.",
+  "version": "0.1.0",
+  "icon": "factory",
+  "permissions": ["chat", "ai", "exec", "fs:read", "fs:write"],
+  "storage": { "scope": "project" },
+  "contributes": {
+    "views": [
+      {
+        "id": "factory",
+        "title": "Jig factory",
+        "icon": "factory",
+        "region": "left",
+        "hidden": true,
+        "component": "FactoryView"
+      }
+    ],
+    "tabs": [
+      { "type": "floor", "title": "Jig factory", "icon": "factory", "component": "FloorTab" },
+      { "type": "run", "title": "Run", "icon": "factory", "component": "RunTab" },
+      { "type": "inbox", "title": "Jig factory inbox", "icon": "inbox", "component": "InboxTab" }
+    ],
+    "topbar": [{ "id": "factory", "component": "FactoryButton" }],
+    "actions": [
+      {
+        "id": "open-floor",
+        "title": "Jig factory",
+        "group": "Jig factory",
+        "icon": "factory",
+        "run": "openFloor"
+      },
+      {
+        "id": "open-inbox",
+        "title": "Jig factory inbox",
+        "group": "Jig factory",
+        "icon": "inbox",
+        "run": "openInbox"
+      }
+    ]
+  }
+}
