@@ -1,5 +1,16 @@
 # Status
 
+Jig factory's New idea and interview (2026-11-08, phase 28 session 3, D-460, D-461): **New idea…**
+(factory button, the Floor, a chat reply's ⋯ → Start Jig factory from this, or a meeting's ⋯ in
+the Meetings window) takes the idea typed, dictated (the mic) or pasted, files, or a meeting from
+your history. Jig interviews you on the **Interview** tab: a few question cards a round with
+suggested answers (one click, edit, or dictate), the brief filling in beside them with its coverage,
+level and languages; **Good enough** ends it with the gaps listed. **Looks right** approves the
+go/no-go and opens the **Plan**: outputs (untick what you don't want, a language per group), who
+owns each gate, the level; **Start run**. **Check on your machine:** dictation in the New idea box
+and the interview's cards, a real interview on a real model (are the questions good, does the brief
+read well), and starting from a recent meeting.
+
 Jig factory runs (2026-11-08, phase 28 session 2, D-449…D-452): a run now really runs. **Start from a
 brief…** (factory button, the Floor, or search) starts one from a sample brief or one you paste: each
 stage is a chat of its own ("Factory · <run> · <stage>") in a git worktree on branch

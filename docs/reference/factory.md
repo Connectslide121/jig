@@ -39,7 +39,8 @@ One loop, serialised (`serial`), driven by the `tick` watcher (every minute and 
 
 ## Host methods
 
-Called from the add-on's UI (`ctx.host.call`); only `runs` is exported to other add-ons.
+Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exported to other add-ons
+(Meetings calls `ideaFrom`, D-460).
 
 | Method | Args | Does |
 | --- | --- | --- |
@@ -47,6 +48,12 @@ Called from the add-on's UI (`ctx.host.call`); only `runs` is exported to other 
 | `run` | `{projectId, runId}` | one run, or `null` |
 | `outputFiles` | `{projectId, runId}` | output id → absolute path |
 | `startRun` | `{projectId, brief? \| briefText? \| text?, title?, permissionMode?, outputs?, build?, productExists?, level?}` | a new run (in a worktree when the project is a git repository with commits) |
+| `meetings` | – | your recent ended meetings for New idea's picker (`api.meetings.recent`, permission `meetings:read`) |
+| `ideaFrom` | `{text, title?, source?}` | leaves a pending idea and opens New idea with it (a meeting's or a message's ⋯) |
+| `briefDoc` | `{projectId, runId}` | the run's brief parsed: sections, coverage, gaps, level, languages (D-461) |
+| `enough` | `{projectId, runId}` | Good enough: the interviewer writes the brief from what there is and ends |
+| `track` | `{projectId, runId}` | the run's track and plan for the Plan dialog |
+| `plan` | `{projectId, runId, outputs, languages, owners, level, build, productExists, permissionMode}` | confirms the Plan step (`plan.confirmed`), the run goes on |
 | `decide` | `{projectId, runId, gateId, kind: "approve" \| "changes" \| "reject", note?}` | a gate decision |
 | `answer` | `{projectId, runId, stageId, answers? \| reply?}` | answers the interview's question cards, or a stage's `factory_ask` |
 | `rerun` | `{projectId, runId, stageId, note?}` | the stage again as its next version; what follows waits again |
@@ -76,7 +83,15 @@ chat that runs a stage (the Conductor knows its chat id).
 
 ## Views
 
-- **Floor** (tab): lanes of run cards, the KPI strip, **Start from a brief…**, ⋯ sample runs.
+- **New idea** (modal, D-460): the idea typed, dictated or pasted, files, a meeting from your
+  history, the project and whether it's for its product or a new one; **Start interview**.
+- **Interview** (tab, D-461): question cards with suggested answers (one click, edit or dictate),
+  **Good enough**, the brief building beside them with its coverage, level, languages and open
+  points; **Looks right** approves G0 and opens the Plan dialog.
+- **Plan** (modal, the person stage S3): stages (struck through when skipped), outputs ticked per
+  track with a language per group, an owner per gate, level and how chats ask; **Start run**. A run
+  started from a brief is planned in its start dialog (`plan.confirmed`), so S3 passes by itself.
+- **Floor** (tab): lanes of run cards, the KPI strip, **New idea…**, **Start from a brief…**, ⋯ sample runs.
 - **Run** (tab): the stage graph (each node opens its sheet), outputs, timeline and the run's chats.
   A **stage sheet** shows status, recipe, version, times, its chats, a question to answer, the report
   and the stage's outputs, with **Open chat**, **Re-run…** and **Fork from here…**. A **gate sheet**
@@ -84,7 +99,8 @@ chat that runs a stage (the Conductor knows its chat id).
   note) and **Reject…**. ⋯ has **Inspector**, **Re-run a stage…**, **Fork from a stage…** and **Stop
   the run**.
 - **Inbox** (tab), the **Jig factory** view (View → Views) and the top bar's **factory** button.
-- Action **Jig factory: start from a brief…** (search and menus).
+- Actions **Jig factory: new idea…** and **start from a brief…** (search and menus); a chat reply's
+  ⋯ → **Start Jig factory from this**; a meeting's ⋯ → **Start Jig factory…**.
 
 ## Settings
 

@@ -110,11 +110,12 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 3, New idea and the interview — not started.
+- **Current session:** 4, the demo end to end — not started.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
-  runner, tools, Run tab sheets and Inspector (D-449…D-452, D-459).
+  runner, tools, Run tab sheets and Inspector (D-449…D-452, D-459). Session 3: New idea, the
+  Interview tab, the Plan step, meetings and dictation for add-ons (D-460, D-461).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -127,8 +128,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 2 is done (see its notes). Next: session 3, from its first
-  item (the New idea modal). Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session 3 is done (see its notes). Next: session 4, from its first
+  item (the design director). Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -247,20 +248,34 @@ design playbooks are bundled for the design, demo and critique recipes (D-459, `
 recipe). Not done here (later sessions' items): Merge branch in ⋯ (session 4/5 with the build),
 the Pause button of the mockup (Stop covers it for now).
 
-### 3. New idea and the interview — not started
+### 3. New idea and the interview — done
 
-- [ ] New idea modal: text, dropped files, dictation (Jig's mic), "From a meeting" picker,
+- [x] New idea modal: text, dropped files, dictation (Jig's mic), "From a meeting" picker,
       product picker or "New product" ([ui.md](28-factory/ui.md) → New idea).
-- [ ] Interview tab: question cards with suggested answers (accept with one click, edit, or
+- [x] Interview tab: question cards with suggested answers (accept with one click, edit, or
       dictate), the brief building live beside them, coverage meter, "Looks right" (G0).
-- [ ] Interviewer and Scout recipes ([pipeline.md](28-factory/pipeline.md) → The interview), level
+- [x] Interviewer and Scout recipes ([pipeline.md](28-factory/pipeline.md) → The interview), level
       suggestion with reasons; new product → ask about the repository (D-430), name and logo (D-437);
       languages (D-439).
-- [ ] Plan step: the run's stages, outputs (pre-ticked per track, untick), gate owners picked by
+- [x] Plan step: the run's stages, outputs (pre-ticked per track, untick), gate owners picked by
       hand (D-433), level, languages; Start.
-- [ ] "Start Jig factory" from a meeting (Meetings' actions) and from a message (`context.message`).
+- [x] "Start Jig factory" from a meeting (Meetings' actions) and from a message (`context.message`).
 
 **Done when:** from a voice note or a meeting you reach a one-page brief you would sign, and a plan.
+
+Session 3 notes: core gained `api.meetings.recent` (permission `meetings:read`), `Dictate` in
+`@jig/sdk/ui`, and "Start Jig factory…" in a meeting's ⋯ (main calls the factory's export
+`ideaFrom`, D-460). The interview's coverage is the brief's nine sections (`lib/brief.ts`,
+`parseBrief`); the interviewer rewrites `brief.md` every round, **Good enough** sends `[round n
+enough]` and the brief lists its gaps as open points (D-461). The Plan step is the person stage S3:
+after G0 the run waits in `planning` until **Start run** in the Plan dialog; a run started from a
+brief sets `plan.confirmed`, so the Conductor passes S3 by itself after G0 (`lib/conductor.ts`,
+tested). The fake interviewer plays two rounds, a partial brief after round 1, and honours Good
+enough (`docs/guides/testing.md`). e2e: the new-idea → interview → Good enough → Plan test, and
+Start Jig factory from a chat reply's ⋯ and from a meeting. Add-on CSS: pair container variants
+(`@max-3xl:grid-cols-1 @3xl:grid-cols-2`), or the plain one wins (D-297). Not done here: the
+"Feels like?" design-source question belongs to session 4 (D-444).
+
 
 ### 4. The demo, end to end — not started
 

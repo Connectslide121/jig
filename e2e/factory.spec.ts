@@ -241,6 +241,68 @@ test("Jig factory: the interview asks two rounds of questions, then writes the b
   expect(r.outputs.map((o) => o.id)).toContain("brief-v1");
 });
 
+test("Jig factory: Start Jig factory from a chat reply's menu and from a meeting (D-460)", async ({
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  await mkdir(join(jigHome, "addon-data"), { recursive: true });
+  await writeFile(
+    join(jigHome, "addon-data", "meetings.json"),
+    JSON.stringify({
+      records: [
+        {
+          id: "1a2b3c4d-0000-4000-8000-0000000000f1",
+          title: "Shop planning",
+          joinUrl: "https://teams.microsoft.com/l/meetup-join/x",
+          startedAt: "2026-01-05T09:00:00.000Z",
+          endedAt: "2026-01-05T09:45:00.000Z",
+          status: "ended",
+          capture: "Captions",
+          captions: [],
+          gaps: [],
+          notes: "**Summary** Staff want to swap shifts from their phones.",
+          actions: [],
+        },
+      ],
+    }),
+  );
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    await shop(page, jigHome);
+
+    // A chat reply's ⋯ → Start Jig factory from this: New idea opens with the reply's text.
+    await page.keyboard.press("Control+N");
+    await page.getByTestId("composer-input").fill("Gift cards for Shop");
+    await page.keyboard.press("Enter");
+    const reply = page.getByTestId("assistant-message").last();
+    await expect(reply).toContainText("You said: Gift cards for Shop", { timeout: 20000 });
+    await reply.hover();
+    await reply.getByRole("button", { name: "Message options" }).click();
+    await page.getByRole("menuitem", { name: "Start Jig factory from this" }).click();
+    const dialog = page.getByTestId("factory-new-idea");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByTestId("factory-idea-text")).toHaveValue(/Gift cards for Shop/);
+    // The picker lists the meetings in your history.
+    await expect(dialog.getByTestId("factory-idea-meeting").locator("option")).toHaveCount(2);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
+
+    // A meeting's ⋯ → Start Jig factory…: the workbench's New idea opens with the meeting's notes.
+    await hostCall(page, "meetings.open", { tab: "meetings" });
+    const find = () => app.windows().find((w) => w.url().includes("meetingLobby=1"));
+    await expect.poll(() => Boolean(find()), { timeout: 30_000 }).toBe(true);
+    const lobby = find()!;
+    await lobby.getByTestId("meeting-more").click();
+    await lobby.getByTestId("meeting-factory").click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByTestId("factory-idea-text")).toHaveValue(/swap shifts from their phones/);
+  } finally {
+    await app.close();
+  }
+});
+
 test("Jig factory: a new idea, its interview with Good enough, and the Plan step", async ({
   page,
   jigHome,
