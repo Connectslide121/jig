@@ -108,7 +108,7 @@ The panel you are working in is `focusedPanel()` / `useFocusedPanel` (`renderer/
 the `data-panel` of the last focus or click (regions, lower halves and main-area panes set it; a chat
 sets `chat`, which counts as none), undefined while Jig's window isn't focused. Jig's own view badges
 go through `setViewBadge(viewId, text?)` (`renderer/workbench/viewBadges.ts`), shown by the same
-`ViewBadge` as add-ons' badges (D-349). A view that wants attention on its own (Claude's browser,
+`ViewBadge` as add-ons' badges (D-349). A view that wants attention on its own (Jig's browser,
 a chat's terminal) calls `revealView(viewId, key)` (`renderer/workbench/revealView.ts`), which shows
 it or badges it by `revealAction`, and mounts `useClearViewBadge(viewId)` once to clear the badge when
 the view is on screen.
@@ -133,10 +133,10 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | view | `addon.pipelines.pipelines` | right | Azure DevOps pipelines |
 | view | `addon.boards.boards` | left (hidden; Code → Boards) | Azure DevOps boards of the active project |
 | view | `addon.releases.releases` | hidden (right) | releases of every repository (D-110) |
-| view | `addon.pages.pages` | hidden (right) | pages Claude published into Jig (D-405); Tools → Pages, a Home tile |
+| view | `addon.pages.pages` | hidden (right) | pages Jig published into Jig (D-405); Tools → Pages, a Home tile |
 | view | `jig.notes` | left | the active project's notes (D-289; saved `addon.notes.notes` places are kept) |
 | view | `jig.suggestions` | hidden (right) | suggestions (Learning) |
-| view | `jig.browser` | right | Claude’s browser |
+| view | `jig.browser` | right | Jig’s browser |
 | view | `jig.userBrowser` | hidden → main tab | Browser (native user page; top-right globe icon) |
 | view | `jig.terminals` | bottom | terminals |
 | view | `jig.builds` | bottom | builds of the in-app builder |
@@ -200,7 +200,7 @@ Top-bar menus (D-174) merge action groups into a few menus, each group under its
 The separate Tools dropdown is removed (D-190). In this documentation, **Search →** means open the
 top-bar search field (Go to), type the item's name and select it. `tools.action` keeps its manifest name for
 compatibility and contributes to the grouped menus and search; it has no exclusive dropdown.
-**Chats** (Chats, Claude, Workflows, Meetings), **Code** (Git, Files, Terminals, Pipelines), **Build** and
+**Chats** (Chats, Assistant, Workflows, Meetings), **Code** (Git, Files, Terminals, Pipelines), **Build** and
 **View**, the one layout menu (D-335): SHOW lists Left sidebar, Right sidebar and Bottom panel as
 checked entries with their shortcuts (they replace the three Toggle… actions in the menu; the actions
 stay registered for search and shortcuts) and Views › (every view, checked when shown); LAYOUT holds

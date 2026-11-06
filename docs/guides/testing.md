@@ -102,50 +102,50 @@ in this order:
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
 | a message whose Jig context names a mentioned meeting (`@meeting:…`, D-250) | reads it with `jig_meeting_read` and answers "From the mentioned meeting:" with the start of its transcript |
 | a message whose Jig context names a mentioned Teams chat (`@chat:…`, D-333) | reads it with `jig_teams_chat_read` and answers "From the mentioned Teams chat:" with the start of what it read |
-| "report the task as done" / "report task tN as failed" (any outcome) | Claude reports again with `addon_tasks_report` (D-353): to the chat's last reported task, or with that `taskId`; summary "Reported again: <outcome>"; the tool's error (another chat's task) is the answer |
+| "report the task as done" / "report task tN as failed" (any outcome) | Jig reports again with `addon_tasks_report` (D-353): to the chat's last reported task, or with that `taskId`; summary "Reported again: <outcome>"; the tool's error (another chat's task) is the answer |
 | a one-shot that starts "You organize a queue of prompts" (Tasks → Reorganize, D-397) | each block of its task list reversed, the second task of each block continuing the first's chat, a reason on each (`tasks-reorganize.spec.ts`) |
 | a queued task that says "only partly" | its report is "partial" instead of "done" |
-| "skip the report" / "skip two reports" | Claude ends its turn without reporting ("Waiting for the local server to come up."); with "two" it also answers the queue's first request for the report without one (D-318) |
-| the task queue's request for a report ("The task queue asks for the report of task N … taskId "tN" …") | Claude reports "done" with that `taskId` (late when the task ended already) |
-| a task from the Tasks queue (its context names `addon_tasks_report`), unless it says "skip the report" | Claude reports with `addon_tasks_report`: "done" with the summary "Did it: <message>" (without the "[1 image]" tags of its files), or "failed" when it says "fail this task"; one note; a follow-up when it says "with follow-ups". In a ChatGPT (Codex) chat the report goes over the chat's local MCP server, as Codex calls it, and the answer is "Reported from ChatGPT." (D-330) |
+| "skip the report" / "skip two reports" | Jig ends its turn without reporting ("Waiting for the local server to come up."); with "two" it also answers the queue's first request for the report without one (D-318) |
+| the task queue's request for a report ("The task queue asks for the report of task N … taskId "tN" …") | Jig reports "done" with that `taskId` (late when the task ended already) |
+| a task from the Tasks queue (its context names `addon_tasks_report`), unless it says "skip the report" | Jig reports with `addon_tasks_report`: "done" with the summary "Did it: <message>" (without the "[1 image]" tags of its files), or "failed" when it says "fail this task"; one note; a follow-up when it says "with follow-ups". In a ChatGPT (Codex) chat the report goes over the chat's local MCP server, as Codex calls it, and the answer is "Reported from ChatGPT." (D-330) |
 | `call jig_search_code over mcp with {"question":"…"}` / `call jig_test_page over mcp with {"url":"…","steps":"…"}` in a ChatGPT chat | the helpers (D-337) answer at once without Codex: "Fake search (<model>, <thoroughness>): <question>" and "Fake test (<model>) of <url>:" with "- PASS: <first step>"; `<model>` is the resolved search/tester model (fallback included) |
 | `call <tool> over mcp` (optionally `with {json}`) | calls one of the chat's Jig tools the way Codex does (D-313): over the chat's own local MCP server (HTTP on 127.0.0.1 with its token, through the official MCP client). Read-only tools run unasked, others ask first unless the chat bypasses permissions; the result (with images) shows on the tool card, then "I called <tool> over Jig's MCP server." |
-| "azure tenant(s)" | Claude lists the Azure tenants with `jig_azure_tenants`; with "switch … to X" it then asks to switch with `jig_azure_switch_tenant` (an approval, unless the chat bypasses permissions) and says which tenant is in use |
-| "queue tasks for" | Claude asks to queue two tasks (Contoso spec, Fabrikam spec) with the Tasks add-on's `addon_tasks_add` (an approval drawn by the add-on as an editable list; queues what you approved, unless the chat bypasses permissions) |
-| "delete the queued task" | Claude asks to delete queued task `t1` with the Tasks add-on's `addon_tasks_delete` (an approval drawn by the add-on, naming the task); deletes it once allowed ("Deleted the queued task."), else "OK, I didn't delete it." |
-| starts with "Test this in Claude's browser" (Search → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester, jig-search)"); its PASS/FAIL wording doesn't end the turn with an error |
-| contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
+| "azure tenant(s)" | Jig lists the Azure tenants with `jig_azure_tenants`; with "switch … to X" it then asks to switch with `jig_azure_switch_tenant` (an approval, unless the chat bypasses permissions) and says which tenant is in use |
+| "queue tasks for" | Jig asks to queue two tasks (Contoso spec, Fabrikam spec) with the Tasks add-on's `addon_tasks_add` (an approval drawn by the add-on as an editable list; queues what you approved, unless the chat bypasses permissions) |
+| "delete the queued task" | Jig asks to delete queued task `t1` with the Tasks add-on's `addon_tasks_delete` (an approval drawn by the add-on, naming the task); deletes it once allowed ("Deleted the queued task."), else "OK, I didn't delete it." |
+| starts with "Test this in Jig's browser" (Search → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester, jig-search)"); its PASS/FAIL wording doesn't end the turn with an error |
+| contains "routine" | Jig creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
 | "publish a page" / "update the page" | writes `sales.html` with `chart.png` next to it and calls `addon_pages_publish` (a new page, then a new version of it with the id from `addon_pages_list`; `e2e/pages.spec.ts`, D-405) |
 | "publish an artifact" | writes `release-notes.html` and shows an old Artifact call (as in a chat resumed from the desktop app; Jig chats never get the tool, D-404) |
 | "use a skill" | Skill `explain-code`, Read `README.md`, the MCP tool `mcp__github__list_issues`, the Releases add-on's tool `mcp__jig__addon_releases_overview`, then a short answer (the chat overview test) |
 | "todo list" | three TodoWrite updates, all done at the end |
 | "make a plan" (or a message starting "go ahead") | a plan to approve (ExitPlanMode); the reply says the mode after approval. In a Codex chat the plan goes through Jig's `exit_plan` tool over the chat's local MCP server, which raises the same card (D-315) |
-| "look at the code" | searches (Grep) and reads `cart.ts` (Read), slowly, pauses (the steps line says Working), then asks a question: Claude looking at the code while you talk (D-210) |
+| "look at the code" | searches (Grep) and reads `cart.ts` (Read), slowly, pauses (the steps line says Working), then asks a question: Jig looking at the code while you talk (D-210) |
 | "subagent" | a Task with a nested Grep and progress (tool uses, tokens, time) |
 | "background job" | a Bash command that keeps running in the background (Stop ends it) |
 | "edit <file>" | edits the file's first line; the card shows the diff |
-| "theme", "light mode", "dark mode", "terminals to the right" | Claude changes Jig's settings or layout (change cards with Undo) |
-| "by hand on the vm" | Claude saves a note (`jig_note_evidence`): a "Noted for suggestions" card with Remove |
-| "weekly check-in", "profile interview" | Claude reads the profile and adds a line under "How I release and deploy" (`jig_update_profile`, card with Undo) |
-| "as a workflow" | Claude saves a 4-step workflow "Write release notes" in the chat's project (`addon_workflows_save`) |
-| "since the last release" | Claude calls the Releases add-on's tool `addon_releases_changes` for the chat's repository |
+| "theme", "light mode", "dark mode", "terminals to the right" | Jig changes Jig's settings or layout (change cards with Undo) |
+| "by hand on the vm" | Jig saves a note (`jig_note_evidence`): a "Noted for suggestions" card with Remove |
+| "weekly check-in", "profile interview" | Jig reads the profile and adds a line under "How I release and deploy" (`jig_update_profile`, card with Undo) |
+| "as a workflow" | Jig saves a 4-step workflow "Write release notes" in the chat's project (`addon_workflows_save`) |
+| "since the last release" | Jig calls the Releases add-on's tool `addon_releases_changes` for the chat's repository |
 | "list jig library skills" | Reports the skill plugin ids actually selected at engine start; used to verify global/project controls and continuing chats |
-| "in a jig terminal" | Claude runs `echo build finished` in a Jig terminal (`jig_terminal_run`); when it exits, Jig sends the chat a "Terminal "Build" finished" message, which starts a new turn |
-| "run the unit tests" | Claude lists the project's test suites (`addon_tests_list`) starts `npm:test` without waiting (`addon_tests_run` with `wait: 0`), waits for it by run id (`addon_tests_wait`) and quotes the result's first line; the run shows in the Tests view (D-244, D-359) |
-| "any pipelines running" | Claude calls `addon_pipelines_runs` (running, then recent), `addon_pipelines_run` for the newest run's id and `addon_repos_status`, and quotes each result's first line (D-371; `e2e/pipelines.spec.ts`, with a fake az) |
-| "remember in the notes" | Claude adds a project dependency about deferring pipeline improvements until migration, using `jig_notes_add`; all chats in that project see it |
-| "change the queued task" | Claude appends "Don't run the e2e tests." to queued task `t1` with `addon_tasks_edit` (only queued tasks; the queue's state is left alone) |
-| "move the queued task" | Claude moves queued task `t2` to the top of the queue, in a chat of its own, with `addon_tasks_edit` (`moveTo`, `newChat`) |
-| "text my phone" | Claude sends the phone "The build is done. Shall I deploy it?" with `jig_phone_send` (D-350), then says "I sent it to your phone." (`e2e/phone.spec.ts`, against a fake Telegram server) |
-| "close my phone room" | Claude closes this chat's room on the phone with `jig_phone_close_room` (D-386) and says what the tool answered ("Closed the room of …", or that there is none) (`e2e/phone.spec.ts`) |
-| "my usage limits" | Claude reads both providers' plan limits with `jig_usage_limits` (D-386) and says them as the tool wrote them (`e2e/usage.spec.ts`) |
-| "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
-| "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
-| "make a project for this chat" | Claude lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |
-| "pipelines below git" (or "under") | Claude shows Pipelines in the lower half of Git's sidebar (`jig_change_layout` op `below`) |
-| "bottom panel full width" | Claude makes the bottom panel run the whole window width (`jig_change_layout` op `span`, D-375) |
-| "browse <url>" | Claude's browser opens the page, clicks `[1]`, takes a screenshot; with "phone" also one at phone and desktop sizes; with "requests" or "network" it reads the network log (all, then failed ones); with "read it again" it reads the page after the click (a page that hangs on it, `e2e/browser-hangs.spec.ts`). The browser's waits run with `JIG_BROWSER_TIMEOUT_SCALE` (0.2 in that spec: load 6 s, page script 3 s, whole call 12 s) |
-| "read the browser page" | Claude reads its own chat's page of Claude's browser (`jig_browser_read`) and answers "My page: Page: …" with the first line, the page's title and address: two chats on separate pages (D-320, `e2e/browser-pages.spec.ts`) |
+| "in a jig terminal" | Jig runs `echo build finished` in a Jig terminal (`jig_terminal_run`); when it exits, Jig sends the chat a "Terminal "Build" finished" message, which starts a new turn |
+| "run the unit tests" | Jig lists the project's test suites (`addon_tests_list`) starts `npm:test` without waiting (`addon_tests_run` with `wait: 0`), waits for it by run id (`addon_tests_wait`) and quotes the result's first line; the run shows in the Tests view (D-244, D-359) |
+| "any pipelines running" | Jig calls `addon_pipelines_runs` (running, then recent), `addon_pipelines_run` for the newest run's id and `addon_repos_status`, and quotes each result's first line (D-371; `e2e/pipelines.spec.ts`, with a fake az) |
+| "remember in the notes" | Jig adds a project dependency about deferring pipeline improvements until migration, using `jig_notes_add`; all chats in that project see it |
+| "change the queued task" | Jig appends "Don't run the e2e tests." to queued task `t1` with `addon_tasks_edit` (only queued tasks; the queue's state is left alone) |
+| "move the queued task" | Jig moves queued task `t2` to the top of the queue, in a chat of its own, with `addon_tasks_edit` (`moveTo`, `newChat`) |
+| "text my phone" | Jig sends the phone "The build is done. Shall I deploy it?" with `jig_phone_send` (D-350), then says "I sent it to your phone." (`e2e/phone.spec.ts`, against a fake Telegram server) |
+| "close my phone room" | Jig closes this chat's room on the phone with `jig_phone_close_room` (D-386) and says what the tool answered ("Closed the room of …", or that there is none) (`e2e/phone.spec.ts`) |
+| "my usage limits" | Jig reads both providers' plan limits with `jig_usage_limits` (D-386) and says them as the tool wrote them (`e2e/usage.spec.ts`) |
+| "in the releases data" | Jig looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
+| "add the stage links" | Jig adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
+| "make a project for this chat" | Jig lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |
+| "pipelines below git" (or "under") | Jig shows Pipelines in the lower half of Git's sidebar (`jig_change_layout` op `below`) |
+| "bottom panel full width" | Jig makes the bottom panel run the whole window width (`jig_change_layout` op `span`, D-375) |
+| "browse <url>" | Jig's browser opens the page, clicks `[1]`, takes a screenshot; with "phone" also one at phone and desktop sizes; with "requests" or "network" it reads the network log (all, then failed ones); with "read it again" it reads the page after the click (a page that hangs on it, `e2e/browser-hangs.spec.ts`). The browser's waits run with `JIG_BROWSER_TIMEOUT_SCALE` (0.2 in that spec: load 6 s, page script 3 s, whole call 12 s) |
+| "read the browser page" | Jig reads its own chat's page of Jig's browser (`jig_browser_read`) and answers "My page: Page: …" with the first line, the page's title and address: two chats on separate pages (D-320, `e2e/browser-pages.spec.ts`) |
 | a path ending in an image extension | a Read of that image (thumbnail in the card) |
 | contains "safety check" | Claude Code's own safety check: asks to run `rm -rf /fake-root/build` ("Dangerous rm operation on critical path"), in every mode including Don't ask, where the card counts down `engine.dontAskWaitSeconds` and Jig declines it unanswered (D-336, `e2e/dont-ask.spec.ts`); then "Removed the build folder." or "OK, I skipped removing it." |
 | contains "run" or "permission" | asks to run `npm test` (permission card) |
@@ -178,7 +178,7 @@ More behaviour:
 - **Dictation (D-208):** with `JIG_ENGINE=fake` Chromium uses a fake microphone and Jig a fake
   transcriber: the model "download" goes 0 → 50 → 100 % without network, and every recording
   becomes "Hello Claude, this came from the microphone." (also every live pass while speaking).
-- **Talking with Claude (D-209):** in fake mode the conversation doesn't listen to the microphone;
+- **Talking with Jig (D-209):** in fake mode the conversation doesn't listen to the microphone;
   `window.dispatchEvent(new CustomEvent("jig-fake-speech", { detail: "…" }))` is "you said …".
   Speaking is pretended (300 ms per sentence); the last sentence is on the button's `data-said`.
 - **The Teams phone (D-379, D-381):** with `JIG_ENGINE=fake`, `JIG_TEAMS_RELAY=<url>` points the Teams

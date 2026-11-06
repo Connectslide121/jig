@@ -26,7 +26,7 @@ read. Open it from:
 | Anything else | text | highlighted code (plain above 300 KB); binary files say there is no preview |
 
 Kinds with a rendered and a raw form (Markdown, HTML, JSON, notebooks, SVG, diagrams, tables, diffs)
-have a **Preview / Source** switch. Every preview has **Ask Claude**: a new chat with a request suited to
+have a **Preview / Source** switch. Every preview has **Ask Jig**: a new chat with a request suited to
 the file (review a document, summarise data, explain code), typed in and not sent.
 
 ## Image zoom (D-227)
@@ -63,12 +63,12 @@ Code and text files are **always editable** in the Preview tab (D-101). Kinds wi
   It writes a temporary file next to it and renames it over the file (retrying briefly while a
   scanner holds it); when Windows still refuses because another program has the file open, it
   writes into the file instead.
-- **A change on disk while you have unsaved edits** (Claude edits the file) doesn't replace them. A
+- **A change on disk while you have unsaved edits** (Jig edits the file) doesn't replace them. A
   bar asks: **Keep mine** (save over it), **Load theirs** (drop your edits), **Show diff** (− on
   disk, + yours, `shared/lineDiff.ts`). Saving also refuses when the file changed since you opened it.
 - **Unsaved edits:** the tab shows a dot; closing it asks first, and the tab limit never closes it.
 - Files cut at 2 MB stay read-only. No language servers (no completion, errors or go to definition):
-  Claude does that work in Jig, and VS Code is one click away (Open in VS Code).
+  Jig does that work itself, and VS Code is one click away (Open in VS Code).
 
 ## How it works
 
@@ -78,7 +78,7 @@ Code and text files are **always editable** in the Preview tab (D-101). Kinds wi
   folder (or its own folder when it's in no project). Only files inside a grant are served, with a CSP
   that limits a page to its own folder and no network.
 - The tab polls `files.stat` every 1.5 s while visible and reloads when the file changes, so it follows
-  Claude's edits.
+  Jig's edits.
 - Mermaid (`ui/Mermaid.tsx`) loads on first use, renders with `securityLevel: "strict"` and takes the
   theme's colours. Chats render ```` ```mermaid ```` blocks as diagrams too.
 

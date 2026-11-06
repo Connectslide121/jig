@@ -1,7 +1,7 @@
 # Try several ways (attempts)
 
-Claude works on the same task in 2–4 chats at once, each in its own git worktree and each from a
-different angle. You compare what they did, let Claude judge, and keep one.
+Jig works on the same task in 2–4 chats at once, each in its own git worktree and each from a
+different angle. You compare what they did, let Jig judge, and keep one.
 
 **Start:** the composer's split button (with what you typed), Search → Try a task several ways…, or
 `attempts.start`. The dialog asks for the task, the repository (in a workspace), how many attempts,
@@ -16,7 +16,7 @@ and "unconventional"; you can edit them.
    the angle and "work only here, don't commit, summarise when done".
 3. The **Attempts** tab shows each chat's status and what it changed (`git add -A` + `git diff --cached
    <base>` in its worktree), refreshing every 4 s while chats work. Click a file for its diff.
-4. **Let Claude judge** sends every attempt's angle, files and diff (15 000 characters each) to Claude
+4. **Let Jig judge** sends every attempt's angle, files and diff (15 000 characters each) to Jig
    as a one-shot question with no tools. It answers with JSON: the winner, a summary, and strengths
    and weaknesses per attempt. The tab shows the pick on its card.
 5. **Keep this one** checks (`git apply --check`) and applies the attempt's diff to your working copy,

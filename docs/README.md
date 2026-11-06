@@ -10,7 +10,7 @@ root [`README.md`](../README.md).
 | [status.md](status.md) | **Start here when coming back.** What works today, how to try it, what needs testing, known gaps |
 | [vision.md](vision.md) | What Jig is, who it is for, the principles every feature follows, non-goals |
 | [architecture.md](architecture.md) | How Jig is built: processes, IPC, engine, chat, workbench, themes, add-ons, builder, learning |
-| [decisions.md](decisions.md) | Every decision, who made it and why — review the "Claude, on my own" ones |
+| [decisions.md](decisions.md) | Every decision, who made it and why — review the "Jig, on my own" ones |
 | [plan/](plan/README.md) | The phased plan as checklists, with status per phase, and the backlog |
 | [brand/](brand/) | The logo and brand colours |
 
@@ -24,12 +24,12 @@ root [`README.md`](../README.md).
 | [engine.md](reference/engine.md) | Claude Code through the Agent SDK: engine, events, sessions, credentials, checkpoints, context, Jig's tools |
 | [chat.md](reference/chat.md) | The chat next to Claude Code's terminal: `/` `@` `!` `#`, history, modes, rewind, todos, plans, diffs, subagents, MCP, effort |
 | [ai-features.md](reference/ai-features.md) | AI features around the chats: tours, checks, commit messages, standup, failed scripts, notifications |
-| [attempts.md](reference/attempts.md) | Try several ways: parallel attempts in git worktrees, judged by Claude |
+| [attempts.md](reference/attempts.md) | Try several ways: parallel attempts in git worktrees, judged by Jig |
 | [routines.md](reference/routines.md) | Claude Code routines: the Routines tab, chat cards, guarded tool calls |
 | [pages.md](reference/pages.md) | Pages: Jig's own artifacts, tools, storage, security (D-405) |
 | [artifacts.md](reference/artifacts.md) | Why Jig has no Artifacts tab (D-404), and the card for old Artifact calls |
 | [browser.md](reference/browser.md) | Browser: the offscreen page, its tools, the console and network log, and the live view |
-| [terminals.md](reference/terminals.md) | Terminals, scripts, groups, and Claude's terminals |
+| [terminals.md](reference/terminals.md) | Terminals, scripts, groups, and the terminals chats start |
 | [preview.md](reference/preview.md) | File previews, editing in Preview, and the `jig-file:` protocol |
 | [configure.md](reference/configure.md) | Configuring Jig from a chat: the tools, protected settings, Undo |
 | [usage.md](reference/usage.md) | Plan usage (5-hour and weekly windows) |
@@ -50,15 +50,15 @@ Each built-in add-on has a README next to its code (and is also an example of th
 
 | Add-on | What it does |
 |---|---|
-| [Git](../addons/git/README.md) | Git for the project's repositories: changes, commits, branches, history, diffs, Claude's help |
+| [Git](../addons/git/README.md) | Git for the project's repositories: changes, commits, branches, history, diffs, Jig's help |
 | [Repos](../addons/repos/README.md) | Every repository at a glance, with fetch/pull/push and a branch switcher |
 | [Files](../addons/files/README.md) | The project's file tree with git colours |
 | [Scripts](../addons/scripts/README.md) | Scripts of every workspace folder, started and stopped in one click |
 | [Pipelines](../addons/pipelines/README.md) | Azure DevOps pipelines through `az` |
 | [Releases](../addons/releases/README.md) | Release policy, versions, changelogs, notes and deploys per repository |
-| [Pages](../addons/pages/README.md) | Pages Claude publishes into Jig (reports, mockups, release notes), kept and previewed locally |
+| [Pages](../addons/pages/README.md) | Pages Jig publishes (reports, mockups, release notes), kept and previewed locally |
 | [Workflows](../addons/workflows/README.md) | Steps you repeat, per project: by hand, with help, or on a schedule |
-| [Tasks](../addons/tasks/README.md) | A task queue: prompts Claude does in order, each reported in a table (outcome, summary, follow-ups) |
+| [Tasks](../addons/tasks/README.md) | A task queue: prompts Jig does in order, each reported in a table (outcome, summary, follow-ups) |
 | [Meetings](../addons/meetings/README.md) | Teams meeting room, screen sharing, live named captions, project-aware questions and reviewed actions |
 
 ## Guides (how-tos)

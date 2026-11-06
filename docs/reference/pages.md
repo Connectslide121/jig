@@ -5,8 +5,8 @@ Code: `addons/pages/` (`addon.json`, `host.ts`, `ui.tsx`, `lib/pages.ts`), `ctx.
 Decision: D-405 (follows D-404). Tests: `addons/pages/*.test.ts`, `main/addons/saveCopy.test.ts`,
 `e2e/pages.spec.ts`.
 
-A **page** is a self-contained HTML page Claude (or ChatGPT) publishes into Jig: a report, mockup,
-dashboard, release notes, comparison. Jig's own replacement for claude.ai artifacts, which Jig chats
+A **page** is a self-contained HTML page Jig publishes: a report, mockup,
+dashboard, release notes, comparison. Jig's own replacement for claude.ai artifacts, which chats in Jig
 never get (`docs/reference/artifacts.md`). Everything stays on this computer; there is no sharing service.
 
 ## Tools (`mcp__jig__addon_pages_*`, same names in ChatGPT chats)

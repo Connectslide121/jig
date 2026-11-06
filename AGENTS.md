@@ -85,7 +85,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   other one, after a plan limit (D-338) or by you between turns (D-339, always through the handover
   dialog): `continueWith` in the session manager, a divider in the transcript, a handoff built from
   the transcript without AI; never two providers in one turn.
-  Everything else agentic (the builder, attempts, worktree chats, routines, Claude's browser) stays on
+  Everything else agentic (the builder, attempts, worktree chats, routines, Jig's browser) stays on
   Claude Code. Never add an agent runtime of Jig's own (each engine drives an official CLI), never call
   the Anthropic or OpenAI API directly, never assemble Claude's system prompt yourself (only `append`
   to the `claude_code` preset). A chat feature a provider lacks is a flag in `ENGINE_CAPABILITIES`
@@ -109,7 +109,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
     the chat's local MCP server (127.0.0.1, its own token, never in Codex's environment).
   - Mark tools that only read with `readOnly`, so they run without a prompt.
   - A tool may return images (`ToolOutput`); they show in the chat.
-  - Tell Claude when to use a tool in `jigContext` (`main/engine/jigTools.ts`).
+  - Tell the chat when to use a tool in `jigContext` (`main/engine/jigTools.ts`).
   - Give the fake engine a way to call new tools, so e2e tests cover them.
 - **Claude Code's cloud features** (routines) are reached only through Claude Code's own tools: in
   chats, or with `callClaudeTool` (a guarded single-tool call, D-092). Never call claude.ai APIs or load
@@ -118,7 +118,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   init message's `tools` list has it (`main/engine/offeredTools.ts`), never from a hard-coded guess.
 - **Jig's windows:** use `appWindows()` (`main/appWindows.ts`), never `BrowserWindow.getAllWindows()`,
   for anything meaning "Jig's windows" (events, focus, notifications, quitting). Hidden helper windows
-  (Claude's browser) are marked with `markHelperWindow`. Show or focus a window with
+  (Jig's browser) are marked with `markHelperWindow`. Show or focus a window with
   `revealWindow`/`focusJig`, and open links, files and folders with `openExternal`/`openPath`/
   `showInFolder` (same file): they do nothing while Jig runs hidden (`JIG_HIDDEN`, the e2e tests), so
   tests never take over the user's screen. A hidden Jig shows its workbench window only through
@@ -239,6 +239,12 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   is meant to be committed and shared.
 - **No real names in examples:** placeholders, sample data, tests and docs use neutral names (Shop,
   Contoso, Fabrikam), never Jon's projects, companies or colleagues.
+- **Say "Jig", not "Claude" (Jon, D-413).** Chats run on Claude or ChatGPT, so user-visible text, tool
+  descriptions, `jigContext`, `SETTINGS_GUIDE` and docs call the assistant "Jig" ("Jig's browser",
+  "Ask Jig"). Name a provider only where the provider is the point (the picker and handover, sign-in
+  and install, plan limits and usage, per-provider settings, costs, why a provider lacks something),
+  and "Claude Code" only for the program and its own things (slash commands, MCP, CLAUDE.md, routines).
+  Only text changes: identifiers, command ids and setting keys keep their names.
 - Say **chat** in user-facing text, never "session" (that's the code's word). Frequent actions go
   where you are (a button, a hover action); rare ones in ⋯ menus and Tools (D-094).
 - A new user-visible feature gets a line on the "What Jig can do" page (`features/about/`); a new slot
@@ -265,7 +271,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   (`npx vitest run <file>`) when a pure function's logic is tricky, and anything else when Jon asks.
 - A new spec gets a rule in `e2e/affected.json`. Tests run in parallel: no dependence on other tests or
   timing; keep each test short (the slowest sets the suite's time).
-- **UI is still looked at before it's done:** a screenshot in Claude's browser or a quick `npm run dev`
+- **UI is still looked at before it's done:** a screenshot in Jig's browser or a quick `npm run dev`
   look, not a test run (the hard UI rules above still apply). For a view in a given state at all its
   widths (sidebar, bottom panel, tab) use `shootView` (`e2e/shots.ts`), with "hold until released"
   for something running: `docs/guides/testing.md` → "Put the UI in a state and screenshot it".

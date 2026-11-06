@@ -20,15 +20,15 @@ identity, to the desktop app's value to unlock them.
 What Jig does about it:
 - **No Artifacts tab, no claude.ai listing, no guarded `Artifact` calls.** (They were removed; the
   Releases add-on's button now says "Publish the notes as a page".)
-- **Claude is told about the tool only when it has it.** `recordOfferedTools` keeps the `tools` list of the
+- **Jig is told about the tool only when it has it.** `recordOfferedTools` keeps the `tools` list of the
   latest Claude Code init message (`EngineEvent` init, `tools`), and `jigContext` adds the sentence about
   the Artifact tool only when `claudeOffers("Artifact")`. In Jig it never does; before any Claude chat has
   started, nothing is promised either.
 - **Old calls keep their card.** A chat resumed from the desktop app can hold `Artifact` calls. Their card
-  has **Open in Jig** (the local page Claude published, `file_path`, in the Preview tab; shown only when
+  has **Open in Jig** (the local page Jig published, `file_path`, in the Preview tab; shown only when
   the call has one), **Open on claude.ai** (your browser) and the link. `artifactFromTool` finds the link in
   the tool's result.
-- **The replacement is Jig's own pages** (D-405, `docs/reference/pages.md`): Claude publishes HTML into Jig with `addon_pages_publish`; the Pages add-on keeps, lists and previews it.
+- **The replacement is Jig's own pages** (D-405, `docs/reference/pages.md`): Jig publishes HTML into Jig with `addon_pages_publish`; the Pages add-on keeps, lists and previews it.
 
 The HTML preview runs with scripts off until you turn them on (`docs/reference/preview.md`).
 

@@ -32,7 +32,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `work/<job>/` | git worktree | a build's workspace (branch `build/<job>` of `addons/`), removed on Accept/Discard |
 | `app-builds/previous/` | build snapshot | the build that ran before the last "Pull, build and restart" (launcher fallback) |
 | `launcher/` | `status.json`, `launcher.log`, `ready-*` | the launcher's result, log and ready heartbeats (`docs/reference/setup.md`) |
-| `evidence.json` | `{ notes: [{ id, at, category, text, projectId?, sessionId? }] }` | notes Claude saved from chats for suggestions (`jig_note_evidence`) |
+| `evidence.json` | `{ notes: [{ id, at, category, text, projectId?, sessionId? }] }` | notes Jig saved from chats for suggestions (`jig_note_evidence`) |
 | `profile.md` | Markdown | how you work, read by every reflection; edit it on "What Jig knows about me" |
 | `activity/YYYY-MM-DD.jsonl` | JSON lines `{ at, kind, text, projectId?, detail? }` | the local activity log; prompt detail includes `imageAttachments` / `fileAttachments` string counts, not source method (`docs/reference/learning.md`) |
 | `suggestions.json` | JSON `{ suggestions, blocked, runs, lastRun }` | the suggestion inbox, your answers, blocked patterns, pattern runs |
@@ -77,7 +77,7 @@ A new state file is documented here in the same commit that adds it.
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
 | `engine.defaultModel` | `"opus"` | new chats (D-207); `opusplan` = Opus only in Plan mode, Sonnet otherwise; empty follows Claude Code; an explicit project model overrides it |
 | `engine.effort` | `""` | reasoning effort for new Claude chats whose project sets none: `low` … `max`, `""` = the model's default; a model without effort levels ignores it (D-390) |
-| `engine.subagentModel` | `"sonnet"` | Claude Code subagent fallback; explicit invocation/agent models win; empty respects existing Claude settings/environment |
+| `engine.subagentModel` | `"sonnet"` | Settings → Chats → Claude chats → Helper fallback model (was "Subagent fallback model"): Claude Code subagent fallback; explicit invocation/agent models win; empty respects existing Claude settings/environment |
 | `engine.helperModel` | `"sonnet"` | the Claude model AI features that need thought fall back to (check, release notes, add-ons' other questions) when `ai.<feature>.model` is empty |
 | `engine.quickModel` | `"haiku"` | the Claude model short answers fall back to (commit message, chat names, add-ons' short answers) when `ai.<feature>.model` is empty |
 | `ai.<feature>` | `{ provider: "claude", model: "" }` | provider (`claude` \| `chatgpt`) and model for each one-shot AI feature (`shared/aiFeatures.ts`: commitMessage, commitCheck, releaseNotes, tour, attemptsJudge, standup, taskRunReport (Tasks → History run reports, D-355), chatTitles, chatSuggestions (default `chatgpt`: the next message after a ChatGPT chat's turn, D-315), learning, meetingTranslation, taskQueueReorganize (Tasks → Reorganize, D-397), addonQuick, addonHelper). `model: ""` = the model the feature used before (Claude) or the feature's ChatGPT family (`luna`, `terra` or `sol`, matching its Claude tier). On ChatGPT the model is a family alias (the newest of that family when the feature runs, D-310) or an exact slug (pinned). Protected; Settings → AI features (D-297) |
@@ -92,8 +92,8 @@ A new state file is documented here in the same commit that adds it.
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
 | `chat.overview` | `true` | the small overview card at the top right of each chat: turns, tool calls, files changed, commands, skills, subagents, add-ons, MCP calls, tokens; **Show details** opens the full breakdown in a modal (D-184). The chart button in the chat's top bar turns it on or off |
 | `chat.times` | `false` | a time beside every message and step of a chat, in a fixed column at its left (24-hour, the day when it changes; D-306). The clock button in the chat's top bar turns it on or off. Off, a message's time shows in its hover toolbar and a steps line's in its tooltip |
-| `chat.view` | `"compact"` | how chats show Claude's work: `compact` folds each run of steps (commands, reads, edits, thinking) into one line you can open; `detailed` shows every step as its card (D-159). The switch is in each chat's top bar |
-| `meetings.aiTranslation` | `true` | when Teams can't translate live captions (Teams Premium), Claude translates the finished captions into the language picked in the meeting, in batches, skipping lines that waited over 20 s (D-277, D-384); protected |
+| `chat.view` | `"compact"` | how chats show Jig's work: `compact` folds each run of steps (commands, reads, edits, thinking) into one line you can open; `detailed` shows every step as its card (D-159). The switch is in each chat's top bar |
+| `meetings.aiTranslation` | `true` | when Teams can't translate live captions (Teams Premium), Jig translates the finished captions into the language picked in the meeting, in batches, skipping lines that waited over 20 s (D-277, D-384); protected |
 | `meetings.translationModel` | `"haiku"` | the model that translates captions; protected |
 | `meetings.localTranscription` | `true` | when Teams captions aren't available in a meeting or call, the call window transcribes it on this computer with Whisper (`speech.model`; D-321): the call's audio and your microphone, in pieces of 5–10 s, kept in memory only until transcribed. Lines are marked Local. Also in the transcript panel's ⋯ menu |
 | `meetings.noiseSuppression` | `true` | noise suppression on your microphone in meetings and calls (D-322): Azure Communication Services' deep noise suppression (`@azure/communication-calling-effects`, removes typing and background noise), or the browser's own where that isn't supported. Also in the call's ⋯ menu (with its state: On, Basic, Unavailable, Off) and in Devices…; a call in progress follows at once |
@@ -115,7 +115,7 @@ A new state file is documented here in the same commit that adds it.
 | `phone.awayMinutes` | `5` | 1–60; protected |
 | `phone.finished` | `true` | also when a chat finishes or stops with an error (requests and questions are always sent); protected |
 | `phone.keepAwake` | `true` | while a chat works or waits for you and the phone is connected, the computer doesn't sleep (`powerSaveBlocker`, the screen may still turn off); protected |
-| `phone.screenshots` | `true` | a finished turn that used Claude's browser comes with a screenshot of its page; protected |
+| `phone.screenshots` | `true` | a finished turn that used Jig's browser comes with a screenshot of its page; protected |
 | `speech.model` | `"base"` | dictation's Whisper model: `tiny` (~45 MB, fastest), `base` (~80 MB) or `small` (~250 MB, most accurate) (D-208) |
 | `speech.language` | `""` | the language you dictate in (`en`, `sv`, …); empty = Whisper recognises it |
 | `speech.engine` | `"natural"` | what reads aloud: `natural` (Kokoro on this computer, ~330 MB downloaded once; D-243) or `system` (the system's voices) |
@@ -123,17 +123,17 @@ A new state file is documented here in the same commit that adds it.
 | `speech.voice` | `""` | the system voice when `speech.engine` is `system`; empty = the system's default |
 | `speech.gpu` | `true` | run Whisper on the graphics card (WebGPU) when there is one (D-209) |
 | `speech.live` | `true` | show the words while you speak (Whisper reads again every ~250 ms) |
-| `speech.pause` | `1000` | talking with Claude: ms of silence that end your turn (400–4000) |
+| `speech.pause` | `1000` | talking with Jig: ms of silence that end your turn (400–4000) |
 | `speech.inputDevice` | `""` | the microphone dictation and talking listen to (a media device id); empty or unplugged = the system's default |
 | `speech.outputDevice` | `""` | the speaker the natural voice and talking sounds play on (a media device id); empty or unplugged = the system's default; system voices always use the system's output |
-| `speech.noiseFilter` | `"strong"` | talking with Claude: `strong`, `light` or `off`; how strictly noise that isn't a voice is ignored (Silero voice detector on this computer, D-275; `off` = loudness alone) |
+| `speech.noiseFilter` | `"strong"` | talking with Jig: `strong`, `light` or `off`; how strictly noise that isn't a voice is ignored (Silero voice detector on this computer, D-275; `off` = loudness alone) |
 | `speech.rate` | `1` | speed of the voice (0.5–2) |
-| `speech.workSound` | `true` | a soft note while Claude thinks during talking; a chime when work you handed over by voice finishes or needs you (D-210; no working motif after talking ends) |
-| `speech.wake` | `false` | listen for "Hey Jig" voice commands while Jig runs, also minimized or behind other windows (D-278); commands run on this computer, without Claude; protected (only you turn it on: Settings → Speech or a click on the status bar item, D-387) |
+| `speech.workSound` | `true` | a soft note while Jig thinks during talking; a chime when work you handed over by voice finishes or needs you (D-210; no working motif after talking ends) |
+| `speech.wake` | `false` | listen for "Hey Jig" voice commands while Jig runs, also minimized or behind other windows (D-278); commands run on this computer, without Jig; protected (only you turn it on: Settings → Speech or a click on the status bar item, D-387) |
 | `speech.wakeProfile` | `null` | what Train Hey Jig learned (D-389): `trainedAt`, `heard` (Whisper's text for each of the 5 takes), `variants` (starts the defaults missed, now heard as "Hey Jig"), `level` and `voice` (median loudness and voice-detector score, which lower the listening thresholds); text and numbers only, never audio; protected |
 | `speech.announce` | `true` | with `speech.wake`: say out loud when a chat finishes or needs you |
-| `browser.showWhenUsed` | `true` | open Claude’s browser view by itself when a chat opens a new page, not on later calls on it (D-410; off: it stays closed until you open it) |
-| `browser.pageSessions` | `"shared"` | each chat has its own page in Claude’s browser (D-320); `shared`: the pages share the `persist:jig-browser` session (cookies, logins, storage), so a logout in one chat logs out the others; `separate`: each page gets an in-memory session of its own that ends with the page. Applies to pages opened afterwards |
+| `browser.showWhenUsed` | `true` | open Jig’s browser view by itself when a chat opens a new page, not on later calls on it (D-410; off: it stays closed until you open it) |
+| `browser.pageSessions` | `"shared"` | each chat has its own page in Jig’s browser (D-320); `shared`: the pages share the `persist:jig-browser` session (cookies, logins, storage), so a logout in one chat logs out the others; `separate`: each page gets an in-memory session of its own that ends with the page. Applies to pages opened afterwards |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere. Picked in Settings → Terminal from the detected shells (the full path is stored) or a custom path. Protected: Settings only (it runs programs) |
 | `learning.recording` | `true` | record activity locally |
 | `learning.retentionDays` | `90` | delete activity older than this |
@@ -174,7 +174,7 @@ and renames that file `notes.json.migrated` (legacy `chat:<id>` entries stay onl
 in every project and projectless chat. Global off wins; project exclusions are retained for later
 re-enabling. New projects are included automatically. Selections affect the next message, using
 the chat's project even if another project is selected in the UI. Catalogue/instructions are
-read-only application resources, not user state. Personal/project Claude skills remain independent.
+read-only application resources, not user state. Personal/project Jig skills remain independent.
 
 ## Phone (D-350)
 

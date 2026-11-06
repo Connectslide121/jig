@@ -34,7 +34,7 @@ same commit.
   calls the host through a single typed bridge (`window.jig`).
 - **Preload** exposes that bridge with `contextBridge`. The renderer runs with `contextIsolation: true`,
   `nodeIntegration: false`, `sandbox: true`.
-- **Helper windows.** Claude's browser is a hidden offscreen window per chat, owned by the main process
+- **Helper windows.** Jig's browser is a hidden offscreen window per chat, owned by the main process
   (D-320).
   `main/appWindows.ts` keeps such helpers out of everything that means "Jig's windows" (events,
   focus, notifications, quitting).
@@ -158,7 +158,7 @@ Writes are atomic (write temp file + rename). Formats are documented in `docs/re
   official, unmodified CLI; Jig never runs an agent loop of its own.
 - `CodexEngine` runs one `codex app-server` per chat (JSON-RPC on stdio, types generated from the
   CLI into `engine/codex-protocol/`); `codexNormalize.ts` turns its notifications into the same
-  `EngineEvent`s, so commands, edits and MCP calls show on Claude's cards (D-311).
+  `EngineEvent`s, so commands, edits and MCP calls show on Jig's cards (D-311).
 - `ClaudeEngine` implements it with `query()` from `@anthropic-ai/claude-agent-sdk` in **streaming
   input mode** (an async queue of user messages), so one Claude Code process serves a whole
   conversation, follow-ups can be queued and turns can be interrupted.
@@ -214,7 +214,7 @@ header ring, card on hover). Jig asks Claude Code for the data behind `/usage` (
 process, every 5 minutes and after chats) and listens to Claude Code's rate-limit events; it never reads
 the login itself. Reference: `docs/reference/usage.md`.
 
-**Configuring Jig from a chat.** Claude can read and change everything already configurable — settings
+**Configuring Jig from a chat.** Jig can read and change everything already configurable — settings
 (theme, fonts, density, file icons, terminal, learning, workspace depth…), layout, add-ons on/off,
 project names and colours, and install themes — through tools on the `jig` MCP server. Changes go
 through Claude Code's permission prompt and leave a card with Undo in the chat; billing and
@@ -242,23 +242,23 @@ latest rows, growing as you scroll up (D-366).
 `WebContentsView`, owned by main per workbench window, with its own persistent cookie partition,
 no preload, sandboxing and context isolation. Typed `userBrowser.*` IPC reports native state and
 updates slot bounds/visibility. Hidden tabs and DOM menus/dialogs hide the native surface; the
-reserved slot never changes size for loading/status. It is independent of Claude's tools and frames.
+reserved slot never changes size for loading/status. It is independent of Jig's tools and frames.
 
-**Claude's terminals and browser.** Claude runs long commands in Jig terminals the user sees
+**Jig's terminals and browser.** Jig runs long commands in Jig terminals the user sees
 (`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in the browser: one offscreen
 Chromium page per chat owned by the main process (`main/browser/pages.ts`, D-320; sandboxed, in a
 session apart from Jig's that the pages share by default), driven by that chat's `jig_browser_*`
 tools with real input events and shown live in a view, one tab per chat's page, that the user can
 click/type in for sign-ins. Every `browser.*` IPC method names the chat (`chatId`); a chat archived
 or deleted closes its page (`onSessionClosed` in `main/sessions`).
-The address is read-only; Claude owns browser navigation/viewport controls. A hint links to the
+The address is read-only; Jig owns browser navigation/viewport controls. A hint links to the
 user Browser, also reachable from the top-right globe icon (D-226). Hidden helper windows are kept
 out of "all windows" by `main/appWindows.ts`. Reference: `docs/reference/browser.md`.
 
-**AI features around the chat.** Built on the same Claude Code:
-- Try several ways: parallel attempts in worktrees, judged by Claude (`docs/reference/attempts.md`).
+**AI features around the chat.** Built on the same chat engines (Claude Code or Codex):
+- Try several ways: parallel attempts in worktrees, judged by Jig (`docs/reference/attempts.md`).
 - Guided tours of changes, the pre-commit check, commit messages and the standup.
-- Ask Claude about a failed script or a previewed file, and turn a chat into a tool.
+- Ask Jig about a failed script or a previewed file, and turn a chat into a tool.
 
 Each has a menu entry. Reference: `docs/reference/ai-features.md`.
 
@@ -298,7 +298,7 @@ registered shortcuts. Its examples start a build or open a chat with a draft. Re
   - a **default Git repository** (`focusRepo`), which drives the Git panel, the status bar and Git
     actions;
   - defaults for its chats (model, effort, permission mode) and **instructions** appended to
-    Claude's system prompt (`jigContext`);
+    Jig's system prompt (`jigContext`);
   - starter prompts for its Home.
 
   `ProjectInfo`/`AddonProject` carry the facts of the default workspace (`isGitRepo`, `repos`), so
@@ -312,7 +312,7 @@ registered shortcuts. Its examples start a build or open a chat with a draft. Re
   status (idle / working / needs permission / error) for every project at a glance.
 - **Terminal** = a pty (`@lydell/node-pty`, prebuilt binaries — no compiler needed on Windows) rendered
   with xterm.js. Terminals belong to a project and can be started by add-ons ("run this script") and
-  by Claude (`jig_terminal_run`, for dev servers and watchers you can see and stop).
+  by Jig (`jig_terminal_run`, for dev servers and watchers you can see and stop).
 
 ## 6. The workbench — layout as data
 
@@ -509,9 +509,9 @@ extensions or embed VS Code (D-019, D-022).
 The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, switching
 branches, Open in VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
 `addons/scripts` (scripts view and menu actions), `addons/files` (the project's file tree with git colours), `addons/releases` (versions, changelogs and
-deploys per repository from its `.jig/release.json` policy, D-110; its Claude tools are the first
+deploys per repository from its `.jig/release.json` policy, D-110; its Jig tools are the first
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated
-lists of steps per project, run by hand, with help or on a schedule, D-112) and `addons/pages` (pages Claude publishes into Jig: HTML kept in the add-on's data folder, listed and previewed locally, a `chat.toolRenderer` card in the chat, D-405). They use only public slots, so they are
+lists of steps per project, run by hand, with help or on a schedule, D-112) and `addons/pages` (pages Jig publishes into Jig: HTML kept in the add-on's data folder, listed and previewed locally, a `chat.toolRenderer` card in the chat, D-405). They use only public slots, so they are
 also examples for the builder.
 
 ### 11.1 Azure tenants (D-282)
@@ -556,7 +556,7 @@ changes. It can be renamed (its name is `default.label` in `tenants.json`, D-301
   project dialog shows a note for a removed one (`pinnedTenant` in `@jig/azure`).
 - Renderer (D-283): `features/azure` — the tenant avatar at the far right of the top bar (its menu
   switches; the Add and Manage modals hang off it), Settings → Azure, a store fed by
-  `azure.tenantChanged`. Claude: `jig_azure_tenants` (reads) and `jig_azure_switch_tenant` (approval).
+  `azure.tenantChanged`. Jig: `jig_azure_tenants` (reads) and `jig_azure_switch_tenant` (approval).
 
 ## 12. Packaging, first run and updates
 
@@ -650,25 +650,25 @@ window as a `speech.part` event as soon as it is made (D-411); `features/speech/
 feeds each piece's loudness to the waves when it plays, and makes the next chunk while one plays.
 `speech.say` returns the whole audio at once (the phone's voice messages). Chunks are a sentence
 each (`speechChunks`); after a silence the first one ends early at a comma, or after 8 words while
-Claude is still writing (`earlyBreak`), so the voice starts after a few words. `warmNaturalVoice`
+Jig is still writing (`earlyBreak`), so the voice starts after a few words. `warmNaturalVoice`
 loads the voice ahead (Talk, each message in Talk, "Hey Jig", a chat starting work while
 announcements are on; at most once a minute).
 Text becomes phonemes there: English with espeak-ng (`english.ts`, from kokoro-js), Spanish with
 rules (`spanish.ts`). The model is downloaded by `SpeechModels.ensureVoice` into `~/.jig/models`. Chromium's Web Speech recognition doesn't work in Electron and
 Claude Code's own voice mode needs claude.ai, so neither is used.
 
-Talking with Claude (`features/speech/voice.ts`, D-209) is a renderer loop around a normal chat:
+Talking with Jig (`features/speech/voice.ts`, D-209) is a renderer loop around a normal chat:
 voice activity detection on the microphone frames starts and ends your turn, the text goes through
-the composer and `sessions.send`; Claude's streamed text is read aloud sentence by sentence
+the composer and `sessions.send`; Jig's streamed text is read aloud sentence by sentence
 (`speakableUntil`) and talking over it cancels it. Pending permissions are read out and answered by
 voice (`replies.ts`: yes → allow, else deny with what you said as feedback). The chat's `voice` flag
 (`sessions.setVoice`) makes the host add `VOICE_GUIDANCE` (`main/speech/voice.ts`) to each turn's
-context, so Claude answers in short spoken sentences, looks at the code (read-only, plan mode) and
+context, so Jig answers in short spoken sentences, looks at the code (read-only, plan mode) and
 presents a plan with ExitPlanMode, or, for bigger work, a task queue with `addon_tasks_add` (D-218).
 
 The talking window (`features/speech/VoiceDialog.tsx`, D-210, D-218) is mounted once in the workbench and
 follows the `useVoice` store: sound waves on a canvas (`Waves.tsx`) driven by `meter.ts` (microphone
-levels; a pulse per word Claude says, since system voices give no audio) in the centre, the
+levels; a pulse per word Jig says, since system voices give no audio) in the centre, the
 conversation fading upwards under them, a plan card in the right margin while a pending ExitPlanMode
 or task-queue `addon_tasks_add` waits (`planOf` in `replies.ts`), and Mute / Stop voice / End talking /
 Go ahead. The go-ahead (a phrase from `isGoAhead`, or the button) approves the pending plan (a queue
@@ -728,7 +728,7 @@ See addons/meetings/README.md for the UI, setup, persistence and known SDK limit
 
 **Project knowledge** (`main/knowledge/`, D-256, D-289) is core, not an add-on: per project, notes
 (`notes.ts`, `shared/notes.ts`) and documents (`store.ts`) under `knowledge/<projectId>/`. One
-message context gives Claude the notes in full and the document names; `jig_notes_*` keep the
+message context gives Jig the notes in full and the document names; `jig_notes_*` keep the
 notes, `jig_knowledge_read` reads a document. The renderer shows them on the project's Home
 (`features/knowledge/KnowledgeCard.tsx`) and in the `jig.notes` view (`Notes.tsx`).
 
@@ -784,7 +784,7 @@ current poll or pause and asks again at once, and any call that gets through (a 
 clears that warning (never the 401/409 ones). `index.ts`
 wires it to Electron (safeStorage, `powerMonitor` idle, and `resume`/`unlock-screen` → `wake()`, `phone.*` IPC, `onSessionStatus`,
 `onPermissionCard` from the session manager, a 30 s sweep) and registers `jig_phone_send` and
-`jig_phone_close_room` (what /close does in a room, asked by Claude; D-386). The
+`jig_phone_close_room` (what /close does in a room, asked by Jig; D-386). The
 renderer has Settings → Phone (`features/phone/`) and sees only `PhoneState`, never the token.
 `concierge.ts` registers the `concierge` session kind (`registerSessionKind`: its prompt, Jig's tool
 server plus the chat tools, `builtinTools: ["ToolSearch"]`, passed to the SDK as `tools`) and finds or

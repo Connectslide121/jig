@@ -50,33 +50,33 @@ item "N running" (click → show output / stop). The project dashboard no longer
 On Windows, stopping a script closes its pseudo console, which ends the processes attached to it; check
 that dev servers (node, dotnet) really stop (`docs/status.md`).
 
-## Ask Claude about output
+## Ask Jig about output
 
 When a terminal that runs a command (a script, not an interactive shell or a private terminal) goes
-from running to exited with a non-zero code, a toast offers **Ask Claude** and **Show output**; a failed
-terminal also has a ✨ button in the list, and every non-private terminal has "Ask Claude about this
+from running to exited with a non-zero code, a toast offers **Ask Jig** and **Show output**; a failed
+terminal also has a ✨ button in the list, and every non-private terminal has "Ask Jig about this
 output" in its menu. It opens a new chat in the terminal's folder (when it is inside the project) with
 the request typed in, not sent: the title, command, exit code and the last 120 lines of output (colour
-and cursor codes removed, at most 12 000 characters). Code: `features/terminals/askClaude.ts`.
+and cursor codes removed, at most 12 000 characters). Code: `features/terminals/askJig.ts`.
 
-## Claude's terminals
+## Jig's terminals
 
 Chats get tools on the `jig` MCP server (`main/terminals/claudeTools.ts`):
 - `jig_terminal_run { command, title?, cwd? }` starts a long-running command (dev server, watcher) in a
-  visible terminal. The terminal is titled "Claude: …", tagged with the chat (`TerminalInfo.sessionId`),
+  visible terminal. The terminal is titled "Jig: …", tagged with the chat (`TerminalInfo.sessionId`),
   revealed in the panel (`terminals.reveal`; while you work on another tab of the Terminals view's
   panel, that tab gets a badge instead of switching, D-349), and returns its first output. Its folder must be inside
   the project.
 - `jig_terminal_read { id, lines? }` (read-only, no prompt) returns the last lines of a terminal of the
-  project, plain text: Claude's own terminals, scripts, or your dev server.
+  project, plain text: Jig's own terminals, scripts, or your dev server.
 - `jig_terminal_list` (read-only) lists the project's terminals.
 - `jig_terminal_stop { id }` stops and closes (removes) a terminal; only terminals that chat started.
-  The tool description and the appended prompt ask Claude to stop terminals it no longer needs.
-- When a terminal Claude started exits by itself (not stopped or closed), Jig tells the chat that
+  The tool description and the appended prompt ask Jig to stop terminals it no longer needs.
+- When a terminal Jig started exits by itself (not stopped or closed), Jig tells the chat that
   started it (D-281): `SessionManager.notify` sends a message with the exit code and the last 40
   lines (`exitNotice`), starting a turn in an idle chat or joining the running one. The transcript
-  shows it as one line (`from` on the user item, "Jig told Claude", the full text in its tooltip),
-  never as something you typed. The tool description and the appended prompt tell Claude to end its
+  shows it as one line (`from` on the user item, "Jig told the chat", the full text in its tooltip),
+  never as something you typed. The tool description and the appended prompt tell Jig to end its
   turn instead of polling with sleep timers.
 - **Finished terminals close themselves (D-373).** Once the chat has its exit notice, the terminal is
   closed (`FinishedTerminals`, `main/terminals/autoClose.ts`): one that succeeded right away, unless it
@@ -87,6 +87,6 @@ Chats get tools on the `jig` MCP server (`main/terminals/claudeTools.ts`):
   terminals, scripts and sign-in terminals are never closed this way.
 
 Private terminals (the Claude Code sign-in) are never visible to these tools. The appended prompt tells
-Claude to use them for anything that keeps running, and its own shell for commands that finish. A
-terminal Claude started has "Open the chat that started it" in its menu.
+Jig to use them for anything that keeps running, and its own shell for commands that finish. A
+terminal Jig started has "Open the chat that started it" in its menu.
 

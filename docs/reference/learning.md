@@ -19,9 +19,9 @@ Shared-file chats are not classified as short one-off asks just because their te
 A browser-verification gap requires explicit web context (a web page/dev-server URL or web-app
 reference), not generic desktop UI wording. Its summary says no Jig browser calls were *recorded*;
 it does not establish permission denial, missing verification through other tools or subagents, or
-that the user should repeat browser instructions. Claude already receives those instructions.
-The feature catalog points Claude’s browser to `jig.openClaudeBrowser`; `jig.openBrowser` is the
-user's native browser. The reflection is instructed to omit non-actionable “let Claude” reminders
+that the user should repeat browser instructions. Jig already receives those instructions.
+The feature catalog points Jig’s browser to `jig.openJigBrowser`; `jig.openBrowser` is the
+user's native browser. The reflection is instructed to omit non-actionable “let Jig” reminders
 and imaginary enable-browser settings, respect Electron test/screenshot verification, and keep
 repository implementation facts out of personal profile proposals. Existing cards are not rewritten.
 
@@ -40,9 +40,9 @@ Sources publish to `main/activity/bus.ts`; the log appends one JSON line per eve
 | `ui` | Jig's own actions run from a menu or Go to (`text` the action id), a view opened as a main tab (`view.open`) or moved to a region (`view.move`); only ids and regions (D-175). Keyboard shortcuts aren't recorded |
 | `git` | commit/push/pull/fetch/switch/branch/stage/discard from the Git add-on |
 | `project.switch` | switching the active project |
-| `friction` | `detail.signal`: `interrupt` (Stop while Claude works), `rewind`, `denied` (a permission), `correction` (a message like "no, I meant…"), `tool-errors` (3 failed tool calls in a turn), `script-failed` (a script that exits non-zero by itself) |
-| `evidence` | a note Claude saved with `jig_note_evidence` (`detail.category`) |
-| `ai.lines` | Claude's Write/Edit/MultiEdit: `text` the file, `detail.lines` the hashes of the lines it wrote (no content) |
+| `friction` | `detail.signal`: `interrupt` (Stop while Jig works), `rewind`, `denied` (a permission), `correction` (a message like "no, I meant…"), `tool-errors` (3 failed tool calls in a turn), `script-failed` (a script that exits non-zero by itself) |
+| `evidence` | a note Jig saved with `jig_note_evidence` (`detail.category`) |
+| `ai.lines` | Jig's Write/Edit/MultiEdit: `text` the file, `detail.lines` the hashes of the lines it wrote (no content) |
 
 **What is written is sanitized** (`packages/learning/src/sanitize.ts`, tested; D-103):
 - **Secrets are masked as `«secret»` in every event:**
@@ -63,7 +63,7 @@ start and daily), open the folder, delete all.
 ### Notes from chats and the profile (Learning 2, D-111)
 
 - **`jig_note_evidence`** (read-only Jig tool): when you mention manual work, work outside Jig,
-  frustration, a chore or a preference, Claude saves one short note without asking. A "Noted for
+  frustration, a chore or a preference, Jig saves one short note without asking. A "Noted for
   suggestions" card with **Remove** shows in the chat. Notes are in `~/.jig/evidence.json`; exclusions
   and masking apply; nothing is saved while recording is paused.
 - **The profile** (`~/.jig/profile.md`): how you work, as Markdown with headings (Stack, How I
@@ -72,12 +72,12 @@ start and daily), open the folder, delete all.
   card with Undo) let chats use it.
 - **What Jig knows about me** (tab `jig.knowledge`: Suggestions view's person button, Tools, Settings →
   Learning): the profile in an editor (Ctrl+S), the notes (delete one or all), the activity of the last
-  4 weeks per kind, "How you worked", and "How Claude worked for you" (D-185): the chat overview's
+  4 weeks per kind, "How you worked", and "How Jig worked for you" (D-185): the chat overview's
   counts summed over 4 weeks (`usageSummary` in `@jig/learning`, IPC `learning.usage`): chats,
   messages, tool calls, and per skill, subagent, add-on, MCP server and tool its calls and chats.
-- **Profile interview** (D-169): an empty profile (only headings) makes Jig offer a chat where Claude
+- **Profile interview** (D-169): an empty profile (only headings) makes Jig offer a chat where Jig
   interviews you one question at a time and writes with `jig_update_profile`: a toast when Jig opens
-  (once per launch, a project active, "Don't ask again" in localStorage) and **Fill it in with Claude**
+  (once per launch, a project active, "Don't ask again" in localStorage) and **Fill it in with Jig**
   in the tab. The prompt is `profileInterviewPrompt` (`learning/reflect.ts`).
 
 ## 2. Mine (no AI) — `packages/learning`
@@ -94,11 +94,11 @@ start and daily), open the folder, delete all.
   (`«secret»`) in a message or a command, a download piped into a shell, certificate checks off,
   `chmod 777`, permission checks skipped, `sudo` package installs (each once is enough); force pushes
   without `--force-with-lease`, `--no-verify` (2+), pushes straight to main/master (3+ on 2+ days); and
-  5+ commits on 2+ days with no tests run (by you or Claude: `npm test`, `vitest`, `pytest`, `dotnet
+  5+ commits on 2+ days with no tests run (by you or Jig: `npm test`, `vitest`, `pytest`, `dotnet
   test`…).
 - **Habit hints** (`habitPatterns` in `habits.ts`, D-214), kind `habit`: a few habits the coach can
-  start from (the coaching itself is Claude's, from your chats; see Reflect). From messages and
-  Claude's tools grouped by chat (`detail.chat`): asking for one feature **piece by piece** (4+ short
+  start from (the coaching itself is Jig's, from your chats; see Reflect). From messages and
+  Jig's tools grouped by chat (`detail.chat`): asking for one feature **piece by piece** (4+ short
   "write a…", "now add…" messages in a chat, in 2+ chats on 2+ days; the examples are one whole
   sequence in order), **mostly one-off asks** (6+ chats of a single message under 15 words, 60%+ of
   chats, on 3+ days), and **big changes without a plan** (15+ Edit/Write calls in a chat with no plan
@@ -109,21 +109,21 @@ start and daily), open the folder, delete all.
   signal; per script for failing scripts; plus two found from the log itself, `derivedFriction`: a
   chat with 15+ messages over an hour and no commit — messages carry `detail.chat` — and 6+ project
   switches within 30 minutes), **pastes** per kind (5+ on 2+ days, from `detail.pasted`),
-  and **tools never used** (5+ UI-related messages on 2+ days in a project where Claude's browser was
+  and **tools never used** (5+ UI-related messages on 2+ days in a project where Jig's browser was
   never used).
 
 ### How you worked (2e)
 
-`attribution.ts` and `main/learning/worked.ts`: for every workspace repository (and the ones Claude
+`attribution.ts` and `main/learning/worked.ts`: for every workspace repository (and the ones Jig
 wrote in), your commits of the last 7 days (`git log -p --unified=0 --author=<user.email>`; 21 days
-are read for churn). Added lines whose hash Claude recorded for that file count as Claude's, others
-as yours (a line Claude wrote and you changed is yours). **What counts as Claude's (D-162):** the
+are read for churn). Added lines whose hash Jig recorded for that file count as Jig's, others
+as yours (a line Jig wrote and you changed is yours). **What counts as Jig's (D-162):** the
 Write/Edit calls recorded in Jig's chats, plus everything Claude Code itself saved on this computer
 for the last 28 days (`main/learning/claudeLines.ts`, `Engine.savedToolUses`: whole transcripts,
 subagents' too, compacted parts included): its Write/Edit/MultiEdit calls per file, and the long
 lines (20+ characters) of the commands and files it wrote, which count in any file (a script that
 carries the real code in strings). Lock files, minified code, source maps and snapshots are left out
-(`isGenerated`). Work Claude did on another computer or tool leaves nothing here and counts as
+(`isGenerated`). Work Jig did on another computer or tool leaves nothing here and counts as
 yours; the card says so. Lines removed again within 14 days are
 **churn** for their origin; "fix" commits that remove recent lines are attributed to the origin of
 most of them. Chat time (in Jig's chats only) is estimated from message and tool times (gaps under 10 minutes). Shown as one
@@ -139,10 +139,10 @@ instructions to return at most 3 suggestions as JSON (title, why with evidence, 
 minutes saved per week, pattern keys, note ids, workflow steps, `addonId`, `actionId`) plus
 `profileUpdates`.
 
-**What Claude looks at (D-213, D-214):** how you work with Claude first, usually the biggest win: it
+**What Jig looks at (D-213, D-214):** how you work with Jig first, usually the biggest win: it
 reads your recent chats like a coach and names the one change that would most improve results or
 save time, with your messages as evidence (anything: clarity, context, how much work you hand over,
-saying how to check it's done, planning, reacting when Claude goes wrong, reusing what you keep
+saying how to check it's done, planning, reacting when Jig goes wrong, reusing what you keep
 explaining, parallel work, small commits; the habit hints and numbers are only starting points); what you already have (an add-on, a Jig feature, a
 setting, a skill); safety and good practice (a real security problem with evidence comes first);
 repeated work (workflow, routine, CLAUDE.md); a new tool last, at most one per review (also enforced
@@ -151,12 +151,12 @@ activity per kind (`activityOverview`), how you prompt in numbers (`promptStats`
 length of first messages, single-message chats, "one more piece" messages, first messages that say
 how to check it's done, chats with a plan), the 10 most recent chats message by message (masked,
 pastes collapsed, 10 messages each, 200 characters; `chatSample`), Jig's features with their action ids (`main/learning/features.ts`), and each add-on's
-use in 4 weeks (actions run, opened as a tab, Claude's calls; `addonUsage`, shown as `Used:` in the
+use in 4 weeks (actions run, opened as a tab, Jig's calls; `addonUsage`, shown as `Used:` in the
 catalog with the add-on's action ids), and what Jig's builder can build (`BUILDABLE`: level 1 changes,
 what an add-on can do and the slots from `@jig/sdk`, level 3 for the rest), so a tool to build is
 one the builder can really make, at the lowest level, with a goal naming where it appears and what it
 uses. All 20 slots are listed with what add-ons can do (live program output, file watching, Jig's events, toasts with buttons, system notifications, badges, search results, calling each other; D-215), and the catalog has each add-on's purpose (its README's first paragraph), and that an add-on is a whole new feature or module of Jig (a work-item board, a PR review queue…), sized to the need, not just a button. Learning 2 adds
-the notes, the profile, "How you worked", "How Claude worked for them" (`usageText`, D-185), past answers with their "did it help?" outcome, and whether
+the notes, the profile, "How you worked", "How Jig worked for them" (`usageText`, D-185), past answers with their "did it help?" outcome, and whether
 tips are allowed (one prompting tip and one habit tip a week at most). A prompting tip carries
 `before` (your message(s) as sent), `example` (the same request rewritten the better way) and
 `changes` (each difference and why it's better). The reply is validated
@@ -178,13 +178,13 @@ Each kind has its own action:
 |---|---|
 | `layout`, `settings`, `change-addon`, `new-addon`, `app` | **Build it** → the builder with the goal |
 | `workflow` | **Draft a workflow** → a new workflow in the Workflows add-on with the steps (or a chat when it is off) |
-| `claude-setup` | **Set it up with Claude** → a chat with the goal |
+| `claude-setup` | **Set it up with Jig** → a chat with the goal |
 | `project-memory` | **Add to CLAUDE.md** → a chat that adds the text |
 | `automation` | **Make a routine** → a chat that makes a Claude Code routine |
 | `prompting-tip` | **Compare prompts** → a dialog with your prompt (`before`) and the better one (`example`) side by side, why yours fell short (`why`) and what's better (`changes`); **Try this prompt** there → a new chat with it filled in (D-214). Without an example **Got it**; **Remind me** / **Dismiss** |
 | `habit-tip` | **Show me** when it names a Jig action, else **Got it**; **Remind me** / **Dismiss** (tips always quote your own activity; one of each a week at most) |
 | `profile` | **Add to my profile** (written at once) |
-| `practice` | **Fix it with Claude** → a chat that explains the risk and fixes it (D-213) |
+| `practice` | **Fix it with Jig** → a chat that explains the risk and fixes it (D-213) |
 | `use-addon` | **Switch it on** when it is off, else **Show me** (runs `actionId`), else **Got it** |
 | `use-feature` | **Show me** (runs the Jig action `actionId`), else **Got it** |
 

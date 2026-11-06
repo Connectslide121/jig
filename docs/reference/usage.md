@@ -77,7 +77,7 @@ call the provider layer makes (`onChatGptCall`, at most every 15 s), after the C
 | `usage.refresh` | `UsageByProvider` | asks Claude Code and Codex now |
 | event `usage.changed` | `UsageByProvider` | after every refresh or rate-limit event, of either provider |
 
-## Claude's tool (D-386)
+## Jig's tool (D-386)
 
 `jig_usage_limits` (read only, on the `jig` server, so every chat and the phone's concierge have it)
 returns the same numbers as text (`usageReport`): per provider its plan, then per window % used,

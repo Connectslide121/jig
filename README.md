@@ -5,13 +5,13 @@
 <h1 align="center">Jig</h1>
 
 <p align="center">
-  <b>Your desktop workbench around Claude Code — that builds its own tools.</b><br>
+  <b>Your desktop workbench around your AI chats — that builds its own tools.</b><br>
   Chats, all your repositories, git, terminals and scripts in one window.<br>
   Ask for a tool you're missing, and Jig makes it.
 </p>
 
 **Teams meetings in Jig:** a separate meeting room with screen sharing, named live captions,
-on-demand Claude questions using any project's context, and reviewed actions for multiple task queues.
+on-demand Jig questions using any project's context, and reviewed actions for multiple task queues.
 Uses Azure Communication Services (usage charges apply); [setup and limitations](addons/meetings/README.md).
 
 <p align="center">
@@ -26,11 +26,11 @@ Uses Azure Communication Services (usage charges apply); [setup and limitations]
 </p>
 
 <p align="center">
-  <img src="apps/desktop/src/renderer/features/about/shots/chat.jpg?v=17" alt="A chat with Claude Code next to the Git view of a workspace with four repositories" width="900">
+  <img src="apps/desktop/src/renderer/features/about/shots/chat.jpg?v=17" alt="A chat next to the Git view of a workspace with four repositories" width="900">
 </p>
 
 > In woodworking, a **jig** is a custom tool you make yourself so a repetitive job gets faster and
-> more precise. Jig does the same for your work with Claude Code. The logo is one: a corner jig, a
+> more precise. Jig does the same for your work with AI. The logo is one: a corner jig, a
 > fence that holds the piece exactly where it should be.
 
 <p align="center">
@@ -39,7 +39,7 @@ Uses Azure Communication Services (usage charges apply); [setup and limitations]
 
 ## Why Jig
 
-If you live in Claude Code, your day is spread over terminals, an editor for git and diffs, a browser
+If you work with AI chats all day, your day is spread over terminals, an editor for git and diffs, a browser
 for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 
 - **The real Claude Code.** Every chat is an official Claude Code session, with your CLAUDE.md files,
@@ -59,11 +59,11 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 - **Models for the work.** Chats use Opus by default and hand code searches to a Haiku helper, with configurable subagent, helper, tester and search models; the chat details show each model's share. A few top-bar menus (Chats, Code, Build, View) hold every action.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you, and a **chats board** puts every chat in columns: needs you, working, unread, errors.
-- **A task queue.** Queue prompts (or ask Claude to make one task per spec); Claude does them in order,
+- **A task queue.** Queue prompts (or ask Jig to make one task per spec); Jig does them in order,
   grouped in chats you lay out (a chat's first task starts it, the next ones continue it), and reports
   how each went — outcome, summary, things to know, follow-ups — in a card per chat, linked to it.
 - **Projects you manage.** Group chats into projects the way you think about your work, each with a
-  default folder and repo, model and permission defaults, and instructions for Claude. Drag chats
+  default folder and repo, model and permission defaults, and instructions for Jig. Drag chats
   between them; pin the ones you keep.
 - **Open your whole repos folder.** A folder of repositories works as one workspace: one Git panel that
   follows the repo you work in (show others next to it when you need them, Repos below for all of
@@ -72,29 +72,29 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   Preview: your theme's code colours, indentation guides, closing brackets, several cursors, folding,
   find and replace, go to line and a status line. Two tabs side by side when you need both.
 - **Tests in one place.** Every repo's test suites (npm test scripts, Playwright, Vitest, Jest, Karma,
-  `dotnet test`), run with one click, with failing tests, output and history; Claude runs them too.
-- **Releases with discipline.** Per repository, a release policy Claude helps you set up (or that
-  adopts what you already do). Jig shows what's unreleased, drafts the changelog and notes with Claude,
+  `dotnet test`), run with one click, with failing tests, output and history; Jig runs them too.
+- **Releases with discipline.** Per repository, a release policy Jig helps you set up (or that
+  adopts what you already do). Jig shows what's unreleased, drafts the changelog and notes with Jig,
   and releases in one action; it warns when production gets a build without a version.
-- **Jig learns how you work.** Locally, it notices how you ask Claude for things, what you repeat, what
-  slows you down, risky practices and what you tell Claude you do by hand, and suggests what would help:
-  **coaching on how you work with Claude** (with your own request rewritten the better way), an add-on or feature you already
+- **Jig learns how you work.** Locally, it notices how you ask Jig for things, what you repeat, what
+  slows you down, risky practices and what you tell Jig you do by hand, and suggests what would help:
+  **coaching on how you work with Jig** (with your own request rewritten the better way), an add-on or feature you already
   have, a safer practice, a **workflow**, a CLAUDE.md line, a routine, or a new tool. One page shows everything it knows, and you can edit or delete it. Workflows can run
   on a schedule, after you push, or when a pipeline finishes.
 - **Tools you build by asking.** Describe a button, a view or a watcher and Jig's builder writes it as
   an add-on. You review it before it's kept. When an add-on can't do it, the builder writes a
   development request (spec, prompt, mockup) that one button emails to the developers. Share add-ons
   as a file, or install them from an **add-on gallery**: a git repository or folder your team keeps.
-- **Claude in parallel.** Hand one task to several Claude Code chats at once, each in its own git
-  worktree and from its own angle; Claude judges the results and you keep the best.
-- **A native browser for you.** The top-right globe button opens a main-panel tab with sharp Chromium rendering, normal typing, scrolling and selection, navigation and developer tools. Claude keeps its own browser.
-- **Claude checks its own work.** Claude opens your dev server in its own browser inside Jig,
+- **Jig in parallel.** Hand one task to several chats at once, each in its own git
+  worktree and from its own angle; Jig judges the results and you keep the best.
+- **A native browser for you.** The top-right globe button opens a main-panel tab with sharp Chromium rendering, normal typing, scrolling and selection, navigation and developer tools. Jig keeps its own browser.
+- **Jig checks its own work.** Jig opens your dev server in its own browser,
   clicks through it, takes screenshots at phone, tablet and desktop sizes and reads the console and the network requests, while you
   watch live and can take over. Its
   dev servers run in Jig terminals you can see.
 - **Routines.** Your Claude Code routines in one tab (schedules, runs, logs, Run now).
-- **Pages.** Jig's own artifacts: Claude (or ChatGPT) publishes a report, mockup or release notes as an HTML page into Jig, which keeps it, lists it and previews it, all on this computer.
-- **Configure it by talking.** "Use a darker theme", "move Git to the right": Claude changes Jig's
+- **Pages.** Jig's own artifacts: Jig publishes a report, mockup or release notes as an HTML page into Jig, which keeps it, lists it and previews it, all on this computer.
+- **Configure it by talking.** "Use a darker theme", "move Git to the right": Jig changes Jig's
   settings and layout for you, with an Undo on every change.
 - **Menus for everything.** Claude Code's shortcuts (`/`, `@`, `!`, `#`, Shift+Tab) work, and every
   one of them is also a visible button or menu item, so there is nothing to memorise.
@@ -104,10 +104,10 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 <table>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/chat-tools.jpg?v=17" alt="A chat with Claude's todo list, an edit with its diff and a plan to approve">
-      <b>Claude Code, in a window.</b> Everything its terminal shows, as cards:
+      <img src="apps/desktop/src/renderer/features/about/shots/chat-tools.jpg?v=17" alt="A chat with Jig's todo list, an edit with its diff and a plan to approve">
+      <b>Your chat, in a window.</b> Everything a terminal shows, as cards:
       <ul>
-        <li>Claude's todo list as a checklist, and plans you approve or send back with feedback.</li>
+        <li>Jig's todo list as a checklist, and plans you approve or send back with feedback.</li>
         <li>Every edit's diff, subagents with their progress, and background tasks with Stop.</li>
         <li>In the message box: <code>/</code> for Claude Code's commands and skills, <code>@</code> for
           files, <code>!</code> for shell commands, <code>#</code> to remember things, ↑ for history,
@@ -119,44 +119,44 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   <tr>
     <td width="50%" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/dashboard.jpg?v=17" alt="Workspace dashboard">
-      <b>A Home for every project.</b> Type what Claude should do and press Enter. Recent chats, next
+      <b>A Home for every project.</b> Type what Jig should do and press Enter. Recent chats, next
       steps and every repo's scripts are right below. Add your whole repos folder once: Jig finds the
       repositories inside (three levels deep).
     </td>
     <td width="50%" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/git.jpg?v=17" alt="Git view and diff">
       <b>Git for every repo.</b> The repo you work in (or any set of them) in one panel: stage, commit, push, pull,
-      branches, history, side-by-side or inline diffs, image diffs. <b>Write</b> asks Claude for the
-      commit message; any change or repo can be explained or reviewed by Claude in one click.
+      branches, history, side-by-side or inline diffs, image diffs. <b>Write</b> asks Jig for the
+      commit message; any change or repo can be explained or reviewed by Jig in one click.
     </td>
   </tr>
   <tr>
     <td colspan="2" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/files.jpg?v=17" alt="The file tree, a file being edited and a Markdown preview beside it">
       <b>Files and editing.</b> The project's tree with git colours and a filter. Code and text open
-      editable in your theme's colours; Ctrl+S saves, and if Claude changes the file meanwhile Jig asks
+      editable in your theme's colours; Ctrl+S saves, and if Jig changes the file meanwhile Jig asks
       before replacing your edits. Split the main area to keep a preview, a chat or a diff beside it.
     </td>
   </tr>
   <tr>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/releases.jpg?v=17" alt="A repository's release policy and a release drafted with Claude">
+      <img src="apps/desktop/src/renderer/features/about/shots/releases.jpg?v=17" alt="A repository's release policy and a release drafted with Jig">
       <b>Releases.</b> Each repository gets a release policy (<code>.jig/release.json</code>, shared
-      with your team): planned releases, continuous deploys, or none. See what's unreleased, let Claude
+      with your team): planned releases, continuous deploys, or none. See what's unreleased, let Jig
       suggest the bump and write the changelog and customer notes, then release: version, changelog,
       commit, tag and push in one step. "What's live" shows each environment.
     </td>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/workflows.jpg?v=17" alt="A release workflow half-way">
       <b>Workflows.</b> The things you repeat, as steps per project. Jig runs the commands, scripts,
-      pipelines and messages to Claude it can, asks before others and leaves the rest to you. Schedule
+      pipelines and messages to Jig it can, asks before others and leaves the rest to you. Schedule
       them, export them as a Claude Code skill, or move them to the cloud.
     </td>
   </tr>
   <tr>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/configure.jpg?v=17" alt="Claude changing Jig's theme from a chat">
-      <b>Claude configures Jig.</b> Ask in any chat to change the theme, fonts, layout or add-ons. Each
+      <img src="apps/desktop/src/renderer/features/about/shots/configure.jpg?v=17" alt="Jig changing Jig's theme from a chat">
+      <b>Change Jig by asking.</b> Ask in any chat to change the theme, fonts, layout or add-ons. Each
       change shows as a card with Undo. Billing settings are never touched from a chat.
     </td>
     <td valign="top">
@@ -167,34 +167,34 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/attempts.jpg?v=17" alt="Three attempts at the same task, with Claude's verdict">
-      <b>Try several ways.</b> One task, 2–4 Claude Code chats at once, each in its own git worktree and
-      from a different angle (simplest, cleanest, most thorough…). Compare their changes, let Claude judge,
+      <img src="apps/desktop/src/renderer/features/about/shots/attempts.jpg?v=17" alt="Three attempts at the same task, with Jig's verdict">
+      <b>Try several ways.</b> One task, 2–4 chats at once, each in its own git worktree and
+      from a different angle (simplest, cleanest, most thorough…). Compare their changes, let Jig judge,
       and keep the winner: it lands in your working copy, the rest disappears.
     </td>
   </tr>
   <tr>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/tour.jpg?v=17" alt="A guided tour of changes">
-      <b>Guided tours of changes.</b> Claude orders your uncommitted changes for understanding and explains
+      <b>Guided tours of changes.</b> Jig orders your uncommitted changes for understanding and explains
       each step next to its highlighted diff. Also: check before committing, and commit messages in your
       repo's style.
     </td>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/preview.jpg?v=17" alt="A Markdown preview with a Mermaid diagram">
-      <b>Previews for everything Claude writes.</b> Markdown with Mermaid diagrams, HTML, PDF, CSV and Excel
-      tables, JSON, notebooks, media and code. Previews follow the file as it changes, with Ask Claude
+      <b>Previews for everything Jig writes.</b> Markdown with Mermaid diagrams, HTML, PDF, CSV and Excel
+      tables, JSON, notebooks, media and code. Previews follow the file as it changes, with Ask Jig
       one click away.
     </td>
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/browser.jpg?v=20" alt="Claude checking a shop page in its own browser, with the screenshot in the chat">
-      <b>Browser.</b> Claude opens your dev server in a real browser inside Jig, reads the page,
+      <img src="apps/desktop/src/renderer/features/about/shots/browser.jpg?v=20" alt="Jig checking a shop page in its own browser, with the screenshot in the chat">
+      <b>Browser.</b> Jig opens your dev server in a real browser, reads the page,
       clicks and types like a person, takes screenshots (shown in the chat) and reads the console. You
       watch it live next to the chat, switch to tablet or phone size, and take over with your own mouse
       and keyboard. Testing runs on a small model (Haiku): chats hand it to the jig-tester helper, or
-      use Search → Test something…. Long-running commands Claude starts run in Jig terminals you can
+      use Search → Test something…. Long-running commands Jig starts run in Jig terminals you can
       see and stop.
     </td>
   </tr>
@@ -202,20 +202,19 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/suggestions.jpg?v=18" alt="A suggestion based on repeated actions">
       <b>Suggestions.</b> Jig notices how you prompt, what you repeat, what slows you down, risky practices
-      and what you mention to Claude (locally, on your machine) and suggests a better prompt, an add-on or
+      and what you mention to Jig (locally, on your machine) and suggests a better prompt, an add-on or
       feature you already have, a safer practice, a tip, a workflow, a CLAUDE.md line, a routine or a tool, each with its evidence and one-click action. A week later it checks whether it helped.
     </td>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/usage.jpg?v=17" alt="Plan usage card">
-      <b>Your plan limits, always visible.</b> The 5-hour and weekly windows of your Claude plan, in
+      <b>Your plan limits, always visible.</b> The 5-hour and weekly windows of your Claude and ChatGPT plans, in
       the status bar and on a ring in every chat. Hover for when each one resets.
     </td>
   </tr>
   <tr>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/context.jpg?v=17" alt="Context window breakdown with a Compact button">
-      <b>Context window and Compact.</b> How full each chat's context is and what fills it, as Claude
-      Code reports it. From 70% a <b>Compact</b> button appears; one click runs Claude Code's /compact.
+      <b>Context window and Compact.</b> How full each chat's context is and what fills it. From 70% a <b>Compact</b> button appears; one click compacts the conversation.
     </td>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/settings.jpg?v=17" alt="Appearance settings">
@@ -226,9 +225,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   <tr>
     <td colspan="2" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/knowledge.jpg?v=17" alt="What Jig knows about me">
-      <b>What Jig knows about you, in plain sight.</b> Your profile (how you work), the notes Claude saved
-      from your chats, your activity by kind, how you worked this week — lines by Claude vs by hand — and
-      how Claude worked for you: the skills, subagents, add-ons and MCP servers it used across chats.
+      <b>What Jig knows about you, in plain sight.</b> Your profile (how you work), the notes Jig saved
+      from your chats, your activity by kind, how you worked this week — lines by Jig vs by hand — and
+      how Jig worked for you: the skills, subagents, add-ons and MCP servers it used across chats.
       All local; edit or delete anything. An optional weekly check-in fills in the gaps.
     </td>
   </tr>
@@ -246,12 +245,12 @@ And more:
 - **In a chat:**
   - Paste screenshots, and drop PDF, Word, Excel and PowerPoint files.
   - Talk instead of typing: dictation with Whisper running on your machine (mic button or
-    Ctrl+Shift+Space; on the GPU, words appear as you speak), and Read aloud on Claude's answers.
-  - Talk *with* Claude: a talking window with sound waves and the sentence being said; Claude
+    Ctrl+Shift+Space; on the GPU, words appear as you speak), and Read aloud on Jig's answers.
+  - Talk *with* Jig: a talking window with sound waves and the sentence being said; Jig
     looks at the code while you plan out loud, then "go ahead" approves the plan, talking ends and
-    a soft sound plays while Claude works.
+    a soft sound plays while Jig works.
   - Permission cards with Allow once / Always / Deny.
-  - Queue messages while Claude works, or send one into the running turn with Ctrl+Enter.
+  - Queue messages while Jig works, or send one into the running turn with Ctrl+Enter.
   - Next-message suggestions.
   - Restore files to before any message, and fork a chat.
   - Start a chat in its own git worktree, and apply its changes when you like them.
@@ -259,7 +258,7 @@ And more:
   - MCP server status, extra folders for a chat, and export to Markdown.
 - **Around the chats:**
   - Turn a chat into a tool.
-  - Ask Claude when a script fails.
+  - Ask Jig when a script fails.
   - A standup written from your commits and chats.
   - Desktop notifications when a chat needs you.
   - **Jig on your phone:** your own Telegram bot, or your own Teams bot (Jig sets up its small relay
@@ -314,7 +313,7 @@ They can plug into 20 places:
 | `tools.menuGroup` | live entries in a top bar menu | `chat.permissionRenderer` | an editable approval card for an add-on's own tool |
 | `prompt` | a reusable prompt button | `watcher` | host code on an interval |
 | `settings.page` | a page in Settings | `theme` | a colour theme |
-| `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
+| `claude.tool` | a tool Jig can use in every chat | `claude.context` | what Jig knows in every turn |
 | `jig.event` | host code when a chat finishes, a commit lands… | `search.provider` | results in Jig's search (Ctrl+P) |
 | `app.quitGuard` | asks before Jig quits (a running timer…) | | |
 
@@ -367,7 +366,7 @@ JIG_ENGINE=fake npm run dev    # try it without Claude Code: a scripted fake eng
 ```
 
 Then **Add project…** and pick a repository or your whole repos folder.
-After that, the main area is your project's **Home**: type what Claude should do and press Enter.
+After that, the main area is your project's **Home**: type what Jig should do and press Enter.
 Lost? The `?` and the **Jig menu** (top left) show everything Jig can do.
 
 ## Develop

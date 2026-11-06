@@ -43,7 +43,7 @@ Python and other script writes too. This sweep can also format pre-existing unco
 Deleted files and paths resolving outside the checkout are skipped; Biome's own exclusions apply.
 It applies formatting (including LF line endings), import organization and safe lint fixes, never
 `--unsafe`. Unsupported file types are skipped. Success is silent; remaining lint/parser failures
-are reported to Claude. The script uses no AI, network requests or package downloads.
+are reported to Jig. The script uses no AI, network requests or package downloads.
 
 This setup covers Jig's source checkout, not arbitrary projects opened in Jig, external editors,
 background processes after their tool returns, or writes in a different worktree. Other projects

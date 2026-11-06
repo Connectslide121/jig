@@ -2,7 +2,7 @@
 
 ## Agent-managed releases
 
-**One click (D-245):** Workflows → **Release Jig**. Claude reads what changed (the Releases add-on,
+**One click (D-245):** Workflows → **Release Jig**. Jig reads what changed (the Releases add-on,
 which knows Jig through `.jig/release.json`), picks the version (major / minor / patch, with a
 reason), writes the notes into `release/next.json`, checks it with `npm run release -- --check` and
 runs `npm run release` in a terminal you can watch. The script does every step below and stops at

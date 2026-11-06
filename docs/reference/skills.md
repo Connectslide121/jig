@@ -17,7 +17,7 @@ feature UX. Source links, author, revision and licence appear in the details mod
 
 Only instruction/reference text is shipped. No upstream hooks, custom agents, MCP servers or
 executable helpers are enabled. There is no startup download and no writes to the user's projects
-or personal Claude configuration. Packaging copies `skills/` into resources/skills.
+or personal Claude Code configuration. Packaging copies `skills/` into resources/skills.
 
 ## Runtime
 
@@ -25,10 +25,10 @@ The host `SkillLibrary` selects skill-only plugins using the calling chat's proj
 `config.skills.overrides`; it never uses the active UI project. Each bundled skill is a native
 Claude Code plugin with a separate namespace. `StartOptions.plugins` passes selected absolute paths
 to the SDK's local `plugins` option; user/project/local settings remain enabled. Native descriptions
-are discoverable, and full instructions load through Claude's Skill tool when relevant.
+are discoverable, and full instructions load through Claude Code's Skill tool when relevant.
 
 A changed selection or project restarts an existing process before its next message, preserving
-Claude's resume id. In-flight work is not interrupted. Command caches are keyed by configuration.
+Claude Code's resume id. In-flight work is not interrupted. Command caches are keyed by configuration.
 The per-turn context identifies active library skills; previously loaded text can remain in chat
 history, so controls govern availability/guidance rather than deleting historical context.
 Builder chats use the global defaults through their existing synthetic builder project; their own

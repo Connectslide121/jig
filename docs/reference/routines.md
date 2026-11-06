@@ -21,7 +21,7 @@ itself and never sees your login.
     (Europe/Stockholm)"), its last run, and an on/off switch.
   - **The selected routine:** what it does, when it runs next, **Run now**, and its runs. Click a run
     for its messages; ↗ opens it in Claude Code on the web.
-  - **New routine…** and **Change with Claude…** open a chat with the request drafted, because Claude
+  - **New routine…** and **Change with Jig…** open a chat with the request drafted, because Claude
     knows the routines service's fields. There is no delete: switch a routine off, or delete it on
     claude.ai.
 

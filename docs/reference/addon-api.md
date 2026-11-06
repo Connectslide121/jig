@@ -61,7 +61,7 @@ design-token warnings (the builder must fix them; the add-on still loads).
 
 ### Top bar: placement and live menu entries (D-305)
 
-A `topbar` item sits on the right of the top bar, after Jig's own items (Suggestions, Claude's
+A `topbar` item sits on the right of the top bar, after Jig's own items (Suggestions, Jig's
 browser). With `"placement": "right-start"` it is the first item of the right-hand group instead,
 before Suggestions. Items with the same placement are ordered by `order` (default 50, lower first).
 
@@ -110,7 +110,7 @@ repository** (the active project's default repository, else its folder):
 - Host code doesn't know the active project: `api.storage.get/set` read the global part unless given
   `{ scope, id }` (a tool's args carry `chat.projectId`).
 - It is one JSON file per add-on; scoped keys are stored as `@project(<id>) <key>` and
-  `@repo(<path>) <key>` (what Claude's `jig_get_addon_data` shows). Settings → Add-ons shows the scope.
+  `@repo(<path>) <key>` (what Jig's `jig_get_addon_data` shows). Settings → Add-ons shows the scope.
 
 ## Icons
 
@@ -144,7 +144,7 @@ are add-ons':
 | `openChat({ projectId?, cwd?, draft?, sessionId? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository); `draft` is put in the message box, not sent. With `sessionId`, opens that existing chat |
 | `ai.ask(prompt, { cwd?, quick?, feature? })` → `string` | a one-shot question: no tools, one turn, so it can only answer (summaries, commit messages, explanations). Who answers (Claude through Claude Code, or ChatGPT through the Codex CLI) and on which model is the user's choice in Settings → AI features: "Add-ons: short answers" for `quick`, else "Add-ons: other questions"; `feature` is for the built-in Git, Releases and Tasks add-ons' own rows. Uses the user's plan; needs `ai`; prompts up to 200 000 characters; 3-minute limit |
 | `ai.answer(prompt, options)` → `{ text, provider, model }` | like `ai.ask`, with the provider and model that answered, to show beside an AI-made result (the Tasks run report, D-355) |
-| `ai.tour(cwd, { focus? })` | opens a guided tour of the uncommitted changes of the repository `cwd` is in (Claude orders them and explains each step); needs `ai` |
+| `ai.tour(cwd, { focus? })` | opens a guided tour of the uncommitted changes of the repository `cwd` is in (Jig orders them and explains each step); needs `ai` |
 | `openPreview(path)` | opens a file in Jig's Preview tab (Markdown, HTML, PDF, tables, notebooks…; `docs/reference/preview.md`) |
 | `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |
 | `updateTab(tabId, params)` | changes an open tab of this add-on: params merged, `title` renames it, `undefined` drops one |
@@ -157,7 +157,7 @@ are add-ons':
 | `attachments.add(files)`, `attachments.pick({ title?, defaultPath? })` → `AddonAttachment[]` | keeps pasted/dropped files (`clipboardData.files`, `dataTransfer.files`) or files the user picks, like the chat's message box: images ≤ 5 MB, PDFs, Word/Excel/PowerPoint and text files, in `~/.jig/attachments/addon-<id>/`. A file Claude can't take is reported in a toast and left out. Send them with `api.chats.send({ attachments })`; show them with `<Attachments files onRemove?>` from `@jig/sdk/ui` (thumbnails and chips that open the file) |
 | `sendToChat(text, { sessionId?, send? })` | new session in the active project unless `sessionId`; needs `chat` |
 | `notify({ title, message?, tone?, timeout?, system?, actions? })` | toast (`timeout` ms, default 5 s, danger 8 s, paused while hovered; 0 = until closed); `actions: [{ label, run }]` adds up to 3 buttons; `system: true` also shows a system notification when Jig isn't in front (if notifications are on in Settings), and the toast then waits until closed. Returns a function that closes it |
-| `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code. Claude can read and change it from a chat (`jig_set_addon_data`…); then the add-on gets the event `storage` (`{ key }`): `useHostCall` reloads by itself, other views listen with `ctx.on("storage", …)` |
+| `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code. Jig can read and change it from a chat (`jig_set_addon_data`…); then the add-on gets the event `storage` (`{ key }`): `useHostCall` reloads by itself, other views listen with `ctx.on("storage", …)` |
 | `openExternal(url)`, `openPath(path)`, `copy(text)` | |
 | `saveCopy(from, { name?, title? })` → path or undefined | saves a copy of a file or folder of this add-on's own data folder (`~/.jig/addon-data/<id>/`, anything else is refused) where the user chooses: a Save dialog for a file, a folder picker for a folder (copied into it as `name`, numbered when taken, never over something that exists). Resolves with the new path, undefined when cancelled (D-405). Pages' Save as… uses it |
 | `menu(items, eventOrElement, target?)` | a Jig menu (`MenuInput[]`: items, `{ separator: true }`, `{ heading }`); with `target`, other add-ons' `context.*` entries are added. An item may have `project` (shows its `ProjectSwatch` in front), `person` (`{ name, email }`: their avatar in front), `provider` (`"claude"` or `"chatgpt"`: the provider's mark in front, D-330), `detail` (muted text after the label, in its own column), `badge` (short text at the right edge, in a one-line slot every row keeps, about ten characters wide; longer ones truncate), `shortcut` (keys shown at the right, such as `Alt+↑`), `keepOpen` (a multi-select row: a checkbox, and choosing it toggles it and runs `onSelect` without closing the menu) and `testId` |
@@ -221,9 +221,9 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 | `projects()` | — | the user's projects |
 | `workspaces()` | — | every folder the user added, with its repositories |
 | `chats.create({ projectId?, cwd?, title?, permissionMode?, provider?, model? })` → `{ sessionId, provider }` | `chat` | an empty chat with the project's defaults (or in `cwd`); `permissionMode` is `default`, `acceptEdits` or `plan`; `bypassPermissions` (Don't ask) only from the built-in Tasks add-on, for a task you set to it (D-363), refused for any other. `provider` (D-330): `"claude"` or `"chatgpt"` (default: the project's, else Jig's); `model`: an alias (`opus`, `sonnet`, `haiku`; ChatGPT's `sol`, `terra`, `luna`, which run their newest version, D-310) or an exact id (default: the provider's). Main checks both (the host process isn't trusted); `"chatgpt"` fails while ChatGPT isn't signed in, with a message that starts "ChatGPT isn't signed in". When the provider's plan is used up and "When a chat hits its limit" is `switch` (the project's or Jig's), the chat starts on the other provider (D-338): `provider` says who runs it |
-| `chats.send({ text, sessionId?, projectId?, cwd?, title?, permissionMode?, attachments?, from? })` → `{ sessionId, sentAt }` | `chat` | sends a message (a busy chat queues it), creating a chat first unless `sessionId`. `attachments` are files kept with `ctx.attachments` (copied into the chat, so the add-on's stay its own); the text may be empty when there are files. `from` (D-318): a message from the add-on, not the user: the transcript shows that one line with the add-on's icon (`ChatItem.fromIcon`) and "Jig told Claude", like a finished terminal's notice; it needs `sessionId` and no files, starts a turn in an idle chat and joins a running one. `provider` and `model` (D-330) only with a new chat: with `sessionId` they are refused, since only a limit handoff changes a chat's provider (D-338) |
+| `chats.send({ text, sessionId?, projectId?, cwd?, title?, permissionMode?, attachments?, from? })` → `{ sessionId, sentAt }` | `chat` | sends a message (a busy chat queues it), creating a chat first unless `sessionId`. `attachments` are files kept with `ctx.attachments` (copied into the chat, so the add-on's stay its own); the text may be empty when there are files. `from` (D-318): a message from the add-on, not the user: the transcript shows that one line with the add-on's icon (`ChatItem.fromIcon`) and "Jig told the chat", like a finished terminal's notice; it needs `sessionId` and no files, starts a turn in an idle chat and joins a running one. `provider` and `model` (D-330) only with a new chat: with `sessionId` they are refused, since only a limit handoff changes a chat's provider (D-338) |
 | `attachments.remove(list)` | — | deletes files this add-on kept (only its own, in `attachments/addon-<id>/`) |
-| `chats.get(sessionId)` → `{ id, title, provider, model, status, projectId?, cwd, costUsd, queued, background, userStoppedAt?, cutOffAt?, waitingFor?, lastAnswer?, lastAnswerAt?, error? }` | `chat` | a chat's state and Claude's last answer. `provider` (`"claude"` or `"chatgpt"`) and `model` (as chosen; empty = the provider's default) say who runs it (D-330). `background` (D-318): commands, subagents and monitors still running in the background (they wake the chat when they end); `userStoppedAt`: when the user last pressed Stop in it or rejected a tool call (a permission or question card); `cutOffAt` (D-394): Jig closed (quit, restarted to update, crashed) in the middle of its last turn, which didn't finish; cleared when its next turn starts; `waitingFor` (D-326): while it needs you, what its pending card is (`question`, `plan` or `permission`); `limit` (D-338): its plan's limit stopped it, `{ provider, state: "ask" \| "waiting" \| "continuing", resetsAt? }`; such a chat hasn't finished (it waits for you, for the reset, or carries on with the other provider, after which `provider` is the new one) |
+| `chats.get(sessionId)` → `{ id, title, provider, model, status, projectId?, cwd, costUsd, queued, background, userStoppedAt?, cutOffAt?, waitingFor?, lastAnswer?, lastAnswerAt?, error? }` | `chat` | a chat's state and the chat's last answer. `provider` (`"claude"` or `"chatgpt"`) and `model` (as chosen; empty = the provider's default) say who runs it (D-330). `background` (D-318): commands, subagents and monitors still running in the background (they wake the chat when they end); `userStoppedAt`: when the user last pressed Stop in it or rejected a tool call (a permission or question card); `cutOffAt` (D-394): Jig closed (quit, restarted to update, crashed) in the middle of its last turn, which didn't finish; cleared when its next turn starts; `waitingFor` (D-326): while it needs you, what its pending card is (`question`, `plan` or `permission`); `limit` (D-338): its plan's limit stopped it, `{ provider, state: "ask" \| "waiting" \| "continuing", resetsAt? }`; such a chat hasn't finished (it waits for you, for the reset, or carries on with the other provider, after which `provider` is the new one) |
 | `log(message, detail?)` | — | to `~/.jig/logs/main.log` |
 | `addon` | — | `{ id, dir, dataDir }` (`dataDir` = `~/.jig/addon-data/<id>/`) |
 
@@ -235,7 +235,7 @@ restart the add-on asks again with `chats.get` (a watcher). The `chat` permissio
 host and again in main. The Tasks add-on (`addons/tasks`) is the example.
 
 Permissions are shown to you (Settings → Add-ons, and in the builder's preview) and enforced by this
-API. `ai` lets an add-on ask Claude (`ctx.ai.ask`); the host checks it again (`ai.ask` IPC), so an
+API. `ai` lets an add-on ask Jig (`ctx.ai.ask`); the host checks it again (`ai.ask` IPC), so an
 add-on without it gets an error even if its UI calls the method directly. Host code is code you accepted, not a sandbox (D-007): it could import Node modules directly.
 
 ## Jig events (D-215)
@@ -318,12 +318,12 @@ add-on. Tasks exports addReviewed for explicitly user-reviewed work: {title,prom
 It pauses the queue, defaults to Plan mode, and deduplicates by source. It never starts a chat itself.
 
 The built-in meetings id has host-managed typed state. Generic storageSet/storageDelete (including
-Claude's add-on-data tools) reject writes, preventing bypass of its room-only connection and review
+Jig's add-on-data tools) reject writes, preventing bypass of its room-only connection and review
 handlers. Read access remains available; use the meeting transcript tool for paginated snapshots.
 
 ## Approval cards (`chat.permissionRenderer`)
 
-`contributes.permissionRenderers: [{ tool, component }]` replaces Jig's permission card when Claude
+`contributes.permissionRenderers: [{ tool, component }]` replaces Jig's permission card when Jig
 calls one of the add-on's own tools (`tool` is the short name, e.g. `add` for
 `mcp__jig__addon_<id>_add`). The component (exported from `ui.tsx`) gets `AddonPermissionProps`:
 `request { toolName, input, title }`, `status` (pending or answered), `sessionId`, `projectId` (the

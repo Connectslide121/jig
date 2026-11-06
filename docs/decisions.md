@@ -7177,3 +7177,40 @@ global default". The details are **Claude, on my own**.
   its own, started from the workflow's tab.
 - **Wording:** the kind is "A message to the AI" and the box "Message to the AI" (provider-neutral,
   as D-409 and the "say Jig, not Claude" direction).
+
+## D-413: Say Jig, not Claude, where the provider doesn't matter
+
+**Jon** (2026-11-04): now that chats run on Claude or ChatGPT, Jig's UI shouldn't name a provider where
+the provider doesn't matter; call the assistant "Jig". The same goes for what chats say when they
+explain Jig ("the end of Claude's last reply", "Claude can message you" → Jig), and Settings → Chats
+should show what applies to both providers in one place. The wording per string, the group names and
+the Settings layout are **Claude, on my own**.
+
+- **The rule:** name a provider only where the choice of provider is the point: the provider picker
+  and handover (dialog, divider), sign-in and CLI install/status, plan limits and usage per provider,
+  per-provider settings (models, effort, keys, paths), costs, and `ENGINE_CAPABILITIES` messages that
+  explain why something is missing for one provider. "Claude Code" stays where it means the program
+  or its own things (its slash commands, MCP servers, CLAUDE.md, routines, the builder and attempts,
+  which are Claude Code sessions). Everywhere else: "Jig" ("Jig's browser", "Ask Jig about this
+  file", "Jig notes it here", "Let Jig judge"), or no subject at all.
+- **Covers** every user-visible string in the renderer, main (notifications, dialogs, phone
+  messages), the bundled add-ons (manifests, UI, tool descriptions), and the model-facing text: the
+  `jig_*` and add-on tool descriptions, `jigContext`, `SETTINGS_GUIDE`, the tester/search helper text,
+  and the docs (status, reference, guides, README, About page). Chats read these and echo them.
+- **Chats name themselves "Jig":** `NAMING_GUIDANCE` in `main/engine/jigTools.ts`, part of `jigContext`
+  (the system-prompt append both engines get): describing Jig or a chat to the user, say "Jig"; name
+  Claude or ChatGPT only when the provider itself is the subject.
+- **Only text changes:** identifiers, file names, IPC methods, command ids (`jig.openClaudeBrowser`),
+  setting keys and stored values stay. The command group "Claude" became "Assistant" (still in the
+  Chats menu; "Jig" is a group of its own with its own menu), and the Pages action joined it.
+- **Settings → Chats:** the provider picker on top, then **All chats** (When a chat hits its limit,
+  Default permission mode, Don't ask: wait for you, Suggest the next message, Stop idle chats, Name new
+  chats, notifications, Jig's browser), checked against `main/sessions` (the suggestion, chat names,
+  permission mode and the Don't ask wait apply to both engines), then **Claude chats** and **ChatGPT
+  chats**, whose matching rows share names, order and descriptions: Default model, Reasoning effort,
+  Helper fallback model (was "Subagent fallback model"; key `engine.subagentModel` unchanged), Tester
+  model, Search model, then the provider's own rows, its program path and Allow API keys. File
+  checkpoints and claude.ai connectors stay Claude-only (Codex has no rewind). The "How subagent
+  models are chosen" disclosure became the fallback row's description (no inline expander).
+- **Kept on purpose:** the voice command words "ask Claude" / "what did Claude say" (spoken phrases
+  the matcher knows; the grammar list shows what works), the fake engine's microphone sample text.

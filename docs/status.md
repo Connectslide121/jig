@@ -19,8 +19,7 @@ to do. Unit tests (`actions.test.ts`, the store's migration) and `meeting-histor
 **Check on your machine:** after a real meeting's notes, run one action in a new chat, open it from the
 dialog, mark another done and dismiss a third, close and reopen the dialog: statuses are kept.
 
-Pages: Jig's own artifacts (2026-11-06, D-405, Jon): the new built-in add-on **Pages**. Ask a chat (Claude or
-ChatGPT) to show you a report, mockup, dashboard, comparison or the release notes and it publishes one
+Pages: Jig's own artifacts (2026-11-06, D-405, Jon): the new built-in add-on **Pages**. Ask a chat to show you a report, mockup, dashboard, comparison or the release notes and it publishes one
 self-contained HTML page, with the images and files it loads, into Jig (`addon_pages_publish`; the chat is
 told to do this instead of opening temp files in a browser). A card in the chat has **Open in Jig** (the
 Preview tab: scripts off until you turn them on there, no network, no access to Jig or your files) and ⋯
@@ -31,20 +30,20 @@ chat and time in aligned columns; the whole row opens a page; ⋯ adds Open the 
 "Publish the notes as a page" button is back, pointing at it. New add-on API: `ctx.saveCopy`.
 Unit tests (paths, storage, versions, Save as…, the prompt) and `pages.spec.ts` cover it; screenshots of
 the view in a sidebar and a tab, Jig Dark and Light, were checked.
-**Check on your machine:** with a real Claude chat, ask "show me a comparison of X and Y as a page": the
+**Check on your machine:** with a real chat, ask "show me a comparison of X and Y as a page": the
 card appears, Open in Jig shows it (the page's own images too), ask for a change and see v2 on the same
 page; Save as… into a folder and open it in the browser.
 
 Honest about artifacts (2026-11-06, D-404, Jon): Claude Code offers its Artifact tool only inside the
 Claude desktop app, never to Jig's chats, so Jig stopped promising it. Gone: the Artifacts tab (and its
 Home tile and Go to entry), the claude.ai listing and its guarded calls, and the Releases "Publish the
-notes as an artifact" button (hidden until Jig's own pages exist). Claude is told about the Artifact
+notes as an artifact" button (hidden until Jig's own pages exist). Jig is told about the Artifact
 tool only when Claude Code's init message lists it. A chat resumed from the desktop app still shows an
 old Artifact call's card with Open in Jig / Open on claude.ai. Jig never sets another client's identity
 (`CLAUDE_CODE_ENTRYPOINT`) to unlock features (AGENTS.md). Unit tests and `routines-artifacts.spec.ts`
 cover it.
 **Check on your machine:** Home has no Artifacts tile; Releases → a release's notes has only Copy;
-ask a chat "publish an artifact" and Claude says it has no such tool.
+ask a chat "publish an artifact" and Jig says it has no such tool.
 
 ChatGPT completes code too (2026-11-06, D-401, Jon): the editor's status-bar menu (click who
 completes) and **Settings → Editor → Code completion** now choose between **GitHub Copilot**,
@@ -125,16 +124,16 @@ the `az` flags come from the CLI's docs. Jon's real check, step by step:
 6. **A project channel and a room:** set **When** to **Always**, then in a project (say Shop) start a
    chat that finishes. Expect a channel "Shop" in the team with a thread "💬 chat · Shop" holding the
    Finished message. On the chat's ⋯ menu → **Open on my phone**: send it another message on the
-   computer and watch the thread follow it live (your message, Claude's reply growing, Finished).
+   computer and watch the thread follow it live (your message, Jig's reply growing, Finished).
 7. **A permission from the phone:** in that chat ask for something that needs permission (run a
    command). Expect a card in the thread (no @mention) and a short card in the 1:1 chat; the
    phone buzzes once. Tap **Allow** on the phone: the chat goes on, both cards say it was allowed.
    Do it once more and answer on the computer: both cards update.
 8. **A reply in a thread:** write in the chat's thread on the phone **without** @mentioning Jig.
-   Expect it in the chat on the computer and Claude's answer in the thread. If nothing arrives, try
+   Expect it in the chat on the computer and Jig's answer in the thread. If nothing arrives, try
    again with @Jig: then the `ChannelMessage.Read.Group` grant isn't there (note it).
 9. **A picture:** write `/screen` in the 1:1 chat (a screenshot of Jig, inline), and in a chat that
-   used Claude's browser, check the Finished message carries the page's screenshot.
+   used Jig's browser, check the Finished message carries the page's screenshot.
 10. **A sleeping PC catching up:** put the PC to sleep, write in the chat's thread and in the 1:1
     chat ("how are things going?"), wait a few minutes, wake the PC. Expect both to arrive within
     seconds of Jig waking, with answers on the phone.
@@ -181,7 +180,7 @@ stays awake is still noticed at the next backoff round (Electron's main process 
 **Check on your machine:** sleep the PC with the phone connected, wake it, and the dot should be green
 within a few seconds.
 
-Claude reads Pipelines and Repos (2026-11-05, D-371, Jon): chats and Jig on your phone can now answer
+Jig reads Pipelines and Repos (2026-11-05, D-371, Jon): chats and Jig on your phone can now answer
 "are any pipelines running?", "why did the last run fail?" and "is everything pushed?" with the add-ons'
 tools. Pipelines: `addon_pipelines_pipelines` (each pipeline's newest run), `addon_pipelines_runs`
 (running, recent or failed runs, with stages while they run) and `addon_pipelines_run` (one run's
@@ -201,7 +200,7 @@ the run ends ("Stopped at the stop line: N of M done", its own entry in History)
 and the next Start runs the next block, so you can release and install in between. Drag tasks across a
 line or the line itself; ✕ removes it; a line never splits a chat. The header's counts say "after stop"
 for the later blocks, and Start shows "Start · N" for the block. Queues saved with ticks load as plain
-queued tasks; unparking puts a task last before the pool. Claude: `addon_tasks_edit` with `stopAfter`,
+queued tasks; unparking puts a task last before the pool. Jig: `addon_tasks_edit` with `stopAfter`,
 `addon_tasks_list` shows `--- stop ---`. Checked with screenshots (planned, running, stopped) in the
 sidebar, bottom panel and a tab; unit tests and the Tasks e2e specs pass.
 **Check on your machine:** queue ten tasks, put a line after the fifth, Start, release, Start again.
@@ -209,8 +208,8 @@ sidebar, bottom panel and a tab; unit tests and the Tasks e2e specs pass.
 Parked ideas in the task queue, and a new queue header (2026-11-05, D-369, Jon): park a queued task
 (⋯ → Park: keep as an idea, or drag it below the "Parked · N" divider) and it waits in a faded pool at
 the very end of the queue: it never runs, has no tick (the tick for every task passes it by), and every
-task added later, by you or Claude, lands above it. **Add idea** in the divider (or the view's ⋯) writes
-ideas straight into the pool; Unpark puts one back as the last queued task. Claude sees
+task added later, by you or Jig, lands above it. **Add idea** in the divider (or the view's ⋯) writes
+ideas straight into the pool; Unpark puts one back as the last queued task. Jig sees
 `[Queued, parked]`, can park and unpark with `addon_tasks_edit` and park with `addon_tasks_add`. The
 header now shows six fixed counts: done of what will run, running, not done, to run, left out and
 parked; zeros stay in place, and clicking a count scrolls to its first task. Narrow, the counts get
@@ -221,7 +220,7 @@ unit tests and the Tasks e2e specs pass.
 Park a whole chat (2026-11-06, D-396, Jon): a chat card's ⋯ (or right-click) has Park this chat /
 Unpark this chat, and dragging a card's header into the pool parks it. A parked chat stays one card in
 the pool, its tasks in order and still continuing each other; unparking or dragging it out puts the
-whole chat back at the end of the queue (left out). Claude: `addon_tasks_edit` with `parked` and
+whole chat back at the end of the queue (left out). Jig: `addon_tasks_edit` with `parked` and
 `wholeChat`, and `addon_tasks_add` with `parked` and `sameChat`. Checked with screenshots in the
 sidebar, bottom panel and a tab; unit tests pass.
 **Check on your machine:** park a chat of two or three tasks and unpark it again; drag one task out
@@ -363,7 +362,7 @@ is reached", when it resets ("Resets 14:00 · in 2 h 13 min"), and **Continue wi
 the ChatGPT meter has room), **Wait and resume at 14:00** (Jig sends "carry on" just after the reset,
 also after a restart) and **Dismiss**. Continuing keeps the same chat: a divider "Continued with
 ChatGPT · Claude's limit reached", then ChatGPT gets a handoff Jig builds from the transcript (the
-goal, your latest messages, Claude's last messages, the plan, open to-dos, the files changed and
+goal, your latest messages, Jig's last messages, the plan, open to-dos, the files changed and
 `git diff --stat`, where it stopped; no AI involved, capped) and carries on. The composer
 shows ChatGPT from then on; going back later works the same way. Messages before the divider can't be
 rewound to. **Settings → Chats → When a chat hits its limit**: Ask me (default), Continue with the
@@ -382,13 +381,13 @@ ChatGPT chats get Claude's helper roles (2026-11-04, D-337): a ChatGPT (Codex) c
 searches to Jig's **jig_search_code** tool and page tests to **jig_test_page**, as Claude chats hand
 them to the jig-search and jig-tester subagents. Each is a separate ChatGPT call: the search runs a
 read-only Codex in the chat's folder (it can read, never change, no network, no Jig tools); the
-tester runs a Codex whose only tools are Claude's browser tools on the chat's page, and its report
+tester runs a Codex whose only tools are Jig's browser tools on the chat's page, and its report
 comes back with its screenshots. **Settings → Chats → ChatGPT chats** has **Helper fallback model**,
 **Tester model** and **Search model** after Default model (families first, then versions; defaults
 Luna for search and tester, Terra for the fallback). Both count toward the ChatGPT usage bar. Tried
 in a real ChatGPT chat (Codex 0.166.0, Luna, Don't ask): the search answered with the file and line in
 about 3 s, and the tester opened a small page, clicked a button and reported PASS/PASS with two
-screenshots on the tool card. The Settings rows line up with Claude's in Jig Dark and Light, wide and
+screenshots on the tool card. The Settings rows line up with Jig's in Jig Dark and Light, wide and
 narrow. Unit tests pass; no e2e run.
 **Check on your machine:** in a ChatGPT chat in Ask before changes, jig_test_page should ask once
 (a permission card) and then run; jig_search_code runs unasked.
@@ -398,12 +397,12 @@ Claude Code still asks about (such as "Dangerous rm operation on critical path")
 permission card with Allow / Deny and a countdown, "Declines in 0:59", instead of being declined at
 once. The chat shows "Needs you" (with the usual notification when Jig isn't in front). Answer in
 time and your answer counts; otherwise Jig declines it after the minute, the card becomes the
-"Declined automatically in Don't ask mode … (no answer within a minute)" notice, and Claude carries
+"Declined automatically in Don't ask mode … (no answer within a minute)" notice, and Jig carries
 on. A task-queue chat waits at most that minute per check and the queue goes on as usual. How long
 it waits is **Settings → Chats → Don't ask: wait for you** (decline at once, 30 seconds, 1, 2 or 5
 minutes; `engine.dontAskWaitSeconds`). Checked in Jig Dark and Light with the fake engine ("do the
 safety check"); unit tests pass, `e2e/dont-ask.spec.ts` written but not run (D-258).
-**Check on your machine:** in a Don't ask chat, ask Claude to `rm -rf` a new empty folder at a drive
+**Check on your machine:** in a Don't ask chat, ask Jig to `rm -rf` a new empty folder at a drive
 root: the card should count down, notify you, and decline after a minute if you leave it.
 
 ChatGPT chats and one-shots hold up better (2026-11-04): a chat whose Codex crashes or is killed now
@@ -431,21 +430,21 @@ switching a chat to Don't ask mid-way. Unit tests pass.
 Mention a Teams chat in a Jig chat (2026-11-04, D-333): type **@chat** in any chat's message box
 (Claude or ChatGPT) and the @ picker lists your Teams chats from the Meetings lobby (picture or group
 icon, name, last activity); type on (`@chat alex`, `@chat:alex`) to filter them by name or member.
-Picking one puts a chip with the chat's name above the message box; when you send, Claude reads that
+Picking one puts a chip with the chat's name above the message box; when you send, Jig reads that
 chat (the latest 100 messages, older ones if it needs them) and treats it as source material, not
 instructions. `@meeting` now narrows the picker to meetings the same way. Jig keeps nothing of the
-chat: it reads it from Microsoft when Claude asks. Needs Meetings on and Microsoft connected with the
+chat: it reads it from Microsoft when Jig asks. Needs Meetings on and Microsoft connected with the
 chat permission (as for the lobby's Chats). Checked with screenshots in Jig Dark and Jig Light (test
 meeting service); unit tests and the e2e pass.
 **Check on your machine:** mention a busy group chat and ask "what did we decide this week?": the
 answer should quote the right people and dates; ask about older messages to see it page back. Try
 the same in a ChatGPT chat. After restarting Jig, a chat mentioned before should be mentioned again
-for Claude to read it.
+for Jig to read it.
 
 Your chat with yourself in Meetings → Chats (2026-11-05, D-385): the Teams chat you keep with
 yourself ("<your name> (You)") is in the Chats list, with your picture and status, sorted by its last
 message like any chat: open it, write in it, find it by your own name and mention it with `@chat` so
-Claude reads it. Microsoft's chat list leaves it out, so Jig builds its row from its newest messages;
+Jig reads it. Microsoft's chat list leaves it out, so Jig builds its row from its newest messages;
 when those can't be read it has no row. Checked against Graph with a real sign-in (read and send work)
 and in the test meeting service; unit tests and the meetings e2e pass.
 **Check on your machine:** open Chats: your own chat shows with your latest note; send yourself a line
@@ -466,7 +465,7 @@ meetings chats e2e pass.
 Messages and open its chat. Try the three filters (Meetings = your meeting chats). Pin two chats and
 restart Jig: they stay on top in that order. Once Chat.ReadWrite is approved, start a group chat of
 three with a name and a one-to-one with someone new: both should appear in Teams with your first
-message; New chat with someone you already chat with should open that chat. Tell Claude if Search
+message; New chat with someone you already chat with should open that chat. Tell Jig if Search
 finds nothing (some tenants turn Microsoft Search off for Teams) or Start chat says it needs approval
 after it was approved (press Connect… once).
 
@@ -479,7 +478,7 @@ chat) and **Edit**, with a model ("Opus (latest)", "Sol (latest)"…); a task th
 shows that chat's provider, greyed out. Every row shows the provider's mark in its own column, the
 details say provider and model, and the All queues card shows the queue's. ChatGPT is greyed out with
 "Sign in on Get Started" while Codex isn't signed in; a task that gets to ChatGPT signed out ends
-Blocked and pauses the queue. Claude's `addon_tasks_add`/`addon_tasks_edit` take `provider`, `model`
+Blocked and pauses the queue. Jig's `addon_tasks_add`/`addon_tasks_edit` take `provider`, `model`
 and `runsOn`. Add-ons can start chats on a provider and model (`api.chats.create({ provider, model })`).
 Checked with screenshots in Jig Dark and Jig Light, wide and narrow (fake engine, signed in and out).
 Unit tests pass; e2e updated, not run (D-258).
@@ -506,7 +505,7 @@ opens it in your browser (SharePoint/OneDrive). Emoji show as emoji. With no wor
 has, so there is nothing new to approve. Checked with screenshots in Jig Dark, Jig Light and an
 imported theme, wide and narrow (test meeting service). Unit tests pass; e2e updated, not run (D-258).
 **Check on a real chat:** paste a screenshot and share a Word file in a Teams chat and in a meeting
-chat; both should show, the picture should open, the file should open in the browser. Tell Claude if
+chat; both should show, the picture should open, the file should open in the browser. Tell Jig if
 a picture says "Picture unavailable" (Graph may refuse some older pictures) or a file has no row.
 
 Teams chats as bubbles (2026-11-04, D-327): the lobby's chats and the in-call Chat panel look like a
@@ -539,7 +538,7 @@ send system sound (only Microsoft's own Teams apps get it). So there is no "Shar
 to a Cancel button. Checked with screenshots in Jig Dark and Light (test meeting service).
 **Check on a real call:** share a screen while a video plays with sound, using speakers rather than a
 headset, and ask someone what they hear. If they hear the video, it is your microphone picking up the
-speakers (try a headset); if they hear it clearly with a headset on, tell Claude, because then the SDK
+speakers (try a headset); if they hear it clearly with a headset on, tell Jig, because then the SDK
 sends sound after all.
 
 Meeting devices (2026-11-04, D-323): in the Join dialog Microphone, Speakers and Camera all said
@@ -629,13 +628,13 @@ test was run once for its screenshot). **Check in the next daily (Sprinta Daily,
 6. The New Podium Daily (external organiser) may refuse captions for real: its orange line should now
    say so, and the local transcript should cover it.
 
-Claude's browser shows itself only for a new page (2026-11-06, D-410): the view opens by itself when
+Jig's browser shows itself only for a new page (2026-11-06, D-410): the view opens by itself when
 a chat opens a page (its first browser call, or the first after its page closed), no longer on every
 click, read or screenshot on a page already open; those leave your panels alone (no switch, no badge).
 Covered by `e2e/browser-reveal.spec.ts`. Needs testing on your machine: let a chat browse, switch the
 sidebar to another tab, and check its next steps don't pull the browser back.
 
-Claude's browser stays out of your way (2026-11-05, D-349): when a chat browses while you work on
+Jig's browser stays out of your way (2026-11-05, D-349): when a chat browses while you work on
 another tab of the panel the browser is in (a sidebar, the bottom panel or a main-area pane), the panel
 no longer switches; the browser's tab gets a badge with the number of chats that browsed, cleared when
 you show it. In any other case (you're in another panel, in a chat, or outside Jig) it still shows
@@ -650,13 +649,13 @@ call and the Meetings lobby after a call come to the front without taking the ke
 `e2e/focus-stays.spec.ts`. Needs testing on your machine: type a long message while a queue chat starts
 a dev server; let a Teams call ring while you type in a chat (the call shows, Enter doesn't answer it).
 
-Claude's terminals close themselves (2026-11-05, D-373): a terminal a chat started closes once it has
+Jig's terminals close themselves (2026-11-05, D-373): a terminal a chat started closes once it has
 exited and the chat got its exit notice, except the one you are looking at (it closes when you switch
 away) and failed ones, which wait until you have looked at them. `jig_terminal_stop` now closes the
 terminal, chats are asked to stop terminals they no longer need, and archiving or deleting a chat
 closes its terminals. Your own terminals and scripts are untouched. Covered by
 `e2e/claude-terminals.spec.ts` and `autoClose.test.ts`. Needs testing on your machine: a queue task
-that runs several commands in terminals should leave no "Claude: …" rows behind once it is done.
+that runs several commands in terminals should leave no "Jig: …" rows behind once it is done.
 
 Terminals stay out of your way too (2026-11-05, D-349): a terminal a chat starts (`jig_terminal_run`)
 no longer switches its panel while you work on another tab of it (e.g. Builds or Pipelines in the
@@ -665,14 +664,14 @@ show it, and the newest one is selected. Elsewhere it still shows itself; termin
 always do. Covered by `e2e/terminal-reveal.spec.ts`. Needs testing on your machine: a queue chat
 starting a dev server while you read another tab of the bottom panel.
 
-Claude's browser, one page per chat (2026-11-04, D-320): every chat that uses Claude's browser now
+Jig's browser, one page per chat (2026-11-04, D-320): every chat that uses Jig's browser now
 gets its own page, so two chats (a task queue chat and yours) can browse at once without one's clicks,
 element numbers or navigation landing in the other's page; jig-tester helpers use their chat's page.
-The **Claude's browser** view has a one-line tab per page (the chat's name and project, a dot while
-Claude drives it, the page title in its tooltip); click one to watch that page with its Console and
+The **Jig's browser** view has a one-line tab per page (the chat's name and project, a dot while
+Jig drives it, the page title in its tooltip); click one to watch that page with its Console and
 Network; hover a tab for its Open chat and Close page buttons (always shown on the selected tab, or right-click it). Pages close with their chat (archived or deleted), after 15 minutes unused, and at most 4
 are open. Logins are shared between the pages by default (sign in once); Settings → Chats → **Chats’
-pages in Claude’s browser** → Separate keeps each chat's cookies apart. Covered by
+pages in Jig’s browser** → Separate keeps each chat's cookies apart. Covered by
 `e2e/browser-pages.spec.ts` (not run in this change, D-258). Needs testing on your machine: two
 queue or side-by-side chats browsing the same dev server at once (each keeps its page, a sign-in in
 one carries to the other), the tabs in the right sidebar, the bottom panel and a main-area tab, and
@@ -705,7 +704,12 @@ models (Sol, Terra, Luna first, then exact versions) and reasoning levels, and h
 mark stays in the composer (no longer in the header, D-340), and every row of the Chats list shows its provider's mark at the far right, Claude's too (D-348). **Settings → Chats**
 (was Claude Code): "New chats run on" Claude | ChatGPT, then a Claude chats group and a ChatGPT chats
 group (default model, reasoning effort, personal instructions, Codex binary, OpenAI API keys), the
-default one badged. A project's settings have "Chats run on". A ChatGPT chat's turn refreshes the
+default one badged. Current layout (D-413): the "Chats" section (New chats run on), an **All chats** group 
+(When a chat hits its limit, Default permission mode, Don't ask: wait for you, Suggest the next message, Stop idle chats, Name new chats, 
+Desktop notifications, Show Jig's browser when it's used, Chats' pages in Jig's browser, the AI features link), then **Claude chats** 
+(Engine, Recommended setup, Default model, Reasoning effort, Helper fallback model, Tester model, Search model, claude.ai connectors, 
+File checkpoints, Claude Code binary, Allow API keys) and **ChatGPT chats** (ChatGPT account, Default model, Reasoning effort, Helper fallback 
+model, Tester model, Search model, Your personal instructions, Claude Code's skills, Codex binary, Allow API keys). A project's settings have "Chats run on". A ChatGPT chat's turn refreshes the
 ChatGPT usage meter. Checked with the fake engine in Jig Dark and Jig Light, narrow and wide. Needs
 testing on your machine with Codex signed in: a real ChatGPT chat from the picker (reply, a command,
 the model and effort menus, the ChatGPT meter moving), and the picker greyed out after `codex logout`.
@@ -758,7 +762,7 @@ test is written but not run (D-258). Needs testing on your machine: a real chat 
 the background (the task should stay Running until it reports or 20 minutes pass), and Stop or a
 rejected tool call in a task (it should end as No report with no request).
 
-Claude moves and regroups queued tasks (2026-11-04, D-317): `addon_tasks_edit` can now make a queued
+Jig moves and regroups queued tasks (2026-11-04, D-317): `addon_tasks_edit` can now make a queued
 task continue the previous task's chat or start its own (`newChat`), and move it (`moveTo`: top,
 bottom, before or after a task; `wholeChat` for its whole chat), by the same rules as dragging in the
 Queue tab. A move or chat change the rules don't allow is refused with the reason, changing nothing;
@@ -768,12 +772,12 @@ continue the chat before it" or "move t5 to the top". Unit tests cover the rules
 Don't ask for queued tasks (2026-11-05, D-363): Add tasks and Edit offer **Don't ask** (red) as the
 last Permissions choice, so a task you trust runs without stopping for approvals; the default stays
 Accept file edits. On Claude it still stops on Claude Code's own safety checks (a minute, then
-declined); on ChatGPT nothing asks. Only you can pick it: Claude's task tools take no mode and
+declined); on ChatGPT nothing asks. Only you can pick it: Jig's task tools take no mode and
 `jig_set_addon_data` refuses to add it; only the built-in Tasks add-on may start such a chat. Covered
 by unit tests and `e2e/tasks.spec.ts`. Needs testing on your machine: a real Don't ask task that runs
 a few commands unattended.
 
-Claude deletes queued tasks (2026-11-05, D-362): `addon_tasks_delete` removes queued tasks by id
+Jig deletes queued tasks (2026-11-05, D-362): `addon_tasks_delete` removes queued tasks by id
 (several at once, all or nothing, optionally in another project), after you approve a card that
 names each task by id and title. Running, needs-you and finished tasks are refused with the reason;
 finished ones stay as history. It shares the Queue tab's Remove code, which now also hands a chat to
@@ -827,10 +831,10 @@ everywhere (footer, pickers, chat list, the handover divider, tasks). Unit tests
 `e2e/limit-handoff.spec.ts` cover it; `e2e/ui-shots.spec.ts` shoots the queue, History and the chat.
 
 A workflow's AI step picks its provider and model (2026-11-06, D-412): in a workflow's editor, a
-"message to the AI" step has a Runs on button beside "Who does it" (the same picker as Tasks): Claude
+"message to the AI" step has a Runs on button beside "Who does it" (the same picker as Tasks): Jig
 or ChatGPT and a model, or **Default**, which stores nothing so the step follows Jig's default (the
 project's, then Jig's) whenever it runs. A picked one shows as the provider's mark and the model beside
-the step's badge, and Run it starts the chat on it. Claude's `addon_workflows_save` takes `provider`
+the step's badge, and Run it starts the chat on it. Jig's `addon_workflows_save` takes `provider`
 and `model` per step; `addon_workflows_run` starts an automatic step with its own choice in a new chat
 and leaves one on the default to the chat that ran it. Unit tests and `e2e/workflows.spec.ts` cover
 it. Needs a real try with ChatGPT signed in and signed out.
@@ -962,7 +966,7 @@ restarts. Opening or switching to a board tab shows its cards at once and refres
 scenes: the refresh button turns and "updated N min ago" sits beside it, both in fixed slots, and
 changed cards update in place (a card you're dragging, or an open card, isn't interrupted). The
 centred spinner only shows for a board with nothing cached yet. A tenant switch shows that tenant's
-cached cards, never another's, and refreshes its boards. Claude's board tools read the cache when it's
+cached cards, never another's, and refreshes its boards. Jig's board tools read the cache when it's
 under a minute old. Signed out or expired: the board says so as before, and background refreshes in
 that tenant pause for 5 minutes. How to try it: follow two boards, restart Jig, open Code → Boards and
 switch tabs. Needs testing on your machine: a real board with many cards (no flicker or scroll jump
@@ -983,7 +987,7 @@ not the MSI/winget install (the `@file` fallback).
 Chats name themselves (2026-11-03, D-288): when you send a new chat's first message, the quick model
 (Haiku by default) gives it a short name of 2–5 words, in the message's language, a few seconds later.
 Until then it is called by the message's first words; renaming it yourself meanwhile wins. Turn it off
-in Settings → Claude Code → **Name new chats**. Needs testing on your machine: the name arrives and
+in Settings → Chats → **Name new chats**. Needs testing on your machine: the name arrives and
 the chat list doesn't jump.
 
 Task queue control (2026-11-03, D-279): every queued task has a tick (all ticked by default; one on
@@ -1023,7 +1027,7 @@ separate copy with its own name (always, for an edited built-in). Git gallery so
 Task queue per project with history (2026-11-02, D-248): each project has its own queue (the view's
 project menu at the top right switches, with a count of queued tasks); queues run independently.
 Every run is kept: History lists the runs (started, tasks, done, failed, time, cost) and opens one
-read-only, with Run again / Queue every task again and Remove from history. When Claude queues tasks
+read-only, with Run again / Queue every task again and Remove from history. When Jig queues tasks
 (`addon_tasks_add`) the approval is an editable list (titles, prompts, project, start now). The old
 single queue moves to its projects on first start. Needs a try with a real Claude Code chat.
 
@@ -1061,7 +1065,7 @@ source/tag `a3116a6efb14afd4a8963f82ee4349e22ce7aeeb`. Installer: 389,256,144 by
 SHA-256 `72c70d366ded7b6185da09f95f20d68933de75156a02188e668de26b9dbf0c6b`.
 Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
 the draft's installer matched the local one, and unauthenticated latest-release discovery returns
-v0.16.0 with its feed and installer. In 0.16.0: Jig 0.16.0 adds Pages (HTML pages Claude publishes inside Jig), an in-app What's new tab, pinned tabs, runnable meeting actions, a Meetings window with Calendar, Chats and Meetings tabs, and a more controllable task queue (stop lines, Reorganize, a model per queue).
+v0.16.0 with its feed and installer. In 0.16.0: Jig 0.16.0 adds Pages (HTML pages Jig publishes inside Jig), an in-app What's new tab, pinned tabs, runnable meeting actions, a Meetings window with Calendar, Chats and Meetings tabs, and a more controllable task queue (stop lines, Reorganize, a model per queue).
 
 Jig 0.15.0 published (2026-11-05): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.15.0),
 source/tag `d4b0f6ab02a84bb97eef65bac4e9c9a26e0cf74e`. Installer: 389,210,429 bytes;
@@ -1096,7 +1100,7 @@ source/tag `3e2bb4b815957ca5f208597fbc5606f065fa36fd`. Installer: 388,962,178 by
 SHA-256 `6b83ea698d67c2b3466e3e4f9d874fa346814b66579b721c64cecace163e72f7`.
 Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
 the draft's installer matched the local one, and unauthenticated latest-release discovery returns
-v0.11.0 with its feed and installer. In 0.11.0: Chats can move between Claude and ChatGPT (after a plan limit or by hand), Boards cards show what Azure DevOps shows, add-ons can ask before Jig quits, and the chat, Files and Claude's browser got a round of polish.
+v0.11.0 with its feed and installer. In 0.11.0: Chats can move between Claude and ChatGPT (after a plan limit or by hand), Boards cards show what Azure DevOps shows, add-ons can ask before Jig quits, and the chat, Files and Jig's browser got a round of polish.
 
 Jig 0.10.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.10.0),
 source/tag `8eef63465b5e3d0dd03779acf81b0aade332f038`. Installer: 388,925,532 bytes;
@@ -1117,7 +1121,7 @@ source/tag `9073b093702bae2f0cb5329d84ac8790ccd9e9a4`. Installer: 388,887,401 by
 SHA-256 `20033a6a5e9d6ad2fc9ba7008155a07088ef940dc26439e0c98b02b75c77588c`.
 Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
 the draft's installer matched the local one, and unauthenticated latest-release discovery returns
-v0.8.0 with its feed and installer. In 0.8.0: Jig 0.8.0 lets chats run on ChatGPT through the Codex CLI, gives each chat its own page in Claude's browser, and adds local meeting transcripts and noise suppression in calls.
+v0.8.0 with its feed and installer. In 0.8.0: Jig 0.8.0 lets chats run on ChatGPT through the Codex CLI, gives each chat its own page in Jig's browser, and adds local meeting transcripts and noise suppression in calls.
 
 Jig 0.7.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.7.0),
 source/tag `43b923dee9ceec6da0e31038383a981e88b3448d`. Installer: 373,138,754 bytes;
@@ -1138,14 +1142,14 @@ source/tag `da3672b10281e8257eae1cbf99af6093a59628fb`. Installer: 373,067,457 by
 SHA-256 `46a862154094876f2c05241595560e6cce6c57fc1b6eddffeada4170979e6f05`.
 Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
 the draft's installer matched the local one, and unauthenticated latest-release discovery returns
-v0.5.0 with its feed and installer. In 0.5.0: Jig 0.5.0 adds "Hey Jig" voice commands, Claude-translated meeting captions when Teams can't translate, microphone and speaker choice, and a task queue you can tick, put back and start over; talking with Claude now ignores background noise.
+v0.5.0 with its feed and installer. In 0.5.0: Jig 0.5.0 adds "Hey Jig" voice commands, Jig-translated meeting captions when Teams can't translate, microphone and speaker choice, and a task queue you can tick, put back and start over; talking with Claude now ignores background noise.
 
 Jig 0.4.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.4.0),
 source/tag `917606eb546b1fefe71a405fb689f48226a031d8`. Installer: 371,236,512 bytes;
 SHA-256 `3c07a133744ca5467f4e47fad1a00cfceb80a2440185e11748da3b1a03b30bbf`.
 Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
 the draft's installer matched the local one, and unauthenticated latest-release discovery returns
-v0.4.0 with its feed and installer. In 0.4.0: Boards you manage in Jig (and Claude from chats), the Teams chat of meetings and calls, profile pictures, a frame around what you share, past meetings that stay joinable, a pipeline picker in workflows, file links in chats and a task queue that fits a sidebar.
+v0.4.0 with its feed and installer. In 0.4.0: Boards you manage in Jig (and Jig from chats), the Teams chat of meetings and calls, profile pictures, a frame around what you share, past meetings that stay joinable, a pipeline picker in workflows, file links in chats and a task queue that fits a sidebar.
 
 Jig 0.3.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.3.0),
 source/tag `8d041765232c2dacc5d42d3ef83ec64aa5d4ff04`. Installer: 371,216,992 bytes;
@@ -1209,8 +1213,8 @@ public update discovery. No release UI was added.
 
 Learning evidence (2026-11-02, D-229): sent prompts record shared-file counts, including image-only
 messages, without inferring paste/drop/picker use from paths. Browser-gap mining requires web
-context and reports only missing recorded calls. Reflection guidance rejects “let Claude” reminder
-habits and nonexistent browser-enable settings; the catalog now distinguishes Claude’s browser
+context and reports only missing recorded calls. Reflection guidance rejects “let Jig” reminder
+habits and nonexistent browser-enable settings; the catalog now distinguishes Jig’s browser
 from the user browser. Existing suggestions are unchanged.
 
 Image zoom (2026-11-02, D-227): image tabs, image/SVG Preview and both sides of Git image diffs
@@ -1220,7 +1224,7 @@ Suggestions width (D-228): its header, cards and weekly summary use a centered r
 on wide screens and still fill narrow panels.
 
 Browser access (2026-11-02, D-226): the top-right globe icon opens your Browser in the main panel.
-Claude’s browser uses MonitorCog (your Browser keeps the globe), with an explicit heading and read-only address; navigation, viewport and test-launch
+Jig’s browser uses MonitorCog (your Browser keeps the globe), with an explicit heading and read-only address; navigation, viewport and test-launch
 controls are removed from its toolbar. Clicking/typing/pasting inside the page remains available
 for sign-ins. A permanent hint links directly to your own Browser; since 2026-11-04 it is the view's
 footer (tabs and address at the top, the page in the middle, the hint as the last row, below Console
@@ -1228,10 +1232,10 @@ and Network, which only resize the page). Covered by `e2e/browser.spec.ts`.
 
 Native user browser (2026-11-02, D-225): Tools → Open Browser opens a Browser tab in the main panel,
 with direct Chromium rendering/input, navigation, stop/reload, zoom, developer tools and opening in
-the default browser. Claude’s browser keeps the existing offscreen tools/live view in the sidebar;
+the default browser. Jig’s browser keeps the existing offscreen tools/live view in the sidebar;
 the two pages have separate cookies and history. Native surfaces hide behind Jig menus/dialogs and
 when switching/closing tabs. Browser integration tests pass for native text/IME, address focus,
-history, overlay bounds, native Ctrl+W, Claude separation and existing screenshots/console/network.
+history, overlay bounds, native Ctrl+W, Jig separation and existing screenshots/console/network.
 Reviewed the composed native/workbench screenshot; everyday browsing on the target machine remains
 to be tried.
 
@@ -1244,7 +1248,7 @@ Physical devices and a real Teams call still need target-machine acceptance.
 
 Teams chat in meetings and calls (2026-11-03, D-270): a Chat panel (on the left by default; move or
 hide it like the others) shows the meeting's or call's Teams chat, read every 5 seconds while you're in
-it, with a box to write in it. The chat is kept with the meeting, in Claude's transcript (so notes and
+it, with a box to write in it. The chat is kept with the meeting, in Jig's transcript (so notes and
 actions see links and decisions posted there) and in the Markdown export. Needs Chat.Read and
 ChatMessage.Send: until your administrator approves them, the panel says so with Connect chat…. A
 call's chat is your one-to-one chat with that person (none until one of you starts it in Teams).
@@ -1256,22 +1260,22 @@ initials until (or unless) there is one. Needs the User.ReadBasic.All approval.
 
 Boards you manage in Jig (2026-11-03, D-262): Code → Boards. Click a card to open it in Jig and
 edit it (title, description, column, state, assignee, tags, priority, story points, comments); drag
-cards between columns; + in a column adds a card; ⋯ → Move to / Delete…. Claude reads and updates the
+cards between columns; + in a column adds a card; ⋯ → Move to / Delete…. Jig reads and updates the
 project's boards from chats (`addon_boards_*` tools; changes ask first). Uses your own `az`; needs a
 try against your real organisation.
 
-File links in chats (2026-11-03, D-261): a file or folder path Claude writes in inline code
+File links in chats (2026-11-03, D-261): a file or folder path Jig writes in inline code
 (`docs/status.md`, `E:\repos\x\index.html`, `src/a.ts:42`) is a link when it exists: click opens a
 file in Preview and a folder in the file manager; Ctrl/Cmd+click opens it with its own app (an HTML
 page in the browser). Relative paths count from the chat's folder; a path that isn't there stays code.
 
 Translated captions (2026-11-03, D-260): in a live meeting the Transcript's language picker ("As
 spoken", or any language Teams offers) shows each caption in that language with what was said in
-small grey text under it; both are kept with the meeting and Claude reads both. The choice is
+small grey text under it; both are kept with the meeting and Jig reads both. The choice is
 remembered. Teams translates: that needs Teams Premium for the meeting; without it Jig says so and
 captions stay as spoken. Needs a real meeting to confirm.
 
-Captions translated by Claude (D-277): when Teams can't translate (no Teams Premium, or a language
+Captions translated by Jig (D-277): when Teams can't translate (no Teams Premium, or a language
 Teams doesn't offer), Claude translates each finished caption on a fast model (Haiku), in order;
 the picker also lists common languages Teams may not (Swedish, Spanish, Basque, Catalan, French…).
 While it translates, each line keeps room for the original under it ("Translating…"), and the
@@ -1287,11 +1291,11 @@ to the end: run `meetings.spec.ts` at the release and look at `translated-ai.png
 
 "Hey Jig" voice commands (2026-11-03, D-278): Settings → Speech → Hey Jig → Listen for "Hey Jig"
 (off by default). While Jig is open, also minimized, say "Hey Jig" and a command: new chat (in a
-project), continue my last chat, talk to a chat, talk mode, switch project, add a task, ask Claude,
+project), continue my last chat, talk to a chat, talk mode, switch project, add a task, ask Jig,
 what's happening, read the last answer, the queue, tests, pipeline status, run the tests, deploy to
 stage or production and pull (both after a spoken yes), fetch, run a workflow, start a script, save
 a note, mute, repeat, stop listening, what can I say. A chat opened by voice starts in Talk mode.
-Everything is understood and run on this computer, without Claude (only "ask Claude" starts a
+Everything is understood and run on this computer, without Jig (only "ask Jig" starts a
 chat). Jig also says when a chat finishes or needs you. The status bar's "Hey Jig" is always there
 (D-387): dimmed with a crossed-out microphone while off, a click turns listening on or off, and a
 right-click offers Train Hey Jig…, Voice commands… and Speech settings…; a crossed-out speaker
@@ -1322,8 +1326,8 @@ TypeScript/JavaScript, Python, C#, JSON, CSS, HTML, Go and Rust with where each 
 (runs the install command in a terminal). Needs a try with real servers (`typescript-language-server`).
 
 Project notes in the project's knowledge (2026-11-03, D-289): notes are no longer an add-on. The
-Home's **Knowledge** card shows **Notes** (every chat gets them) above **Documents** (Claude reads
-them when they help), with **Add note…**; the **Project notes** sidebar view stays. Claude's tools
+Home's **Knowledge** card shows **Notes** (every chat gets them) above **Documents** (Jig reads
+them when they help), with **Add note…**; the **Project notes** sidebar view stays. Jig's tools
 are now `jig_notes_*`; adding, changing or removing a note asks like other changes unless the
 chat's mode allows it. At the first start, notes the add-on kept move into each project unchanged
 and `addon-data/notes.json` becomes `notes.json.migrated`. Try: start Jig with existing notes and
@@ -1331,7 +1335,7 @@ check each project's Knowledge card.
 
 Project knowledge (2026-11-03, D-256): a project's Home has **Knowledge**: drop files on it or
 Add files… (text, Markdown, code, PDF, Word, Excel, PowerPoint), click one to read it, ×
-removes it. Every chat in the project is told which documents there are and Claude reads them with
+removes it. Every chat in the project is told which documents there are and Jig reads them with
 `jig_knowledge_read`. **Import from claude.ai…** (Projects view ⋯, the Knowledge card, or Go to)
 shows the steps to export your data on claude.ai, then reads the zip you drop and makes Jig projects
 with each project's instructions and knowledge. Needs a real claude.ai export to confirm its shape.
@@ -1348,7 +1352,7 @@ Chat (2026-11-03): the context window card (hover the % in a chat's top bar) sta
 move onto it and has Compact now and With instructions….
 
 Chat (2026-11-03): in the Compact view the latest steps line keeps its spinner and glow while the
-chat works, also between steps ("· Working" while Claude writes its next step), not only while a
+chat works, also between steps ("· Working" while Jig writes its next step), not only while a
 tool runs.
 
 Teams calls (2026-11-03, D-254): in the meetings window, **Call…** finds people (recent calls,
@@ -1377,7 +1381,7 @@ the top-bar video button, then the **Meetings** tab (or Tools → Meeting histor
 the selected meeting on the right. **Start a chat** opens a chat in a project you pick with the
 meeting mentioned; **Generate notes** and **Review actions** work as in the meeting window; ⋯ copies or
 exports Markdown, copies the chat reference, renames or deletes. In any chat, `@` + a meeting's name
-lists meetings after files; sending `@meeting:…` makes Claude read it. Notes are now much shorter.
+lists meetings after files; sending `@meeting:…` makes Jig read it. Notes are now much shorter.
 The meeting window's "Saved meetings" is now "Meeting history". To try: join a meeting with
 `JIG_MEETINGS=fake`, leave, then open the history. Needs real-machine testing: Export Markdown's save
 dialog and how concise real notes come out.
@@ -1417,13 +1421,13 @@ when on, initials when off, muted mic, a ring while speaking, you included); whe
 their screen gets the space with everyone's tiles in a strip beside it. People (hidden by default,
 toggled from the participant count) is a third movable panel. Saved meetings can be deleted (review ⋯ → Delete
 meeting…, or right-click a saved card), after a confirm; this also removes the meeting's frozen
-question/notes snapshots. Leaving a call opens its review (transcript, notes, Ask Claude, Open in Teams). A stopped chat turn
+question/notes snapshots. Leaving a call opens its review (transcript, notes, Ask Jig, Open in Teams). A stopped chat turn
 now shows "Stopped" instead of Claude Code's red diagnostic, and Meetings sits in the Chats menu.
 
 Automatic source cleanup (2026-11-02, D-220): fresh Claude Code/Jig chats opened in this repository
 load a native hook that runs installed Biome safe fixes after Edit/Write and Bash/PowerShell.
 Shell tools sweep modified/untracked files, covering Windows Python CRLF writes. Success is silent;
-remaining errors go to Claude. No AI calls/downloads. Scope and activation: `guides/developing.md`.
+remaining errors go to Jig. No AI calls/downloads. Scope and activation: `guides/developing.md`.
 
 Meeting room redesign (2026-11-02, D-219): one stable layout — resizable stage with floating call
 controls, meeting bar, Transcript | Notes, status line for call state and errors. Sidebar: Join from
@@ -1432,7 +1436,7 @@ connection, share, Ask and review dialogs. Meetings e2e and npm run check pass.
 
 Teams meetings (2026-11-01, D-217): Chats → Meetings opens a global meeting window with a two-week
 calendar, Join from link, pre-join devices/preview, audio/video and screen/window sharing. Named live
-captions are saved incrementally without raw audio or post-meeting processing. Ask Claude opens a normal
+captions are saved incrementally without raw audio or post-meeting processing. Ask Jig opens a normal
 Plan-mode chat with an immutable transcript snapshot and explicit project context; project switches do
 not interrupt the meeting. Generate notes saves a draft action plan for modal review and per-action
 project assignment. Adding selected actions is idempotent, pauses Task queue and never starts it.
@@ -1456,7 +1460,7 @@ Open Browser action, settings and What Jig can do. Search for Open Browser to op
 
 Models and searching (2026-11-01): new chats use Opus; `opusplan` used Opus only in Plan mode and
 Sonnet for everything else, so chats in other modes never reached Opus. Saved settings keep their
-value: change Settings → Claude Code → Default model (or Use recommended defaults). Every chat gets
+value: change Settings → Chats → Claude chats → Default model (or Use recommended defaults). Every chat gets
 the `jig-search` subagent on the new Search model (Haiku; Off removes it) and is asked to hand code
 searches to it. The chat details list each model's replies, tool calls, tokens and cost (Claude
 Code's totals, subagents included, after a turn ends) (D-207). `npm run check` passes (620 tests,
@@ -1485,14 +1489,14 @@ and a new commit can record/push the restoration. The confirmation explains its 
 About/README screenshots have been regenerated and visually inspected.
 
 Project notes and busy buttons (2026-10-31): notes now describe the project and are shared
-across its chats (D-202), with Waiting on, Note and Link kinds. Claude receives current notes
+across its chats (D-202), with Waiting on, Note and Link kinds. Jig receives current notes
 each turn and guidance to retain important project knowledge beyond the current task/chat.
 Legacy chat notes are ignored. Search for Show this project's notes; Add/Edit uses a modal.
 Busy buttons retain full contrast and a fixed icon slot; spinners inherit their text colour (D-203).
 Validation: production build and `npm run check` pass (609 tests, 8 skipped). Hidden real-app
 regressions pass for shared/isolated notes, reload persistence, editor closure on project switches,
 stationary modal headers and the pipeline queue spinner's colour, opacity and button geometry.
-Real Claude's editorial judgment about which facts to retain still needs everyday use; automated
+A real chat's editorial judgment about which facts to retain still needs everyday use; automated
 checks cover the guidance and project boundaries, not live model behavior.
 
 Repos branch readability (2026-10-31): the branch column starts farther left and occupies one third
@@ -1612,9 +1616,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   @BotFather (paste its token, then send the 6-digit code to the bot from your phone). While you're
   away from the computer (or always), the bot tells you when a chat needs you (Allow / Deny, a
   question's options, a plan's Approve / Keep planning as buttons), finishes (with the end of
-  Claude's reply) or stops. Reply to a message to answer that chat; plain text goes to the last chat
+  Jig's reply) or stops. Reply to a message to answer that chat; plain text goes to the last chat
   it told you about; /chats picks one. A request answered on the computer is marked so on the phone.
-  Claude can text you itself (`jig_phone_send`). The token is encrypted with the OS.
+  Jig can text you itself (`jig_phone_send`). The token is encrypted with the OS.
 - Ask any chat or Jig on your phone "how much usage is left?": `jig_usage_limits` gives both
   providers' windows (used, left, when each resets) from the footer's numbers, or says a provider
   has no limit data. "Close that chat's room" closes it like /close (`jig_phone_close_room`, D-386):
@@ -1636,27 +1640,27 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   domain, Sign in in the browser or with a code (D-316: never Windows' account window; the code
   shows in the modal with Copy and Open page, for a private window when the browser holds another
   account), progress and errors in the modal, Cancel) and Manage tenants… (switch, rename, sign in
-  again in the browser or with a code, remove). Also in Settings → Azure. Claude can
+  again in the browser or with a code, remove). Also in Settings → Azure. Jig can
   list tenants and, with your approval, switch (`jig_azure_tenants`, `jig_azure_switch_tenant`).
   On a switch (D-284) Pipelines shows a spinner in its list's place and then that tenant's
   pipelines (its organisations setting is per tenant), Boards reloads and a board followed in another
   tenant shows a card "In tenant X" that switches to it, Releases' and Workflows' pipeline runs use the
   tenant and name it when they fail, and Project links → Add from Azure lists the tenant's
   subscriptions. Add-ons use the same `az` (`api.azure.az`). New chats, terminals and scripts run
-  `az` with the active tenant (D-285), and Claude is told which tenant and user that is; a chat or
+  `az` with the active tenant (D-285), and Jig is told which tenant and user that is; a chat or
   terminal that was running when you switched keeps its tenant and shows its initials (the chat header
   also its name) until it ends. Try it: start a chat and a terminal, switch tenant, look at the chat
   header and the terminal tab. A project can pin a tenant (D-286): project settings → Azure tenant
   (Default keeps the tenant in use); switching to that project switches the tenant, and the avatar's
   tooltip says "Pinned by the project X". A project whose tenant was removed uses Default and its
-  settings say so. Claude can set it (`jig_update_project azureTenant`). When a tenant's sign-in
+  settings say so. Jig can set it (`jig_update_project azureTenant`). When a tenant's sign-in
   expired, Pipelines says so in its list's place ("Couldn't list pipelines", naming the tenant)
   instead of "No pipelines found".
 
   Your az login can be renamed too (D-301): Manage tenants → the pencil on its row; the avatar's
   initials, the menu, the tooltip (which adds "Your own az login"), Settings → Azure, chat and
   terminal tags, the project dialog's tenant picker, Boards' "In … (your own az login)" card and what
-  Claude is told all use the name; it still is the Azure CLI as you left it and can't be removed.
+  Jig is told all use the name; it still is the Azure CLI as you left it and can't be removed.
   The ↺ button where other rows have Remove goes back to "Your az login".
 
   **Try it:** click the avatar at the top right → Add tenant…, type a tenant id or domain (or leave it
@@ -1670,25 +1674,25 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   and the words appear at the caret (not sent). Esc throws a recording away. The first time it asks
   to download the Whisper model (Settings → Speech: tiny ~45 MB, base ~80 MB (default), small
   ~250 MB; language; remove). It runs locally, offline afterwards. Read aloud (speaker icon on
-  Claude's answers) and talking use the natural voice (below) or the system's voices.
-- Natural voice (D-243): Claude's replies are read with Kokoro, a realistic voice that runs on this
+  Jig's answers) and talking use the natural voice (below) or the system's voices.
+- Natural voice (D-243): Jig's replies are read with Kokoro, a realistic voice that runs on this
   computer (19 voices: American and British English and Spanish, women and men). The first time it
   reads, it asks to download the model (~330 MB) and the system's voice reads until it's ready.
   Settings → Speech → Reading aloud: Reads aloud (natural / system), Natural voice, Try it, Natural
   voice model (Download / Remove). It starts after a few words (D-411): the first chunk ends at a
-  comma (or after 8 words while Claude still writes), each piece plays as soon as it is made, and the
+  comma (or after 8 words while Jig still writes), each piece plays as soon as it is made, and the
   voice is loaded ahead when you talk, say "Hey Jig" or a chat starts work with announcements on.
-- Real-time speech and talking with Claude (D-209): with a graphics card Whisper runs on it
+- Real-time speech and talking with Jig (D-209): with a graphics card Whisper runs on it
   (WebGPU), and the words appear while you speak. The Talk button (sound waves) in the composer (or + →
-  Talk with Claude) starts a spoken conversation: pause and it is sent, Claude answers out loud,
+  Talk with Jig) starts a spoken conversation: pause and it is sent, Jig answers out loud,
   talk over it to interrupt; the chat is in plan mode and "yes, go ahead" approves the plan so
-  Claude starts working. "Read it out loud" (or "I can't see the screen") while a plan waits makes
+  Jig starts working. "Read it out loud" (or "I can't see the screen") while a plan waits makes
   Jig read the plan or tasks, then ask again (D-280). "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed, Try the voice, and step-by-step
   instructions for talking and for adding system voices (Windows, macOS, Linux).
 - Background noise while talking (D-275): a voice detector (Silero, bundled, runs on this computer)
   decides what is you speaking, so dishes, typing or a sniff neither start your turn, keep it open,
-  nor interrupt Claude. What Whisper makes up from noise ("you", "Thank you.", [Music]) is dropped.
-  Settings → Speech → Talking with Claude → Ignore background noise: Strongly (default), A little, Off.
+  nor interrupt Jig. What Whisper makes up from noise ("you", "Thank you.", [Music]) is dropped.
+  Settings → Speech → Talking with Jig → Ignore background noise: Strongly (default), A little, Off.
   A turn you start while the last one is still being sent now waits for it, so words no longer stay
   in the message box and come back in your next message.
 - Microphone and speaker (D-276): Settings → Speech → Microphone and speaker, and the headphones
@@ -1696,22 +1700,22 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   listen to and the speaker the natural voice and talking sounds play on. A new microphone is used
   at once, also mid-conversation; an unplugged one falls back to the system's default.
 - Talking window (D-210, redesigned in D-218): talking opens a wide, calm window over the chat with
-  sound waves in the centre (blue: you, from the microphone; accent: Claude, a pulse per spoken
-  word) and the conversation under them, fading out upwards as it scrolls (no tabs). While Claude
+  sound waves in the centre (blue: you, from the microphone; accent: Jig, a pulse per spoken
+  word) and the conversation under them, fading out upwards as it scrolls (no tabs). While Jig
   asks to start something, its plan shows as a card in the right margin: one plan, or, for bigger
-  work that needs several chats, a task queue (Claude decides, or you say "make it a queue"); "go
-  ahead" then queues the tasks and starts them. Claude searches and reads the code while
+  work that needs several chats, a task queue (Jig decides, or you say "make it a queue"); "go
+  ahead" then queues the tasks and starts them. Jig searches and reads the code while
   you plan (the status line says "Searching the code…", "Reading cart.ts…"; a soft note every 1.17 s
-  while it thinks). Controls: Mute, Stop Claude's voice, End talking, Go ahead. "Go ahead"
-  (said or pressed) approves the plan, or asks Claude for it and approves it as it comes; talking
-  ends and Claude works as in any chat, with a soft note every 1.17 s and a chime when it finishes
-  or needs you (Settings → Speech → Sound while Claude works). "Bye" ends only talking; Claude's
+  while it thinks). Controls: Mute, Stop Jig's voice, End talking, Go ahead. "Go ahead"
+  (said or pressed) approves the plan, or asks Jig for it and approves it as it comes; talking
+  ends and Jig works as in any chat, with a soft note every 1.17 s and a chime when it finishes
+  or needs you (Settings → Speech → Sound while Jig works). "Bye" ends only talking; Jig's
   work goes on, and the chat returns to its own permission mode when idle.
 - **"Don't ask" waits a minute, then declines (D-293, D-336):** a safety check Claude Code still
   asks for in that mode (`rm -rf` on a drive root…) shows its permission card with a countdown; when
   nobody answers in time (Settings → Chats → Don't ask: wait for you, default 1 minute; "decline at
-  once" as before) it is declined with a warning notice, and Claude carries on another way. Questions
-  still wait. Try it: a "Don't ask" chat, ask Claude to
+  once" as before) it is declined with a warning notice, and Jig carries on another way. Questions
+  still wait. Try it: a "Don't ask" chat, ask Jig to
   `rm -rf` a new empty folder at a drive root.
 - Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:
   chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
@@ -1724,14 +1728,14 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   panel full width". The default is the shape Jig always had (also under the right sidebar).
 - Chats board (D-178): Chats view header → board icon, or Chats menu → Chats board.
 - Task queue (D-182): Chats menu → Task queue. Add tasks grouped in chats, one field per task
-  (a chat's first task starts it, the next ones continue it; D-186), then Start. Claude does them in
+  (a chat's first task starts it, the next ones continue it; D-186), then Start. Jig does them in
   order and reports each (outcome, summary, things to know, follow-ups); the results show a card per
   chat (its link, project, time, cost, progress) with a row per task, and a status bar on top; click
   a row for details. Paste, drop or attach (paperclip) images and documents in a task like in the
   chat (D-187): they're sent with it and stay with it, in the Files column, ⋯ → Files and the details.
-  In a chat, ask Claude to queue tasks (for example one per spec in a folder):
+  In a chat, ask Jig to queue tasks (for example one per spec in a folder):
   it uses `addon_tasks_add`. Known gaps: which add-on follows which chat is kept in memory, so after a
-  restart running tasks catch up within a minute (the watcher); a task Claude didn't report on shows
+  restart running tasks catch up within a minute (the watcher); a task Jig didn't report on shows
   Claude's last answer instead. Needs testing on a real machine with real Claude Code.
 - A workflow's pipeline (step or trigger) is picked from a dropdown of your pipelines (D-267).
 - Generated meeting notes ask to **Save notes and actions for review**, not to approve a plan (D-268).
@@ -1740,7 +1744,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   real machine: a real push and a real Azure DevOps pipeline (the e2e tests use a fake `az`).
 - Add-on gallery (D-179): Tools → Add-on gallery, or Settings → Add-ons. Add a git URL or a folder,
   then Install. Needs testing on a real machine: a private git repository over https and ssh.
-- Commit messages (Git → Write) use the quick model, Haiku by default (D-181; Settings → Claude Code → Quick model).
+- Commit messages (Git → Write) use the quick model, Haiku by default (D-181; Settings → Chats).
 - Pipelines (D-180): each pipeline is one compact row; click it for the details dialog. They load when
   Jig starts (D-183) and opening the view shows them at once, refreshing in the background.
 - Chat overview (D-184): a small card at the top right of each chat, beside the transcript (it never
@@ -1748,7 +1752,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   tokens. **Show details** opens a modal with every tool, skill, subagent, add-on, MCP server and file.
   Toggle it with the chart button in the chat's top bar; ⋯ → Chat overview… opens the details; setting
   `chat.overview`.
-- How Claude worked for you (D-185): What Jig knows about me sums the overview's counts over 4 weeks
+- How Jig worked for you (D-185): What Jig knows about me sums the overview's counts over 4 weeks
   of chats (skills, subagents, add-ons, MCP servers, most used tools; calls and chats each), and the
   weekly reflection reads it. Tool calls recorded before this have no skill/add-on tag, so they count
   only as tools.
@@ -1778,15 +1782,15 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     movable/hideable from their `⋯` menu, main-area tabs (reorder by drag, close, close others),
     restored on restart.
   - Projects: add a folder, switch, rename, recolour, remove (right-click or `⋯`), project dashboard.
-  - Settings tab: Appearance, Layout, Claude Code, Terminal, Learning, About.
+  - Settings tab: Appearance, Layout, Chats, Terminal, Learning, About.
   - Toasts, keyboard shortcuts (`docs/reference/layout.md`).
 
 - **Phase 4 (done): chat sessions.**
   - Sessions view (left sidebar, next to Projects): every session of every project with live status
     (idle / working / needs you / error). New session: `Ctrl+N`, the `+` in the Sessions header, or Tools.
   - Chat tab: streaming markdown, collapsed thinking, tool-call cards (click to see input/output),
-    permission prompts (Allow once / Always allow / Deny), Claude's questions as clickable options,
-    per-turn duration/tokens/cost, follow-ups queue while Claude works (click one to edit it before it is sent), Stop (or `Esc`), model and
+    permission prompts (Allow once / Always allow / Deny), Jig's questions as clickable options,
+    per-turn duration/tokens/cost, follow-ups queue while Jig works (click one to edit it before it is sent), Stop (or `Esc`), model and
     permission-mode menus, attach files (`@path`), rename/archive/delete/stop from the `⋯` menu.
   - Sessions persist and resume with Claude Code's own session id after a restart.
   - API keys are stripped from sessions by default; a warning shows if a session still bills an API key.
@@ -1806,7 +1810,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - Add-ons are folders with `addon.json` (+ `ui.tsx`, `host.ts`, `README.md`) in `~/.jig/addons`
     (a git repository) or Jig's built-in `addons/`. They load into 20 slots (views, tabs, top bar,
     status bar, dashboard, Tools actions, context menus, chat toolbar and tool cards, prompts,
-    watchers, Claude tools and context, Jig events, search results, settings pages, themes); see
+    watchers, Jig tools and context, Jig events, search results, settings pages, themes); see
     `docs/guides/writing-addons.md`.
   - More for add-ons (D-215): toasts with buttons, system notifications while Jig is in the
     background, badges on their views (over the icon, nothing moves), host code that runs when a chat
@@ -1888,8 +1892,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - **Build it** starts the builder; **Not now** hides it for 14 days; **Never** blocks the pattern.
   - **Learning 2** (D-111):
     - **Notes from chats:** when you mention work you do by hand or outside Jig, frustration or a
-      chore, Claude saves a short note; a "Noted for suggestions" card in the chat has Remove.
-    - **Friction** is recorded without AI: Stop while Claude works, rewinds, denied permissions,
+      chore, Jig saves a short note; a "Noted for suggestions" card in the chat has Remove.
+    - **Friction** is recorded without AI: Stop while Jig works, rewinds, denied permissions,
       corrections ("no, I meant…"), repeated tool errors, scripts that fail, long chats that end
       without a commit, and hopping between projects. Pastes per kind and
       "Browser never used for UI work" are signals too.
@@ -1898,17 +1902,17 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       additions to your profile. **Did it help?** shows on built or adopted suggestions after a week.
     - **What Jig knows about me** (the person button in Suggestions, Tools, Settings → Learning): your
       profile (`~/.jig/profile.md`, editable), the notes (deletable), activity per kind and **How you
-      worked** (lines by Claude vs by hand in your commits of the week, churn, fixes, chat time — an
+      worked** (lines by Jig vs by hand in your commits of the week, churn, fixes, chat time — an
       estimate).
     - **Profile interview** (D-169): when Jig opens and the profile is empty (and a project is active)
-      a toast offers a chat where Claude asks one question at a time, follows up and fills the profile
+      a toast offers a chat where Jig asks one question at a time, follows up and fills the profile
       with `jig_update_profile`; once per launch, "Don't ask again" stops it; the same chat starts from
-      **Fill it in with Claude** in What Jig knows about me. Needs testing with real Claude.
+      **Fill it in with Jig** in What Jig knows about me. Needs testing with a real chat.
     - **Check-in** (Settings → Learning, off by default; offered once after two weeks): a short chat
       with 3–5 questions that adds what it learns to your profile.
     - **Workflows** (opens as a main tab: Chats menu → Show workflows, D-173/D-174; a new built-in add-on): lists of steps you
       repeat, per project. Each step is yours (a check), "ask me first" or done by Jig (a command, a
-      script, a pipeline, a message to Claude). Run it step by step with the output shown; schedule it
+      script, a pipeline, a message to Jig). Run it step by step with the output shown; schedule it
       (while Jig is open); export it as a Claude Code skill; Move to the cloud asks Claude to make it a
       routine or a pipeline. Workflow suggestions open here as drafts.
     - **Reviews, not only repetition** (D-213): the weekly run also looks for risky practices
@@ -1916,9 +1920,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       pushes, `--no-verify`, commits without tests…), reads a sample of your recent messages for
       prompting tips, knows Jig's features and how much you use each add-on, and runs once there is
       enough activity even when nothing repeats. New suggestions: **better practice** (Fix it with
-      Claude), **an add-on you have** (Switch it on / Show me) and **a Jig feature** (Show me). New
+      Jig), **an add-on you have** (Switch it on / Show me) and **a Jig feature** (Show me). New
       tools come last, at most one per review. Needs trying with real Claude (haiku) on a real month.
-    - **Coaching how you work with Claude** (D-214): the weekly review reads your recent chats message
+    - **Coaching how you work with Jig** (D-214): the weekly review reads your recent chats message
       by message, like a coach, and names the change that would help you most (how you ask, what
       context you give, how much you hand over, planning, checking the result…), with your messages
       as evidence. A few habits Jig spots itself (asking piece by piece, one-off asks, big changes
@@ -1926,7 +1930,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       better one side by side, why yours fell short and what's better, then **Try this prompt** (a
       new chat with it filled in); a habit tip can **Show me**
       the Jig feature. One of each a week at most.
-    - **Browser records the network:** Claude reads the page's requests (status, headers,
+    - **Browser records the network:** Jig reads the page's requests (status, headers,
       bodies; credentials redacted) with `jig_browser_network`, and the browser view has a Network
       list — so API calls are debugged there instead of copied from your browser.
 - **Phase 10 (done, reworked): no self-editing.** When no slot can do a request, the build ends with a
@@ -1935,21 +1939,21 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - **Resizable panels:** drag the edge of the sidebars and the bottom panel (or focus the handle and use
   the arrow keys; double-click resets), the terminal list, the Settings list and the two sides of a Git
   diff. Sizes are remembered (`layout.json`).
-- **Image previews:** a changed image in the Git view shows before/after side by side; images Claude
+- **Image previews:** a changed image in the Git view shows before/after side by side; images Jig
   reads or writes show a thumbnail in their tool card; both open an image tab (fit / 100%, pixel and
   file size, show in folder).
 - **Screenshots and documents in chat:** paste (Ctrl+V) or drop images, PDFs, Word, Excel, PowerPoint
   (.docx/.xlsx/.pptx) and text files into the message box, or pick them with the paperclip. They show as
-  thumbnails or chips (remove with ×), go to Claude with your message (PDFs as documents, Office files
+  thumbnails or chips (remove with ×), go to Jig with your message (PDFs as documents, Office files
   as text Jig extracts), and stay in the transcript (click to open). Empty entries (an extra blank
   item Windows puts on the clipboard, a placeholder dragged from a browser, Outlook or a zip) are
   skipped quietly; only when nothing else came with them does one message name the file and suggest
   saving it to disk first (also for add-ons' attachments).
-- **Configure Jig from a chat:** ask Claude to change the theme, fonts, density, file icons, layout,
+- **Configure Jig from a chat:** ask Jig to change the theme, fonts, density, file icons, layout,
   add-ons on/off, a project's name or colour, or to find and install a theme. You approve each change
   (Claude Code's prompt) and a card in the chat shows what changed, with Undo. Billing and
   program-running settings stay in Settings only.
-- **Compact chats** (D-159): each run of Claude's steps folds into one line ("Ran 3 commands, edited 1
+- **Compact chats** (D-159): each run of Jig's steps folds into one line ("Ran 3 commands, edited 1
   file"); click it for the cards, or switch the chat's top bar to Detailed for every card.
 - **Plan usage, always visible:** the status bar shows a bar per window like the usage plugin
   (`5h ▰▱ 26%  wk ▰▱ 69%`, neutral, amber from 60 %, red from 85 %; D-152); hover it for a card with every window, a bar each and when it resets (click
@@ -1958,7 +1962,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   in it.
   - **New project…** (Projects view, top bar menu, Tools) asks for a name, a colour, a default
     workspace folder, a default Git repository, the model/effort/permission defaults for its chats,
-    instructions for Claude (added to its system prompt in those chats) and starter prompts for its
+    instructions for Jig (added to its system prompt in those chats) and starter prompts for its
     Home. ⋯ → Project settings… changes them.
   - **Chats:** the active project's group comes first and open, the other projects below (click to
     open), then "No project". Drag a chat onto a group to move it; pin a chat (hover → pin) to keep it
@@ -1968,7 +1972,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - **Home** uses the project's starter prompts (a click opens a new chat with it in the composer).
     Its **New chat** button has a folder picker (any workspace or one of its repositories; the
     project's default workspace first). No separate chat box there (D-246).
-  - **Claude** can create projects, change their settings and move or pin chats from a chat (with
+  - **Jig** can create projects, change their settings and move or pin chats from a chat (with
     Undo).
 - **Project links** (section below Projects, and a card on Home): the project's places in groups you
   name (Stage, Prod…).
@@ -1976,18 +1980,18 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     type and label come from the address.
   - Add one by hand (+), or tick resource groups or resources from your `az` login (cloud button).
     Drag links between groups; click opens your browser.
-  - Claude can add or rearrange them from a chat (with Undo).
+  - Jig can add or rearrange them from a chat (with Undo).
 - **Arrange Scripts and Pipelines:** Arrange in each panel's header hides items, lets you drag them
   into your order and adds dividers (optionally titled). It's the same in every project. Scripts
   shows one group per folder, whatever the active project.
 - **Releases** (opens as a main tab: Code menu → Show releases, D-173/D-174; a "N to release" item in the status bar): versions,
   changelogs and release notes per repository (D-110).
   - **Set up** a repository once: Jig shows what it found (version files, tags, changelog, conventional
-    commits, tools such as GitVersion) and **Set up with Claude** opens a chat that proposes a release
+    commits, tools such as GitVersion) and **Set up with Jig** opens a chat that proposes a release
     policy with reasons, or adopts what's there. **Use what's there / Use the defaults** writes it
     without a chat. The policy is `.jig/release.json` in the repository (commit it to share it).
   - **Planned releases:** the unreleased commits (with their type and AB# work items), **Prepare
-    release** with the suggested version (the first release is the baseline), **Draft with Claude** for
+    release** with the suggested version (the first release is the baseline), **Draft with Jig** for
     the bump's reason, the changelog and notes per audience, then **Release**: version file, changelog,
     commit "Release x", tag (with the notes), push.
   - **Continuous:** "Deployed to prod" tags the checked-out commit with the next version. Production
@@ -1998,9 +2002,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     release pipeline starts on the new tag; Git shows "N unreleased" next to the repository. Weekly reminders when the
     policy asks for them. Git's **Write** uses Conventional Commits when the policy says so.
 - **Review comments on diffs** (Git → a changed file): click a line number to comment on it; the
-  comments collect per repository and **Review (N) → Send to a new chat** hands them to Claude as one
+  comments collect per repository and **Review (N) → Send to a new chat** hands them to Jig as one
   message.
-- **A chat in its own worktree** (Tools → New chat in a worktree…): Claude works on a copy of the
+- **A chat in its own worktree** (Tools → New chat in a worktree…): Jig works on a copy of the
   project's repository on a new branch (`jig/<what it's for>-<id>`), so your working copy isn't
   touched. The chat's ⋯ menu applies its changes to your working copy (uncommitted), opens the folder,
   or removes the worktree and branch (the chat is stopped and archived first; you can still read it).
@@ -2012,16 +2016,16 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   zip size, browser popups); file saves that keep permissions and symlinks; shortcut labels that say
   ⌘ on macOS; keyboard access to rows and hover buttons; split view sends keys only to the focused
   pane.
-- **Claude and add-ons** (D-115): add-ons can give Claude tools (slot `claude.tool`). Releases does:
+- **Jig and add-ons** (D-115): add-ons can give Jig tools (slot `claude.tool`). Releases does:
   ask a chat "what changed since the last release?", "write the notes for 2.5.0", or "release 1.4.0"
-  (that one asks first). Claude can also look inside any add-on and read, create, change or delete its
+  (that one asks first). Jig can also look inside any add-on and read, create, change or delete its
   stored data (e.g. a workflow, a pipeline arrangement), each change with a card and Undo; the
   add-on's views update.
   - **Data scope** (D-116): an add-on says whether its data is global, per project or per
     repository (`"storage": { "scope": "project" }`); the builder chooses it, `useStorage` keeps one
     copy per project/repository and follows the active one, and Settings → Add-ons shows it.
-  - Workflows has tools too: Claude lists, reads, saves, deletes and runs your workflows from a chat.
-  - **Claude recommends add-ons in the chat:** it knows your add-ons, and when you ask for something
+  - Workflows has tools too: Jig lists, reads, saves, deletes and runs your workflows from a chat.
+  - **Jig recommends add-ons in the chat:** it knows your add-ons, and when you ask for something
     step by step that you'll do again (check the code, release notes, user stories, test cases…) it
     does it and offers once to save it as a workflow; it points to an add-on that already does what
     you ask, or offers to build one.
@@ -2043,7 +2047,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     Keep mine / Load theirs / Show diff. Closing a tab with unsaved edits asks first.
 - **Files** (left sidebar, `Ctrl+Shift+E`): the project's files as a tree.
   - Changed files in git colours with their letter; ignored ones dimmed.
-  - A filter; click for Preview; right-click to open in VS Code, ask Claude about the file, or copy
+  - A filter; click for Preview; right-click to open in VS Code, ask Jig about the file, or copy
     the path.
   - The picker chooses the folder it follows, and the eye button shows others next to it (kept per
     project).
@@ -2060,17 +2064,17 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     workspace's repositories, whatever the project.
 - **Jig's logo:** the amber corner jig (an L-shaped fence holding a square), with no tile behind it (D-157), is the app icon (installer, taskbar, window) and appears in
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
-- **Claude's terminals:** when Claude starts a dev server or watcher it runs in a Jig terminal you can
-  see ("Claude: …") and stop. Claude can read any terminal of the project, including yours, to check a
-  server's output. When a command Claude started ends by itself, Jig tells the chat at once (exit
-  code and last lines, a "Terminal … finished" line in the transcript), so Claude carries on without
+- **Jig's terminals:** when Jig starts a dev server or watcher it runs in a Jig terminal you can
+  see ("Jig: …") and stop. Jig can read any terminal of the project, including yours, to check a
+  server's output. When a command Jig started ends by itself, Jig tells the chat at once (exit
+  code and last lines, a "Terminal … finished" line in the transcript), so Jig carries on without
   polling (D-281).
 - **The chat does what Claude Code does** (`docs/reference/chat.md`):
   - **Input:**
     - `/` for Claude Code's commands and skills, `@` for files and folders, `!` for shell commands,
       `#` to remember something in CLAUDE.md;
     - ↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send into a running turn.
-  - **What Claude does:**
+  - **What Jig does:**
     - its todo list as a checklist, and plans with Approve / Keep planning;
     - diffs on edits, subagent progress, and background tasks with Stop;
     - Edit and send again / Rewind on your messages.
@@ -2102,30 +2106,30 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   schedule on the web.
   - The list shows each one's schedule in words, its last run and an on/off switch.
   - For the selected routine: **Run now**, its runs, and each run's messages.
-  - **New routine…** and **Change with Claude…** open a chat; in any chat you can also ask Claude to
+  - **New routine…** and **Change with Jig…** open a chat; in any chat you can also ask Jig to
     make one.
   - Jig asks Claude Code for them, a small model call each time, so the tab loads on demand.
 - **Artifacts:** not available in Jig chats (D-404): Claude Code offers the Artifact tool only inside the
   Claude desktop app. An old Artifact call in a chat resumed from there keeps its card (**Open in Jig**
   for the local page, **Open on claude.ai**).
-- **Browser:** Claude opens your dev server (or any http/https/file page) in a real headless
+- **Browser:** Jig opens your dev server (or any http/https/file page) in a real headless
   browser inside Jig, reads it, clicks and types, takes screenshots that show in the chat (the whole
   page, or phone/tablet/desktop sizes in one go), and reads the console. The view opens by itself
-  (turn off Settings → Claude Code → Show Browser when it's used to keep it closed); its size
-  never limits Claude. The **Browser** view
+  (turn off Settings → Chats → Show Jig's browser when it's used to keep it closed); its size
+  never limits Jig. The **Browser** view
   (right sidebar, or Tools → Open Browser) shows the
   page live with an address bar, back/forward/reload, desktop/tablet/phone sizes and the console; click
   and type on it to take over. Try it with the fake engine: `browse file:///path/to/page.html`.
 - **Testing on a small model** (D-124): chats hand page testing to the `jig-tester` subagent, which
-  uses Browser on Haiku (Settings → Claude Code → Tester model) and reports PASS/FAIL per
+  uses Browser on Haiku (Settings → Chats → Claude chats → Tester model) and reports PASS/FAIL per
   check with screenshots. Tools → Test something… or the flask in the browser view starts a
   test chat on that model. Try it with the fake engine: Tools → Test something… → anything.
 - **Images from tools:** screenshots and charts that a tool returns (an MCP browser, a plotting tool)
   show as thumbnails in the chat instead of "[image]".
 - **Guided tours of changes:** Git → ✨ → Walk me through the changes (also a workspace repo's menu
-  and the chat's ⋯). Claude orders the uncommitted changes for understanding and explains each step
+  and the chat's ⋯). Jig orders the uncommitted changes for understanding and explains each step
   next to its highlighted diff; ←/→ to move.
-- **Check before committing:** Git → ✨ → Check before committing. Claude lists secrets, debug output,
+- **Check before committing:** Git → ✨ → Check before committing. Jig lists secrets, debug output,
   unfinished code or likely bugs in the changes, under the commit box.
 - **Turn a chat into a tool:** the chat's ⋯ → Turn this chat into a tool…. The builder gets what you did
   (requests, commands, changed files) to make something you can run with one click.
@@ -2134,42 +2138,42 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - **Try several ways:** the split button in the message box (or Tools → Try a task several ways…)
   starts 2–4 chats on the same task. Each works in its own git worktree from your last commit, from a
   different angle (simplest, cleanest, most thorough, unconventional; all editable). The Attempts tab
-  shows their progress and changes with diffs. **Let Claude judge** recommends one with strengths and
+  shows their progress and changes with diffs. **Let Jig judge** recommends one with strengths and
   weaknesses per attempt. **Keep this one** applies it to your working copy and removes the rest.
 - **File previews:** right-click a file in Git → Preview, the eye on a chat tool card, an attachment, or
   Tools → Preview a file…. Markdown is rendered with Mermaid diagrams, relative images and links between
   files. HTML runs in a sandbox, with scripts off unless you turn them on. PDFs open in a viewer.
   CSV/TSV and Excel show as filterable tables, JSON as a tree, and notebooks with their outputs.
   Images, audio, video, Word/PowerPoint text, .mmd diagrams, patches and highlighted code also work.
-  The preview follows the file while it changes, and Ask Claude opens a chat about it. Chats draw
+  The preview follows the file while it changes, and Ask Jig opens a chat about it. Chats draw
   Mermaid blocks as diagrams too.
-- **Ask Claude about a failed script:** when a script exits with an error, a toast offers **Ask Claude**:
+- **Ask Jig about a failed script:** when a script exits with an error, a toast offers **Ask Jig**:
   a new chat opens in the script's folder with the command, exit code and the end of the output typed
-  in. Failed terminals also get a ✨ button in the list, and any terminal's menu has "Ask Claude about
+  in. Failed terminals also get a ✨ button in the list, and any terminal's menu has "Ask Jig about
   this output".
 - **Desktop notifications:** while Jig is in the background, a system notification tells you a chat
   needs you, finished or failed (click it to go there; the taskbar button flashes when it needs you).
-  Settings → Claude Code → Desktop notifications.
-- **Claude in Git:** the commit box's **Write** button asks Claude for the commit message (from the
+  Settings → Chats → Desktop notifications.
+- **Jig in Git:** the commit box's **Write** button asks Jig for the commit message (from the
   diff, in the style of the repo's recent commits). Right-click a changed file → **Explain this change
-  with Claude**, or a workspace repository → **Review changes with Claude**: a new chat opens with the
+  with Jig**, or a workspace repository → **Review changes with Jig**: a new chat opens with the
   request typed in, ready to send. Add-ons can do the same with `ctx.ai.ask` (permission `ai`); the
   builder knows about it.
 - **Restore files and fork:** hover one of your messages → ⋯ → **Rewind to before this message** →
   **Only the files** shows which files Claude changed since then and puts them back (Claude Code's file
-  checkpoints; Settings → Claude Code → File checkpoints). The same submenu rewinds the chat, or the
+  checkpoints; Settings → Chats → Claude chats → File checkpoints). The same submenu rewinds the chat, or the
   chat and the files; **Edit and send again** rewinds and puts your message back in the box. The chat's ⋯ menu → **Fork chat** continues
   the conversation in a new chat, so you can try another approach and keep the original.
-- **Next-message suggestions:** after a turn Claude Code proposes what you might send next. It shows
+- **Next-message suggestions:** after a turn Jig proposes what you might send next. It shows
   as a chip above the message box (click to edit it, the arrow sends it) and as the box's placeholder
-  (Tab takes it). Settings → Claude Code → Suggest the next message.
+  (Tab takes it). Settings → Chats → Suggest the next message.
 - **Context window and Compact:** each chat header shows how full the context window is (a small bar
   and %); hover for what fills it (messages, tools, system prompt, …), click for **Compact
   conversation** or **Compact with instructions…** (Claude Code's own `/compact`). From 70% a
   **Compact** button shows next to it; the chat's ⋯ menu has the same entries.
 - **What Jig can do** (the "Jig" menu at the top left, Tools → What Jig can do,
   Settings → About; it is also what the main area shows when no tab is open): a page with screenshots of each part, a live grid of the 17 extension slots (which of your
-  add-ons use each, an `addon.json` example, "Build something here"), your add-ons, the tools Claude
+  add-ons use each, an `addon.json` example, "Build something here"), your add-ons, the tools Jig
   gets to configure Jig with "Try in a chat" examples, your Claude Code skills (`~/.claude/skills` and
   the project's), build examples that open the Build dialog, and every keyboard shortcut.
 - **What's new** (the Jig menu, Settings → About → Version → What's new…, Get started's Updates card
@@ -2198,7 +2202,7 @@ npm run dev          # opens Jig
 - Try themes: the gear (top right) → Appearance. Drop a VS Code theme `.json` into `~/.jig/themes`
   and it appears; edit it and Jig recolours as you save.
 - Move a view: `⋯` in the sidebar header → Move to right sidebar.
-- Try a proposal without Claude: `JIG_ENGINE=fake npm run dev`, Tools → Build something… → "change Jig
+- Try a proposal without a real chat engine: `JIG_ENGINE=fake npm run dev`, Tools → Build something… → "change Jig
   itself: …" → the build shows the proposed extension point.
 - Jig on your phone: Settings → Phone → Set up… (needs Telegram on your phone and a bot from
   @BotFather; free). Then Send a test, and leave a chat asking for a permission while you're away.
@@ -2217,7 +2221,7 @@ Things the cloud build environment couldn't verify:
   for chats used in the last 20 minutes (plus ones working, waiting or running background tasks). Check
   that a chat stopped this way picks up where it was on the next message (same conversation, its
   terminals, Jig's tools), that a Tasks queue left running overnight keeps going, and that a dev server
-  Claude started with jig_terminal_run still tells the chat when it exits.
+  Jig started with jig_terminal_run still tells the chat when it exits.
 - **Jig on your phone (D-350).** Covered against a fake Telegram server (`e2e/phone.spec.ts`).
   Check with a real bot on your iPhone: pairing by the code, the buttons (Allow, an option,
   Approve), a reply going to the right chat, "Send a test", that "When I'm away" waits for 5 idle
@@ -2231,14 +2235,14 @@ Things the cloud build environment couldn't verify:
   bot reading thread replies without an @mention, cards and their updates on the iPhone, mentions
   buzzing, the install and channel-deleted events, a quoted message in the 1:1 chat, and a sleeping
   PC catching up. Step by step: the checklist at the top of this file.
-- **Claude's browser never hangs (D-319).** Covered by `e2e/browser-hangs.spec.ts` (a load that never
+- **Jig's browser never hangs (D-319).** Covered by `e2e/browser-hangs.spec.ts` (a load that never
   finishes, `alert`/`confirm` on load, a page stuck in a loop). Watch for, in real chats:
   - A browser call that waits on a rebuilding dev server ends after about 30 s with "The page didn't
     finish loading in 30 s…", and no browser call runs longer than about a minute.
   - Results of slow calls end with "(took N s)"; main.log (`[browser]`) lists calls of 10 s or more,
     timeouts, crashes, recreated pages and answered dialogs.
-  - Stop while Claude is on a browser tool ends the turn at once, and the next browser call works.
-  - A page whose `confirm()` Claude shouldn't accept (a delete): dialogs are answered OK on their own,
+  - Stop while Jig is on a browser tool ends the turn at once, and the next browser call works.
+  - A page whose `confirm()` Jig shouldn't accept (a delete): dialogs are answered OK on their own,
     and only the console says so.
   - Screenshots in a hidden Jig ("couldn't take a screenshot … didn't paint a frame") should be rare;
     if they come often, the offscreen frame stall needs another fix.
@@ -2257,7 +2261,7 @@ Things the cloud build environment couldn't verify:
     reloads, a board followed in the other tenant shows its "In tenant X" card and Switch works,
     Project links → Add from Azure lists that tenant's subscriptions.
   - A Releases pipeline run and a Workflows pipeline step with the added tenant active.
-  - `az account show` in a new chat (ask Claude), a new Jig terminal and a script shows the added
+  - `az account show` in a new chat (ask Jig), a new Jig terminal and a script shows the added
     tenant; switch back, and the old chat and terminal keep theirs and show its initials.
   - Pin it to a project and switch projects: the avatar follows, its tooltip says "Pinned by…".
   - An expired sign-in (wait for one, or revoke the session in the Microsoft account page): the
@@ -2274,36 +2278,36 @@ Things the cloud build environment couldn't verify:
   Whisper (the `encoder_model.onnx` + `decoder_model_merged_q4.onnx` download) and real voice
   activity detection are untested; the conversation itself is covered by e2e with scripted speech.
   Try: Settings → Speech shows "Use the graphics card" working; dictate a long paragraph (live
-  words, corrections); talk with Claude with headphones, then with speakers (the system voice may
+  words, corrections); talk with Jig with headphones, then with speakers (the system voice may
   be heard as you: raise `speech.pause` or use headphones); say "yes, go ahead" on a plan.
 - **Microphone and speaker (D-276):** e2e uses Chromium's fake devices; untested with a real
-  headset. Try: pick a USB/Bluetooth headset as microphone and speaker, talk (Claude's voice and the
+  headset. Try: pick a USB/Bluetooth headset as microphone and speaker, talk (Jig's voice and the
   working sound come from it), switch microphone in the talking window mid-conversation, unplug it.
 - **Ignoring background noise (D-275):** the detector was checked on recorded speech (voice ≈ 1.0,
-  silence and noise ≤ 0.16 per 128 ms frame), not yet with a live microphone. Try: talk with Claude
-  while running water, typing or clapping (no turn starts, Claude isn't interrupted), then speak
+  silence and noise ≤ 0.16 per 128 ms frame), not yet with a live microphone. Try: talk with Jig
+  while running water, typing or clapping (no turn starts, Jig isn't interrupted), then speak
   normally and quietly (turns still start and end as before), with Strongly and A little.
 - **Natural voice (D-243):** checked on Jon's Windows machine in the built app (English and Spanish,
   ~1.5 s for 3 s of speech after ~7 s loading). Try: the first download from Read aloud (the dialog,
-  then the "ready" toast), talking with Claude (no gaps between sentences, speaking over it stops it,
+  then the "ready" toast), talking with Jig (no gaps between sentences, speaking over it stops it,
   the waves follow the real voice), each Spanish voice, Remove in Settings, and memory once the voice
   process stops after 10 minutes unused. Packaged app: `voice-host.mjs` and `phonemizer` must ship.
 - **Natural voice starts sooner (D-411):** measured on Jon's machine outside Jig (the voice process
   in Electron): first sound ~0.5 s after asking for a short first chunk (was ~2.2 s for a whole
   sentence), a cold process ~2.8–3.1 s. Not yet heard in Jig. Try with `npm run dev` and the
-  DevTools console (`[voice timing]` lines: Claude's first text, voice asked, first audio, playing)
-  and the main log (`[voice]` lines: load time, each piece): talk with Claude and check the time to
+  DevTools console (`[voice timing]` lines: Jig's first text, voice asked, first audio, playing)
+  and the main log (`[voice]` lines: load time, each piece): talk with Jig and check the time to
   the first word, that a reply starting "I looked at the cart code, and …" has no audible gap or odd
   pause after the comma, that long sentences play with no gaps between pieces, that the waves follow
   every piece, and that speaking over it still stops it. Then "Hey Jig, …" after 10 minutes idle
   (the answer shouldn't wait ~3 s) and an announcement after a long-running chat.
 - **Talking window (D-210):** untested with a real microphone and voice: whether the waves follow
   your voice smoothly (128 ms batches played back in 16 ms steps), whether your system voice gives
-  word boundaries (else Claude's wave is a gentle pulse per sentence), the loudness of the working
+  word boundaries (else Jig's wave is a gentle pulse per sentence), the loudness of the working
   note and chimes, and whether "go ahead" is heard reliably. Try: plan a small change by voice, ask
-  Claude to look at something in the code, then press or say "go ahead": the work is quiet (no
+  Jig to look at something in the code, then press or say "go ahead": the work is quiet (no
   ticking once talking ends) and a chime plays at the end. D-218: plan something bigger ("one task per screen")
-  and check Claude proposes a task queue, that the card lists the tasks, and that "go ahead"
+  and check Jig proposes a task queue, that the card lists the tasks, and that "go ahead"
   queues and starts them; check the louder, faster working note isn't too much.
 - **Checked on Windows 11 (Oct 29, first local run):**
   - `npm install` works (Node 24, Electron download, node-pty, the Agent SDK's win32 package).
@@ -2313,7 +2317,7 @@ Things the cloud build environment couldn't verify:
     entry points (`C:\…`) as external npm packages. Fixed in `apps/desktop/scripts/build-config.mjs`.
   - Add-on UIs didn't bundle at all on Windows: the bundler took the entry `C:\…\ui.tsx` for a
     package import and refused it. Fixed in `main/addons/bundle.ts`.
-  - The add-on file list Claude reads is sorted, so it's the same on NTFS and ext4.
+  - The add-on file list Jig reads is sorted, so it's the same on NTFS and ext4.
   - `npm run e2e` passes on Windows: 95 passed, 6 skipped (screenshots and Linux-only ones), with the
     windows hidden.
   - Email to developers opened Office's "install Outlook" stub on a machine with only the new
@@ -2359,7 +2363,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   - The theme could flip back to the previous one when a theme file and the theme setting changed
     together: two refreshes overlapped and the slower one, which had read the old setting, won. Only
     the latest refresh applies now.
-  - e2e runs filled the desktop with "Claude finished: …" notifications from "Electron": the hidden
+  - e2e runs filled the desktop with "Jig finished: …" notifications from "Electron": the hidden
     test windows count as in the background. A hidden Jig (`JIG_HIDDEN`) now never notifies, and
     notifications carry Jig's logo. (Restarting Jig never notified about old chats: only a chat
     that stops working does.)
@@ -2383,21 +2387,21 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
 
 - **Phase 18 on Windows:**
   - Files: the watcher on a large repository (live refresh), Open in VS Code.
-  - Editing in Preview: saving CRLF files, a file changed by Claude while you edit.
+  - Editing in Preview: saving CRLF files, a file changed by Jig while you edit.
   - Releases: `az pipelines runs list` for production environments; tagging and pushing to Azure
     DevOps; a `Directory.Build.props` / `.csproj` version bump.
   - Workflows: command steps run in `cmd.exe` (`/d /s /c`); a schedule that fires while Jig is open.
-  - Commands with quotes in `cmd.exe` (Scripts, Workflows, Claude's terminals): Jig now passes one
+  - Commands with quotes in `cmd.exe` (Scripts, Workflows, Jig's terminals): Jig now passes one
     command line (`/d /s /c "…"`) so `echo "a b"` keeps its quotes.
   - Saving a file in Preview while an antivirus scanner holds it (the save retries a few times).
-  - Learning review (D-213): the quality of practice, add-on and feature suggestions with real Claude.
-  - Coaching (D-214): whether real Claude's coaching and rewritten prompts are specific and useful, and
+  - Learning review (D-213): the quality of practice, add-on and feature suggestions with a real chat.
+  - Coaching (D-214): whether a real chat's coaching and rewritten prompts are specific and useful, and
     whether the habit-hint thresholds fit real chats.
   - Add-on extras (D-215): system notifications from add-ons on Windows (only while Jig isn't in
     front), git events for commits made in another tool (watching `.git` on NTFS and network drives),
     and `api.spawn` with `.cmd` programs (`npm`, `az`).
-  - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
-    (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
+  - Learning 2: "How you worked" on a real week of commits; the check-in chat with a real chat
+    (`jig_read_profile`, `jig_update_profile`); Jig saving notes on its own (`jig_note_evidence`)
     with the real model.
   - Browser network log on a real dev server (bodies of the first page's requests).
 
@@ -2421,7 +2425,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   "Signed in" toast, the terminal closing by itself, and Get started saying "Signed in with your
   Claude subscription".
 - **Routines and artifacts with your real account:** the Routines tab lists your routines (check the
-  schedule words and prompts), on/off and Run now work, runs and their logs show, and a routine Claude
+  schedule words and prompts), on/off and Run now work, runs and their logs show, and a routine Jig
   makes in a chat appears after the reload. (There is no Artifacts tab: Claude Code gives the Artifact
   tool to the Claude desktop app only, D-404.)
 - **The chat with a real Claude Code:**
@@ -2436,7 +2440,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
 - **Git live refresh on Windows:** in a workspace with many repositories, edit a file in one of them
   outside Jig; it should show in the Git view within about a second. Task Manager should show no steady
   `git` processes while nothing changes. (Linux, where the tests run, uses the polling fallback.)
-- **Browser with a real chat:** ask Claude to start your dev server and check a page. Check
+- **Browser with a real chat:** ask Jig to start your dev server and check a page. Check
   that the view follows, that clicks and typing on the picture reach the page (also on a HiDPI
   screen), that screenshots show in the chat, and that the browser window doesn't keep Jig running
   after you close it.
@@ -2480,7 +2484,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   without a login, so it says "Couldn't check").
 
 - **Pasting a screenshot with real Claude Code**: Win+Shift+S, then Ctrl+V in a chat, ask "what's in this
-  image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
+  image?" — Jig should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
 - **Try several ways with your real Claude Code**: three attempts on a small task in one of your repos;
@@ -2500,7 +2504,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   (… → … tokens)".
 - **The What Jig can do page**: open it from the Jig menu (top left); check your skills from
   `~/.claude/skills` are listed and that the screenshots look right on your screen.
-- **Configuring from a real chat**: ask Claude Code (real login) to "switch to a light theme and make it
+- **Configuring from a real chat**: ask a real chat (real login) to "switch to a light theme and make it
   compact" and "move the terminals to the right"; check the permission prompts, the change cards and
   Undo, and that "allow API keys" is refused.
 - **Plan usage with your real login** (only the fake engine ran here): the status bar numbers and the
@@ -2524,7 +2528,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
 
 ## Model defaults and desktop polish (2026-10-29)
 
-- New chats default to native Opus planning / Sonnet execution and Plan mode. Settings → Claude Code exposes the chat, subagent fallback, helper and tester models; Use recommended defaults applies the preset to existing installations. Existing saved choices remain.
+- New chats default to native Opus planning / Sonnet execution and Plan mode. Settings → Chats exposes the chat, subagent fallback, helper and tester models; Use recommended defaults applies the preset to existing installations. Existing saved choices remain.
 - Subagent fallback is Sonnet, add-on questions use Sonnet, tester/reflection stay Haiku. Explicit specialist choices remain available; this is not a quality guarantee or cost cap.
 - Top-bar action groups each have a menu; the all-tools icon and Ctrl+K still search everything. Theme cards apply only on selection, with no hover preview. Menu/button text and toolbar icons increase one token step.
 - Pipelines → Arrange hides/restores whole DevOps projects. Settings checks/save show progress/errors.

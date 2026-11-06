@@ -10,10 +10,10 @@ the address, Ctrl/Cmd+R or F5 reloads, Alt+Left/Right navigates history, and Ctr
 A fixed-height status row shows the title or load failure without moving the page.
 
 Main owns one user page per workbench window (`main/browser/userBrowser.ts`). The isolated persistent
-partition `persist:jig-user-browser` holds cookies separately from both Jig and Claude. There is no
+partition `persist:jig-user-browser` holds cookies separately from both Jig and the assistant's browser. There is no
 preload or Node access; sandbox and context isolation stay enabled. Navigation and redirects allow
 http(s), file and about:blank only; popups open in place. Downloads use Chromium's save flow;
-camera, microphone, location and other permission requests remain denied. Claude's tools cannot read
+camera, microphone, location and other permission requests remain denied. Jig's tools cannot read
 or drive this page. Closing its tab hides it; reopening keeps the page and history for that window.
 Closing the workbench destroys its native WebContents.
 
@@ -23,23 +23,23 @@ native view bounds. Hidden tabs and Jig dialogs/menus hide the surface, keeping 
 The page stays at the slot's real size; no scaled screenshot is used. The native view is documented
 by [Electron](https://www.electronjs.org/docs/latest/api/web-contents-view).
 
-## Claude's browser
+## Jig's browser
 
-Claude’s browser uses the MonitorCog icon in its tab, menu and empty state; your browser uses Globe.
+Jig’s browser uses the MonitorCog icon in its tab, menu and empty state; your browser uses Globe.
 
 Code: `apps/desktop/src/main/browser/` (pages, service, tools, page scripts),
 `apps/desktop/src/shared/browser.ts` (types), `apps/desktop/src/renderer/features/browser/` (the view).
 Decisions: D-090, D-095, D-319, D-320.
 
-Claude checks its own web work in a real Chromium page inside Jig. **Each chat has its own page**
+Jig checks its own web work in a real Chromium page inside Jig. **Each chat has its own page**
 (D-320), so chats browsing at the same time never get in each other's way. A page is offscreen with
-its own size: the **Claude’s browser** view (right sidebar; Search → Open Claude’s browser) only shows a
-scaled picture of it, so the view's size never limits Claude, and resizing never moves anything on
+its own size: the **Jig’s browser** view (right sidebar; Search → Open Jig’s browser) only shows a
+scaled picture of it, so the view's size never limits Jig, and resizing never moves anything on
 screen. The view opens by itself when a chat opens a new page (its first browser call, or the first after
 its page closed), never on later calls on that page (D-410), and not while you work on another tab
 of its panel: then its tab gets a badge (the number of chats that opened a page) until you look (D-349). Turn off Settings → Chats → **Show
-Claude’s browser when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can
-take over inside a page for sign-ins and other steps Claude needs your help with. The address is
+Jig’s browser when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can
+take over inside a page for sign-ins and other steps Jig needs your help with. The address is
 read-only; there are no user Back/Forward, Reload, viewport or test-launch controls in this view.
 A permanent hint at the bottom explains who controls it and links to **open Browser** for personal browsing.
 Console and Network remain available for inspection (D-226).
@@ -56,13 +56,13 @@ Console and Network remain available for inspection (D-226).
   **15 minutes** without a tool call or your input while no view watches it (`IDLE_MS`), and when a
   fifth chat needs a page: at most **4** are open (`MAX_PAGES`), so the one used least recently (and not
   being driven) closes. The chat's next browser call starts with a note saying why ("Your page of
-  Claude's browser was closed after 15 minutes unused; open it again with jig_browser_open"), and
+  Jig's browser was closed after 15 minutes unused; open it again with jig_browser_open"), and
   works on a new blank page.
-- **Sessions** (`browser.pageSessions`, Settings → Chats → **Chats’ pages in Claude’s browser**):
+- **Sessions** (`browser.pageSessions`, Settings → Chats → **Chats’ pages in Jig’s browser**):
   - `shared` (the default): every page uses the `persist:jig-browser` session, so cookies, logins
     and storage are shared. You sign in to your dev server once and every chat (and test chat) is
     signed in. **A logout in one chat logs out the others**, and two chats signed in as different
-    users replace each other's session cookie; Claude is told not to log out unless the task needs it.
+    users replace each other's session cookie; Jig is told not to log out unless the task needs it.
   - `separate`: each page gets an in-memory session of its own (`jig-browser-chat-<id>`), fully apart
     and gone when the page closes. Applies to pages opened after the change.
 - **Requests reach their page:** a session takes one `webRequest` listener per event, so `pages.ts`
@@ -135,7 +135,7 @@ stays until another chat comes to the front. A tab's ⋯ (and its context menu) 
 - **Sizes:** desktop 1280×800 (default), tablet 820×1180 and phone 390×844, or any size from the tool.
   The window is offscreen, so resizing never moves anything on your screen.
 
-## Claude's tools (MCP server `jig`)
+## Jig's tools (MCP server `jig`)
 
 | Tool | Read-only | What it does |
 | --- | --- | --- |
@@ -144,7 +144,7 @@ stays until another chat comes to the front. A tab's ⋯ (and its context menu) 
 | `jig_browser_click {ref \| selector \| text}` | no | scrolls the element into view and clicks its centre with real mouse events |
 | `jig_browser_type {ref \| selector, text, clear?, submit?}` | no | focuses the field (selecting its content unless `clear: false`), inserts the text, Enter with `submit` |
 | `jig_browser_press {key}` | no | a key: Enter, Escape, Tab, ArrowDown, a letter… |
-| `jig_browser_screenshot {fullPage?, sizes?}` | yes | PNG of the visible page, returned as an image: Claude sees it and the chat shows it. `fullPage`: the whole page (the window grows to the page's height, at most 8000 px, for the capture). `sizes: ["phone","tablet","desktop"]`: one image per size in one call, then the window goes back to its size. Images are at most 1280 wide and 7900 high |
+| `jig_browser_screenshot {fullPage?, sizes?}` | yes | PNG of the visible page, returned as an image: Jig sees it and the chat shows it. `fullPage`: the whole page (the window grows to the page's height, at most 8000 px, for the capture). `sizes: ["phone","tablet","desktop"]`: one image per size in one call, then the window goes back to its size. Images are at most 1280 wide and 7900 high |
 | `jig_browser_console {errorsOnly?, clear?}` | yes | the console messages, most recent last |
 | `jig_browser_network {filter?, errorsOnly?, id?, clear?}` | yes | the requests (`#id GET 200 fetch 12ms /api/cart`); with `id`, one request's headers and bodies |
 | `jig_browser_eval {expression}` | no | evaluates an expression in the page and returns it as JSON |
@@ -153,10 +153,10 @@ stays until another chat comes to the front. A tab's ⋯ (and its context menu) 
 
 Read-only tools run without asking (D-077); the others follow the chat's permission mode. Element
 numbers are `data-jig-ref` attributes written by `jig_browser_read`/`open`; they are renewed on every
-read, so Claude reads again after the page changes.
+read, so Jig reads again after the page changes.
 
 Every tool acts on the calling chat's own page; names and arguments are the same as before D-320.
-Jig's system prompt addition (`jigContext`) tells Claude to use these tools to check web UI it builds,
+Jig's system prompt addition (`jigContext`) tells the chat to use these tools to check web UI it builds,
 together with `jig_terminal_run` for the dev server, that the page is the chat's own (its jig-tester
 subagents share it), and that pages share logins by default, so it shouldn't log out unless needed.
 

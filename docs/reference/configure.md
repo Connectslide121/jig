@@ -1,9 +1,9 @@
 # Configuring Jig from a chat
 
-In any chat you can ask Claude to change Jig: "use the Dracula theme", "make it compact with 14 px
+In any chat you can ask Jig to change Jig: "use the Dracula theme", "make it compact with 14 px
 text", "move the terminals to the right", "turn off the Pipelines add-on", "rename this project to
 Webshop and make it green", "find and install a Catppuccin theme", "look three folders deep for
-repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tools.ts`).
+repositories". The chat uses tools on Jig's `jig` MCP server (`main/configure/tools.ts`).
 
 | Tool | Does | Asks you first |
 |---|---|---|
@@ -29,10 +29,10 @@ repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tool
 | `jig_set_addon_data { addonId, key, value }` | creates or replaces one key (any JSON); Undo puts back the old value (or deletes a new key). Replacing an existing key needs this chat to have read it and it to be unchanged since (D-287) | yes |
 | `jig_delete_addon_data { addonId, key }` | deletes one key; Undo puts it back. Same fresh-read check | yes |
 
-Add-ons also give Claude their own tools (slot `claude.tool`, e.g. Releases' `addon_releases_changes`),
+Add-ons also give Jig their own tools (slot `claude.tool`, e.g. Releases' `addon_releases_changes`),
 listed with each add-on by `jig_list_addons`.
 
-"Asks you first" is Claude Code's normal permission prompt (Allow once / Always allow / Deny); Jig
+"Asks you first" is the chat's normal permission prompt (Allow once / Always allow / Deny); Jig
 lets its read-only tools through without asking (`isReadOnlyJigTool` in `engine/claude.ts`).
 
 Every change leaves a **change card** in the chat (`ChatItem` kind `change`): what changed
@@ -50,5 +50,5 @@ refuses them; change them in Settings.
 
 ## Adding a setting
 
-Add it to `ConfigSchema`, to `SETTINGS_GUIDE` (so Claude knows what it does) and to
+Add it to `ConfigSchema`, to `SETTINGS_GUIDE` (so Jig knows what it does) and to
 `docs/reference/state.md`. If it decides billing or runs programs, add it to `PROTECTED_SETTINGS`.

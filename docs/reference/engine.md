@@ -347,7 +347,7 @@ final text, reject with a plain message, and time out after 3 minutes ("... didn
 - The Claude Code process starts on the first message and is **resumed** with Claude Code's session id
   after Jig restarts. "Stop Claude Code process" ends it; the next message resumes.
 - **Status**: `idle`, `starting`, `working`, `needs_you` (a permission or question waits), `error`.
-- **Queue**: a message sent while Claude works waits in Jig's queue (shown above the composer,
+- **Queue**: a message sent while Jig works waits in Jig's queue (shown above the composer,
   removable) and is sent when the turn ends.
 - **Permissions**: Allow once, Always allow (returns Claude Code's suggested permission rules as
   `updatedPermissions`), Deny. `AskUserQuestion` is answered with the chosen options
@@ -426,10 +426,10 @@ blocks, a thrown error → an error result), `isReadOnlyChatTool`, `toolHandlers
 A handler gets an `AbortSignal` (D-319): the engine's own cancellation (the Agent SDK's and the local
 MCP server's `extra.signal`, the fake engine's turn signal) combined with the chat's, which
 `abortJigToolCalls(id)` aborts when the chat is interrupted (Stop) or its process ends; a tool that
-can wait long (Claude's browser) gives up then. Tools: `jig_list_addons` (the add-on catalog) and
+can wait long (Jig's browser) gives up then. Tools: `jig_list_addons` (the add-on catalog) and
 `jig_request_build { goal, addonId? }` (starts the builder). Handlers are set with
 `setJigToolHandlers()` by the add-on host (phase 6) and the builder (phase 8). The appended system
-prompt tells Claude to use `jig_request_build` instead of editing Jig's files itself. It also tells Claude what an add-on can be (a whole module, with the D-215 abilities), so the goal it
+prompt tells Jig to use `jig_request_build` instead of editing Jig's files itself. It also tells Jig what an add-on can be (a whole module, with the D-215 abilities), so the goal it
 passes on isn't shrunk to "a button"; the builder's own prompt has the details.
 
 ## IPC
@@ -535,7 +535,7 @@ in the browser view) starts a chat on the tester model with the same protocol (`
 
 Tools marked `readOnly` run without a permission prompt. A tool may return images as well as text
 (`ToolOutput`); they show in the chat. `jigContext` (appended to Claude Code's system prompt) tells
-Claude when to use the terminal and browser tools.
+Jig when to use the terminal and browser tools.
 
 
 ## Model routing defaults (D-129)
@@ -544,7 +544,7 @@ New chats use Opus (D-207; before, Claude Code's native `opusplan`, which uses O
 
 Every regular chat gets the `jig-search` subagent (`shared/searcher.ts`): Read, Grep and Glob only, no CLAUDE.md, on `engine.searchModel` (Haiku; empty leaves it out), and a system-prompt line asking the chat to hand code searches to it instead of searching itself or using Explore. Claude Code's built-in Explore inherits the chat's model (capped at Opus), so it saves nothing in an Opus chat. Delegating stays Claude's choice.
 
-`engine.subagentModel` supplies `CLAUDE_CODE_SUBAGENT_MODEL` to newly started chat processes (default Sonnet). In the bundled Claude Code, the invocation's model wins, then agent definition (including inherit), then this fallback, then the main model. Explore and Plan follow Claude Code's built-in rules; external `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` can override precedence. Jig does not force every agent onto a smaller model. Settings explain this; Agent/Task cards include explicitly requested models, not an inferred actual model. Organization restrictions and Claude settings may substitute models.
+`engine.subagentModel` (Settings: **Helper fallback model**) supplies `CLAUDE_CODE_SUBAGENT_MODEL` to newly started chat processes (default Sonnet). In the bundled Claude Code, the invocation's model wins, then agent definition (including inherit), then this fallback, then the main model. Explore and Plan follow Claude Code's built-in rules; external `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` can override precedence. Jig does not force every agent onto a smaller model. Settings explain this; Agent/Task cards include explicitly requested models, not an inferred actual model. Organization restrictions and Claude settings may substitute models.
 
 Add-on one-turn questions use `engine.helperModel` (Sonnet), or `engine.quickModel` (Haiku) when the add-on asks for a `quick` answer, as the Git add-on does for commit messages. The tester and weekly reflection keep their existing Haiku defaults. Smaller models and delegation cannot guarantee identical quality or a spending cap; large contexts and parallel work still consume quota. `opusplan` does not mean all thinking uses Opus: Sonnet reasons during execution too.
 

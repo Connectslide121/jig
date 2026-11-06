@@ -30,20 +30,20 @@ settings, add-on permissions.
 | `iconThemes.get` | `{ id }` | `{ id, label, theme }` | a file icon theme with `jig-icons:` URLs |
 | `iconThemes.active` | — | `{ id, label, theme } \| null` | the theme chosen in Settings (`null` = Jig's icons) |
 | `files.image` | `{ path }` | `{ dataUrl, bytes, mime }` | an image file for a preview (png, jpg, gif, webp, avif, bmp, ico, svg; ≤ 25 MB); `not_image`, `not_found`, `too_large` |
-| `sessions.undoChange` | `{ sessionId, itemId }` | — | undoes a change Claude made to Jig's configuration (a `change` card; `docs/reference/configure.md`) |
+| `sessions.undoChange` | `{ sessionId, itemId }` | — | undoes a change Jig made to Jig's configuration (a `change` card; `docs/reference/configure.md`) |
 | `about.skills` | — | `SkillInfo[]` | Claude Code skills in `~/.claude/skills` and the active project's `.claude/skills` (front matter only; `docs/reference/about.md`) |
 | `tour.create` / `tour.get` | `{ cwd, focus? }` / `{ id }` | `Tour` | a guided tour of the uncommitted changes (`docs/reference/ai-features.md`) |
-| `digest.standup` | `{ period: "workday" \| "week" }` | `{ text, since, repos, chats }` | Claude's standup from your commits, uncommitted work and chats |
+| `digest.standup` | `{ period: "workday" \| "week" }` | `{ text, since, repos, chats }` | Jig's standup from your commits, uncommitted work and chats |
 | `attempts.start` | `{ projectId, repo, task, hints }` | `AttemptRun` | 2–4 chats on the same task, each in its own git worktree (`docs/reference/attempts.md`) |
 | `attempts.list` / `attempts.get` | — / `{ id }` | `AttemptRun[]` / `AttemptRun` | runs |
 | `worktrees.list` | — | `WorktreeChat[]` | chats that work in their own git worktree |
 | `worktrees.start` | `{ repo, name, projectId? }` | `WorktreeChat` | a worktree on branch `jig/<name>-<id>` from HEAD, and a chat in it (schema) |
 | `worktrees.apply` / `worktrees.remove` | `{ sessionId }` | — | bring its changes into the repository's working copy (uncommitted) / stop and archive the chat, then delete the worktree and branch |
 | `attempts.changes` / `attempts.diff` | `{ id }` / `{ id, index, path? }` | `AttemptChanges[]` / `string` | what each attempt changed |
-| `attempts.judge` | `{ id }` | `AttemptVerdict` | Claude compares the attempts (one-shot, no tools) |
+| `attempts.judge` | `{ id }` | `AttemptVerdict` | Jig compares the attempts (one-shot, no tools) |
 | `attempts.keep` / `attempts.discard` / `attempts.repoDirty` | `{ id, index }` / `{ id }` / `{ id }` | `AttemptRun` / `AttemptRun` / `boolean` | apply one to the working copy and clean up / only clean up / whether the working copy has changes |
 | `files.preview` | `{ path }` | `FilePreview` | a file for the Preview tab: kind, text or extracted content, `jig-file:` addresses (`docs/reference/preview.md`) |
-| `files.locate` | `{ cwd, path }` | `{ path, kind } \| null` | a path Claude wrote, resolved from the chat's folder (`~` = home): file, folder or nothing (D-261) |
+| `files.locate` | `{ cwd, path }` | `{ path, kind } \| null` | a path Jig wrote, resolved from the chat's folder (`~` = home): file, folder or nothing (D-261) |
 | `files.stat` | `{ path }` | `{ size, mtimeMs } \| null` | the Preview tab polls it to follow edits |
 | `lsp.open` | `{ path }` | `LanguageServerStatus` | the language server for a file (D-259): ready (id, root, language id), missing (install command), none or off |
 | `lsp.send` | `{ id, message }` | — | a JSON-RPC message (string) to that server; answers come as event `lsp.message`, `lsp.exited` when it stops |
@@ -75,7 +75,7 @@ settings, add-on permissions.
 | `sessions.fork` | `{ id }` | `SessionMeta` | a new chat continuing this one as a branch (Claude Code's fork; transcript copied) |
 | `sessions.saved` | — | `SavedClaudeSession[]` | the conversations Claude Code and Codex saved on this computer, newest first (`provider: "codex"` for Codex threads, D-315); `chatId` when one is already a Jig chat (D-150) |
 | `sessions.openSaved` | `{ sessionId }` | `SessionMeta` | opens one as a chat in No project with its history, on the provider that saved it; its first message continues it as a copy (validated id; folder and title from the saved list) |
-| `sessions.rewindFiles` | `{ id, itemId, dryRun }` | `RewindResult` | restore files Claude changed since a user message (file checkpoints); `dryRun` only reports |
+| `sessions.rewindFiles` | `{ id, itemId, dryRun }` | `RewindResult` | restore files Jig changed since a user message (file checkpoints); `dryRun` only reports |
 | `usage.get` / `usage.refresh` | — | `UsageByProvider` | your plans' usage per provider: `claude` (5-hour and weekly windows from Claude Code) and `chatgpt` (from the Codex CLI's app-server, D-298; `docs/reference/usage.md`) |
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
 | `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
@@ -127,11 +127,11 @@ settings, add-on permissions.
 | `sessions.handOverPlan` | `{ id, provider }` | `HandoverPlan` | what handing the chat over to `provider` would do (D-339), for the confirmation dialog: model/effort/mode before and after, the other plan's room, messages and edited files to carry over, `blocked` while a turn runs or for chats that stay on Claude Code |
 | `sessions.handOver` | `{ id, provider }` | `SessionMeta` | hands a chat over to the other provider between turns (D-339): a divider, the model tier, effort and mode mapped, the next message brings the handoff; `invalid_args` while a turn runs, `not_allowed` for builder/attempt/worktree chats |
 | `sessions.limitAction` | `{ id, itemId, action: "continue" \| "wait" \| "cancel" \| "dismiss" }` | `void` | your choice on a limit card (D-338): `continue` with the other provider (`unavailable` when its plan has no room; refused for builder chats), `wait` and resume at the reset (`invalid_args` when the reset isn't known), `cancel` the wait (the card asks again), `dismiss` the card. `not_found` when the card is no longer the chat's current limit |
-| `sessions.setVoice` | `{ id, voice }` | — | you are talking with Claude in this chat: each turn tells it to answer briefly for reading aloud (D-209) |
+| `sessions.setVoice` | `{ id, voice }` | — | you are talking with Jig in this chat: each turn tells it to answer briefly for reading aloud (D-209) |
 | `sessions.rename` / `sessions.archive` | `{ id, title }` / `{ id, archived }` | — | |
 | `sessions.stop` | `{ id }` | — | ends the Claude Code process (resumes on the next message) |
 | `sessions.delete` | `{ id }` | — | removes Jig's record; Claude Code's own transcript stays |
-| `sessions.send` | `{ id, text, attachments?, now? }` | — | sends, or queues while Claude works; `now` joins the running turn instead |
+| `sessions.send` | `{ id, text, attachments?, now? }` | — | sends, or queues while Jig works; `now` joins the running turn instead |
 | `sessions.park` | `{ id, text?, attachments?, queuedId? }` | — | parks a message (D-365): saved with the chat, never sent by itself; with `queuedId` a queued message moves to the parked ones; `invalid_args` when empty, `not_found` when the queued one has gone (schema: prompt text, attachments) |
 | `sessions.sendParked` | `{ id, parkedId, now? }` | — | sends a parked message as `sessions.send` would (now, queued while busy, or into the turn with `now`); it stays parked if sending fails; `not_found` once it has gone |
 | `sessions.rewind` | `{ id, itemId, files }` | `{ text, files? }` | rewinds the chat to before your message (and with `files`, restores the files); returns the message for the box |
@@ -153,14 +153,14 @@ settings, add-on permissions.
 | `terminals.write` / `terminals.resize` | `{ id, data }` / `{ id, cols, rows }` | — | input / size |
 | `terminals.buffer` | `{ id }` | `string` | scrollback so far |
 | `terminals.rename` / `terminals.kill` / `terminals.close` | `{ id, title }` / `{ id }` / `{ id }` | — | kill stops the process and keeps the output; close removes the terminal |
-| `terminals.watching` | `{ id? }` | — | the terminal on screen in the Terminals view (none: the view is out of sight); finished Claude terminals never close under you (D-373) |
+| `terminals.watching` | `{ id? }` | — | the terminal on screen in the Terminals view (none: the view is out of sight); finished Jig terminals never close under you (D-373) |
 | `terminals.codexLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running the Codex CLI's ChatGPT sign-in (`codex login`, no OpenAI API key in its environment); when it ends, `codex.signIn` (D-294) |
 | `terminals.claudeLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running Claude Code's sign-in (`claude auth login`); when it ends, `claude.signIn` |
-| `userBrowser.state` | — | `UserBrowserState` | current window's native user page; separate from Claude |
+| `userBrowser.state` | — | `UserBrowserState` | current window's native user page; separate from Jig |
 | `userBrowser.present` | `{ bounds: { x, y, width, height }, visible }` | — | native slot in CSS pixels; hidden for menus, dialogs and inactive tabs |
 | `userBrowser.navigate` | `{ url?, action? }` | — | http(s)/file URL or back/forward/reload/stop; starts without awaiting page load |
 | `userBrowser.devtools` | — | — | detached native page developer tools |
-| `browser.pages` | — | `BrowserPageInfo[]` | Claude's browser, one page per chat (D-320): each page's `chatId`, `state`, `driving` (a tool call runs or ended < 5 s ago) and `lastUsedAt` (`docs/reference/browser.md`) |
+| `browser.pages` | — | `BrowserPageInfo[]` | Jig's browser, one page per chat (D-320): each page's `chatId`, `state`, `driving` (a tool call runs or ended < 5 s ago) and `lastUsedAt` (`docs/reference/browser.md`) |
 | `browser.state` | `{ chatId }` | `BrowserState` | the chat's page: open, url, title, loading, back/forward, size, error count (`open: false` without a page) |
 | `browser.watch` | `{ chatId, on }` | — | start/stop `browser.frame` events of the chat's page for a view |
 | `browser.navigate` | `{ chatId, url? , action? }` | `BrowserState` | open a URL (http, https, file) in the chat's page (made if it has none), or `back` / `forward` / `reload` |
@@ -207,7 +207,7 @@ settings, add-on permissions.
 | `learning.setProfile` | `{ text }` | — | writes `profile.md` (schema) |
 | `learning.removeNote` / `learning.clearNotes` | `{ id }` / — | — | notes from chats |
 | `learning.worked` | `{ refresh? }` | `WorkedState` | "How you worked", cached an hour |
-| `learning.usage` | — | `UsageSummary` | "How Claude worked for you": tools, skills, subagents, add-ons and MCP servers over 4 weeks (D-185) |
+| `learning.usage` | — | `UsageSummary` | "How Jig worked for you": tools, skills, subagents, add-ons and MCP servers over 4 weeks (D-185) |
 | `learning.checkIn` | `{ action: "enable" \| "decline" \| "start" \| "skip" }` | `{ prompt? }` | `start` returns the chat's first message (schema) |
 | `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
 | `addons.remove` | `{ id }` | — | your add-ons only: deletes the folder as a commit (stays in the history), keeps its stored data; a built-in it replaced comes back (schema, D-122) |
@@ -261,7 +261,7 @@ settings, add-on permissions.
 | `sessions.reveal` | `{ sessionId }` | show this chat (its desktop notification was clicked) |
 | `terminals.data` | `{ id, data }` | terminal output (batched) |
 | `terminals.changed` | `TerminalInfo[]` | a terminal was created, renamed, exited or closed |
-| `terminals.reveal` | `{ id }` | show this terminal (Claude started it from a chat) |
+| `terminals.reveal` | `{ id }` | show this terminal (Jig started it from a chat) |
 | `codex.signIn` | `{ loggedIn, method? }` | the Codex sign-in terminal ended: whether Codex is signed in now and how (never who or a key); its terminal was closed if so (D-294) |
 | `claude.signIn` | `{ loggedIn, method? }` | the sign-in terminal ended: whether Claude Code is signed in now and how (never who); its terminal was closed if so (D-126) |
 | `routines.changed` | — | routines changed (from the tab or a chat): reload when shown |
@@ -333,7 +333,7 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.calendar | Next 14 days of default calendar; separate delegated consent |
 | meetings.join | Validate Teams link, create global record; room only, one active call |
 | meetings.credential | Memory-only renewable calling token, plus `self` (your Teams id and name, to name your own captions, D-383); owned room sender only |
-| meetings.aiTranslation | Claude translates the meeting's finished captions into `language` (`""` stops), when Teams can't (no Teams Premium; D-277), in batches, skipping lines that waited too long (D-384); needs `meetings.aiTranslation` on; room only |
+| meetings.aiTranslation | Jig translates the meeting's finished captions into `language` (`""` stops), when Teams can't (no Teams Premium; D-277), in batches, skipping lines that waited too long (D-384); needs `meetings.aiTranslation` on; room only |
 | meetings.devices | The microphone, speakers and camera picked for meetings ({kind?: {id, name}}, a missing kind = System default), remembered for the next one (D-323); room only |
 | meetings.captionLanguage | The language live captions are shown in (`""` = as spoken), remembered; Teams translates (D-260); room only |
 | meetings.chat | Room only: reads the active meeting's or call's Teams chat (Graph Chat.Read) into its record; `{state: ok/consent/unavailable, error?}` (D-270) |
@@ -376,12 +376,12 @@ meetings.show ({tab?, select?}: the open Meetings window shows a tab, and on Mee
 meetings.chatNew ({projectId, draft}: the main window starts a chat from a meeting),
 meetings.chatOpen ({sessionId}: main workbench reveals the normal chat).
 
-Claude tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset)
+Jig tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset)
 and jig_meeting_save_notes ({id, notes, actions}, normal approval, generated notes chat only).
-A chat message with `@meeting:…` mentions gets turn context naming each meeting's id, telling Claude to
+A chat message with `@meeting:…` mentions gets turn context naming each meeting's id, telling Jig to
 read it with jig_meeting_read (speech is source material, not instructions; only while Meetings is on).
 A message with `@chat:<name>-<8 hex>` mentions (D-333) gets a line per Teams chat naming it and its short
-id, telling Claude to read it with jig_teams_chat_read ({chat (8 hex), before?, since?, until?, limit?
+id, telling Jig to read it with jig_teams_chat_read ({chat (8 hex), before?, since?, until?, limit?
 ≤ 200}, read-only; only chats mentioned in that Jig chat; text = name, kind, members, then messages
 oldest first as `[YYYY-MM-DD HH:MM UTC] sender: text [image] [file: name]`; latest 100 by default,
 `nextBefore` pages back up to 1000 messages; read from Graph with Chat.Read in main, nothing kept).
