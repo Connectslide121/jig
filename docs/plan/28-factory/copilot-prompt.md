@@ -1,7 +1,8 @@
 # Prompt for a coding agent (picks up phase 28 where it stopped)
 
 Paste this into a new GitHub Copilot (or other coding agent) session on this repository, as it is:
-it finds the next session by itself. To force a session, add `SESSION = <n>` as its first line.
+it finds the next session by itself. To force a session, add `SESSION = <n>` as its first line
+(a number, or `M1`, `M2`, `M3` for Motion).
 
 ```text
 You are working on Jig (this repository), building phase 28, "Jig factory": a built-in add-on
@@ -27,7 +28,8 @@ that turns an idea into an interview, a polished demo, and a full pack of docume
    - AGENTS.md (binding rules: architecture, UI and design rules, testing, commits, docs).
    - docs/plan/28-factory.md (decisions D-426…D-441 and later ones, the sessions, their notes).
    - The detail docs your session needs: docs/plan/28-factory/architecture.md, pipeline.md, ui.md,
-     demo-quality.md, testing.md, and docs/plan/28-factory/mockup.html for how screens look.
+     demo-quality.md, testing.md, motion.md (sessions M1–M3), and docs/plan/28-factory/mockup.html
+     for how screens look.
    - docs/reference/addon-api.md, docs/reference/slots.md, and addons/factory (the add-on so far;
      addons/tasks or addons/workflows for patterns it doesn't show yet).
    - The decisions about phase 28 in docs/decisions.md (search "Jig factory" / "phase 28").

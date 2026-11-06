@@ -126,7 +126,14 @@ addons/motion/
 - **Exports** (D-215): `createVideo({ projectId, kind, storyboard?, brief?, style, output })` and
   `render(id)` for Jig factory (D-458) and, later, Releases.
 - **Core additions:** `api.speech.say` (D-455) and `api.capture.record` (D-457), both documented in
-  `addon-api.md`, with schemas in `main/ipc/validate.ts` where they take paths or URLs.
+  `addon-api.md`, with schemas in `main/ipc/validate.ts` where they take paths or URLs. Add-ons
+  can't speak or record today, so these come first in M2.
+- **No npm packages in the add-on:** built-in add-ons ship as their folder and import only from
+  `addons/` and packages by name (D-415), so HyperFrames, its headless Chrome and FFmpeg are not
+  dependencies. Motion installs a pinned HyperFrames into its data folder on the first render, after
+  the install modal (D-454), and runs it as a program (`exec`); FFmpeg is looked for first.
+- **Real renders and the real voice are Jon's check** on his machine; tests use a fake renderer
+  and the fake engine.
 - **Settings** (Settings → Motion): `motion.ffmpegPath`, `motion.musicFolder`, default format,
   default voice. `motion.ffmpegPath` is protected (it runs a program, D-077).
 
