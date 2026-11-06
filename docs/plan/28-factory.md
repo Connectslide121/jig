@@ -27,6 +27,7 @@ names in examples").
 | [28-factory/mockup.html](28-factory/mockup.html) | a static visual mockup of the screens (open it in a browser) |
 | [28-factory/demo-quality.md](28-factory/demo-quality.md) | the demo quality bar, the demo kit, product kits, design system, skills and resources |
 | [28-factory/testing.md](28-factory/testing.md) | testing the factory itself, and DevX |
+| [28-factory/motion.md](28-factory/motion.md) | **Motion**, the video add-on (sessions M1–M3): how it works, screens, look settings, architecture |
 | [28-factory/copilot-prompt.md](28-factory/copilot-prompt.md) | the prompt to start a coding-agent session for one session of this phase |
 
 ## Decisions (Jon, 2026-11-06)
@@ -62,6 +63,17 @@ Later decisions (Jon, 2026-11-06, after going through the plan):
 | D-446 | **Images are generated with ChatGPT** (Codex's image generation on the signed-in plan); demo screenshots first. |
 | D-447 | **E-learning through the user's own MCP server:** Jig factory builds the connector (setting + recipes); courses are created as unpublished drafts. |
 | D-448 | **Teasers are HTML rendered to MP4 with HyperFrames**, in the demo kit; not html-video (a second agent runtime). |
+
+Motion, the video add-on (Jon, 2026-11-06; [28-factory/motion.md](28-factory/motion.md)):
+
+| # | Decision |
+|---|---|
+| D-453 | **Motion** (`addons/motion`): videos from HTML storyboards, useful on its own, planned here (sessions M1–M3); first kinds teaser, what's new, walkthrough; kept per project like Pages; storyboard + settings + live preview; AI only writes, on the chat's provider; MP4 + poster. |
+| D-454 | **Rendered with HyperFrames**, installed on first render after you approve; FFmpeg looked for first, downloaded only after you approve. |
+| D-455 | **Voiceover with the natural voice** per scene, scene length follows the speech; burned-in captions and `.srt`/`.vtt`; core `api.speech.say`. |
+| D-456 | **Music from your own music folder**; Find music opens Pixabay Music; Jig never bundles or fetches tracks itself. |
+| D-457 | **Live captures** of an app or demo as scenes, recorded in a hidden window; core `api.capture.record`. |
+| D-458 | **Jig factory's teasers are made with Motion** (replaces D-448's demo-kit teaser; HyperFrames stays the engine). |
 
 **Open: sharing a demo for review with people who don't have Jig.** A demo is one self-contained
 HTML file, so it can simply be sent (for example in Teams) and opened in a browser. A private
@@ -105,6 +117,9 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
   factory page like `factory.demoKitPath` (D-443). Open: how people without Jig see a demo.
+- **Motion added to this phase** (Jon, 2026-11-06, D-453…D-458): a video add-on,
+  `addons/motion`, in sessions **M1–M3** between sessions 4 and 5 ([28-factory/motion.md](28-factory/motion.md)).
+  Session 5's teaser uses it (D-458 replaces the demo-kit teaser of D-448).
 - **The demo kit's code:** branch **`demo-kit`** of this GitHub repository (its own history; it is
   meant to become the repository `jig-demo-kit`, D-431, which could not be created from the agent).
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
@@ -248,6 +263,59 @@ and survives a Jig restart.
 
 **Done when:** idea → interview → a polished demo in Jig, reviewed and approved.
 
+### M1. Motion: storyboard, composition and render — not started
+
+The video add-on ([28-factory/motion.md](28-factory/motion.md)); M1–M3 come before session 5,
+whose teaser uses Motion (D-458).
+
+- [ ] `addons/motion` skeleton: manifest (D-453), Videos view listed in View → Views, top-bar menu
+      (New video…, Videos), empty state, README.
+- [ ] `lib/storyboard.ts` (types, validation, timing) and `lib/compose.ts` (storyboard + style +
+      template → composition HTML, GSAP and fonts bundled, no network) with unit tests.
+- [ ] Templates `teaser`, `whats-new`, `walkthrough` (`template.json`: scene types, inputs schema,
+      durations, licence) and a neutral style; HyperFrames blocks adapted where useful, licences kept.
+- [ ] Renderer and FFmpeg (D-454): look for FFmpeg (`motion.ffmpegPath`, PATH); install modal for
+      what's missing (pinned sources and checksums in `lib/install.ts`) into Motion's data folder;
+      render queue (one at a time), progress, cancel, restart-safe; poster image.
+- [ ] Video tab: storyboard, live preview with scrubber (the composition itself), settings panel,
+      scene side sheet, Render, versions; sidebar / panel / tab widths, Dark and Light.
+- [ ] Settings → Motion (`ConfigSchema`, `SETTINGS_GUIDE`, `state.md`); `motion.ffmpegPath` protected.
+- [ ] Fake renderer for tests (writes a tiny MP4); `e2e/motion.spec.ts` and its rule in
+      `e2e/affected.json`.
+
+**Done when:** you make a what's-new video from the template with screenshots, preview it, render it
+to MP4 on your machine.
+
+### M2. Motion: voice, captions, music, captures — not started
+
+- [ ] Core `api.speech.say` (D-455): permission `speech`, the Kokoro process Read aloud uses, WAV in
+      the add-on's data folder; `addon-api.md`; host test.
+- [ ] Voice per scene: scene length follows the speech; burned-in captions; `.srt` and `.vtt`
+      (`lib/captions.ts`, tested).
+- [ ] Music (D-456): `motion.musicFolder`, track picker, ducking under the voice, fades; **Find
+      music** opens Pixabay Music in the browser; source address kept with the track.
+- [ ] Core `api.capture.record` (D-457): permission `capture`, hidden window at the video's size,
+      steps (go to, click, type, scroll, wait, highlight), max length, a failing step named;
+      `addon-api.md`, `validate.ts` schema, e2e on a local page.
+- [ ] Record capture modal (steps list, record, play back, keep); captures as scenes with zooms,
+      arrows and highlights; the real-data scan on captures.
+
+**Done when:** a walkthrough of the sample demo with live captures, a natural voice, captions and
+music renders on your machine.
+
+### M3. Motion: AI and other add-ons — not started
+
+- [ ] Chat tools (engine-neutral): `motion_create`, `motion_update`, `motion_render`, `motion_list`
+      (read-only); tool renderer with the video card; `jigContext` lines; fake-engine rows.
+- [ ] Write with Jig in the Video tab (a chat on the current provider, prompt from the video's
+      brief and sources), and "New video…" from a chat's ⋯ and from a release (later: Releases).
+- [ ] Styles from a product kit, a `DESIGN.md` reference (D-444) or a `theme-factory` theme.
+- [ ] Export `createVideo` / `render` (D-215) for Jig factory (D-458).
+- [ ] "What Jig can do" line, README line, screenshots, `docs/status.md`.
+
+**Done when:** "make a 40 s teaser for this release" in a chat gives a video you only tweak, and
+Jig factory can call Motion.
+
 ### 5. The pack — not started
 
 - [ ] Recipes: spec, user stories (as board cards), test cases, release notes, customer letter,
@@ -263,9 +331,9 @@ and survives a Jig restart.
       create a course / add pages / publish), `course-*` recipes create an unpublished course and
       report its link; without the setting, the course as Markdown in `learning/`. Jon fills the
       setting in his workspace.
-- [ ] Teaser (D-448): `npm run teaser` in the demo kit on HyperFrames (pinned, GSAP and fonts
-      bundled), teaser templates on the product kit's tokens and the demo's screens, a storyboard
-      the `teaser` recipe writes, checks (35–50 s, logo visible, text readable); MP4 in `teaser/`.
+- [ ] Teaser (D-458): the `teaser` recipe calls Motion's `createVideo` with the approved demo's
+      screens or captures, the product kit's style, voice and captions in the run's language;
+      Motion renders; MP4 + poster in `teaser/` as a draft. Needs sessions M1–M3.
 - [ ] Inbox: everything waiting for a person, grouped by gate; approve / edit / reject; statuses
       `draft → reviewed → approved → published` (and `rejected`, `superseded`) with history.
 - [ ] Trust numbers per output kind: approved without edits, review time.
