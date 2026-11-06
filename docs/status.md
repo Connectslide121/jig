@@ -1070,7 +1070,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.17.0 being prepared (2026-11-06): Jig 0.17.0 estimates the cost of ChatGPT chats at OpenAI's API prices, lets each AI step in a workflow run on its own provider and model, shows published pages as a card with a preview in the chat, starts the natural voice sooner and says Jig instead of Claude wherever the provider doesn't matter. Publication not yet verified.
+Jig 0.17.0 published (2026-11-06): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.17.0),
+source/tag `d9e02c2eb3bd6b5eb2c4b20e10bbb5836dc75e72`. Installer: 389,264,460 bytes;
+SHA-256 `1997b2e0679d780785f5fe900a9e9de38029161ae0f35f60dde48560f9b5f011`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.17.0 with its feed and installer. In 0.17.0: Jig 0.17.0 estimates the cost of ChatGPT chats at OpenAI's API prices, lets each AI step in a workflow run on its own provider and model, shows published pages as a card with a preview in the chat, starts the natural voice sooner and says Jig instead of Claude wherever the provider doesn't matter.
 
 Jig 0.16.0 published (2026-11-06): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.16.0),
 source/tag `a3116a6efb14afd4a8963f82ee4349e22ce7aeeb`. Installer: 389,256,144 bytes;

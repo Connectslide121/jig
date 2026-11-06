@@ -9,3 +9,7 @@
 - **Natural voice starts sooner:** Talk and Read aloud begin speaking after the first few words instead of waiting for a whole sentence, and the voice is warmed up before it's needed.
 - **Says Jig:** buttons, menus, messages and notifications call the assistant Jig wherever it doesn't matter whether a chat runs on Claude or ChatGPT (Jig's browser, Ask Jig, Message Jig…). The Claude command group is now **Assistant**.
 - **Settings → Chats:** settings that apply to both providers (limits, permission mode, suggestions, idle stops, chat names, Jig's browser) are now under **All chats**, and the Claude and ChatGPT groups list their model settings in the same order. *Subagent fallback model* is now *Helper fallback model*.
+
+## Fixed
+
+- **Phone over Teams:** when Teams setup is done but your phone isn't connected yet, the setup dialog offers the manual connect again.
