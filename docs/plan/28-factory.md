@@ -96,6 +96,10 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
 - **Done:** session 0 (decisions D-424…D-440, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-441).
+- **Plan changed after session 1** (Jon, 2026-11-06): D-442…D-446 (design sources, two-form deck
+  and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
+  and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
+  factory page like `factory.demoKitPath` (D-441). Open: how people without Jig see a demo.
 - **The demo kit's code:** branch **`demo-kit`** of this GitHub repository (its own history; it is
   meant to become the repository `jig-demo-kit`, D-429, which could not be created from the agent).
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
