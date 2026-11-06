@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -111,7 +111,12 @@ describe("the Codex completer", () => {
     const abort = new AbortController();
     const first = completer.ask("hang", abort.signal);
     const rejected = expect(first).rejects.toThrow("Cancelled");
-    await new Promise((r) => setTimeout(r, 300));
+    // Abort only once Codex has started the turn: before that there is no turn id to interrupt, and
+    // a fixed wait lost that race when the whole suite loads the machine.
+    const logFile = join(dir, "log.jsonl");
+    while (!existsSync(logFile) || !log().some((e) => e.method === "turn/start"))
+      await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 200));
     abort.abort();
     await rejected;
     expect(await completer.ask("next")).toBe("echo: next");
