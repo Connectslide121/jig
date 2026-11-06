@@ -1,0 +1,75 @@
+/* The demo kit's base styles. Colours, type, radii, motion and elevation come from the demo's tokens
+   (generated tokens.css and the @theme block after this file); nothing here hard-codes a brand. */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --breakpoint-xs: 30rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display, var(--font-sans));
+    letter-spacing: -0.015em;
+  }
+  .tabular,
+  td,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+  :root {
+    --kit-duration: var(--duration-base, 200ms);
+    --kit-ease: var(--easing-standard, cubic-bezier(0.2, 0, 0, 1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html.kit-reduced-motion *,
+html.kit-reduced-motion *::before,
+html.kit-reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+@keyframes kit-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--highlight) 60%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px color-mix(in oklab, var(--highlight) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--highlight) 0%, transparent);
+  }
+}

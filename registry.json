@@ -1,0 +1,262 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "jig-demo-kit",
+  "homepage": "https://github.com/Connectslide121/jig-demo-kit",
+  "items": [
+    {
+      "name": "app-shell",
+      "type": "registry:block",
+      "title": "App shells",
+      "description": "The demo frame: sidebar app, top-nav app, phone and tablet frames, landing page, with the prototype banner, story and presenter modes.",
+      "dependencies": [
+        "lucide-react",
+        "motion"
+      ],
+      "registryDependencies": [
+        "avatar",
+        "button",
+        "dropdown-menu",
+        "sheet",
+        "tooltip",
+        "dialog",
+        "separator",
+        "switch",
+        "label"
+      ],
+      "files": [
+        {
+          "path": "src/kit/App.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/banner.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/story.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/theme.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/router.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/page.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/useWidth.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/shells/common.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/shells/sidebar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/shells/topnav.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/shells/device.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/kit/shells/landing.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "data-table",
+      "type": "registry:block",
+      "title": "Data table",
+      "description": "Search, faceted filters, sorting, pagination and whole-row click; fixed row height and column widths, status at the right edge.",
+      "dependencies": [
+        "@tanstack/react-table",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "button",
+        "dropdown-menu",
+        "input",
+        "skeleton",
+        "table"
+      ],
+      "files": [
+        {
+          "path": "src/blocks/data-table.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "kpi-strip",
+      "type": "registry:block",
+      "title": "KPI strip",
+      "description": "Two to six headline numbers with a delta that says what it is measured against, and an optional spark line.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "skeleton"
+      ],
+      "files": [
+        {
+          "path": "src/blocks/kpi-strip.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "chart-card",
+      "type": "registry:block",
+      "title": "Chart card",
+      "description": "An area or bar chart in a card, in the kit's chart colours, with a fixed plot height.",
+      "dependencies": [
+        "recharts"
+      ],
+      "registryDependencies": [
+        "card",
+        "chart",
+        "skeleton"
+      ],
+      "files": [
+        {
+          "path": "src/blocks/chart-card.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "schedule",
+      "type": "registry:block",
+      "title": "Schedule",
+      "description": "A day's schedule: people down the side, hours across, events as blocks, a line at now.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "avatar",
+        "button",
+        "status"
+      ],
+      "files": [
+        {
+          "path": "src/blocks/schedule.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "kanban",
+      "type": "registry:block",
+      "title": "Kanban board",
+      "description": "Columns with counts and limits, cards that open on click, Move to in a menu.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "avatar",
+        "button",
+        "dropdown-menu",
+        "status"
+      ],
+      "files": [
+        {
+          "path": "src/blocks/kanban.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "detail-drawer",
+      "type": "registry:block",
+      "title": "Detail drawer",
+      "description": "One record beside the list: fields in aligned columns, its activity and actions.",
+      "registryDependencies": [
+        "separator",
+        "sheet"
+      ],
+      "files": [
+        {
+          "path": "src/blocks/detail-drawer.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "form-dialog",
+      "type": "registry:block",
+      "title": "Form in a modal",
+      "description": "Fields from a list, required ones checked on submit, the first problem focused; error rows reserve their space.",
+      "registryDependencies": [
+        "button",
+        "dialog",
+        "field",
+        "input",
+        "select",
+        "textarea"
+      ],
+      "files": [
+        {
+          "path": "src/blocks/form-dialog.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "empty-state",
+      "type": "registry:block",
+      "title": "Empty state",
+      "description": "What goes here and the action that adds the first one.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "empty"
+      ],
+      "files": [
+        {
+          "path": "src/blocks/empty-state.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "status",
+      "type": "registry:component",
+      "title": "Status badge",
+      "description": "A status as a soft pill with a dot, and the tone palette other blocks use.",
+      "files": [
+        {
+          "path": "src/blocks/status.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "sample-data",
+      "type": "registry:lib",
+      "title": "Sample data",
+      "description": "Seeded random data, invented people and companies on .example domains, dates relative to today, formatters.",
+      "files": [
+        {
+          "path": "src/kit/data.ts",
+          "type": "registry:lib"
+        }
+      ]
+    }
+  ]
+}
