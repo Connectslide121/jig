@@ -1,6 +1,6 @@
 # Phase 28 — Jig factory
 
-Status: **planned, not started** (2026-11-06). Jon's decisions are below; development is planned as
+Status: **in progress** on branch `factory` (session 0 done 2026-11-06; see "Where we are"). Jon's decisions are below; development is planned as
 self-contained sessions so it can be done **without Jig**, from GitHub (for example GitHub Copilot's
 coding agent on a phone). Asked for after two internal meetings on 2026-11-05 and Jon's follow-ups
 on 2026-11-06: "I want the full factory built so we can test it end to end, as a Jig add-on. Nice
@@ -70,11 +70,24 @@ New idea ─► Interview ─► Brief ─► [G0 go] ─► Plan ─► Art dir
 - **Polished by construction:** demos are built from the demo kit and a product kit, then scored by
   a critic and automated checks before you see them.
 
+## Where we are (the handoff note, keep it current)
+
+Updated by every agent when it stops or finishes a piece of work; a new agent starts here
+([copilot-prompt.md](28-factory/copilot-prompt.md) is the prompt to start one).
+
+- **Branch:** `factory` (not merged into main yet). Commits are small; `git log --oneline` on it
+  shows the order.
+- **Current session:** 1, the demo kit and the quality gate — in progress.
+- **Done:** session 0 (decisions D-424…D-440, `addons/factory` with the Floor, Run and Inbox on
+  sample runs).
+- **Half done / next step:** see session 1's checklist below.
+
 ## Working on this phase from GitHub (without Jig)
 
 - Read `AGENTS.md` first, then this file and the `28-factory/` documents. Each session below is
   self-contained: goal, files, checklist, done when.
-- Work on `main`, small commits with their tests and docs (AGENTS.md → Commits).
+- Work on the `factory` branch (Jon, 2026-11-06), small commits with their tests and docs
+  (AGENTS.md → Commits).
 - Before each commit: `npm run verify`. Once at the end of a session: `npm run e2e:changed`
   (on Linux `xvfb-run -a npm run e2e:changed`). The Tests add-on mentioned in AGENTS.md is the in-Jig
   way to run the same command; from GitHub run it in the shell.
@@ -113,7 +126,7 @@ logic pure. The top bar menu has Floor, Inbox, Runs and the sample entries; **Ne
 session 3. Screenshots: `JIG_UI_SHOTS=1 xvfb-run -a npx playwright test e2e/factory.spec.ts -g "Dark
 and Light"` (view at sidebar, panel and tab; Floor, Run and Inbox at a wide and a narrow window).
 
-### 1. The demo kit and the quality gate — not started
+### 1. The demo kit and the quality gate — in progress
 
 Its own repository (D-429); this session creates it beside `jig/` and adds only a setting in Jig.
 
