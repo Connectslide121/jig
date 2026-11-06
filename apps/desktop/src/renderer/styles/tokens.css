@@ -38,6 +38,8 @@
   --color-on-danger: var(--jig-on-danger);
   --color-info: var(--jig-info);
   --color-info-soft: color-mix(in srgb, var(--jig-info) 16%, transparent);
+  --color-magenta: var(--jig-magenta);
+  --color-magenta-soft: color-mix(in srgb, var(--jig-magenta) 16%, transparent);
   --color-provider-claude: var(--jig-provider-claude);
   --color-provider-chatgpt: var(--jig-provider-chatgpt);
   --color-transparent: transparent;
@@ -101,6 +103,7 @@
   --jig-danger: #ef6b6b;
   --jig-on-danger: #1e1f22;
   --jig-info: #6cb6ff;
+  --jig-magenta: #d77ee8;
   --jig-provider-claude: #e08a66;
   --jig-provider-chatgpt: #5ec4cf;
   --jig-shadow: rgb(0 0 0 / 0.35);

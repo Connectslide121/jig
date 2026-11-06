@@ -31,6 +31,7 @@ CSS variable `--jig-<token>`; Tailwind colour name in brackets (use as `bg-…`,
 | `focus` | `focus` | focus ring |
 | `code` | `code` | code block background (also the Shiki background) |
 | `success` `warning` `danger` `info` | same | status colours; `on-danger` for text on danger |
+| `magenta` | `magenta` | a fourth hue for categories in charts and legends (Chat time's tests & builds, D-419), never a status. Imported VS Code themes take `charts.purple`, else their ANSI magenta, made readable on the canvas |
 | `provider-claude` `provider-chatgpt` | `providerClaude` `providerChatgpt` | marks which AI provider something is about (the usage meter's labels): identity only, never a status, so a bar stays green/amber/red. Imported VS Code themes keep Jig's hues, adjusted to stay readable on the status bar (D-298) |
 | `shadow` | — | used by `shadow-popover`, `shadow-card` |
 
@@ -38,7 +39,7 @@ CSS variable `--jig-<token>`; Tailwind colour name in brackets (use as `bg-…`,
 (`bg-scrim`, with `backdrop-blur-sm`), so it dims clearly in light and dark themes alike.
 
 Soft variants for tinted backgrounds: `accent-soft`, `success-soft`, `warning-soft`, `danger-soft`,
-`info-soft` (16 % of the colour over transparent).
+`info-soft`, `magenta-soft` (16 % of the colour over transparent).
 
 Every theme guarantees readable text: the VS Code mapper runs a contrast pass (`fg` ≥ 4.5:1 on every
 background it sits on, `muted` ≥ 4:1, `onAccent` ≥ 4.5:1 on `accent`, `hint` ≥ 2.6:1).

@@ -30,6 +30,7 @@ export const COLOR_TOKENS = [
   "danger",
   "onDanger",
   "info",
+  "magenta", // a fourth hue for categories in charts and legends, never a status
   "providerClaude", // marks Claude (the usage meter's provider label), never a status
   "providerChatgpt", // marks ChatGPT, likewise
   "shadow", // shadow colour (usually translucent black)

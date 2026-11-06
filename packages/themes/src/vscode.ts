@@ -274,6 +274,7 @@ export function mapVsCodeTheme(theme: VsCodeTheme, options: MapOptions): JigThem
     baseColor("danger"),
   );
   const info = semantic(["editorInfo.foreground", "textLink.foreground"], "blue", baseColor("info"));
+  const magenta = semantic(["charts.purple"], "magenta", baseColor("magenta"));
   const shadow = get("widget.shadow") ?? (dark ? { ...BLACK, a: 0.35 } : { ...BLACK, a: 0.12 });
 
   // 2. Contrast pass — text must stay readable on every background it sits on.
@@ -306,6 +307,7 @@ export function mapVsCodeTheme(theme: VsCodeTheme, options: MapOptions): JigThem
     danger: toHex(danger),
     onDanger: toHex(readableOn(danger)),
     info: toHex(info),
+    magenta: toHex(magenta),
     // Provider marks keep Jig's hues (Claude's clay, ChatGPT's teal), made readable on the status bar.
     providerClaude: toHex(ensureContrast(baseColor("providerClaude"), statusbar, 3)),
     providerChatgpt: toHex(ensureContrast(baseColor("providerChatgpt"), statusbar, 3)),
