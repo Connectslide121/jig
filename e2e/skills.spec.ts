@@ -36,9 +36,6 @@ test("Skills library: topbar access, stable details, global switches and project
       "false",
     );
   await expect(library.getByRole("switch", { checked: true })).toHaveCount(9);
-  const critic = library.getByTestId("skill-demo-quality").getByRole("switch");
-  await critic.click();
-  await expect(critic).toHaveAttribute("aria-checked", "true");
   const row = library.getByTestId("skill-frontend-design");
   const position = await row.boundingBox();
   await row.getByTestId("skill-name-frontend-design").click();
@@ -104,10 +101,18 @@ test("Skills library: topbar access, stable details, global switches and project
   const next = (await hostCall(page, "projects.create", { name: "New project", path: dir })) as {
     value: { id: string };
   };
-  expect(await reply(await create(next.value.id), 1)).toContain("frontend-design");
+  const newChat = await create(next.value.id);
+  const first = await reply(newChat, 1);
+  expect(first).toContain("frontend-design");
+  expect(first).not.toContain("demo-quality");
   await page.reload();
   await expect(row).toContainText("1 excluded");
   await expect(row.getByRole("switch")).toHaveAttribute("aria-checked", "true");
+  // Switching an off-by-default skill on reaches chats like any other.
+  const critic = library.getByTestId("skill-demo-quality").getByRole("switch");
+  await critic.click();
+  await expect(critic).toHaveAttribute("aria-checked", "true");
+  expect(await reply(newChat, 2)).toContain("demo-quality");
   const refused = await hostCall(page, "skills.details", { id: "../../config.json" });
   expect(refused).toMatchObject({ ok: false });
 });
