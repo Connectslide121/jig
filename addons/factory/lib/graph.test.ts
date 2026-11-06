@@ -88,7 +88,7 @@ describe("node states", () => {
 
   it("derives a skipped gate from its inputs", () => {
     const r = run(
-      [{ id: "S1" }, { id: "S2" }, { id: "S4" }, { id: "S4b", status: "skipped" }],
+      [{ id: "S1" }, { id: "S2" }, { id: "S3" }, { id: "S4" }, { id: "S4b", status: "skipped" }],
       [{ id: "G0" }],
     );
     expect(nodeState(track, r, { "product.exists": true }, "GD")).toBe("skipped");
@@ -97,7 +97,7 @@ describe("node states", () => {
   it("joins alternatives: done when one is, skipped when all are", () => {
     const facts: Facts = { "product.exists": true };
     const r = run(
-      [{ id: "S1" }, { id: "S2" }, { id: "S4" }, { id: "S4b", status: "skipped" }],
+      [{ id: "S1" }, { id: "S2" }, { id: "S3" }, { id: "S4" }, { id: "S4b", status: "skipped" }],
       [{ id: "G0" }],
     );
     expect(termState(track, r, facts, "S4|GD")).toBe("done");
@@ -133,15 +133,23 @@ describe("nextSteps on the new idea track", () => {
     );
   });
 
-  it("takes the product kit for an existing product, directions for a new one", () => {
+  it("waits for the person's Plan step after G0 (D-460)", () => {
     const r = run([{ id: "S1" }, { id: "S2" }], [{ id: "G0" }]);
+    expect(nextSteps(track, r)).toEqual([{ kind: "person", stage: "S3", recipe: "plan" }]);
+    expect(
+      nextSteps(track, run([{ id: "S1" }, { id: "S2" }, { id: "S3", status: "needs-you" }], [{ id: "G0" }])),
+    ).toEqual([]);
+  });
+
+  it("takes the product kit for an existing product, directions for a new one", () => {
+    const r = run([{ id: "S1" }, { id: "S2" }, { id: "S3" }], [{ id: "G0" }]);
     expect(kinds(nextSteps(track, r, { "product.exists": true }))).toEqual(["start S4", "skip S4b"]);
     expect(kinds(nextSteps(track, r, {}))).toEqual(["skip S4", "start S4b"]);
   });
 
   it("builds the demo at the run's level once the kit or a direction is in", () => {
     const r = run(
-      [{ id: "S1" }, { id: "S2" }, { id: "S4" }, { id: "S4b", status: "skipped" }],
+      [{ id: "S1" }, { id: "S2" }, { id: "S3" }, { id: "S4" }, { id: "S4b", status: "skipped" }],
       [{ id: "G0" }],
       { level: "L2" },
     );
@@ -149,7 +157,7 @@ describe("nextSteps on the new idea track", () => {
       { kind: "start", stage: "S5", recipe: "demo-l2", interactive: false },
     ]);
     const viaGd = run(
-      [{ id: "S1" }, { id: "S2" }, { id: "S4", status: "skipped" }, { id: "S4b" }],
+      [{ id: "S1" }, { id: "S2" }, { id: "S3" }, { id: "S4", status: "skipped" }, { id: "S4b" }],
       [{ id: "G0" }, { id: "GD", status: "waiting" }],
     );
     expect(nextSteps(track, viaGd, {})).toEqual([]);
@@ -160,6 +168,7 @@ describe("nextSteps on the new idea track", () => {
       [
         { id: "S1" },
         { id: "S2" },
+        { id: "S3" },
         { id: "S4" },
         { id: "S4b", status: "skipped" },
         { id: "S5", version },
@@ -184,6 +193,7 @@ describe("nextSteps on the new idea track", () => {
         [
           { id: "S1" },
           { id: "S2" },
+          { id: "S3" },
           { id: "S4" },
           { id: "S4b", status: "skipped" },
           { id: "S5", version: 1 },
@@ -208,6 +218,7 @@ describe("nextSteps on the new idea track", () => {
       [
         { id: "S1" },
         { id: "S2" },
+        { id: "S3" },
         { id: "S4" },
         { id: "S4b", status: "skipped" },
         { id: "S5", version: 1 },

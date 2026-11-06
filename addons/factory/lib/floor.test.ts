@@ -40,7 +40,7 @@ describe("lanes", () => {
 
 describe("progress", () => {
   it("says what each card's ring means", () => {
-    expect(progress(byTitle("Guest check-in"))).toEqual({ value: 7 / 12, label: "coverage 7/12" });
+    expect(progress(byTitle("Guest check-in"))).toEqual({ value: 6 / 9, label: "coverage 6/9" });
     expect(progress(byTitle("Shift swap")).label).toBe("v2 · building");
     expect(progress(byTitle("Route planner"))).toEqual({ value: 1, label: "demo v1" });
     expect(progress(byTitle("Sales course pack"))).toEqual({ value: 9 / 11, label: "9 / 11 outputs" });

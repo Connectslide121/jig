@@ -70,6 +70,19 @@ describe("inbox", () => {
     expect(waitsForMe(byTitle("Waitlist"))).toBe(false);
   });
 
+  it("calls a waiting Plan step Plan the run", () => {
+    const r = byTitle("Route planner");
+    const planned: Run = {
+      ...r,
+      outputs: [],
+      gates: [],
+      stages: [
+        { id: "S3", recipe: "plan", status: "needs-you", version: 1, attempt: 1, startedAt: r.createdAt },
+      ],
+    };
+    expect(inbox([planned])).toMatchObject([{ kind: "ask", label: "Plan the run", stageId: "S3" }]);
+  });
+
   it("shows a waiting gate without outputs as one row", () => {
     const r: Run = { ...byTitle("Route planner"), outputs: [] };
     expect(inbox([r])).toMatchObject([{ kind: "gate", label: "Demo review", status: "waiting" }]);

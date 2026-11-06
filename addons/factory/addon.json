@@ -5,7 +5,7 @@
   "description": "Turns an idea into an interview, a polished demo and a full pack of documents and material: each run goes through its stages in chats of its own, in a worktree on its own branch, stopping at gates for you. Runs on a floor in lanes (Interview, Demo, Review, Pack, Launch, Done), each run's stages, outputs and timeline, and an inbox of everything waiting for a person across projects. Sample runs show how it works.",
   "version": "0.2.0",
   "icon": "factory",
-  "permissions": ["chat", "ai", "exec", "fs:read", "fs:write"],
+  "permissions": ["chat", "ai", "exec", "fs:read", "fs:write", "meetings:read"],
   "storage": {
     "scope": "project"
   },
@@ -34,6 +34,12 @@
         "component": "RunTab"
       },
       {
+        "type": "interview",
+        "title": "Interview",
+        "icon": "message-circle-question",
+        "component": "InterviewTab"
+      },
+      {
         "type": "inbox",
         "title": "Jig factory inbox",
         "icon": "inbox",
@@ -46,7 +52,23 @@
         "component": "FactoryButton"
       }
     ],
+    "menus": [
+      {
+        "slot": "context.message",
+        "id": "from-message",
+        "title": "Start Jig factory from this",
+        "icon": "factory",
+        "run": "fromMessage"
+      }
+    ],
     "actions": [
+      {
+        "id": "new-idea",
+        "title": "Jig factory: new idea…",
+        "group": "Jig factory",
+        "icon": "lightbulb",
+        "run": "newIdea"
+      },
       {
         "id": "open-floor",
         "title": "Jig factory",
@@ -160,5 +182,5 @@
       }
     ]
   },
-  "exports": ["runs"]
+  "exports": ["runs", "ideaFrom"]
 }

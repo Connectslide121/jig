@@ -21,6 +21,8 @@ export interface TrackItem {
   recipe?: string;
   title?: string;
   interactive?: boolean;
+  /** A step a person does in Jig, not a chat (the Plan step, D-460): it waits as `needs-you`. */
+  person?: boolean;
   after?: string[];
   when?: string;
   loop?: TrackLoop;
@@ -133,6 +135,7 @@ export type Step =
   | { kind: "start"; stage: string; recipe: string; interactive: boolean }
   | { kind: "open"; gate: GateId }
   | { kind: "skip"; stage: string }
+  | { kind: "person"; stage: string; recipe: string }
   | { kind: "loop"; back: string; round: number };
 
 function notStarted(run: Run, id: string): boolean {
@@ -175,6 +178,10 @@ export function nextSteps(track: Track, run: Run, facts: Facts = {}): Step[] {
       continue;
     }
     if (!notStarted(run, id)) continue;
+    if (item.person && !skip) {
+      steps.push({ kind: "person", stage: id, recipe: item.recipe ?? id });
+      continue;
+    }
     steps.push(
       skip
         ? { kind: "skip", stage: id }

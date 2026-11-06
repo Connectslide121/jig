@@ -485,3 +485,13 @@ export function outputName(output: { kind: string; version: number }): string {
   const name = KIND_LABEL[output.kind] ?? output.kind.charAt(0).toUpperCase() + output.kind.slice(1);
   return `${name} v${output.version}`;
 }
+
+/** An idea from elsewhere (a meeting's ⋯ menu) waiting for the New idea dialog (global storage). */
+export interface PendingIdea {
+  text: string;
+  title?: string;
+  source: Run["source"];
+  at: string;
+}
+
+export const PENDING_IDEA = "pending-idea";

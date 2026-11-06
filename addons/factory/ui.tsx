@@ -18,8 +18,10 @@ import {
   useHostCall,
   useProjectList,
 } from "@jig/sdk/ui";
-import { Factory, Inbox, LayoutGrid, MoreHorizontal, Play } from "lucide-react";
-import { type ReactNode, useState, useSyncExternalStore } from "react";
+import { Factory, Inbox, LayoutGrid, Lightbulb, MoreHorizontal, Play } from "lucide-react";
+import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
+import { NewIdeaDialog, openNewIdea, useNewIdea } from "./idea";
+import type { BriefDoc } from "./lib/brief";
 import {
   duration,
   type GraphBox,
@@ -43,13 +45,14 @@ import {
   waitsForMe,
 } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
-import { type GateId, type Output, type Run, timeline } from "./lib/run";
+import { type GateId, type Output, PENDING_IDEA, type PendingIdea, type Run, timeline } from "./lib/run";
 import { isSample } from "./lib/samples";
 import {
   clock,
   InboxPill,
   LevelBadge,
   OutputPill,
+  openInterview,
   openRun,
   Ring,
   RunMark,
@@ -57,6 +60,7 @@ import {
   useNow,
   useRuns,
 } from "./parts";
+import { PlanDialog } from "./plan";
 import { GateSheet, InspectorDialog, StageActionDialog, StageSheet, StartDialog } from "./sheets";
 import newIdea from "./tracks/new-idea.json";
 
@@ -123,15 +127,24 @@ function NoRuns({ projectId, onStart }: { projectId: string; onStart: () => void
       className="h-full"
       actions={
         <>
-          <Button size="sm" variant="primary" icon={Play} data-testid="factory-start-open" onClick={onStart}>
+          <Button
+            size="sm"
+            variant="primary"
+            icon={Lightbulb}
+            data-testid="factory-new-idea-open"
+            onClick={() => openNewIdea()}
+          >
+            New idea…
+          </Button>
+          <Button size="sm" icon={Play} data-testid="factory-start-open" onClick={onStart}>
             Start from a brief…
           </Button>
           <LoadSamples projectId={projectId} />
         </>
       }
     >
-      Jig factory turns an idea into an interview, a demo and a pack of documents. Start a run from a brief,
-      or load the sample runs to see how it works.
+      Jig factory turns an idea into an interview, a demo and a pack of documents. Start with a new idea or
+      from a brief you already have, or load the sample runs to see how it works.
     </Empty>
   );
 }
@@ -143,54 +156,77 @@ export function FactoryButton({ ctx }: { ctx: AddonUiContext }) {
   const { data } = useAllRuns();
   const active = useActiveProject();
   const count = mineCount(inbox(data ?? []));
+  const idea = useNewIdea();
+  usePendingIdea(ctx);
   return (
-    <button
-      type="button"
-      title={count ? `Jig factory · ${count} waiting for you` : "Jig factory"}
-      aria-label="Jig factory"
-      data-testid="factory-topbar"
-      className="no-drag relative inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg"
-      onClick={(e) => {
-        const hasSamples = (data ?? []).some((r) => r.projectId === active?.id && isSample(r.id));
-        ctx.menu(
-          [
-            {
-              label: "Floor",
-              icon: "layout-grid",
-              testId: "factory-menu-floor",
-              onSelect: () => openFloor(ctx),
-            },
-            {
-              label: "Inbox",
-              icon: "inbox",
-              badge: count ? String(count) : undefined,
-              testId: "factory-menu-inbox",
-              onSelect: () => openInbox(ctx),
-            },
-            { label: "Runs", icon: "list", onSelect: () => ctx.showView("factory") },
-            ...(active
-              ? [
-                  {
-                    label: "Start from a brief…",
-                    icon: "play",
-                    testId: "factory-menu-start",
-                    onSelect: () => startFromBrief(ctx),
-                  },
-                ]
-              : []),
-            { separator: true },
-            ...sampleItems(ctx, active?.id, hasSamples),
-          ],
-          e.currentTarget,
-        );
-      }}
-    >
-      <Factory className="size-4" />
-      <span className="absolute -top-0.5 -right-0.5" data-testid="factory-topbar-count">
-        <CountBadge count={count} />
-      </span>
-    </button>
+    <>
+      <button
+        type="button"
+        title={count ? `Jig factory · ${count} waiting for you` : "Jig factory"}
+        aria-label="Jig factory"
+        data-testid="factory-topbar"
+        className="no-drag relative inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg"
+        onClick={(e) => {
+          const hasSamples = (data ?? []).some((r) => r.projectId === active?.id && isSample(r.id));
+          ctx.menu(
+            [
+              {
+                label: "Floor",
+                icon: "layout-grid",
+                testId: "factory-menu-floor",
+                onSelect: () => openFloor(ctx),
+              },
+              {
+                label: "Inbox",
+                icon: "inbox",
+                badge: count ? String(count) : undefined,
+                testId: "factory-menu-inbox",
+                onSelect: () => openInbox(ctx),
+              },
+              { label: "Runs", icon: "list", onSelect: () => ctx.showView("factory") },
+              ...(active
+                ? [
+                    {
+                      label: "New idea…",
+                      icon: "lightbulb",
+                      testId: "factory-menu-new-idea",
+                      onSelect: () => openNewIdea(),
+                    },
+                    {
+                      label: "Start from a brief…",
+                      icon: "play",
+                      testId: "factory-menu-start",
+                      onSelect: () => startFromBrief(ctx),
+                    },
+                  ]
+                : []),
+              { separator: true },
+              ...sampleItems(ctx, active?.id, hasSamples),
+            ],
+            e.currentTarget,
+          );
+        }}
+      >
+        <Factory className="size-4" />
+        <span className="absolute -top-0.5 -right-0.5" data-testid="factory-topbar-count">
+          <CountBadge count={count} />
+        </span>
+      </button>
+      {idea && <NewIdeaDialog ctx={ctx} prefill={idea} />}
+    </>
   );
+}
+
+/** An idea from elsewhere (a meeting's ⋯ menu, through `ideaFrom`) opens New idea, then is dropped. */
+function usePendingIdea(ctx: AddonUiContext) {
+  const take = async () => {
+    const p = await ctx.storage.get<PendingIdea | null>(PENDING_IDEA, { scope: "global" });
+    if (!p) return;
+    await ctx.storage.set(PENDING_IDEA, null, { scope: "global" });
+    openNewIdea({ text: p.text, title: p.title, source: p.source });
+  };
+  useAddonEvent("new-idea", () => void take());
+  useEffect(() => void take(), []);
 }
 
 export function openFloor(ctx: AddonUiContext) {
@@ -253,6 +289,15 @@ export function FloorTab({ ctx }: AddonTabProps) {
         <span className="min-w-0 truncate text-sm font-semibold text-fg">{project.name}</span>
         <span className="text-sm text-hint">· Floor</span>
         <span className="flex-1" />
+        <Button
+          size="sm"
+          variant="primary"
+          icon={Lightbulb}
+          data-testid="factory-new-idea-open"
+          onClick={() => openNewIdea()}
+        >
+          New idea…
+        </Button>
         <Button size="sm" icon={Play} data-testid="factory-start-open" onClick={() => setStartOpen(true)}>
           Start from a brief…
         </Button>
@@ -409,6 +454,8 @@ export function RunTab({ ctx, params }: AddonTabProps) {
   const [sheet, setSheet] = useState<{ kind: "stage" | "gate"; id: string }>();
   const [action, setAction] = useState<{ mode: "rerun" | "fork"; stageId?: string }>();
   const [inspecting, setInspecting] = useState(false);
+  const [planning, setPlanning] = useState(false);
+  const { data: brief } = useHostCall<BriefDoc | null>("briefDoc", { projectId, runId }, { skip: !planning });
   // A modal closes after its animation: clear only the sheet it was, not one opened since.
   const closeSheet = (id: string) => setSheet((s) => (s?.id === id ? undefined : s));
   if (run === undefined || (loading && !run))
@@ -429,6 +476,22 @@ export function RunTab({ ctx, params }: AddonTabProps) {
         </span>
         <span className="flex-1" />
         {isSample(run.id) && <Badge tone="neutral">Sample</Badge>}
+        {run.stages.some((s) => s.recipe === "plan" && s.status === "needs-you") ? (
+          <Button
+            size="sm"
+            variant="primary"
+            data-testid="factory-run-plan"
+            onClick={() => setPlanning(true)}
+          >
+            Plan the run…
+          </Button>
+        ) : (
+          run.state === "interview" && (
+            <Button size="sm" data-testid="factory-run-interview" onClick={() => openInterview(ctx, run)}>
+              Interview
+            </Button>
+          )
+        )}
         <IconButton
           icon={MoreHorizontal}
           size="sm"
@@ -585,6 +648,9 @@ export function RunTab({ ctx, params }: AddonTabProps) {
         />
       )}
       {inspecting && <InspectorDialog run={run} now={now} onClose={() => setInspecting(false)} />}
+      {planning && (
+        <PlanDialog ctx={ctx} run={run} brief={brief ?? null} onClose={() => setPlanning(false)} />
+      )}
     </div>
   );
 }
@@ -908,3 +974,6 @@ function ViewRow({
     </button>
   );
 }
+
+export { fromMessage, newIdea } from "./idea";
+export { InterviewTab } from "./interview";

@@ -165,7 +165,7 @@ export function inbox(runs: Run[]): InboxItem[] {
         key: `${run.id}:${s.id}`,
         group: "ask",
         kind: "ask",
-        label: `${stageName(s.id)} asks you`,
+        label: s.recipe === "plan" ? "Plan the run" : `${stageName(s.id)} asks you`,
         stageId: s.id,
         since: s.endedAt ?? s.startedAt ?? run.updatedAt,
         owner: { kind: "me" },

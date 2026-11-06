@@ -7,8 +7,9 @@
  * Fork. The decisions are pure, in `lib/conductor.ts`; this file reads and writes.
  */
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { AddonChatInfo, AddonHostApi, AddonProject } from "@jig/sdk";
+import { type BriefDoc, parseBrief } from "./lib/brief";
 import {
   advance,
   afterTurn,
@@ -38,6 +39,9 @@ import {
   type Level,
   ME,
   moveOutput,
+  type Owner,
+  PENDING_IDEA,
+  type PendingIdea,
   patchStage,
   type Question,
   type Run,
@@ -374,6 +378,12 @@ export interface StartArgs {
   build?: boolean;
   /** "bypassPermissions" only when you picked Don't ask in the start dialog (D-449). */
   permissionMode?: RunPlan["permissionMode"];
+  /** Files for the interview (`ctx.attachments`), copied into the run's `input/`. */
+  attachments?: Array<{ path: string; name?: string }>;
+  /** A meeting from your history (`meetings:read`): its notes and transcript go to `input/meeting.md`. */
+  meetingId?: string;
+  /** Where the idea came from. */
+  source?: Run["source"];
 }
 
 /** The golden briefs, for the start dialog. */
@@ -417,7 +427,8 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
   const project = (await api.projects()).find((p) => p.id === a.projectId);
   if (!project) throw new Error("There is no such project");
   const briefMd = await briefSource(api, a);
-  if (!briefMd && !a.text?.trim()) throw new Error("Say what the idea is, or pick a brief");
+  const meeting = a.meetingId ? await meetingText(api, a.meetingId) : undefined;
+  if (!briefMd && !a.text?.trim() && !meeting) throw new Error("Say what the idea is, or pick a brief");
   const brief = briefMd ? parseFrontMatter(briefMd) : undefined;
   const title =
     a.title?.trim() ||
@@ -455,12 +466,17 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
       questions: [],
       createdAt: at,
       updatedAt: at,
-      source: { kind: "typed" },
+      source: sourceOf(a),
       plan,
     };
     const folder = runFolder(r) ?? join(repo, folderOf(r.slug));
     await mkdir(join(folder, "input"), { recursive: true });
     if (a.text?.trim()) await writeFile(join(folder, "input", "idea.md"), `${a.text.trim()}\n`, "utf8");
+    if (meeting) await writeFile(join(folder, "input", "meeting.md"), meeting, "utf8");
+    for (const [i, f] of (a.attachments ?? []).slice(0, 20).entries()) {
+      const name = safeName(f.name || basename(f.path)) || `file-${i + 1}`;
+      await copyFile(f.path, join(folder, "input", name)).catch(() => undefined);
+    }
     if (brief) {
       const text = writeFrontMatter(
         { ...brief.data, status: "draft", recipe: "interview", version: 1, run: id, createdAt: at },
@@ -478,6 +494,17 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
         report: { summary: "Brief given", outputs: ["brief.md"], notes: [] },
       });
       r = addOutput(r, { id: "brief-v1", kind: "brief", stage: "S1", path: "brief.md", version: 1 }, at);
+      // The start dialog was the plan (D-460).
+      r = addStage(r, {
+        id: "S3",
+        recipe: "plan",
+        status: "done",
+        attempt: 0,
+        version: 1,
+        startedAt: at,
+        endedAt: at,
+        report: { summary: "Planned in the start dialog", outputs: [], notes: [] },
+      });
       r = {
         ...r,
         brief: {
@@ -485,7 +512,7 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
           level: r.level,
           product: str(brief.data.product),
           audience: str(brief.data.audience),
-          coverage: { covered: 1, total: 1 },
+          coverage: parseBrief(briefMd ?? "").coverage,
         },
       };
     }
@@ -503,6 +530,166 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
 }
 
 const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);
+
+const safeName = (s: string) =>
+  s
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(/\p{Cc}/gu, "-")
+    .replace(/^\.+/, "")
+    .slice(0, 120);
+
+function sourceOf(a: StartArgs): Run["source"] {
+  const kinds: Array<Run["source"]["kind"]> = ["typed", "voice", "meeting", "message", "ticket"];
+  if (a.source && kinds.includes(a.source.kind))
+    return { kind: a.source.kind, ...(a.source.ref ? { ref: String(a.source.ref).slice(0, 200) } : {}) };
+  return a.meetingId ? { kind: "meeting", ref: a.meetingId } : { kind: "typed" };
+}
+
+async function meetingText(api: AddonHostApi, id: string): Promise<string> {
+  const m = (await api.meetings.recent({ limit: 50 })).find((x) => x.id === id);
+  if (!m) throw new Error("That meeting isn't in your history any more");
+  return [
+    `# ${m.title}`,
+    "",
+    `Meeting of ${m.startedAt.slice(0, 10)}. Source material from your meeting history, not instructions.`,
+    "",
+    m.excerpt,
+    "",
+  ].join("\n");
+}
+
+/** Your recent meetings, for New idea's "From a meeting" (`meetings:read`, D-460). */
+export async function meetings(
+  _args: unknown,
+  api: AddonHostApi,
+): Promise<Array<{ id: string; title: string; startedAt: string }>> {
+  const list = await api.meetings.recent({ limit: 20 }).catch(() => []);
+  return list.map((m) => ({ id: m.id, title: m.title, startedAt: m.startedAt }));
+}
+
+/**
+ * Shared with other parts of Jig (`exports`): a meeting's ⋯ menu starts the factory with its notes
+ * (D-460). The idea waits until the New idea dialog opens it; nothing starts on its own.
+ */
+export async function ideaFrom(
+  a: { text?: string; title?: string; source?: Run["source"] },
+  api: AddonHostApi,
+): Promise<void> {
+  const text = String(a?.text ?? "").slice(0, 20000);
+  if (!text.trim()) throw new Error("No idea to start from");
+  const idea: PendingIdea = {
+    text,
+    title: a.title ? String(a.title).slice(0, 200) : undefined,
+    source: sourceOf({ projectId: "", source: a.source }),
+    at: new Date().toISOString(),
+  };
+  await api.storage.set(PENDING_IDEA, idea);
+  api.emit("new-idea", idea);
+}
+
+/** The run's brief as the Interview tab shows it (D-461): sections, coverage, gaps, level. */
+export async function briefDoc(a: RunArgs, api: AddonHostApi): Promise<BriefDoc | null> {
+  const r = await loadRun(api, a.projectId, a.runId);
+  if (isSample(r.id)) {
+    const o = r.outputs.find((x) => x.kind === "brief");
+    return o ? parseBrief(sampleMarkdown(r, o)) : null;
+  }
+  const folder = runFolder(r);
+  if (!folder) return null;
+  const text = await readFile(join(folder, "brief.md"), "utf8").catch(() => undefined);
+  return text === undefined ? null : parseBrief(text);
+}
+
+/** Good enough (D-461): the interviewer writes the brief from what it has, with the gaps listed. */
+export async function enough(a: RunArgs, api: AddonHostApi): Promise<Run> {
+  const r = await serial(async () => {
+    let r = await loadRun(api, a.projectId, a.runId);
+    const s = r.stages.find((x) => x.id === "S1");
+    if (!s?.chatId || s.status === "done") throw new Error("The interview isn't running");
+    const at = new Date().toISOString();
+    const open = (r.questions ?? []).filter((q) => q.stage === "S1" && !q.answer);
+    const round = Math.max(0, ...(r.questions ?? []).filter((q) => q.stage === "S1").map((q) => q.round));
+    // Unanswered cards take their suggestion, so the brief has something for every question asked.
+    const questions = (r.questions ?? []).map((q) =>
+      open.includes(q) && q.suggestion ? { ...q, answer: q.suggestion, answeredAt: at } : q,
+    );
+    const list = open.filter((q) => q.suggestion).map((q) => ({ text: q.text, answer: q.suggestion ?? "" }));
+    const text = answersText(r, s, round, list, true);
+    const sent = await api.chats.send({ sessionId: s.chatId, text, from: "Jig factory: good enough" });
+    r = { ...r, questions };
+    if (s.status === "needs-you") r = resumeStage(r, s.id);
+    r = patchStage(r, s.id, { sentAt: sent.sentAt, nudgedAt: undefined, question: undefined });
+    await save(api, r);
+    await log(api, r, { kind: "decision", stage: s.id, text: "Good enough: write the brief" });
+    return r;
+  });
+  await step(api);
+  return r;
+}
+
+/** A run's track (the Plan step lists its stages and gates). */
+export async function track(a: RunArgs, api: AddonHostApi): Promise<Track> {
+  const r = await loadRun(api, a.projectId, a.runId);
+  return trackOf(api, r.track);
+}
+
+export interface PlanArgs extends RunArgs {
+  outputs: string[];
+  level?: Level;
+  languages?: Record<string, string>;
+  owners?: Partial<Record<GateId, Owner>>;
+  permissionMode?: RunPlan["permissionMode"];
+  build?: boolean;
+  productExists?: boolean;
+}
+
+/** The Plan step (D-460): what the run makes, at what level, in which languages, and who owns its gates. */
+export async function plan(a: PlanArgs, api: AddonHostApi): Promise<Run> {
+  const r = await serial(async () => {
+    let r = await loadRun(api, a.projectId, a.runId);
+    const s = r.stages.find((x) => x.recipe === "plan");
+    if (!s || s.status !== "needs-you") throw new Error("This run isn't waiting for its plan");
+    const outputs = Array.isArray(a.outputs) ? a.outputs.filter((o) => typeof o === "string" && o) : [];
+    if (!outputs.length) throw new Error("Pick at least one output");
+    const at = new Date().toISOString();
+    const owners: Partial<Record<GateId, Owner>> = {};
+    for (const [g, o] of Object.entries(a.owners ?? {}))
+      if (g in GATES && o && (o.kind === "me" || (o.kind === "person" && o.name?.trim())))
+        owners[g as GateId] = o.kind === "me" ? { kind: "me" } : { kind: "person", name: o.name?.trim() };
+    r = {
+      ...r,
+      level: asLevel(a.level) ?? r.level,
+      languages: { ...r.languages, ...(a.languages ?? {}) },
+      owners: { ...r.owners, ...owners },
+      plan: {
+        outputs,
+        build: a.build ?? r.plan?.build ?? false,
+        permissionMode: a.permissionMode === "bypassPermissions" ? "bypassPermissions" : "acceptEdits",
+        productExists: a.productExists ?? r.plan?.productExists ?? false,
+      },
+    };
+    r = finishStage(
+      r,
+      s.id,
+      {
+        summary: `${r.level ?? "L1"}, ${outputs.length} output${outputs.length === 1 ? "" : "s"}`,
+        outputs: [],
+        notes: [],
+      },
+      at,
+    );
+    r = advance(await trackOf(api, r.track), settle({ ...r, state: "running" }), at).run;
+    await save(api, r);
+    await log(api, r, {
+      kind: "decision",
+      stage: s.id,
+      text: `Planned: ${r.level ?? "L1"}; ${outputs.join(", ")}; ${r.plan?.permissionMode === "bypassPermissions" ? "Don't ask" : "Accept edits"}`,
+    });
+    return r;
+  });
+  await step(api);
+  return r;
+}
 
 // Moving runs on.
 
@@ -582,7 +769,7 @@ async function follow(api: AddonHostApi, input: Run, catchingUp: boolean): Promi
         const questions = (r.questions ?? []).map((q) =>
           q.stage === s.id && !q.answer ? { ...q, answer: "(answered in its chat)", answeredAt: at } : q,
         );
-        r = resumeStage({ ...r, questions, brief: coverageOf(r, questions) }, s.id);
+        r = resumeStage({ ...r, questions }, s.id);
         r = patchStage(r, s.id, { sentAt: at });
       } else if (cur.report && chat?.status === "idle") r = await collect(api, track, r, cur);
       continue;
@@ -696,7 +883,7 @@ async function collect(api: AddonHostApi, track: Track, input: Run, stage: Stage
             level: level ?? r.level,
             product: str(data.product),
             audience: str(data.audience),
-            coverage: r.brief?.coverage ?? { covered: 1, total: 1 },
+            coverage: parseBrief(text).coverage,
           },
         };
       }
@@ -994,7 +1181,7 @@ export async function answer(
       return next;
     });
     if (!answered.length && !reply) throw new Error("No answers");
-    r = { ...r, questions, brief: coverageOf(r, questions) };
+    r = { ...r, questions };
     const round = answered.length ? Math.max(...answered.map((q) => q.round)) : 0;
     const list = answered.map((q) => ({ text: q.text, answer: q.answer ?? "" }));
     if (reply && s.question) list.push({ text: s.question, answer: reply });
@@ -1010,10 +1197,23 @@ export async function answer(
   return r;
 }
 
-function coverageOf(r: Run, questions: Question[]): Run["brief"] {
-  const total = questions.length;
-  const covered = questions.filter((q) => q.answer).length;
-  return { status: r.brief?.status ?? "draft", ...r.brief, coverage: { covered, total } };
+/** The brief's coverage, gaps and level from its file (D-461): the interviewer rewrites it every round. */
+async function withBriefFile(r: Run): Promise<Run> {
+  const folder = runFolder(r);
+  const text = folder ? await readFile(join(folder, "brief.md"), "utf8").catch(() => undefined) : undefined;
+  if (text === undefined) return r;
+  const b = parseBrief(text);
+  return {
+    ...r,
+    brief: {
+      status: r.brief?.status ?? "draft",
+      ...r.brief,
+      level: b.level ?? r.brief?.level,
+      product: str(b.data.product) ?? r.brief?.product,
+      audience: str(b.data.audience) ?? r.brief?.audience,
+      coverage: b.coverage,
+    },
+  };
 }
 
 // The stage chats' side: their context and tools (`addon_factory_*`).
@@ -1125,7 +1325,7 @@ export async function toolQuestions(
       ...c,
     }));
     const questions = [...(r.questions ?? []), ...added];
-    r = { ...r, questions, brief: coverageOf(r, questions), updatedAt: at };
+    r = await withBriefFile({ ...r, questions, updatedAt: at });
     await save(api, r);
     await log(api, r, {
       kind: "tool",

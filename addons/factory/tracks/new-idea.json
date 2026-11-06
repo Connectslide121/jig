@@ -6,18 +6,19 @@
     { "id": "S1", "recipe": "interview", "title": "Interview", "interactive": true },
     { "id": "S2", "recipe": "scout", "title": "Scout", "after": ["S1"] },
     { "gate": "G0", "after": ["S2"] },
+    { "id": "S3", "recipe": "plan", "title": "Plan", "person": true, "after": ["G0"] },
     {
       "id": "S4",
       "recipe": "kit-extract",
       "title": "Product kit",
-      "after": ["G0"],
+      "after": ["S3"],
       "when": "product.exists"
     },
     {
       "id": "S4b",
       "recipe": "directions",
       "title": "Directions",
-      "after": ["G0"],
+      "after": ["S3"],
       "when": "!product.exists"
     },
     { "gate": "GD", "after": ["S4b"] },

@@ -35,8 +35,17 @@ export function useNow(): number {
 }
 
 /** Opens a run's page. */
-export function openRun(ctx: AddonUiContext, run: Pick<Run, "id" | "projectId" | "title">) {
-  ctx.openTab("run", { projectId: run.projectId, runId: run.id, title: run.title });
+/** Opens a run: its Interview tab while it is in its interview, else its Run tab. */
+export function openRun(
+  ctx: AddonUiContext,
+  run: Pick<Run, "id" | "projectId" | "title"> & { state?: Run["state"] },
+) {
+  if (run.state === "interview") openInterview(ctx, run);
+  else ctx.openTab("run", { projectId: run.projectId, runId: run.id, title: run.title });
+}
+
+export function openInterview(ctx: AddonUiContext, run: Pick<Run, "id" | "projectId" | "title">) {
+  ctx.openTab("interview", { projectId: run.projectId, runId: run.id, title: `${run.title} · Interview` });
 }
 
 /** The level's badge in a fixed slot (empty while the interview hasn't picked one). */

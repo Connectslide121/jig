@@ -348,7 +348,8 @@ describe("Jig factory's Conductor", () => {
     await endTurn(c);
     r = await load(r.id);
     expect(stage(r, "S1")?.status).toBe("needs-you");
-    expect(r.brief?.coverage).toEqual({ covered: 0, total: 2 });
+    // No brief yet: nothing covered (D-461).
+    expect(r.brief?.coverage).toBeUndefined();
     const qs = r.questions ?? [];
     r = await host.answer(
       {
@@ -365,6 +366,105 @@ describe("Jig factory's Conductor", () => {
     r = await load(r.id);
     expect(r.state).toBe("running");
     expect(stage(r, "S2")?.status).toBe("running");
+  });
+
+  it("measures the brief's coverage, ends the interview with Good enough, and waits for the plan", async () => {
+    let r = await host.startRun(
+      {
+        projectId: "shop",
+        text: "Gift cards for Shop",
+        attachments: [{ path: join(repo, "README.md"), name: "notes.md" }],
+      },
+      api,
+    );
+    expect(readFileSync(join(folder(r), "input", "notes.md"), "utf8")).toContain("# Shop");
+    const c = chatOf(r, "S1");
+    await writeFile(
+      join(folder(r), "brief.md"),
+      "---\nlevel: L2\n---\n# Gift cards\n\n## Problem\nNo gifts.\n\n## Users\nShoppers\n",
+    );
+    await host.toolQuestions(
+      {
+        chat: { sessionId: c.id },
+        questions: [{ text: "Who pays?", suggestion: "The giver" }, { text: "Expiry?" }],
+      },
+      api,
+    );
+    await endTurn(c);
+    r = await load(r.id);
+    expect(r.brief?.coverage).toEqual({ covered: 2, total: 9 });
+    expect(r.brief?.level).toBe("L2");
+    expect(await host.briefDoc({ projectId: "shop", runId: r.id }, api)).toMatchObject({
+      title: "Gift cards",
+      coverage: { covered: 2, total: 9 },
+    });
+    r = await host.enough({ projectId: "shop", runId: r.id }, api);
+    expect(c.sent.at(-1)).toMatch(/^\[factory answers run .* stage S1 round 1 enough\]/);
+    expect(c.sent.at(-1)).toContain("The giver");
+    expect(r.questions?.find((q) => q.text === "Who pays?")?.answer).toBe("The giver");
+    await play(r, "S1", {}, ["brief.md"]);
+    r = await load(r.id);
+    await play(r, "S2");
+    r = await host.decide({ projectId: "shop", runId: r.id, gateId: "G0", kind: "approve" }, api);
+    expect(r.state).toBe("planning");
+    expect(stage(r, "S3")).toMatchObject({ status: "needs-you", recipe: "plan" });
+    expect(stage(r, "S4b")).toBeUndefined();
+    await expect(host.plan({ projectId: "shop", runId: r.id, outputs: [] }, api)).rejects.toThrow(
+      /at least one/,
+    );
+    r = await host.plan(
+      {
+        projectId: "shop",
+        runId: r.id,
+        outputs: ["spec"],
+        level: "L3",
+        languages: { docs: "en", sales: "sv" },
+        owners: { G2: { kind: "person", name: "Alex" }, G4: { kind: "person", name: " " } },
+        permissionMode: "acceptEdits",
+      },
+      api,
+    );
+    r = await load(r.id);
+    expect(r).toMatchObject({ level: "L3", state: "running", languages: { docs: "en", sales: "sv" } });
+    expect(r.owners).toEqual({ G2: { kind: "person", name: "Alex" } });
+    expect(r.plan?.outputs).toEqual(["spec"]);
+    expect(stage(r, "S3")?.status).toBe("done");
+    expect(stage(r, "S4b")?.status).toBe("running");
+    await expect(host.plan({ projectId: "shop", runId: r.id, outputs: ["spec"] }, api)).rejects.toThrow(
+      /isn't waiting/,
+    );
+  });
+
+  it("starts from a meeting, and keeps an idea from elsewhere for the New idea dialog", async () => {
+    (api as unknown as { meetings: unknown }).meetings = {
+      recent: async () => [
+        {
+          id: "m1",
+          title: "Contoso sync",
+          startedAt: "2026-01-01T09:00:00Z",
+          excerpt: "We want gift cards.",
+        },
+      ],
+    };
+    expect(await host.meetings({}, api)).toEqual([
+      { id: "m1", title: "Contoso sync", startedAt: "2026-01-01T09:00:00Z" },
+    ]);
+    const r = await host.startRun({ projectId: "shop", meetingId: "m1" }, api);
+    expect(r.source).toEqual({ kind: "meeting", ref: "m1" });
+    expect(readFileSync(join(folder(r), "input", "meeting.md"), "utf8")).toContain("We want gift cards.");
+    await expect(host.startRun({ projectId: "shop", meetingId: "gone" }, api)).rejects.toThrow(
+      /isn't in your history/,
+    );
+    await host.ideaFrom(
+      { text: "Notes", title: "Fabrikam call", source: { kind: "meeting", ref: "m2" } },
+      api,
+    );
+    expect(data.get("pending-idea@")).toMatchObject({
+      text: "Notes",
+      source: { kind: "meeting", ref: "m2" },
+    });
+    expect(api.emit).toHaveBeenCalledWith("new-idea", expect.objectContaining({ title: "Fabrikam call" }));
+    await expect(host.ideaFrom({ text: " " }, api)).rejects.toThrow(/No idea/);
   });
 
   it("forks a run from a stage into a new worktree from its branch", async () => {

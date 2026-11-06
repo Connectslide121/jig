@@ -71,6 +71,9 @@ const statuses = (run: Run) =>
   Object.fromEntries(run.stages.map((s) => [s.id, `${s.status}${s.version ? `@${s.version}` : ""}`]));
 const approve = (run: Run, gate: Parameters<typeof decideGate>[1]) =>
   advance(TRACK, decideGate(run, gate, { kind: "approve", by: ME }, { at: T(4) }), T(4)).run;
+/** The Plan step (D-460): you confirm the plan, the run goes on. */
+const plan = (run: Run) =>
+  advance(TRACK, { ...finishStage(run, "S3", report(), T(5)), state: "running" }, T(5)).run;
 
 describe("the Conductor's moves", () => {
   it("walks a new-idea run through every stage, in parallel where the graph allows", () => {
@@ -80,6 +83,11 @@ describe("the Conductor's moves", () => {
     expect(r.gates.map((g) => `${g.id}:${g.status}`)).toEqual(["G0:waiting"]);
     expect(r.state).toBe("waiting");
     r = approve(r, "G0");
+    // The Plan step waits for you.
+    expect(statuses(r)).toMatchObject({ S3: "needs-you@1" });
+    expect(r.state).toBe("planning");
+    expect(readyStages(r)).toEqual([]);
+    r = plan(r);
     // A new product: directions, not the kit.
     expect(statuses(r)).toMatchObject({ S4: "skipped", S4b: "ready@1" });
     r = approve(work(r), "GD");
@@ -110,7 +118,7 @@ describe("the Conductor's moves", () => {
       TRACK,
       fresh({ plan: { outputs: [], build: false, permissionMode: "acceptEdits", productExists: true } }),
     ).run;
-    r = approve(work(work(r)), "G0");
+    r = plan(approve(work(work(r)), "G0"));
     expect(statuses(r)).toMatchObject({ S4: "ready@1", S4b: "skipped" });
     for (let i = 0; i < 10; i++) r = work(r, 99);
     expect(statuses(r)).toMatchObject({ S5: "done@3", S6: "done@3" });
@@ -119,7 +127,7 @@ describe("the Conductor's moves", () => {
 
   it("asks for changes at the demo gate: the demo runs again as its next version, the gate opens again", () => {
     let r = advance(TRACK, fresh()).run;
-    r = approve(work(work(r)), "G0");
+    r = plan(approve(work(work(r)), "G0"));
     r = approve(work(r), "GD");
     r = work(work(work(work(r))));
     expect(changesAt(TRACK, r, "G1")).toEqual(["S5"]);
@@ -139,7 +147,7 @@ describe("the Conductor's moves", () => {
 
   it("re-runs a stage: everything after it waits again and its gates come off", () => {
     let r = advance(TRACK, fresh()).run;
-    r = approve(work(work(r)), "G0");
+    r = plan(approve(work(work(r)), "G0"));
     r = resetFrom(TRACK, r, ["S2"], { at: T(6) });
     expect(statuses(r)).toMatchObject({ S1: "done@1", S2: "ready@2", S4: "skipped", S4b: "blocked@1" });
     expect(r.gates).toEqual([]);
@@ -149,7 +157,7 @@ describe("the Conductor's moves", () => {
 
   it("forks a run from a stage: earlier results stay, that stage and the ones after run again", () => {
     let r = advance(TRACK, fresh()).run;
-    r = approve(work(work(r)), "G0");
+    r = plan(approve(work(work(r)), "G0"));
     r = addOutput(r, { id: "scout-1", kind: "scout", stage: "S2", path: "scout.md", version: 1 });
     r = addOutput(r, { id: "brief-1", kind: "brief", stage: "S1", path: "brief.md", version: 1 });
     const f = forkRun(TRACK, r, "S2", {

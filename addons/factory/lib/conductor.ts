@@ -50,6 +50,16 @@ export function advance(track: Track, input: Run, at = now()): { run: Run; opene
         run = stageOf(run, step.stage)
           ? setStageStatus(run, step.stage, "skipped")
           : addStage(run, { id: step.stage, recipe: step.stage, status: "skipped" });
+      } else if (step.kind === "person") {
+        run = addStage(run, {
+          ...stageOf(run, step.stage),
+          id: step.stage,
+          recipe: step.recipe,
+          status: "needs-you",
+          attempt: 0,
+          version: 1,
+          startedAt: at,
+        });
       } else if (step.kind === "start") {
         const old = stageOf(run, step.stage);
         const item = track.stages.find((i) => itemId(i) === step.stage);
@@ -95,15 +105,24 @@ export function advance(track: Track, input: Run, at = now()): { run: Run; opene
   return { run: settle(run), opened };
 }
 
-/** The run's state: `interview` until its interview (S1) is over, else what its stages and gates say. */
+/**
+ * The run's state: `interview` until its interview (S1) is over, `planning` while its Plan step waits
+ * for you (D-460), else what its stages and gates say.
+ */
 export function settle(input: Run): Run {
   if (input.state === "stopped" || input.state === "stuck") return input;
   const s1 = input.stages.find((s) => s.id === "S1");
   const interviewing = !!s1 && s1.status !== "done" && s1.status !== "skipped";
   if (interviewing) return input.state === "interview" ? input : { ...input, state: "interview" };
+  if (planWaiting(input)) return input.state === "planning" ? input : { ...input, state: "planning" };
   return deriveState(
     input.state === "interview" || input.state === "planning" ? { ...input, state: "running" } : input,
   );
+}
+
+/** Whether the run's Plan step waits for you. */
+export function planWaiting(run: Run): boolean {
+  return run.stages.some((s) => s.recipe === "plan" && s.status === "needs-you");
 }
 
 /** The critic's notes for the next version of the demo. */
@@ -323,10 +342,17 @@ export function answersText(
   stage: StageRun,
   round: number,
   answers: Array<{ text: string; answer: string }>,
+  enough = false,
 ): string {
   return [
-    `[factory answers run ${run.id} stage ${stage.id} round ${round}]`,
-    "The answers to your questions:",
-    ...answers.map((a) => `- ${a.text}\n  → ${a.answer}`),
+    `[factory answers run ${run.id} stage ${stage.id} round ${round}${enough ? " enough" : ""}]`,
+    ...(answers.length
+      ? ["The answers to your questions:", ...answers.map((a) => `- ${a.text}\n  → ${a.answer}`)]
+      : []),
+    ...(enough
+      ? [
+          "That's enough questions (D-461): write the brief now from what you have, listing what is still open under Open points, then call addon_factory_report.",
+        ]
+      : []),
   ].join("\n");
 }

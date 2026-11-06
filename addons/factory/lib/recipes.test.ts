@@ -44,7 +44,7 @@ describe("the built-in recipes", () => {
   it("cover every stage of the new-idea track and every output the plan offers", () => {
     const ids = new Set(builtIns.map((r) => r.id));
     for (const item of (track as Track).stages)
-      if (item.recipe)
+      if (item.recipe && !item.person)
         for (const level of ["L1", "L2", "L3"] as const) expect(ids).toContain(recipeFor(item.recipe, level));
     for (const out of ["spec", "stories", "tests", "pitch", "deck", "course-sales", "marketing"])
       expect(ids).toContain(out);

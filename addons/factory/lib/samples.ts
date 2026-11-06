@@ -76,6 +76,7 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
   const early = (created: number, kit: "S4" | "S4b"): StageRun[] => [
     st("S1", "interview", "done", created, created - 20),
     st("S2", "scout", "done", created - 20, created - 30),
+    st("S3", "plan", "done", created - 31, created - 32),
     st(
       "S4",
       "kit-extract",
@@ -101,7 +102,7 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
     ...base(1, "guest-check-in", "Guest check-in", 25),
     level: "L2",
     state: "interview",
-    brief: { status: "draft", level: "L2", product: "Booking suite", coverage: { covered: 7, total: 12 } },
+    brief: { status: "draft", level: "L2", product: "Booking suite", coverage: { covered: 6, total: 9 } },
     stages: [st("S1", "interview", "running", 25)],
     outputs: [out("o-brief", "brief", "brief.md", 1, [h("draft", "jig", 5)])],
     gates: [],
@@ -115,7 +116,7 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
       status: "approved",
       level: "L2",
       product: "Booking suite",
-      coverage: { covered: 12, total: 12 },
+      coverage: { covered: 9, total: 9 },
     },
     stages: [
       ...early(125, "S4"),
@@ -138,7 +139,7 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
     ...base(3, "route-planner", "Route planner", 220),
     level: "L1",
     state: "waiting",
-    brief: { status: "approved", level: "L1", coverage: { covered: 12, total: 12 } },
+    brief: { status: "approved", level: "L1", coverage: { covered: 9, total: 9 } },
     stages: [
       ...early(220, "S4b"),
       st("S5", "demo-l1", "done", 160, 180, { version: 1 }),
@@ -165,7 +166,7 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
       status: "approved",
       level: "L3",
       product: "Booking suite",
-      coverage: { covered: 10, total: 10 },
+      coverage: { covered: 9, total: 9 },
     },
     stages: [
       st("S1", "interview", "done", 1440, 1420),
@@ -210,7 +211,7 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
     level: "L1",
     state: "waiting",
     owners: { G4: { kind: "person", name: "Sales lead" } },
-    brief: { status: "approved", level: "L1", coverage: { covered: 12, total: 12 } },
+    brief: { status: "approved", level: "L1", coverage: { covered: 9, total: 9 } },
     stages: [
       ...early(1560, "S4"),
       st("S5", "demo-l1", "done", 1400, 1300, { version: 1 }),
@@ -238,7 +239,7 @@ export function sampleRuns(projectId: string, now = Date.now()): Run[] {
     ...base(6, "waitlist", "Waitlist", 4320),
     level: "L2",
     state: "done",
-    brief: { status: "approved", level: "L2", coverage: { covered: 12, total: 12 } },
+    brief: { status: "approved", level: "L2", coverage: { covered: 9, total: 9 } },
     stages: [
       ...early(4320, "S4"),
       st("S5", "demo-l2", "done", 4200, 4000, { version: 1 }),
