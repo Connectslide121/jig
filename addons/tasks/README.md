@@ -29,19 +29,27 @@ went, so you read the results as a table instead of scrolling one long chat.
   (one directly, several from a menu), so do ⋯ → Files and the details. Run again sends them again.
   They're kept in `~/.jig/attachments/addon-tasks/` (copied into the chat when sent) and deleted when
   no task uses them any more (`unusedFiles`) or the dialog is cancelled (the host's `discard`).
-- **Ticks, put back, start over** (D-279): every queued task has a tick, all ticked by default (a
-  chat's tick and the header's tick several); Start takes only ticked tasks, the others stay queued
-  as "Left out". ⋯ → **Put back in the queue** returns a finished, skipped or running task to queued
+- **Stop lines** (D-398, replace the old ticks): plan a run in blocks. A **Stop here** divider between
+  two chats makes the run pause there: Start runs from the top until the next line, the run ends
+  ("Stopped at the stop line: 10 of 10 done", its own entry in History), the line is used up and the
+  next Start runs the next block, so you can release and install in between. Add one from ⋯ →
+  **Stop after this task** (also on the running task) or the **Stop here** pill that appears over the
+  gap below a chat on hover (nothing moves); several lines make several blocks. Drag tasks across a
+  line like any row (top half of the line: above it, bottom half: below it) and drag the line itself
+  by its row; ✕ removes it. A line never splits a chat: it snaps to the chat's end. Queues saved
+  with the old ticks load as plain queued tasks. The header's **Start · N** (wide) and its tooltip
+  ("Runs N tasks, then stops") count only the block before the line.
+- **Put back, start over** (D-279): ⋯ → **Put back in the queue** returns a finished, skipped or running task to queued
   in its place, as if it never ran (a running one asks first, pauses the queue and only stops
   following its chat). The view's ⋯ → **Start over…** puts every task back and takes the open run out
   of History.
 - **Parked ideas** (D-369): a pool at the very end of the queue, under a "Parked · N" divider, faded,
-  in a dashed card. Parked tasks never run and have no tick (the tick for every task passes them by);
+  in a dashed card. Parked tasks never run, whatever the stop lines say;
   nothing that isn't parked ever comes after them (`poolLast`: new tasks, Claude's too, land before
   the pool). A parked task may continue the parked one before it, so **a parked chat stays a group**
   (D-396): a card of its own in the pool, with the queue's header (grip, title, ⋯, "Parked"); the
   pool's first task always starts a chat and nothing in the queue continues a parked chat. ⋯ → **Park: keep as an idea** / **Unpark: back to the queue**
-  (unparked = last before the pool, left out), or drag a task into or out of the pool. A chat card's ⋯
+  (unparked = last before the pool), or drag a task into or out of the pool. A chat card's ⋯
   (or right-click) has **Park this chat** / **Unpark this chat**: the whole chat goes together, order and
   joins kept, and dragging the card's header into or out of the pool does the same; dragging one task
   out of a parked chat splits it like in the queue, and a single idea is never joined by a drop (make
@@ -49,7 +57,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   the divider (also the view's ⋯ and the empty queue) writes ideas straight into it. Same word and
   icons as the composer's parked prompts (D-365), but a separate pool.
 - **The header's counts** (D-369): six fixed segments, done (of what will run), running, not done, to
-  run, left out, parked; zeros stay in place, quiet; each scrolls to its first task. Narrow they get a
+  run (before the next stop line), after stop (the later blocks), parked; zeros stay in place, quiet; each scrolls to its first task. Narrow they get a
   line of their own; wide they show their words.
 - **Claude or ChatGPT (D-330):** the Queue tab's header has **Runs on** beside the project picker:
   **Project default** (the project's provider, else Jig's), **Claude** or **ChatGPT**, stored in the
@@ -77,9 +85,9 @@ went, so you read the results as a table instead of scrolling one long chat.
   pauses the queue.
 - **Reorganize (D-397):** the **Reorganize** button in the queue's header (icon only in a narrow place) asks
   a small AI (Settings → AI features → "Reorganize the task queue": Haiku by default, ChatGPT's luna) to
-  regroup and reorder the tasks that haven't run. It sees only ticked queued tasks in *blocks*: runs of
-  neighbouring ones, split by everything fixed (running, finished, needs-you, left-out and parked tasks,
-  and any task that shares a chat with one of those); while the queue runs only blocks after the running
+  regroup and reorder the tasks that haven't run. It sees only queued tasks in *blocks*: runs of
+  neighbouring ones, split by everything fixed (running, finished, needs-you and parked tasks,
+  and any task that shares a chat with one of those) and by stop lines; while the queue runs only blocks after the running
   task count. It may reorder inside a block and change which tasks continue the chat before them; it never
   changes prompts, titles, providers or models (`lib/reorganize.ts`: prompt, strict check, apply). The
   answer must list exactly those tasks, keep each block's tasks in it, start every block with a new chat,
@@ -176,8 +184,9 @@ went, so you read the results as a table instead of scrolling one long chat.
   title) under the project's name and id (D-326), so a chat anywhere finds a task and changes it with
   `addon_tasks_edit` and its `project`.
 - **Claude can change queued tasks** (`addon_tasks_edit`, D-287): title, prompt, a paragraph appended
-  to the prompt, or left out, or parked (`parked`, D-369: unparked goes last before the pool, left out
-  unless `leftOut` is false; with `wholeChat` the task's whole chat goes together, D-396). Also (D-317) whether a task continues the previous task's chat
+  to the prompt, a stop line after it (`stopAfter`, D-398: true or false, at the end of its chat, also
+  on the running task; `addon_tasks_list` shows `--- stop ---` where a line is), or parked (`parked`,
+  D-369: unparked goes last before the pool; with `wholeChat` the task's whole chat goes together, D-396). Also (D-317) whether a task continues the previous task's chat
   (`newChat`; the first task in the queue can't, the one right after a task that ran can) and where it
   is (`moveTo`: `"top"`, `"bottom"`, `{ after: id }`, `{ before: id }`; `wholeChat` moves its whole
   chat). Moves go through the same `dropSlots` as a drag: inside a chat the task continues it, between

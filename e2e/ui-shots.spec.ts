@@ -24,7 +24,7 @@ test("Tasks queue with every kind of row and a parked pool, at all three widths"
   const projectId = projects.value.projects[0]!.id;
   await hostCall(page, "projects.setActive", { id: projectId });
 
-  // The state: done, failed, running (held by the fake engine), up next, left out and two parked ideas.
+  // The state: done, failed, running (held by the fake engine), up next, one after a stop line and two parked ideas.
   const tasks = (method: string, args: Record<string, unknown> = {}) =>
     hostCall(page, "addons.call", { id: "tasks", method, args: { projectId, ...args } });
   await tasks("add", {
@@ -50,7 +50,7 @@ test("Tasks queue with every kind of row and a parked pool, at all three widths"
   });
   await tasks("add", { prompts: ["a search that forgives typos"], newChat: true, parked: true });
   await tasks("setStopOnFailure", { on: false });
-  await tasks("select", { ids: ["t5"], on: false });
+  await tasks("stop", { id: "t4", on: true });
   await tasks("start");
   const status = async () =>
     ((await tasks("list")) as { value: { tasks: Array<{ id: string; status: string }> } }).value.tasks.map(
@@ -78,6 +78,89 @@ test("Tasks queue with every kind of row and a parked pool, at all three widths"
     ok: true,
     value: 1,
   });
+});
+
+test("Tasks queue with stop lines: planned, running and after it stopped, at all three widths", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(150_000);
+  await mkdir(join(jigHome, "shop"), { recursive: true });
+  await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
+  const projects = (await hostCall(page, "projects.list")) as {
+    value: { projects: Array<{ id: string }> };
+  };
+  const projectId = projects.value.projects[0]!.id;
+  await hostCall(page, "projects.setActive", { id: projectId });
+  const tasks = (method: string, args: Record<string, unknown> = {}) =>
+    hostCall(page, "addons.call", { id: "tasks", method, args: { projectId, ...args } });
+  // Three blocks: t1 and t2 (a chat), then a stop line; t3, t4 and t5 (t5 continues t4), a second line; t6, t7.
+  await tasks("add", {
+    prompts: [
+      { prompt: "hold until released while the checkout is rebuilt" },
+      { prompt: "add the tests for the checkout", newChat: false },
+      { prompt: "write the changelog" },
+      { prompt: "update the readme" },
+      { prompt: "link the readme from the docs index", newChat: false },
+      { prompt: "tidy the styles" },
+      { prompt: "bump the dependencies" },
+    ],
+    newChat: true,
+  });
+  await tasks("add", { prompts: ["a search that forgives typos"], newChat: true, parked: true });
+  await tasks("stop", { id: "t2", on: true });
+  await tasks("stop", { id: "t5", on: true });
+  const ready = (task: string, text: string) => async (panel: import("@playwright/test").Locator) => {
+    await expect(panel.getByTestId(`task-status-${task}`)).toContainText(text);
+  };
+
+  // One placement at a time, with a pause: the app saves its own layout a moment after a change.
+  const shoot = async (name: string, task: string, text: string) => {
+    const paths: string[] = [];
+    for (const placement of ["sidebar", "bottom", "tab"] as const) {
+      await page.waitForTimeout(800);
+      const shot = await shootView(page, "addon.tasks.tasks", name, {
+        placements: [placement],
+        ready: ready(task, text),
+      });
+      paths.push(...shot);
+    }
+    console.log(paths.join("\n"));
+  };
+  await shoot("tasks-stops-planned", "t1", "Queued");
+
+  await tasks("start");
+  await expect
+    .poll(
+      async () =>
+        ((await tasks("list")) as { value: { tasks: Array<{ id: string; status: string }> } }).value.tasks[0]!
+          .status,
+      {
+        timeout: 30_000,
+      },
+    )
+    .toBe("running");
+  await shoot("tasks-stops-running", "t1", "Running");
+
+  expect(await hostCall(page, "fake.release", { match: "hold until released" })).toEqual({
+    ok: true,
+    value: 1,
+  });
+  await expect
+    .poll(
+      async () => {
+        const q = (await tasks("list")) as {
+          value: { running: boolean; tasks: Array<{ id: string; status: string }> };
+        };
+        return `${q.value.running}:${q.value.tasks
+          .slice(0, 3)
+          .map((t) => t.status)
+          .join(",")}`;
+      },
+      { timeout: 45_000 },
+    )
+    .toBe("false:done,done,queued");
+  await shoot("tasks-stops-stopped", "t3", "Queued");
 });
 
 /** An `az` for the Teams setup shots: answers like the Azure CLI, and fails at the storage account. */

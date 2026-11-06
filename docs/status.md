@@ -129,11 +129,23 @@ pull or push. The phone concierge's prompt points it at them. Unit tests and the
 **Check on your machine:** ask a chat and the phone bot "are any pipelines running?" while one runs,
 and "why did run N fail?" on a failed one; ask "anything unpushed?".
 
+Stop lines in the task queue instead of ticks (2026-11-06, D-398, Jon): the per-task tick and the
+"Left out" state are gone. Put a **Stop here** divider between two chats (⋯ → Stop after this task, or the
+pill that appears over the gap below a chat on hover) and Start runs only the tasks above the next line:
+the run ends ("Stopped at the stop line: N of M done", its own entry in History), the line is used up
+and the next Start runs the next block, so you can release and install in between. Drag tasks across a
+line or the line itself; ✕ removes it; a line never splits a chat. The header's counts say "after stop"
+for the later blocks, and Start shows "Start · N" for the block. Queues saved with ticks load as plain
+queued tasks; unparking puts a task last before the pool. Claude: `addon_tasks_edit` with `stopAfter`,
+`addon_tasks_list` shows `--- stop ---`. Checked with screenshots (planned, running, stopped) in the
+sidebar, bottom panel and a tab; unit tests and the Tasks e2e specs pass.
+**Check on your machine:** queue ten tasks, put a line after the fifth, Start, release, Start again.
+
 Parked ideas in the task queue, and a new queue header (2026-11-05, D-369, Jon): park a queued task
 (⋯ → Park: keep as an idea, or drag it below the "Parked · N" divider) and it waits in a faded pool at
 the very end of the queue: it never runs, has no tick (the tick for every task passes it by), and every
 task added later, by you or Claude, lands above it. **Add idea** in the divider (or the view's ⋯) writes
-ideas straight into the pool; Unpark puts one back as the last queued task, left out. Claude sees
+ideas straight into the pool; Unpark puts one back as the last queued task. Claude sees
 `[Queued, parked]`, can park and unpark with `addon_tasks_edit` and park with `addon_tasks_add`. The
 header now shows six fixed counts: done of what will run, running, not done, to run, left out and
 parked; zeros stay in place, and clicking a count scrolls to its first task. Narrow, the counts get

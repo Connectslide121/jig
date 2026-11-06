@@ -10,6 +10,7 @@ import {
   isFinished,
   isReady,
   type Queue,
+  runBlock,
   type Task,
   type TaskProvider,
   type TaskStatus,
@@ -53,7 +54,7 @@ export interface QueueCard {
   provider: TaskProvider;
   /** The queue's own switch: Start or Pause. */
   running: boolean;
-  /** Queued and ticked: what Start takes. */
+  /** What Start takes: the queued tasks up to the next stop line (D-398). */
   ready: number;
   /** The queue's tasks counted as the Queue tab's strip counts them (D-352), so the numbers agree. */
   counts: QueueCounts;
@@ -97,7 +98,7 @@ export function queueCard(
   // Only parked ideas (D-369): nothing for the dashboard, as an empty queue.
   if (!counts.total) return undefined;
   const active = queue.tasks.find(isActive);
-  const ready = queue.tasks.filter(isReady);
+  const ready = runBlock(queue);
   const last = queue.tasks
     .filter((t) => isFinished(t) && t.finishedAt)
     .sort((a, b) => (b.finishedAt ?? "").localeCompare(a.finishedAt ?? ""))[0];

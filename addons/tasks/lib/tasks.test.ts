@@ -26,6 +26,7 @@ import {
   editTasks,
   emptyQueue,
   finishTask,
+  hasStopLine,
   historyFiles,
   holdForUpdate,
   interruptedTurn,
@@ -35,8 +36,10 @@ import {
   listing,
   MARKED_DONE_SUMMARY,
   markDone,
+  moveStop,
   moveTasks,
   nextTask,
+  normalizeQueue,
   nudgeFrom,
   nudgeText,
   openRun,
@@ -47,6 +50,7 @@ import {
   parseReport,
   parseTaskEdits,
   parseTaskIds,
+  passStops,
   pendingReportsNote,
   poolLast,
   providerOfModel,
@@ -61,14 +65,18 @@ import {
   resetTasks,
   resumeFrom,
   resumeText,
+  runBlock,
   runOutcome,
   runProviders,
   runProvidersText,
   runsOn,
   STATUS_LABEL,
-  setLeftOut,
+  STOP_LINE_TEXT,
+  sameSlot,
+  setNewChat,
   setParked,
   setProviderChoice,
+  setStop,
   shouldPause,
   splitQueue,
   startFailed,
@@ -146,20 +154,14 @@ describe("nextTask", () => {
     q.tasks[0]!.status = "done";
     expect(nextTask(q)?.id).toBe("t2");
   });
-  it("passes tasks that are left out by, and takes them again once ticked", () => {
-    let q = setLeftOut(queued(["a", "b", "c"]), false, ["t1"]);
-    expect(nextTask(q)?.id).toBe("t1");
-    q = setLeftOut(q, true, ["t1", "t2"]);
-    expect(nextTask(q)?.id).toBe("t3");
-    expect(counts(q)).toMatchObject({ queued: 3, ready: 1 });
-    q = setLeftOut(q, false);
+  it("treats a task saved with the old tick (leftOut) as a plain queued task", () => {
+    const old = queued(["a", "b"]);
+    old.tasks[0] = { ...old.tasks[0]!, leftOut: true } as never;
+    const q = normalizeQueue(old);
     expect(nextTask(q)?.id).toBe("t1");
     expect(q.tasks.every((t) => !("leftOut" in t))).toBe(true);
-  });
-  it("only ticks or unticks queued tasks", () => {
-    const q = queued(["a", "b"]);
-    q.tasks[0]!.status = "done";
-    expect(setLeftOut(q, true).tasks.map((t) => !!t.leftOut)).toEqual([false, true]);
+    expect(counts(q)).toMatchObject({ queued: 2, ready: 2 });
+    expect(normalizeQueue(q)).toBe(q);
   });
 });
 
@@ -188,7 +190,7 @@ describe("resetTask and resetTasks", () => {
   });
   it("puts a task back as if it never ran, keeping what it is", () => {
     const task = ran(queued(["a"])).tasks[0]!;
-    expect(resetTask({ ...task, leftOut: true })).toEqual({
+    expect(resetTask({ ...task, parked: true })).toEqual({
       id: "t1",
       title: "a",
       prompt: "a",
@@ -196,7 +198,7 @@ describe("resetTask and resetTasks", () => {
       newChat: true,
       permissionMode: undefined,
       status: "queued",
-      leftOut: true,
+      parked: true,
     });
   });
   it("resets chosen tasks in place and keeps the run open", () => {
@@ -706,29 +708,27 @@ const parkedPic = (spec: string, parked: string, done = ""): Queue => {
   const q = pic(spec, done);
   return { ...q, tasks: q.tasks.map((t) => (parked.includes(t.id) ? { ...t, parked: true } : t)) };
 };
-/** The queue as a picture, a parked task marked with ~ and a left-out one with -. */
+/** The queue as a picture, a parked task marked with ~ and a stop line after a task with |. */
 const drawPool = (q: Queue) =>
   q.tasks
-    .map((t) => `${t.parked ? "~" : ""}${t.leftOut ? "-" : ""}${t.newChat ? t.id.toUpperCase() : t.id}`)
+    .map((t) => `${t.parked ? "~" : ""}${t.newChat ? t.id.toUpperCase() : t.id}${t.stopAfter ? "|" : ""}`)
     .join("");
 
 describe("the parked pool (D-369)", () => {
-  it("parks a task at the end of the pool and unparks it as the last queued task, left out", () => {
+  it("parks a task at the end of the pool and unparks it as the last queued task", () => {
     const q = parkedPic("Ab C X", "x");
     const parked = setParked(q, ["a"], true);
     // The chat's first task parks: its next task starts the chat.
     expect(drawPool(parked)).toBe("BC~X~A");
-    expect(drawPool(setParked(parked, ["x"], false))).toBe("BC-X~A");
+    expect(drawPool(setParked(parked, ["x"], false))).toBe("BCX~A");
     expect(setParked(q, ["x"], true)).toBe(q);
     expect(() => setParked(parkedPic("Ab", "", "a"), ["a"], true)).toThrow(/only queued tasks/);
   });
-  it("never runs a parked task, and no tick includes it", () => {
+  it("never runs a parked task, and no stop line goes after it", () => {
     const q = parkedPic("A B", "a");
     expect(nextTask(q)?.id).toBe("b");
     expect(nextTask(parkedPic("A", "a"))).toBeUndefined();
-    const all = setLeftOut(setLeftOut(q, true), false);
-    expect(all.tasks.find((t) => t.id === "a")).toEqual(q.tasks[0]);
-    expect(setLeftOut(q, false, ["a"]).tasks[0]).toEqual(q.tasks[0]);
+    expect(() => setStop(q, "a", true)).toThrow(/parked/);
     expect(counts(q)).toMatchObject({ queued: 1, ready: 1, parked: 1, total: 2 });
     expect(isParked(q.tasks[0]!)).toBe(true);
   });
@@ -769,8 +769,8 @@ describe("the parked pool (D-369)", () => {
     ]);
     expect(drawPool(moveTasks(q, ["a", "b"], { before: "y", join: false, parked: true }))).toBe("C~X~A~b~Y");
     expect(drawPool(moveTasks(q, ["c"], { before: "y", join: false, parked: true }))).toBe("Ab~X~C~Y");
-    expect(drawPool(moveTasks(q, ["y"], { before: "c", join: false }))).toBe("Ab-YC~X");
-    expect(drawPool(moveTasks(q, ["y"], { before: "x", join: true }))).toBe("AbC-y~X");
+    expect(drawPool(moveTasks(q, ["y"], { before: "c", join: false }))).toBe("AbYC~X");
+    expect(drawPool(moveTasks(q, ["y"], { before: "x", join: true }))).toBe("AbCy~X");
     expect(currentSlot(q, ["x"])).toEqual({ before: "y", join: false, parked: true });
   });
   it("steps stay on their side of the divider", () => {
@@ -791,10 +791,9 @@ describe("the parked pool (D-369)", () => {
     expect(() => editTasks(q, [{ id: "y", moveTo: "top" }])).not.toThrow();
     expect(drawPool(editTasks(q, [{ id: "y", moveTo: "top" }]))).toBe("AB~Y~X");
     expect(() => editTasks(q, [{ id: "x", moveTo: { before: "a" } }])).toThrow(/stays in the parked pool/);
-    expect(drawPool(editTasks(q, [{ id: "x", parked: false }]))).toBe("AB-X~Y");
-    expect(drawPool(editTasks(q, [{ id: "x", parked: false, leftOut: false }]))).toBe("ABX~Y");
+    expect(drawPool(editTasks(q, [{ id: "x", parked: false }]))).toBe("ABX~Y");
     expect(drawPool(editTasks(q, [{ id: "a", parked: true }]))).toBe("B~X~Y~A");
-    expect(() => editTasks(q, [{ id: "x", leftOut: false }])).toThrow(/unpark it first/);
+    expect(() => editTasks(q, [{ id: "x", stopAfter: true }])).toThrow(/parked/);
     expect(() => editTasks(q, [{ id: "x", newChat: false }])).toThrow(/first parked task/);
     expect(drawPool(editTasks(q, [{ id: "y", newChat: false }]))).toBe("AB~X~y");
     // All or nothing: the second edit breaks a rule, so the first doesn't apply either.
@@ -821,9 +820,9 @@ describe("parking a whole chat (D-396)", () => {
     const q = parkedPic("Abc D X", "x");
     const parked = setParked(q, ["a", "b", "c"], true);
     expect(drawPool(parked)).toBe("D~X~A~b~c");
-    // Unparking the group puts it back last before the pool, left out, still one chat.
+    // Unparking the group puts it back last before the pool, still one chat.
     const back = setParked(parked, ["a", "b", "c"], false);
-    expect(drawPool(back)).toBe("D-A-b-c~X");
+    expect(drawPool(back)).toBe("DAbc~X");
     expect(chatGroups(back).map((g) => g.tasks.length)).toEqual([1, 3, 1]);
     // Two chats at once keep their own joins.
     expect(drawPool(setParked(pic("Ab Cd E"), ["a", "b", "c", "d"], true))).toBe("E~A~b~C~d");
@@ -840,10 +839,10 @@ describe("parking a whole chat (D-396)", () => {
     const q = setParked(pic("Abc D"), ["a", "b", "c"], true);
     expect(drawPool(q)).toBe("D~A~b~c");
     // The middle one goes to the queue: its chat is cut in two.
-    expect(drawPool(moveTasks(q, ["b"], { before: "d", join: false }))).toBe("-BD~A~c");
+    expect(drawPool(moveTasks(q, ["b"], { before: "d", join: false }))).toBe("BD~A~c");
     // The head leaves: the next task starts the parked chat.
-    expect(drawPool(moveTasks(q, ["a"], { before: "d", join: false }))).toBe("-AD~B~c");
-    expect(drawPool(setParked(q, ["a"], false))).toBe("D-A~B~c");
+    expect(drawPool(moveTasks(q, ["a"], { before: "d", join: false }))).toBe("AD~B~c");
+    expect(drawPool(setParked(q, ["a"], false))).toBe("DA~B~c");
     // A task dropped inside the card joins it; at its end too, but not next to a single idea.
     const withIdea = setParked(pic("Ab C D"), ["a", "b", "d"], true);
     expect(drawPool(withIdea)).toBe("C~A~b~D");
@@ -876,10 +875,7 @@ describe("parking a whole chat (D-396)", () => {
     const q = parkedPic("Abc D X", "x");
     const edited = editTasks(q, [{ id: "b", parked: true, wholeChat: true }]);
     expect(drawPool(edited)).toBe("D~X~A~b~c");
-    expect(drawPool(editTasks(edited, [{ id: "c", parked: false, wholeChat: true }]))).toBe("D-A-b-c~X");
-    expect(drawPool(editTasks(edited, [{ id: "c", parked: false, wholeChat: true, leftOut: false }]))).toBe(
-      "DAbc~X",
-    );
+    expect(drawPool(editTasks(edited, [{ id: "c", parked: false, wholeChat: true }]))).toBe("DAbc~X");
     // Without wholeChat only that task goes.
     expect(drawPool(editTasks(q, [{ id: "b", parked: true }]))).toBe("AcD~X~B");
     // A chat that already ran: its queued rest goes, as one chat of its own.
@@ -1029,14 +1025,14 @@ describe("taskContext, counts, duration, listing", () => {
       q,
       parseTaskEdits([
         { id: b!.id, append: "Don't run e2e tests." },
-        { id: c!.id, title: "New title", prompt: "new prompt", leftOut: true },
+        { id: c!.id, title: "New title", prompt: "new prompt", stopAfter: true },
       ]),
     );
     expect(next.running).toBe(true);
     expect(next.tasks[0]).toBe(q.tasks[0]);
     expect(next.tasks[1]!.prompt).toBe(`${b!.prompt}\n\nDon't run e2e tests.`);
-    expect(next.tasks[2]).toMatchObject({ title: "New title", prompt: "new prompt", leftOut: true });
-    expect(editTasks(next, [{ id: c!.id, leftOut: false }]).tasks[2]!.leftOut).toBeUndefined();
+    expect(next.tasks[2]).toMatchObject({ title: "New title", prompt: "new prompt", stopAfter: true });
+    expect(editTasks(next, [{ id: c!.id, stopAfter: false }]).tasks[2]!.stopAfter).toBeUndefined();
     // A running task, or one that isn't there: nothing changes.
     expect(() =>
       editTasks(q, [
@@ -1052,11 +1048,11 @@ describe("taskContext, counts, duration, listing", () => {
     const q = queued(["a", "b", "c", "d"]);
     q.tasks[0] = { ...q.tasks[0]!, status: "done" };
     q.tasks[1] = { ...q.tasks[1]!, status: "running", sessionId: "s1" };
-    q.tasks[3] = { ...q.tasks[3]!, leftOut: true };
+    q.tasks[2] = { ...q.tasks[2]!, stopAfter: true };
     const text = taskContext(q, "s1");
     expect(text).toContain("never suggest these");
     expect(text).toContain(`- ${q.tasks[2]!.title}\n`);
-    expect(text).toContain(`- ${q.tasks[3]!.title} (left out of this run)`);
+    expect(text).toContain(`- ${q.tasks[3]!.title} (after a stop line: the user runs that block later)`);
     expect(text).not.toContain(`- ${q.tasks[0]!.title}`);
     const last = queued(["a"]);
     last.tasks[0] = { ...last.tasks[0]!, status: "running", sessionId: "s1" };
@@ -1081,9 +1077,9 @@ describe("taskContext, counts, duration, listing", () => {
   it("lists a queue compactly: id, status and title per task", () => {
     const q = queued(["a", "b"]);
     q.tasks[0]!.status = "done";
-    q.tasks[1]!.leftOut = true;
+    q.tasks[1]!.parked = true;
     expect(compactListing(q)).toBe(
-      "2 tasks, paused. New chats run on the project's default.\n- t1 [Done] a\n- t2 [Queued, left out] b",
+      "2 tasks, paused. New chats run on the project's default.\n- t1 [Done] a\n- t2 [Queued, parked] b",
     );
   });
 });
@@ -1530,5 +1526,145 @@ describe("permission modes (D-363)", () => {
   it("never lets Claude's add tool pick a mode", () => {
     const [task] = parseNewTasks([{ prompt: "x", permissionMode: "bypassPermissions" }]);
     expect(task).not.toHaveProperty("permissionMode");
+  });
+});
+
+describe("stop lines (D-398)", () => {
+  /** A queue with stop lines after the tasks `stops` (the picture's ids). */
+  const stopped = (spec: string, stops: string, done = ""): Queue => {
+    const q = pic(spec, done);
+    return { ...q, tasks: q.tasks.map((t) => (stops.includes(t.id) ? { ...t, stopAfter: true } : t)) };
+  };
+
+  it("puts a line after a task, ends a block there and takes the line away again", () => {
+    const q = setStop(pic("A B C D E"), "b", true);
+    expect(drawPool(q)).toBe("AB|CDE");
+    expect(hasStopLine(q.tasks[1]!)).toBe(true);
+    expect(runBlock(q).map((t) => t.id)).toEqual(["a", "b"]);
+    expect(counts(q)).toMatchObject({ queued: 5, ready: 2 });
+    expect(drawPool(setStop(q, "b", false))).toBe("ABCDE");
+    expect(runBlock(pic("A B")).map((t) => t.id)).toEqual(["a", "b"]);
+  });
+
+  it("never splits a chat: the line snaps to the chat's end, wherever it is asked for", () => {
+    const q = pic("Abc D");
+    expect(drawPool(setStop(q, "a", true))).toBe("Abc|D");
+    expect(drawPool(setStop(q, "b", true))).toBe("Abc|D");
+    expect(drawPool(setStop(setStop(q, "c", true), "a", false))).toBe("AbcD");
+    // A line saved inside a chat (or a task made to continue one) moves to its end.
+    expect(drawPool(normalizeQueue(stopped("Abc D", "a")))).toBe("Abc|D");
+    expect(drawPool(setNewChat(stopped("A B C", "a"), "b", false))).toBe("Ab|C");
+  });
+
+  it("belongs after a queued or running task, nowhere else", () => {
+    const run = pic("A B C", "");
+    run.tasks[0] = { ...run.tasks[0]!, status: "running" };
+    expect(drawPool(setStop(run, "a", true))).toBe("A|BC");
+    expect(runBlock(setStop(run, "a", true))).toEqual([]);
+    expect(() => setStop(pic("A B", "a"), "a", true)).toThrow(/queued or running/);
+    expect(() => setStop(pic("A"), "z", true)).toThrow(/no task z/);
+    // Used-up lines go, except while the queue runs (the run is about to take them).
+    const old = stopped("A B C", "a", "a");
+    expect(drawPool(normalizeQueue(old))).toBe("ABC");
+    expect(drawPool(normalizeQueue({ ...old, running: true }))).toBe("A|BC");
+    expect(drawPool(normalizeQueue(stopped("A B C", "c")))).toBe("ABC|");
+  });
+
+  it("is used up when the run reaches it, and a Start after a pause passes it", () => {
+    const q = { ...stopped("A B C", "a", "a"), running: true };
+    const passed = passStops(q);
+    expect(passed.hit).toBe(true);
+    expect(drawPool(passed.queue)).toBe("ABC");
+    expect(nextTask(passed.queue)?.id).toBe("b");
+    expect(passStops(passed.queue)).toEqual({ queue: passed.queue, hit: false });
+  });
+
+  it("stays where it is when tasks move around it", () => {
+    const q = stopped("A B C D", "b");
+    // A task that moves away leaves the line behind, after the task before it.
+    expect(drawPool(moveTasks(q, ["b"], { join: false }))).toBe("A|CDB");
+    expect(drawPool(moveTasks(q, ["d"], { before: "a", join: false }))).toBe("DAB|C");
+    // Dropped above the line the task is before it; the line stays after it. Below, the line stays put.
+    expect(drawPool(moveTasks(q, ["a"], { before: "c", join: false }))).toBe("BA|CD");
+    expect(drawPool(moveTasks(q, ["a"], { before: "c", join: false, pastStop: true }))).toBe("B|ACD");
+    expect(drawPool(moveTasks(q, ["d"], { before: "c", join: false }))).toBe("ABD|C");
+    expect(drawPool(moveTasks(q, ["d"], { before: "c", join: false, pastStop: true }))).toBe("AB|DC");
+    // Joining the chat above the line is above it too.
+    expect(drawPool(moveTasks(q, ["d"], { before: "c", join: true }))).toBe("ABd|C");
+    // Removing or parking the task above it keeps the line after its neighbour.
+    expect(drawPool(removeTasks(q, ["b"]))).toBe("A|CD");
+    expect(drawPool(setParked(q, ["b"], true))).toBe("A|CD~B");
+    // A line with nothing queued above it goes.
+    expect(drawPool(removeTasks(stopped("A B C", "a", ""), ["a"]))).toBe("BC");
+    expect(drawPool(removeTasks(pic("A B C", "a"), ["b"]))).toBe("AC");
+  });
+
+  it("offers a drop below the line as its own place, and steps over it", () => {
+    const q = stopped("A B C D", "b");
+    const slots = dropSlots(q, ["a"]);
+    expect(slots.filter((s) => s.before === "c").map((s) => [s.join, !!s.pastStop])).toEqual([
+      [true, false],
+      [false, false],
+      [false, true],
+    ]);
+    expect(sameSlot({ before: "c", join: false }, { before: "c", join: false, pastStop: true })).toBe(false);
+    // c sits right below the line.
+    expect(currentSlot(q, ["c"])).toEqual({ before: "d", join: false, pastStop: true });
+    expect(drawPool(stepTasks(q, ["c"], -1))).toBe("ABC|D");
+    expect(drawPool(stepTasks(stepTasks(q, ["c"], -1), ["c"], -1))).toBe("ABc|D");
+    const one = stepTasks(q, ["a"], 1);
+    expect(drawPool(one)).toBe("Ba|CD");
+    const two = stepTasks(one, ["a"], 1);
+    expect(drawPool(two)).toBe("BA|CD");
+    expect(drawPool(stepTasks(two, ["a"], 1))).toBe("B|ACD");
+  });
+
+  it("moves a line from after one task to after another", () => {
+    const q = stopped("A B C D", "b");
+    expect(drawPool(moveStop(q, "b", "d"))).toBe("ABCD|");
+    expect(drawPool(moveStop(q, "b", "a"))).toBe("A|BCD");
+    expect(moveStop(q, "b", "b")).toBe(q);
+    expect(() => moveStop(q, "a", "c")).toThrow(/no stop line after task a/);
+  });
+
+  it("is placed by Claude with stopAfter, also after the running task, and listed", () => {
+    const q = pic("A B C");
+    q.tasks[0] = { ...q.tasks[0]!, status: "running", sessionId: "s1" };
+    const next = editTasks(
+      q,
+      parseTaskEdits([
+        { id: "a", stopAfter: true },
+        { id: "b", stopAfter: true },
+      ]),
+    );
+    expect(drawPool(next)).toBe("A|B|C");
+    const text = listing(next);
+    expect(text.split("\n").filter((l) => l === STOP_LINE_TEXT)).toHaveLength(2);
+    expect(text.indexOf("[Running]")).toBeLessThan(text.indexOf(STOP_LINE_TEXT));
+    expect(compactListing(next)).toContain(`- ${STOP_LINE_TEXT}`);
+    expect(drawPool(editTasks(next, [{ id: "b", stopAfter: false }]))).toBe("A|BC");
+    // Another change to a running task is still refused.
+    expect(() => editTasks(q, [{ id: "a", append: "x" }])).toThrow(/only queued tasks/);
+    expect(() => parseTaskEdits([{ id: "a", stopAfter: "yes" }])).toThrow(/what to change/);
+  });
+
+  it("tells a running task's chat which queued tasks wait after a line", () => {
+    const q = stopped("A B C", "b");
+    q.tasks[0] = { ...q.tasks[0]!, status: "running", sessionId: "s1" };
+    const text = taskContext(q, "s1");
+    expect(text).toContain("- B\n");
+    expect(text).toContain("- C (after a stop line: the user runs that block later)");
+  });
+});
+
+describe("the counts around stop lines (D-398)", () => {
+  it("counts only what runs before the next line as will run", () => {
+    const q = {
+      ...pic("A B C D E", "a"),
+      tasks: pic("A B C D E", "a").tasks.map((t) => (t.id === "c" ? { ...t, stopAfter: true } : t)),
+    };
+    const c = countTasks(q.tasks);
+    expect(c.by).toMatchObject({ done: 1, upNext: 2, later: 2 });
+    expect(c.willRun).toBe(3);
   });
 });

@@ -29,9 +29,11 @@ import {
   limitedTask,
   listing,
   markDone as markTaskDone,
+  moveStop,
   moveTasks,
   type NewTask,
   nextTask,
+  normalizeQueue,
   nudgeFrom,
   nudgeText,
   openRun,
@@ -42,6 +44,7 @@ import {
   parseReport,
   parseTaskEdits,
   parseTaskIds,
+  passStops,
   pendingReportsNote,
   poolLast,
   type Queue,
@@ -56,9 +59,9 @@ import {
   resumeText,
   runsOn,
   STATUS_LABEL,
-  setLeftOut,
   setParked,
   setProviderChoice,
+  setStop,
   shouldPause,
   splitQueue,
   startFailed,
@@ -91,7 +94,11 @@ let migrated = false;
 const scope = (projectId: string) => ({ scope: "project" as const, id: projectId });
 
 async function load(api: AddonHostApi, projectId: string): Promise<Queue> {
-  return { ...emptyQueue(), ...((await api.storage.get<Queue>(KEY, scope(projectId))) ?? {}) };
+  // Queues saved before stop lines may hold ticked-off tasks (`leftOut`): plain queued tasks now (D-398).
+  return normalizeQueue({
+    ...emptyQueue(),
+    ...((await api.storage.get<Queue>(KEY, scope(projectId))) ?? {}),
+  });
 }
 
 async function loadReports(api: AddonHostApi, projectId: string): Promise<Record<string, RunReport>> {
@@ -141,7 +148,8 @@ function change<T>(
     await migrate(api);
     const before = await load(api, projectId);
     const json = JSON.stringify(before);
-    const [next, result] = await fn(before);
+    const [changed, result] = await fn(before);
+    const next = normalizeQueue(changed);
     // Saved (and the view told) only when something changed: the view's own reload calls list.
     if (JSON.stringify(next) !== json || JSON.stringify(await load(api, projectId)) !== json) {
       await api.storage.set(KEY, next, scope(projectId));
@@ -153,7 +161,8 @@ function change<T>(
       const unused = unusedFiles(before, next, historyFiles(recorded));
       if (unused.length) await api.attachments.remove(unused.map((path) => ({ path, mime: "" })));
     }
-    return result;
+    // A call that answers with the queue answers with it as stored.
+    return (result === changed ? next : result) as T;
   });
 }
 
@@ -254,9 +263,32 @@ async function turnEnded(
   }
 }
 
-/** Starts the next queued task when the queue runs and nothing else does; the run ends with the queue. */
+/**
+ * Starts the next queued task when the queue runs and nothing else does; the run ends with the queue,
+ * or at a stop line (D-398): once the task above it ended, the line is used up, the run closes and the
+ * queue pauses, so the next Start runs the next block.
+ */
 async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
   while (q.running) {
+    if (!q.tasks.some(isActive)) {
+      const passed = passStops(q);
+      if (passed.hit && nextTask(passed.queue)) {
+        const ran = q.tasks.filter((t) => t.runId && t.runId === q.runId);
+        q = closeRun({ ...passed.queue, running: false });
+        const project = (await api.projects()).find((p) => p.id === ran[0]?.projectId);
+        api.notify({
+          title: project
+            ? `Task queue stopped at a stop line in ${project.name}`
+            : "Task queue stopped at a stop line",
+          message: `Stopped at the stop line: ${ran.filter((t) => t.status === "done").length} of ${ran.length} done`,
+          tone: "success",
+          system: true,
+          actions: OPEN,
+        });
+        return q;
+      }
+      q = passed.queue;
+    }
     const task = nextTask(q);
     if (!task) {
       if (!q.tasks.some(isActive)) {
@@ -669,6 +701,7 @@ export async function move(
           before: args.slot.before,
           join: !!args.slot.join,
           ...(args.slot.parked ? { parked: true } : {}),
+          ...(args.slot.pastStop ? { pastStop: true } : {}),
         })
       : stepTasks(q, ids, args.to ?? 1),
     undefined,
@@ -788,18 +821,25 @@ export async function askReport(args: ProjectArgs & { id: string }, api: AddonHo
   await api.chats.send({ sessionId: task.sessionId, text: nudgeText(q, task), from: nudgeFrom(q, task) });
 }
 
-/** Ticks (`on`) or unticks queued tasks: unticked ones stay queued but Start passes them by. */
-export async function select(
-  args: ProjectArgs & { ids?: string[]; on: boolean },
+/**
+ * Puts a stop line after a task (`on`, at the end of its chat) or takes it away; with `to` the line moves
+ * there from after `id` (dragging a line) (D-398).
+ */
+export async function stop(
+  args: ProjectArgs & { id: string; on?: boolean; to?: string },
   api: AddonHostApi,
 ): Promise<void> {
-  const ids = Array.isArray(args.ids) ? args.ids.filter((id) => typeof id === "string") : undefined;
-  await change(api, await projectArg(api, args?.projectId), (q) => [setLeftOut(q, !args.on, ids), undefined]);
+  await change(api, await projectArg(api, args?.projectId), (q) => [
+    typeof args.to === "string"
+      ? moveStop(q, String(args.id), args.to)
+      : setStop(q, String(args.id), !!args.on),
+    undefined,
+  ]);
 }
 
 /**
  * Parks queued tasks (`on`: into the pool at the end of the queue, never run) or unparks them (to the
- * end of the queue before the pool, left out until ticked) (D-369).
+ * end of the queue before the pool) (D-369).
  */
 export async function park(
   args: ProjectArgs & { ids: string[]; on: boolean },
@@ -814,7 +854,8 @@ const unheld = ({ held: _held, ...q }: Queue): Queue => q;
 
 export async function start(args: ProjectArgs, api: AddonHostApi): Promise<void> {
   await change(api, await projectArg(api, args?.projectId), async (q) => [
-    await advance(api, openRun({ ...unheld(q), running: true })),
+    // A stop line the run already passed (a pause, a failure) doesn't stop the new run at once.
+    await advance(api, openRun({ ...passStops(unheld(q)).queue, running: true })),
     undefined,
   ]);
 }

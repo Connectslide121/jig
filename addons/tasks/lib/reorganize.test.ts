@@ -29,12 +29,12 @@ const answer = (...items: Array<[string, boolean]>) =>
 const ids = (queue: Queue) => queue.tasks.map((x) => x.id);
 
 describe("blocks", () => {
-  it("takes ticked queued tasks, split by what is fixed", () => {
+  it("takes queued tasks, split by what is fixed", () => {
     const queue = q([
       t("a", true, { status: "done" }),
       t("b"),
       t("c"),
-      t("d", true, { leftOut: true }),
+      t("d", true, { status: "skipped" }),
       t("e"),
       t("f"),
       t("g", true, { parked: true }),
@@ -45,15 +45,29 @@ describe("blocks", () => {
     ]);
   });
 
+  it("never lets a block cross a stop line (D-398)", () => {
+    const queue = q([
+      t("a"),
+      t("b", true, { stopAfter: true }),
+      t("c"),
+      t("d"),
+      t("e", true, { stopAfter: true }),
+      t("f"),
+    ]);
+    expect(blocksOf(queue).map((b) => b.map((x) => x.id))).toEqual([["a", "b"], ["c", "d", "e"], ["f"]]);
+    expect(reorganizePrompt(queue)).toContain("Block 2:");
+    expect(reorganizePrompt(queue)).not.toContain("Block 3:");
+  });
+
   it("keeps a chat that a fixed task belongs to together", () => {
-    // c continues the finished b's chat; e is continued by the left-out f.
+    // c continues the finished b's chat; e is continued by f, which was skipped.
     const queue = q([
       t("a", true, { status: "done" }),
       t("b", false, { status: "done" }),
       t("c", false),
       t("d"),
       t("e"),
-      t("f", false, { leftOut: true }),
+      t("f", false, { status: "skipped" }),
     ]);
     expect([...fixedIds(queue)].sort()).toEqual(["a", "b", "c", "e", "f"]);
     expect(
@@ -69,8 +83,10 @@ describe("blocks", () => {
   });
 
   it("says why it is off", () => {
-    expect(reorganizeBlocked(q([t("a")]))).toMatch(/two ticked/);
-    expect(reorganizeBlocked(q([t("a"), t("b", true, { leftOut: true }), t("c")]))).toMatch(/held in place/);
+    expect(reorganizeBlocked(q([t("a")]))).toMatch(/two queued/);
+    expect(
+      reorganizeBlocked(q([t("a", true, { stopAfter: true }), t("b", true, { stopAfter: true }), t("c")])),
+    ).toMatch(/split by stop lines/);
     expect(reorganizeBlocked(q([t("a"), t("b")]))).toBeUndefined();
     const running = q([t("x"), t("a", true, { status: "running" }), t("c")], true);
     expect(reorganizeBlocked(running)).toMatch(/running/);
@@ -93,7 +109,7 @@ describe("prompt", () => {
 });
 
 describe("parseProposal", () => {
-  const queue = q([t("a"), t("b", false), t("c"), t("d", true, { leftOut: true }), t("e"), t("f")]);
+  const queue = q([t("a"), t("b", false), t("c"), t("d", true, { status: "skipped" }), t("e"), t("f")]);
 
   it("reads a fenced answer and keeps short reasons", () => {
     const text = `Here you go\n\`\`\`json\n${answer(["c", true], ["a", true], ["b", false], ["f", false], ["e", true])}\n\`\`\``;
@@ -148,7 +164,7 @@ describe("applyProposal", () => {
     t("b"),
     t("c", false),
     t("d"),
-    t("e", true, { leftOut: true }),
+    t("e", true, { status: "skipped" }),
     t("f"),
     t("g"),
   ]);
@@ -230,5 +246,21 @@ describe("changesOf", () => {
     ]);
     expect(joined.filter((c) => c.regrouped).map((c) => c.id)).toEqual(["b"]);
     expect(changesAnything(joined)).toBe(true);
+  });
+});
+
+describe("applyProposal around a stop line (D-398)", () => {
+  it("keeps the line in its place while the tasks of its block change places", () => {
+    const queue = q([t("a"), t("b"), t("c", true, { stopAfter: true }), t("d"), t("e")]);
+    const proposal = parseProposal(
+      queue,
+      answer(["c", false], ["a", false], ["b", false], ["e", false], ["d", false]),
+    );
+    const next = applyProposal(queue, proposal.tasks).queue;
+    expect(next.tasks.map((x) => `${x.id}${x.stopAfter ? "|" : ""}`)).toEqual(["c", "a", "b|", "e", "d"]);
+    // A proposal that moves a task across the line is refused.
+    expect(() =>
+      parseProposal(queue, answer(["a", false], ["b", false], ["d", false], ["c", false], ["e", false])),
+    ).toThrow(/out of block/);
   });
 });

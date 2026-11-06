@@ -217,7 +217,7 @@ For a design check of a change, take the view in the state you need at every wid
 at, in one test run, instead of clicking through `npm run dev`:
 
 1. **Make the state through the host**, not the screen: `hostCall(page, "addons.call", { id, method,
-   args })` for an add-on's data (the Tasks queue: `add`, `select`, `setStopOnFailure`, `start`),
+   args })` for an add-on's data (the Tasks queue: `add`, `stop`, `setStopOnFailure`, `start`),
    `projects.add`, `sessions.send`… State the view reads from the host survives the reload below;
    an open modal or menu does not, so open those after the last placement (or screenshot them
    yourself). Writing add-on storage by hand rarely sticks: add-ons reconcile it (a "running" task
@@ -231,7 +231,7 @@ at, in one test run, instead of clicking through `npm run dev`:
    the paths; `placements` picks fewer. View ids: a core view's id, or `addon.<add-on>.<view>`.
 
 `e2e/ui-shots.spec.ts` is the worked example (a Tasks queue with done, failed, running, up next and
-left-out tasks): copy its test, change the state and the view, and run it with
+tasks after a stop line; a second test shows stop lines planned, running and stopped): copy its test, change the state and the view, and run it with
 `npm run build && JIG_UI_SHOTS=1 npx playwright test e2e/ui-shots.spec.ts`, then read the PNGs. It is
 skipped in normal runs and ignored by `e2e:changed`.
 

@@ -4,7 +4,7 @@
  * change itself with the arrangement it replaces (for Undo). The AI is asked by the view
  * (`ctx.ai.answer`, feature `taskQueueReorganize`); the host checks the answer again when it applies it.
  */
-import { isActive, isReady, type Queue, type Task } from "./tasks";
+import { hasStopLine, isActive, isReady, type Queue, type Task } from "./tasks";
 
 /** One task of an arrangement: whether it continues the chat of the task before it. */
 export interface Placed {
@@ -21,15 +21,15 @@ export interface Proposal {
   tasks: Placed[];
 }
 
-/** A task the AI may move: queued, ticked and not parked. */
+/** A task the AI may move: queued and not parked. */
 const eligible = (task: Task): boolean => isReady(task);
 
 /**
- * The tasks Reorganize leaves alone, by id: everything that isn't a ticked queued task (running,
- * finished, needing you, left out, parked), and what holds a chat together with them: a task that
- * continues a fixed one stays behind it, and one a fixed task continues stays before it, so no chat
- * a fixed task belongs to ever changes.
- * Stop lines (a later change) are one more reason to be fixed: the blocks are what lies between them.
+ * The tasks Reorganize leaves alone, by id: everything that isn't a queued task (running, finished,
+ * needing you, parked), and what holds a chat together with them: a task that continues a fixed one
+ * stays behind it, and one a fixed task continues stays before it, so no chat a fixed task belongs to
+ * ever changes. Stop lines (D-398) are not tasks but they bound the blocks (`blocksOf`): nothing moves
+ * across one.
  */
 export function fixedIds(queue: Pick<Queue, "tasks">): Set<string> {
   const { tasks } = queue;
@@ -51,9 +51,9 @@ export function fixedIds(queue: Pick<Queue, "tasks">): Set<string> {
 }
 
 /**
- * The blocks Reorganize may change: runs of neighbouring movable tasks. While the queue runs (or a task
- * is active) only the blocks after the last running task count: the ones before it already ran their
- * turn in the queue's order.
+ * The blocks Reorganize may change: runs of neighbouring movable tasks, each ending at a stop line. While
+ * the queue runs (or a task is active) only the blocks after the last running task count: the ones
+ * before it already ran their turn in the queue's order.
  */
 export function blocksOf(queue: Pick<Queue, "tasks"> & { running?: boolean }): Task[][] {
   const fixed = fixedIds(queue);
@@ -67,7 +67,8 @@ export function blocksOf(queue: Pick<Queue, "tasks"> & { running?: boolean }): T
     }
     if (!open) blocks.push([]);
     blocks[blocks.length - 1]!.push(task);
-    open = true;
+    // A stop line after it ends the block: the next task starts another.
+    open = !hasStopLine(task);
   });
   return blocks;
 }
@@ -82,8 +83,8 @@ export function reorganizeBlocked(queue: Pick<Queue, "tasks"> & { running?: bool
   if (queued >= MIN_MOVABLE)
     return queue.running || queue.tasks.some(isActive)
       ? "Nothing to reorganize after the task that is running"
-      : "The queued tasks are held in place by chats that already ran or are left out";
-  return "Needs two ticked queued tasks that haven't run";
+      : "The queued tasks are held in place by chats that already ran or are split by stop lines";
+  return "Needs two queued tasks that haven't run";
 }
 
 const PROMPT_CHARS = 700;
@@ -142,8 +143,7 @@ export function reorganizePrompt(queue: Pick<Queue, "tasks"> & { running?: boole
   const others = queue.tasks.filter((t) => !movable.has(t.id)).slice(0, 40);
   if (others.length) {
     lines.push("", "Other tasks in the queue, fixed in place (for context only; do not list them):");
-    for (const t of others)
-      lines.push(`- id ${t.id} (${t.parked ? "parked" : t.leftOut ? "left out" : t.status}): "${t.title}"`);
+    for (const t of others) lines.push(`- id ${t.id} (${t.parked ? "parked" : t.status}): "${t.title}"`);
   }
   return lines.join("\n");
 }
@@ -303,7 +303,12 @@ export function applyProposal(
     const source = slots.get(t.id);
     if (!source) return t;
     const newChat = place.get(source.id)!.newChat;
-    return newChat === source.newChat ? source : { ...source, newChat };
+    // A stop line stays in its place: it belongs to the slot, not to the task that lands there.
+    const { stopAfter: _moved, ...plain } = source;
+    const settled: Task = t.stopAfter ? { ...plain, stopAfter: true } : plain;
+    return newChat === settled.newChat && JSON.stringify(settled) === JSON.stringify(source)
+      ? source
+      : { ...settled, newChat };
   });
   return { queue: { ...queue, tasks: next }, previous };
 }

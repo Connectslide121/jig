@@ -202,45 +202,67 @@ test("Tasks: a chat reports its ended task again after a follow-up, and the row 
   expect(after.value.tasks.find((t) => t.id === "t2")!.status).toBe("done");
 });
 
-test("Tasks: leave tasks out, put a task back and start the queue over", async ({ page, jigHome }) => {
+test("Tasks: a stop line ends a run, the next Start runs the next block, and a task goes back (D-398)", async ({
+  page,
+  jigHome,
+}) => {
   test.setTimeout(90_000);
   const ids = await twoProjects(page, jigHome);
   const view = await openTasks(page);
   await hostCall(page, "addons.call", {
     id: "tasks",
     method: "add",
-    args: { projectId: ids.shop, prompts: ["fail this task please", "update the readme"], newChat: true },
+    args: {
+      projectId: ids.shop,
+      prompts: ["update the readme", "fail this task please", "tidy the styles"],
+      newChat: true,
+    },
   });
-  // Every queued task is ticked; unticking one makes Start pass it by, and it stays queued.
-  await expect(view.getByTestId("task-tick-t1")).toBeChecked();
+  // No ticks any more: a stop line from the task's menu ends the block after it.
+  await expect(view.getByTestId("task-tick-t1")).toHaveCount(0);
+  await expect(view.getByTestId("tasks-tick-all")).toHaveCount(0);
+  await expect(view.getByTestId("tasks-start")).toHaveAttribute("title", /Starts the queued tasks/);
   const rowBefore = await view.getByTestId("task-t1").boundingBox();
-  await view.getByTestId("task-tick-t1").click();
-  await expect(view.getByTestId("task-status-t1")).toContainText("Left out");
+  await view.getByTestId("task-t1").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Stop after this task" }).click();
+  const line = view.getByTestId("tasks-stop-t1");
+  await expect(line).toContainText("Stop here");
+  // The line sits between the chats; the rows above it stay where they were.
   expect(await view.getByTestId("task-t1").boundingBox()).toEqual(rowBefore);
-  await expect(view.getByTestId("tasks-tick-all")).not.toBeChecked();
-  await view.getByTestId("tasks-start").click();
-  await expect(view.getByTestId("task-status-t2")).toContainText("Done", { timeout: 45000 });
-  await expect(view.getByTestId("task-status-t1")).toContainText("Left out");
-  await expect(view.getByTestId("tasks-start")).toBeDisabled();
+  const above = (await view.getByTestId("task-group-0").boundingBox())!;
+  const lineBox = (await line.boundingBox())!;
+  const below = (await view.getByTestId("task-group-1").boundingBox())!;
+  expect(lineBox.y).toBeGreaterThan(above.y + above.height);
+  expect(lineBox.y + lineBox.height).toBeLessThan(below.y);
+  await expect(view.getByTestId("tasks-count-toRun")).toContainText("1");
+  await expect(view.getByTestId("tasks-count-later")).toContainText("2");
+  await expect(view.getByTestId("tasks-start")).toHaveAttribute("title", /Runs 1 task, then stops/);
 
-  // A finished task goes back in its place, as if it never ran; ticking all includes both.
-  await view.getByTestId("task-t2").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Put back in the queue" }).click();
+  // Start runs the block above the line; the line is used up and the queue pauses with the rest queued.
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 45000 });
+  await expect(line).toHaveCount(0);
   await expect(view.getByTestId("task-status-t2")).toContainText("Queued");
-  await expect(view.getByTestId("task-tick-t2")).toBeChecked();
-  await view.getByTestId("tasks-tick-all").click();
+  await expect(view.getByTestId("tasks-start")).toBeVisible();
+  await expect(view.getByTestId("tasks-count-later")).toContainText("0");
+
+  // A finished task goes back in its place, as if it never ran.
+  await view.getByTestId("task-t1").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Put back in the queue" }).click();
   await expect(view.getByTestId("task-status-t1")).toContainText("Queued");
 
-  // The first fails and pauses the queue, its run still open. Start over: every task back to queued,
-  // and that run leaves the history (the finished first one stays).
+  // The next Start: the first of these fails and pauses the queue, its run still open. Start over:
+  // every task back to queued, and that run leaves the history (the finished first run stays).
+  await view.getByTestId("task-t2").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Move to top" }).click();
   await view.getByTestId("tasks-start").click();
-  await expect(view.getByTestId("task-status-t1")).toContainText("Failed", { timeout: 45000 });
-  await expect(view.getByTestId("task-status-t2")).toContainText("Queued");
+  await expect(view.getByTestId("task-status-t2")).toContainText("Failed", { timeout: 45000 });
+  await expect(view.getByTestId("task-status-t1")).toContainText("Queued");
   await view.getByRole("button", { name: "More" }).click();
   await page.getByRole("menuitem", { name: "Start over…" }).click();
   await page.getByRole("button", { name: "Start over" }).click();
-  await expect(view.getByTestId("task-status-t1")).toContainText("Queued");
   await expect(view.getByTestId("task-status-t2")).toContainText("Queued");
+  await expect(view.getByTestId("task-status-t1")).toContainText("Queued");
   const runs = (await hostCall(page, "addons.call", {
     id: "tasks",
     method: "history",
@@ -249,7 +271,7 @@ test("Tasks: leave tasks out, put a task back and start the queue over", async (
   expect(runs.value).toHaveLength(1);
 });
 
-test("Tasks: park ideas below the queue, where no tick includes them, and unpark one (D-369)", async ({
+test("Tasks: park ideas below the queue, where no run includes them, and unpark one (D-369)", async ({
   page,
   jigHome,
 }) => {
@@ -271,19 +293,17 @@ test("Tasks: park ideas below the queue, where no tick includes them, and unpark
   await expect(pool.getByTestId("tasks-pool-empty")).toBeVisible();
   await expect(view.getByTestId("tasks-count-parked")).toContainText("0");
 
-  // Park from the task's menu: it goes into the pool, faded, without a tick.
+  // Park from the task's menu: it goes into the pool, faded.
   await view.getByTestId("task-t2").click({ button: "right" });
   await page.getByRole("menuitem", { name: /^Park/ }).click();
   await expect(pool.getByTestId("task-status-t2")).toContainText("Parked");
-  await expect(view.getByTestId("task-tick-t2")).toHaveCount(0);
   await expect(view.getByTestId("tasks-count-parked")).toContainText("1");
   await expect(view.getByTestId("tasks-count-toRun")).toContainText("2");
 
-  // Unticking and ticking every task passes the parked one by.
-  await view.getByTestId("tasks-tick-all").click();
-  await expect(view.getByTestId("task-status-t1")).toContainText("Left out");
-  await view.getByTestId("tasks-tick-all").click();
-  await expect(view.getByTestId("tasks-tick-all")).toBeChecked();
+  // A stop line after the last queued task doesn't take the parked idea into the run either.
+  await view.getByTestId("task-t3").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Stop after this task" }).click();
+  await expect(view.getByTestId("tasks-stop-t3")).toBeVisible();
   await expect(view.getByTestId("task-status-t2")).toContainText("Parked");
 
   // A new idea goes straight into the pool; tasks added later still land above it.
@@ -300,10 +320,10 @@ test("Tasks: park ideas below the queue, where no tick includes them, and unpark
   await expect(pool.getByTestId("task-t5")).toHaveCount(0);
   await expect(view.getByTestId("tasks-count-parked")).toContainText("2");
 
-  // Unpark: back as the last queued task, left out until ticked.
+  // Unpark: back as the last queued task, after the stop line, before the pool.
   await pool.getByTestId("task-t2").click({ button: "right" });
   await page.getByRole("menuitem", { name: /^Unpark/ }).click();
-  await expect(view.getByTestId("task-status-t2")).toContainText("Left out");
+  await expect(view.getByTestId("task-status-t2")).toContainText("Queued");
   await expect(pool.getByTestId("task-t2")).toHaveCount(0);
   const list = (await hostCall(page, "addons.call", {
     id: "tasks",
@@ -789,14 +809,15 @@ test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it 
   await page.getByTestId("task-details").getByRole("button", { name: "Close" }).last().click();
 
   // The ChatGPT chat runs and reports through Jig's MCP server, like Codex.
-  await view.getByTestId("task-tick-t3").click();
+  await view.getByTestId("task-t2").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Stop after this task" }).click();
   await view.getByTestId("tasks-start").click();
   await expect(view.getByTestId("task-status-t2")).toContainText("Done", { timeout: 45000 });
   await expect(view.getByTestId("task-status-t1")).toContainText("Done");
   await view.getByTestId("task-group-chat-0").click();
   await expect(page.getByText("Reported from ChatGPT.").first()).toBeVisible();
 
-  // History says what the run's tasks ran on (t3 was left out, so ChatGPT only).
+  // History says what the run's tasks ran on (t3 was after the stop line, so ChatGPT only).
   const tasks = await openTasks(page);
   await tasks.getByRole("tab", { name: "History" }).click();
   await expect(tasks.getByTestId("tasks-run-provider-0")).toHaveAttribute(
@@ -895,4 +916,68 @@ test("Tasks: a task held by the fake engine stays Running until the test release
   await expect(view.getByTestId("task-status-t1")).toContainText("Running");
   expect(await hostCall(page, "fake.release", {})).toEqual({ ok: true, value: 1 });
   await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 20000 });
+});
+
+test("Tasks: tasks drag across a stop line and the line drags to another place (D-398)", async ({
+  page,
+  jigHome,
+}) => {
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts: ["one", "two", "three", "four"], newChat: true },
+  });
+  /** The queue as a picture: ids in order, upper case where a task starts a chat, | for a stop line. */
+  const order = async () => {
+    const q = (await hostCall(page, "addons.call", {
+      id: "tasks",
+      method: "list",
+      args: { projectId: ids.shop },
+    })) as { value: { tasks: Array<{ id: string; newChat: boolean; stopAfter?: boolean }> } };
+    return q.value.tasks
+      .map((t) => `${t.newChat ? t.id.toUpperCase() : t.id}${t.stopAfter ? "|" : ""}`)
+      .join(" ");
+  };
+  await expect(view.getByTestId("task-t4")).toBeVisible();
+  // The hover affordance in the gap below a chat adds a line; the rows above it don't move.
+  const before = await view.getByTestId("task-t1").boundingBox();
+  await view.getByTestId("tasks-stop-add-t2").click({ force: true });
+  await expect.poll(order).toBe("T1 T2| T3 T4");
+  await expect(view.getByTestId("tasks-stop-t2")).toBeVisible();
+  expect(await view.getByTestId("task-t1").boundingBox()).toEqual(before);
+
+  const shown = () =>
+    view
+      .locator("[data-drop-task]")
+      .evaluateAll((rows) => rows.map((r) => (r as HTMLElement).dataset.dropTask));
+  const drag = async (from: string, to: string, at: number) => {
+    const saved = (await order()).replace(/\|/g, "").toLowerCase().split(" ");
+    await expect.poll(shown).toEqual(saved);
+    const a = (await view.getByTestId(from).boundingBox())!;
+    const b = (await view.getByTestId(to).boundingBox())!;
+    const y = at < 0 ? b.height + at : at;
+    await page.mouse.move(a.x + 200, a.y + a.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(a.x + 200, a.y + 4, { steps: 3 });
+    await page.mouse.move(b.x + 200, b.y + y, { steps: 8 });
+    await page.mouse.move(b.x + 200, b.y + y + 1, { steps: 2 });
+    await page.mouse.up();
+  };
+
+  // Below the line (its lower half): the line stays where it was.
+  await drag("task-t4", "tasks-stop-t2", -4);
+  await expect.poll(order).toBe("T1 T2| T4 T3");
+  // Above the line (its upper half): the line stays after the dropped task.
+  await drag("task-t3", "tasks-stop-t2", 4);
+  await expect.poll(order).toBe("T1 T2 T3| T4");
+  // The line itself drags to the gap after another chat.
+  await drag("tasks-stop-t3", "task-t1", -6);
+  await expect.poll(order).toBe("T1| T2 T3 T4");
+  // Its ✕ takes it away.
+  await view.getByTestId("tasks-stop-t1").hover();
+  await view.getByTestId("tasks-stop-remove-t1").click();
+  await expect(view.getByTestId("tasks-stop-t1")).toHaveCount(0);
+  await expect.poll(order).toBe("T1 T2 T3 T4");
 });

@@ -33,7 +33,7 @@ import {
   CircleAlert,
   CircleCheck,
   CircleDashed,
-  CircleMinus,
+  CircleStop,
   CircleX,
   Clock,
   CornerDownRight,
@@ -56,7 +56,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { DashboardView } from "./Dashboard";
 import { reorganizeBlocked } from "./lib/reorganize";
 import { canReport } from "./lib/report";
@@ -69,7 +69,7 @@ import {
   COUNT_LABEL,
   COUNT_ORDER,
   type CountKey,
-  countKey,
+  countKeys,
   countTasks,
   countText,
   progressText,
@@ -100,6 +100,7 @@ import {
   canMarkDone,
   canReportLate,
   chatGroups,
+  chatOf,
   counts,
   currentSlot,
   type DropSlot,
@@ -108,10 +109,10 @@ import {
   duration,
   fileName,
   formatMs,
+  hasStopLine,
   isActive,
   isFinished,
   isParked,
-  isReady,
   MARKED_DONE_SUMMARY,
   type NewTask,
   type PermissionMode,
@@ -184,62 +185,6 @@ function ModeSelect({
       ))}
     </Select>
   );
-}
-
-/**
- * The tick that says whether Start takes a queued task (all ticked by default). `mixed` shows a group
- * with some ticked; `hidden` keeps its slot empty so the columns stay aligned.
- */
-function Tick({
-  checked,
-  mixed = false,
-  hidden = false,
-  label,
-  onChange,
-  testId,
-}: {
-  checked: boolean;
-  mixed?: boolean;
-  hidden?: boolean;
-  label: string;
-  onChange: (on: boolean) => void;
-  testId?: string;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = mixed;
-  }, [mixed]);
-  if (hidden) return <span className="w-4 shrink-0" />;
-  return (
-    <span className="flex w-4 shrink-0 items-center justify-center">
-      <input
-        ref={ref}
-        type="checkbox"
-        className="size-3.5 accent-accent"
-        checked={checked}
-        aria-label={label}
-        title={label}
-        data-testid={testId}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-    </span>
-  );
-}
-
-/**
- * Ticked state of a set of tasks: only queued ones count, never parked ones (D-369: no tick includes an
- * idea); none queued hides the tick.
- */
-function tickState(tasks: Task[]): { ids: string[]; checked: boolean; mixed: boolean } {
-  const queued = tasks.filter((t) => t.status === "queued" && !t.parked);
-  const ticked = queued.filter(isReady).length;
-  return {
-    ids: queued.map((t) => t.id),
-    checked: queued.length > 0 && ticked === queued.length,
-    mixed: ticked > 0 && ticked < queued.length,
-  };
 }
 
 /**
@@ -708,6 +653,23 @@ function QueuePanel({
     );
   };
 
+  /** ⋯ → a stop line after the task's chat (a line never splits a chat), or its removal. */
+  const stopEntry = (task: Task) => {
+    const end = chatOf(queue, task.id).at(-1)!;
+    const on = hasStopLine(queue.tasks.find((t) => t.id === end)!);
+    return on
+      ? {
+          label: "Remove the stop line after this task",
+          icon: "x",
+          onSelect: () => call("stop", { id: task.id, on: false }),
+        }
+      : {
+          label: "Stop after this task",
+          icon: STOP_ICON,
+          onSelect: () => call("stop", { id: task.id, on: true }),
+        };
+  };
+
   const menuFor = (task: Task, at: MouseEvent | HTMLElement) => {
     const queued = task.status === "queued";
     ctx.menu(
@@ -743,17 +705,7 @@ function QueuePanel({
         ...(queued && !task.parked
           ? [
               { label: "Edit…", icon: "pencil", onSelect: () => setEditing(task) },
-              task.leftOut
-                ? {
-                    label: "Include when starting",
-                    icon: "square-check",
-                    onSelect: () => call("select", { ids: [task.id], on: true }),
-                  }
-                : {
-                    label: "Leave out for now",
-                    icon: "square",
-                    onSelect: () => call("select", { ids: [task.id], on: false }),
-                  },
+              stopEntry(task),
               {
                 label: "Park: keep as an idea",
                 icon: PARK_ICON,
@@ -784,6 +736,7 @@ function QueuePanel({
           : []),
         ...(isActive(task)
           ? [
+              stopEntry(task),
               {
                 label: "Put back in the queue…",
                 icon: "undo-2",
@@ -858,7 +811,7 @@ function QueuePanel({
                 disabled={!n.ready}
                 title={
                   n.ready < n.queued
-                    ? `Starts the ${n.ready} ticked of ${n.queued} queued tasks`
+                    ? `Runs ${n.ready} ${n.ready === 1 ? "task" : "tasks"}, then stops at the stop line (${n.queued - n.ready} more wait after it)`
                     : n.parked
                       ? "Starts the queued tasks, one after another; parked ones stay"
                       : "Starts the queued tasks, one after another"
@@ -867,6 +820,12 @@ function QueuePanel({
                 data-testid="tasks-start"
               >
                 Start
+                {n.ready < n.queued && (
+                  <span className="@max-xl:hidden @xl:inline tabular-nums" data-testid="tasks-start-count">
+                    {" "}
+                    · {n.ready}
+                  </span>
+                )}
               </Button>
             )}
             <IconButton
@@ -929,7 +888,8 @@ function QueuePanel({
           onOpen={setOpen}
           onMenu={menuFor}
           onChatMenu={menuForChat}
-          onTick={(ids, on) => void call("select", { ids, on })}
+          onStop={(id, on) => void call("stop", { id, on })}
+          onMoveStop={(from, to) => void call("stop", { id: from, to })}
           onMove={(ids, move) => void call("move", { ids, ...move })}
           onAddIdea={() => setIdea(true)}
         />
@@ -1029,6 +989,8 @@ type MoveTo = -1 | 1 | "top" | "bottom";
  */
 const PARK_ICON = "pause";
 const QUEUE_ICON = "list-end";
+/** Stop lines (D-398) and the menu entries that place them. */
+const STOP_ICON = "circle-stop";
 
 /** The ⋯ menu's moves; up and down are also Alt+↑/↓ on a focused row (D-307). */
 const MOVES: Array<{ label: string; icon: string; shortcut?: string; to: MoveTo }> = [
@@ -1094,7 +1056,8 @@ function TaskTable({
   onOpen,
   onMenu,
   onChatMenu,
-  onTick,
+  onStop,
+  onMoveStop,
   onMove,
   onAddIdea,
 }: {
@@ -1106,14 +1069,15 @@ function TaskTable({
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
   /** The queue (not a past run): a chat card's ⋯ (park or unpark the whole chat). */
   onChatMenu?: (tasks: Task[], at: MouseEvent | HTMLElement) => void;
-  /** The queue (not a past run): ticks that include or leave out queued tasks. */
-  onTick?: (ids: string[], on: boolean) => void;
+  /** The queue (not a past run): puts a stop line after a task's chat, or takes it away (D-398). */
+  onStop?: (id: string, on: boolean) => void;
+  /** The queue (not a past run): a stop line dragged from after one task to after another. */
+  onMoveStop?: (from: string, to: string) => void;
   /** The queue (not a past run): moves queued tasks to a dropped slot, or a step. */
   onMove?: (ids: string[], move: { slot?: DropSlot; to?: MoveTo }) => void;
   /** The queue (not a past run): its parked pool's "Add idea" (D-369). */
   onAddIdea?: () => void;
 }) {
-  const all = tickState(queue.tasks);
   const groups = chatGroups(queue);
   // The parked pool is always last (D-369): the chats above it, its tasks below (a parked chat of
   // several tasks is a card there too, D-396).
@@ -1130,15 +1094,32 @@ function TaskTable({
     targetRef.current = next;
     setTarget(next);
   };
+  // A stop line being dragged (its payload is "stop:<task above it>") lands after the chat it is over.
+  const [stopTarget, setStopTarget] = useState<string>();
+  const stopTargetRef = useRef<string>(undefined);
+  const showStop = (next?: string) => {
+    if (next === stopTargetRef.current) return;
+    stopTargetRef.current = next;
+    setStopTarget(next);
+  };
   const drag = usePointerDrag<string[]>({
     scroller: scrollRef,
-    onMove: (at, ids) => aimAt(at.target, at.y, ids),
+    onMove: (at, ids) =>
+      ids[0]?.startsWith(STOP_DRAG) ? aimStop(at.target, at.y, ids[0]) : aimAt(at.target, at.y, ids),
     onDrop: (_, ids) => {
-      if (targetRef.current) onMove?.(ids, { slot: targetRef.current });
+      if (ids[0]?.startsWith(STOP_DRAG)) {
+        if (stopTargetRef.current) onMoveStop?.(ids[0].slice(STOP_DRAG.length), stopTargetRef.current);
+      } else if (targetRef.current) onMove?.(ids, { slot: targetRef.current });
     },
-    onEnd: () => show(undefined),
+    onEnd: () => {
+      show(undefined);
+      showStop(undefined);
+    },
   });
-  const dragged = drag.active;
+  const stopFrom = drag.active?.[0]?.startsWith(STOP_DRAG)
+    ? drag.active[0].slice(STOP_DRAG.length)
+    : undefined;
+  const dragged = stopFrom ? undefined : drag.active;
   // A row moved with Alt+↑/↓ keeps the focus after the queue reloads (it may be in another card now).
   const focusAfter = useRef<string>(undefined);
   useEffect(() => {
@@ -1165,8 +1146,17 @@ function TaskTable({
       return show(undefined);
     }
     const left = queue.tasks.filter((t) => !ids.includes(t.id));
-    const resolve = (prefer?: DropSlot) => {
-      if (!prefer) return undefined;
+    const resolve = (wanted?: DropSlot, exact = false) => {
+      if (!wanted) return undefined;
+      // Over a card below a stop line, the drop goes below the line.
+      const prefer =
+        !exact &&
+        !wanted.join &&
+        !wanted.parked &&
+        !wanted.pastStop &&
+        slots.some((s) => s.pastStop && s.before === wanted.before)
+          ? { ...wanted, pastStop: true }
+          : wanted;
       const found = [prefer, { ...prefer, join: !prefer.join }]
         .map((c) => slots.find((slot) => sameSlot(slot, c)))
         .find(Boolean);
@@ -1193,6 +1183,15 @@ function TaskTable({
         return show(resolve({ before: task.id, join: first !== task }));
       }
       return show(resolve({ before: left[left.indexOf(task) + 1]?.id, join: true }));
+    }
+    // A stop line: its top half drops above it (the line stays after what lands), its bottom half below.
+    const line = under.closest<HTMLElement>("[data-drop-stop]");
+    if (line) {
+      const box = line.getBoundingClientRect();
+      const before = line.dataset.dropStop || undefined;
+      return show(
+        resolve({ before, join: false, ...(y < box.top + box.height / 2 ? {} : { pastStop: true }) }, true),
+      );
     }
     // The pool's divider: its top half the end of the queue, its bottom half the top of the pool; the
     // empty pool's row, the pool.
@@ -1225,17 +1224,47 @@ function TaskTable({
       show(resolve({ before: left.find((t) => t.parked)?.id, join: false }));
   };
 
+  /**
+   * Where a stop line being dragged lands: after the chat the pointer is over (a row's lower half or the
+   * chat's header decide which gap), only after a chat that is queued or running.
+   */
+  const aimStop = (under: Element | null, y: number, payload: string) => {
+    if (!under || !scrollRef.current?.contains(under)) return showStop(undefined);
+    const row = under.closest<HTMLElement>("[data-drop-task]");
+    const header = under.closest<HTMLElement>("[data-drop-group]");
+    let gi = -1;
+    if (row) {
+      const box = row.getBoundingClientRect();
+      const at = work.findIndex((g) => g.tasks.some((t) => t.task.id === row.dataset.dropTask));
+      gi = y < box.top + box.height / 2 ? at - 1 : at;
+    } else if (header) gi = Number(header.dataset.dropGroup) - 1;
+    else return;
+    const anchor = work[gi]?.tasks[work[gi]!.tasks.length - 1]?.task;
+    const live = anchor && (anchor.status === "queued" ? !anchor.parked : isActive(anchor));
+    showStop(live && anchor.id !== payload.slice(STOP_DRAG.length) ? anchor.id : undefined);
+  };
+
   // Where the line shows: under the row a task joins after, or above a card (or below the last one).
   const joinAfter = target?.join
     ? (target.before ? rest[rest.findIndex((t) => t.id === target.before) - 1] : rest[rest.length - 1])?.id
     : undefined;
   const firstParked = rest.find((t) => t.parked)?.id;
-  const cardBefore =
+  // A stop line (D-398) after a chat: its row, which draws the drop line above or below itself.
+  const stopRows = work.map((g) => {
+    const last = g.tasks[g.tasks.length - 1]!.task;
+    return onStop && hasStopLine(last) ? last : undefined;
+  });
+  const gapAfter = (task: Task) =>
+    queue.tasks.slice(queue.tasks.indexOf(task) + 1).find((t) => !dragged?.includes(t.id))?.id;
+  const landsInGap = (gap?: string) => !!target && !target.join && !target.parked && target.before === gap;
+  const cardAt =
     target && !target.join && !target.parked && target.before && target.before !== firstParked
       ? work.findIndex((g) => g.tasks.some((t) => t.task.id === target.before))
       : -1;
+  const cardBefore = cardAt > 0 && stopRows[cardAt - 1] ? -1 : cardAt;
   // The end of the queue: above the pool (or at the very end without one).
-  const lineAtEnd = !!target && !target.join && !target.parked && target.before === firstParked;
+  const lineAtEnd =
+    !!target && !target.join && !target.parked && target.before === firstParked && !stopRows[work.length - 1];
   // In the pool: above the parked task it goes before, or below the last one.
   const poolLine = target?.parked && !target.join ? (target.before ?? "end") : undefined;
 
@@ -1253,18 +1282,8 @@ function TaskTable({
     // Narrow (a sidebar): the detail columns give way first, then time and cost, then the chats' and
     // tasks' hints beside their titles; task and status stay.
     <div ref={scrollRef} className="@container min-h-0 flex-1 overflow-auto px-3 pb-3">
-      {drag.ghost(dragLabel(queue, dragged))}
+      {drag.ghost(stopFrom ? "Stop here" : dragLabel(queue, dragged))}
       <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
-        {onTick && (
-          <Tick
-            hidden={!all.ids.length}
-            checked={all.checked}
-            mixed={all.mixed}
-            label={all.checked ? "Leave every queued task out" : "Include every queued task"}
-            onChange={(on) => onTick(all.ids, on)}
-            testId="tasks-tick-all"
-          />
-        )}
         <span className="w-6 shrink-0 text-right">#</span>
         <span className="min-w-0 flex-1">Task and how it went</span>
         <span className={cn(COL.started, CELL)}>Started</span>
@@ -1278,24 +1297,60 @@ function TaskTable({
         <span className={cn(COL.status, CELL)}>Status</span>
       </div>
       <div ref={listRef} className="flex flex-col gap-3 pt-2" data-testid="tasks-list">
-        {work.map((group, gi) => (
-          <div key={group.tasks[0]!.task.id} className="relative">
-            {cardBefore === gi && <DropLine at="above" />}
-            <ChatCard
-              ctx={ctx}
-              group={group}
-              number={gi + 1}
-              projectName={projectName(group.projectId)}
-              runsOnOf={(task) => runsOn(queue, task, projectDefault)}
-              onOpen={onOpen}
-              onMenu={onMenu}
-              onChatMenu={onChatMenu}
-              onTick={onTick}
-              dnd={dnd}
-            />
-            {lineAtEnd && gi === work.length - 1 && <DropLine at="below" />}
-          </div>
-        ))}
+        {work.map((group, gi) => {
+          const last = group.tasks[group.tasks.length - 1]!.task;
+          const stopRow = stopRows[gi];
+          return (
+            <Fragment key={group.tasks[0]!.task.id}>
+              <div className="relative">
+                {cardBefore === gi && <DropLine at="above" />}
+                <ChatCard
+                  ctx={ctx}
+                  group={group}
+                  number={gi + 1}
+                  projectName={projectName(group.projectId)}
+                  runsOnOf={(task) => runsOn(queue, task, projectDefault)}
+                  onOpen={onOpen}
+                  onMenu={onMenu}
+                  onChatMenu={onChatMenu}
+                  dnd={dnd}
+                />
+                {lineAtEnd && gi === work.length - 1 && <DropLine at="below" />}
+                {stopTarget === last.id && <DropLine at="below" />}
+                {/* Hover in the gap below a chat: a stop line can go there. It floats over the gap, so
+                    nothing moves; the ⋯ menu has the same as "Stop after this task". */}
+                {onStop &&
+                  !stopRow &&
+                  !drag.active &&
+                  (last.status === "queued" ? !last.parked : isActive(last)) && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      aria-label="Add a stop line after this chat"
+                      data-testid={`tasks-stop-add-${last.id}`}
+                      onClick={() => onStop(last.id, true)}
+                      className="group absolute inset-x-0 -bottom-3 z-10 flex h-3 items-center justify-center"
+                    >
+                      <span className="flex h-5 items-center gap-1 rounded-full border border-line bg-surface px-2 text-2xs font-medium text-muted opacity-0 shadow-sm group-hover:opacity-100">
+                        <CircleStop className="size-3" />
+                        Stop here
+                      </span>
+                    </button>
+                  )}
+              </div>
+              {stopRow && (
+                <StopLine
+                  task={stopRow}
+                  gap={gapAfter(stopRow)}
+                  drop={landsInGap(gapAfter(stopRow)) ? (target?.pastStop ? "below" : "above") : undefined}
+                  dragging={stopFrom === stopRow.id}
+                  onRemove={() => onStop?.(stopRow.id, false)}
+                  onDragStart={(e) => drag.start(e, [STOP_DRAG + stopRow.id])}
+                />
+              )}
+            </Fragment>
+          );
+        })}
         {onMove && (
           <ParkedPool
             ctx={ctx}
@@ -1317,9 +1372,71 @@ function TaskTable({
   );
 }
 
+/** What a dragged stop line carries in the drag's payload, before the id of the task above it. */
+const STOP_DRAG = "stop:";
+
+/**
+ * A stop line (D-398): a calm full-width divider between two chats where a run pauses. Drag it to another
+ * gap, × takes it away; a drop above or below it is aimed at through `data-drop-stop`. The grip, the
+ * label and the remove slot sit in fixed places, so it lines up with the rows around it.
+ */
+function StopLine({
+  task,
+  gap,
+  drop,
+  dragging,
+  onRemove,
+  onDragStart,
+}: {
+  /** The last task above the line (the line belongs to it). */
+  task: Task;
+  /** The task right below the line (none at the queue's end). */
+  gap?: string;
+  /** Where a dragged task would land: above this line, or below it. */
+  drop?: "above" | "below";
+  dragging: boolean;
+  onRemove: () => void;
+  onDragStart: (e: React.PointerEvent) => void;
+}) {
+  return (
+    <div
+      data-drop-stop={gap ?? ""}
+      data-testid={`tasks-stop-${task.id}`}
+      title="Drag to move the stop line; the run ends here and the next Start continues below it"
+      onPointerDown={onDragStart}
+      className={cn("group relative flex h-6 cursor-grab items-center gap-2 px-3", dragging && "opacity-40")}
+    >
+      {drop === "above" && <DropLine at="above" />}
+      <span className="relative flex size-4 shrink-0 items-center justify-center text-warning">
+        <CircleStop className="size-3.5 group-hover:hidden" />
+        <GripVertical aria-hidden className="hidden size-3.5 group-hover:block" />
+      </span>
+      <span className="shrink-0 text-2xs font-medium uppercase tracking-wide text-warning">Stop here</span>
+      <span className="h-px min-w-4 flex-1 bg-warning" />
+      <span className="@max-md:hidden @md:inline shrink-0 whitespace-nowrap text-2xs text-hint">
+        the run pauses here
+      </span>
+      <span className="flex w-7 shrink-0 justify-end">
+        <IconButton
+          size="sm"
+          icon={X}
+          label="Remove the stop line"
+          className="opacity-0 group-hover:opacity-100 focus:opacity-100"
+          data-testid={`tasks-stop-remove-${task.id}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        />
+      </span>
+      {drop === "below" && <DropLine at="below" />}
+    </div>
+  );
+}
+
 /**
  * The parked pool at the end of the queue (D-369): ideas kept for later, faded under a divider with
- * their count and "Add idea". They never run and no tick includes them; drag a task here to park it,
+ * their count and "Add idea". They never run and no run includes them; drag a task here to park it,
  * or a parked one up into the queue to unpark it. Always shown in the queue, so the first idea fills
  * its empty row instead of making room.
  */
@@ -1425,8 +1542,8 @@ function ParkedPool({
           >
             <span className="w-4 shrink-0" />
             <span className="line-clamp-2 min-w-0 flex-1">
-              Park ideas here: they wait below the queue, never run, and the tick that includes every task
-              passes them by. Drag a task here or pick Park in its menu.
+              Park ideas here: they wait below the queue and never run, however many stop lines pass. Drag a
+              task here or pick Park in its menu.
             </span>
           </div>
         )}
@@ -1760,7 +1877,7 @@ function RunPanel({
 
 /** The full breakdown behind the strip's lead: every count (they add up), then tasks and chats. */
 function Breakdown({ counts: c }: { counts: QueueCounts }) {
-  const always: CountKey[] = ["done", "running", "upNext", "leftOut"];
+  const always: CountKey[] = ["done", "running", "upNext", "later"];
   const row = (label: string, n: number, quiet?: boolean) => (
     <div key={label} className={cn("flex justify-between gap-8", quiet && "text-muted")}>
       <span>{label}</span>
@@ -1770,7 +1887,7 @@ function Breakdown({ counts: c }: { counts: QueueCounts }) {
   return (
     <div className="flex w-40 flex-col gap-0.5 py-1 tabular-nums" data-testid="tasks-breakdown">
       {COUNT_ORDER.filter((k) => always.includes(k) || c.by[k]).map((k) =>
-        row(COUNT_LABEL[k], c.by[k], k === "leftOut" || k === "skipped"),
+        row(COUNT_LABEL[k], c.by[k], k === "later" || k === "skipped"),
       )}
       <div className="my-1 border-t border-line" />
       {row("Tasks", c.total)}
@@ -1783,7 +1900,7 @@ function Breakdown({ counts: c }: { counts: QueueCounts }) {
 
 /** One count of the queue's header (D-369): which tasks it counts, how it reads and where it leads. */
 interface Segment {
-  key: "done" | "running" | "notDone" | "toRun" | "leftOut" | "parked";
+  key: "done" | "running" | "notDone" | "toRun" | "later" | "parked";
   n: number;
   /** Done shows "n/of": done of the tasks that will run. */
   of?: number;
@@ -1799,7 +1916,8 @@ const SEG_ICON = "size-3.5 shrink-0";
 
 /** The header's counts, in their fixed order: what ran, what runs, what will, what won't, the ideas. */
 function segments(tasks: Task[], c: QueueCounts): Segment[] {
-  const first = (keys: CountKey[]) => tasks.find((t) => !t.parked && keys.includes(countKey(t)))?.id;
+  const all = countKeys(tasks);
+  const first = (keys: CountKey[]) => tasks.find((t, i) => !t.parked && keys.includes(all[i]!))?.id;
   const notDone: CountKey[] = ["partial", "failed", "blocked", "error", "no_report"];
   const sum = (keys: CountKey[]) => keys.reduce((n, k) => n + c.by[k], 0);
   const needsYou = c.by.needs_you > 0;
@@ -1810,7 +1928,7 @@ function segments(tasks: Task[], c: QueueCounts): Segment[] {
       n: c.by.done,
       of: c.willRun,
       label: "done",
-      title: `${progressText(c)}: done of the tasks that will run (left-out, skipped and parked ones aren't counted)`,
+      title: `${progressText(c)}: done of the tasks that will run (tasks after the next stop line, skipped and parked ones aren't counted)`,
       icon: <CircleCheck className={cn(SEG_ICON, c.by.done ? "text-success" : "text-hint")} />,
       first: first(["done"]),
     },
@@ -1838,17 +1956,17 @@ function segments(tasks: Task[], c: QueueCounts): Segment[] {
       key: "toRun",
       n: c.by.upNext,
       label: "to run",
-      title: `${c.by.upNext} ticked: Start runs them`,
+      title: `${c.by.upNext} queued before the next stop line: Start runs them`,
       icon: <CircleDashed className={cn(SEG_ICON, c.by.upNext ? "text-fg" : "text-hint")} />,
       first: first(["upNext"]),
     },
     {
-      key: "leftOut",
-      n: c.by.leftOut,
-      label: "left out",
-      title: `${c.by.leftOut} unticked: they stay queued, Start passes them by`,
-      icon: <CircleMinus className={cn(SEG_ICON, "text-hint")} />,
-      first: first(["leftOut"]),
+      key: "later",
+      n: c.by.later,
+      label: "after stop",
+      title: `${c.by.later} queued after the next stop line: they run in a later block`,
+      icon: <CircleStop className={cn(SEG_ICON, c.by.later ? "text-warning" : "text-hint")} />,
+      first: first(["later"]),
     },
     {
       key: "parked",
@@ -2018,7 +2136,6 @@ function ChatCard({
   onOpen,
   onMenu,
   onChatMenu,
-  onTick,
   dnd,
   parked,
 }: {
@@ -2031,16 +2148,13 @@ function ChatCard({
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
   /** In the queue (not a past run): the header's ⋯, for a chat whose tasks are all still queued. */
   onChatMenu?: (tasks: Task[], at: MouseEvent | HTMLElement) => void;
-  /** In the queue (not a past run): ticks that include or leave out queued tasks. */
-  onTick?: (ids: string[], on: boolean) => void;
   /** In the queue: drag the header to move the whole chat (when all its tasks are still queued). */
   dnd?: QueueDnd;
-  /** A parked chat in the pool (D-396): faded, no tick, kept inside the pool's dashed card. */
+  /** A parked chat in the pool (D-396): faded, kept inside the pool's dashed card. */
   parked?: boolean;
 }) {
   const tasks = group.tasks.map((t) => t.task);
   const t = tally(tasks);
-  const ticks = tickState(tasks);
   const canDrag = !!dnd && tasks.every((task) => task.status === "queued");
   const ids = tasks.map((task) => task.id);
   return (
@@ -2066,16 +2180,6 @@ function ChatCard({
           canDrag && ids.every((id) => dnd.dragging(id)) ? "opacity-40" : parked && "opacity-60",
         )}
       >
-        {(onTick || parked) && (
-          <Tick
-            hidden={parked || !ticks.ids.length}
-            checked={ticks.checked}
-            mixed={ticks.mixed}
-            label={ticks.checked ? "Leave this chat's queued tasks out" : "Include this chat's queued tasks"}
-            onChange={(on) => onTick?.(ticks.ids, on)}
-            testId={`task-group-tick-${number - 1}`}
-          />
-        )}
         <span className="ml-2 flex size-4 shrink-0 items-center justify-center text-hint">
           <MessageSquare className={cn("size-4", canDrag && "group-hover:hidden")} />
           {canDrag && <GripVertical aria-hidden className="hidden size-4 cursor-grab group-hover:block" />}
@@ -2146,7 +2250,6 @@ function ChatCard({
           on={runsOnOf(task)}
           onOpen={() => onOpen(task.id)}
           onMenu={(at) => onMenu(task, at)}
-          onTick={onTick && ((on) => onTick([task.id], on))}
           dnd={dnd}
         />
       ))}
@@ -2165,7 +2268,6 @@ function TaskRow({
   on,
   onOpen,
   onMenu,
-  onTick,
   dnd,
 }: {
   ctx: AddonUiContext;
@@ -2176,14 +2278,11 @@ function TaskRow({
   on: RunsOn;
   onOpen: () => void;
   onMenu: (at: MouseEvent | HTMLElement) => void;
-  /** In the queue (not a past run): the tick that includes or leaves out a queued task. */
-  onTick?: (on: boolean) => void;
   /** In the queue: a queued task drags to a new place, or moves with Alt+↑/↓. */
   dnd?: QueueDnd;
 }) {
   const canDrag = !!dnd && task.status === "queued";
   const parked = isParked(task);
-  const leftOut = task.status === "queued" && !!task.leftOut && !parked;
   const detail = task.report?.summary ?? task.error ?? task.answer;
   const notes = task.report?.notes.length ?? 0;
   const followUps = task.report?.followUps.length ?? 0;
@@ -2228,16 +2327,6 @@ function TaskRow({
       )}
     >
       {dnd?.lineAfter === task.id && <DropLine at="row" />}
-      {/* A parked task has no tick, only its empty slot (D-369); the pool passes none. */}
-      {(onTick || parked) && (
-        <Tick
-          hidden={task.status !== "queued" || parked || !onTick}
-          checked={!leftOut}
-          label={leftOut ? "Include when starting" : "Leave out for now"}
-          onChange={(on) => onTick?.(on)}
-          testId={`task-tick-${task.id}`}
-        />
-      )}
       <span
         className="flex w-6 shrink-0 items-center justify-end text-xs tabular-nums text-hint"
         title={canDrag ? "Drag to move, or Alt+↑/↓" : undefined}
@@ -2245,7 +2334,7 @@ function TaskRow({
         <span className={cn(canDrag && "group-hover:hidden")}>{index + 1}</span>
         {canDrag && <GripVertical aria-hidden className="hidden size-3.5 cursor-grab group-hover:block" />}
       </span>
-      <div className={cn("flex min-w-0 flex-1 flex-col", (leftOut || parked) && "opacity-60")}>
+      <div className={cn("flex min-w-0 flex-1 flex-col", parked && "opacity-60")}>
         <div className="flex min-w-0 items-center gap-2">
           {continues && (
             <CornerDownRight className="size-3.5 shrink-0 text-hint" aria-label="Continues the chat" />
@@ -2312,11 +2401,6 @@ function TaskRow({
           <>
             <Badge tone="neutral">Parked</Badge>
             <Pause className="size-4 shrink-0 text-hint" />
-          </>
-        ) : leftOut ? (
-          <>
-            <Badge tone="neutral">Left out</Badge>
-            <CircleMinus className="size-4 shrink-0 text-hint" />
           </>
         ) : (
           <>

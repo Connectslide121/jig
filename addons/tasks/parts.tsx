@@ -82,9 +82,9 @@ export function onQueueRequest(listener: (projectId: string) => void): () => voi
   return () => queueListeners.delete(listener);
 }
 
-/** A count's colour: its status's, and neutral for up next and left out. */
+/** A count's colour: its status's, and neutral for up next and after the stop line. */
 export const countTone = (key: CountKey): Tone =>
-  key === "upNext" || key === "leftOut" ? "neutral" : STATUS_TONE[key];
+  key === "upNext" || key === "later" ? "neutral" : STATUS_TONE[key];
 
 /** A count's text colour in a sentence: only what needs an eye (running, needs you, failed) is coloured. */
 export function countTextClass(key: CountKey): string {

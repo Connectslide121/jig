@@ -38,7 +38,7 @@ describe("queueState", () => {
     expect(queueState(queue([task("t1", { status: "running" })]))).toBe("running");
     expect(queueState(queue([done("t1", "2026-11-04T10:00:00Z"), task("t2")]))).toBe("paused");
     expect(queueState(queue([done("t1", "2026-11-04T10:00:00Z")]))).toBe("finished");
-    expect(queueState(queue([task("t1", { leftOut: true })]))).toBe("idle");
+    expect(queueState(queue([task("t1", { parked: true })]))).toBe("idle");
   });
 });
 

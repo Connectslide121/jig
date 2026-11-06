@@ -48,7 +48,7 @@ it("parks and unparks a whole chat from the view, keeping it together (D-396)", 
   expect(draw(saved())).toBe("C~A~b");
   await park({ projectId: "shop", ids: ["a", "b"], on: false }, api);
   expect(draw(saved())).toBe("CAb");
-  expect(saved().tasks.every((t) => !t.parked && (t.id === "c" || t.leftOut))).toBe(true);
+  expect(saved().tasks.every((t) => !t.parked && true)).toBe(true);
 });
 
 it("lets Claude park a chat with wholeChat and add a parked chat with sameChat", async () => {
@@ -65,13 +65,10 @@ it("lets Claude park a chat with wholeChat and add a parked chat with sameChat",
   const empty = fakeApi({ ...emptyQueue(), tasks: [task("a", true)] });
   await toolAdd({ chat, tasks: ["one", "two"], parked: true, sameChat: true } as never, empty.api);
   expect(draw(empty.saved())).toBe("A~T1~t2");
-  // Unparking the chat again: wholeChat with leftOut false puts it back ticked.
-  await toolEdit(
-    { chat, tasks: [{ id: "t2", parked: false, wholeChat: true, leftOut: false }] } as never,
-    empty.api,
-  );
+  // Unparking the chat again: wholeChat puts it back as a chat of the queue.
+  await toolEdit({ chat, tasks: [{ id: "t2", parked: false, wholeChat: true }] } as never, empty.api);
   expect(draw(empty.saved())).toBe("AT1t2");
-  expect(empty.saved().tasks.some((t) => t.leftOut || t.parked)).toBe(false);
+  expect(empty.saved().tasks.some((t) => t.parked)).toBe(false);
 });
 
 it("lets a parked task continue the parked one before it, never a chat of the queue", async () => {
