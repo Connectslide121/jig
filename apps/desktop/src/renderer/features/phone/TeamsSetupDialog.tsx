@@ -331,7 +331,7 @@ export function TeamsSetupDialog({
               >
                 Start over…
               </Button>
-            ) : !view.started && !view.created ? (
+            ) : (!view.started && !view.created) || (view.created && phone.status === "off") ? (
               <Button
                 variant="ghost"
                 icon={Wrench}

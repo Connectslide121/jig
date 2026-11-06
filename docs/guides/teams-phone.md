@@ -60,6 +60,9 @@ Sign in to the portal in the tenant where your Teams is. Pick one region that ha
 8. **Teams channel.** The bot → Settings → Channels → Microsoft Teams → accept the terms → Apply.
 9. **Connect Jig.** Settings → Phone → Teams → Set up Teams… → **Made it in the portal…**: the
    Application (client) ID, and `https://<default domain>#<the JIG_RELAY_KEY you made up>`. Connect.
+   The same button reconnects Jig to a relay Set up Teams already made when Jig's saved key is lost
+   (the key is in the Function app's `JIG_RELAY_KEY` setting): it shows while setup is done but the
+   phone is not connected.
 10. **Add to Teams and pair** in the same modal: Make the app package, upload it for yourself, make
     a private team named Jig, add the app to it, and send the bot the code. The rows tick as the
     relay sees each step.
