@@ -471,8 +471,8 @@ export interface AddonChatSend {
   title?: string;
   /**
    * For a new chat. Default: the project's (or Jig's) default. "bypassPermissions" (Don't ask) is
-   * refused except for the built-in Tasks add-on, which passes it only for a task you set to Don't ask
-   * yourself (D-363).
+   * refused except for the built-in Tasks and Jig factory add-ons, which pass it only for a task or run
+   * you set to Don't ask yourself (D-363, D-447).
    */
   permissionMode?: "default" | "acceptEdits" | "plan" | "bypassPermissions";
   /**

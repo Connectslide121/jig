@@ -243,3 +243,16 @@ describe("after a stage's turn", () => {
     expect(chatNote(chat({ status: "working" }))).toBeUndefined();
   });
 });
+
+describe("the run's state", () => {
+  it("is interview until the interview is over", () => {
+    let r = advance(TRACK, fresh({ state: "interview" })).run;
+    expect(r.state).toBe("interview");
+    r = startStage(r, "S1", { chatId: "c1" });
+    r = advance(TRACK, r).run;
+    expect(r.state).toBe("interview");
+    r = advance(TRACK, finishStage({ ...r, state: "running" }, "S1", report())).run;
+    expect(r.state).toBe("running");
+    expect(readyStages(r).map((s) => s.id)).toEqual(["S2"]);
+  });
+});

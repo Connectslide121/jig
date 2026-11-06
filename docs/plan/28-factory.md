@@ -92,7 +92,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
 
 - **Branch:** `factory` (not merged into main yet). Commits are small; `git log --oneline` on it
   shows the order.
-- **Current session:** 2, the add-on core (Conductor and stage runner) — not started.
+- **Current session:** 2, the add-on core (Conductor and stage runner) — in progress.
 - **Done:** session 0 (decisions D-424…D-440, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-441).
@@ -105,9 +105,10 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** nothing half done. Next: session 2's first item (the Conductor).
-  Session 2 will need a way for the add-on to read `factory.demoKitPath` (add-ons can't read core
-  settings yet, D-441) and to start stage chats with the factory's skills, which start off.
+- **Half done / next step:** session 2: the Conductor (`host.ts`), recipes, tools and host tests are
+  in; next the fake engine's factory roles, the Run tab live (gate and stage sheets, Inspector,
+  Start from a brief…), the e2e run and the docs. Built-in add-ons read core settings with
+  `api.config()` (D-448).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -186,22 +187,22 @@ Skills: `web-artifacts`, `theme-factory`, `webapp-testing`, `web-design-guidelin
 copy of the guidelines) and the Jig-authored critic `demo-quality` (`references/rubric.md`), all off
 by default (`defaultEnabled: false`).
 
-### 2. The add-on core: Conductor and stage runner — not started
+### 2. The add-on core: Conductor and stage runner — in progress
 
-- [ ] Conductor in `host.ts`: run state machine, graph scheduling with fan-out, retries (1 per
+- [x] Conductor in `host.ts`: run state machine, graph scheduling with fan-out, retries (1 per
       stage), caps (3 revisions per gate), resume after restart, a watcher tick (1 min).
-- [ ] Stage runner on `api.chats.create/send/get` with `factory.concurrency` (default 3); one chat
+- [x] Stage runner on `api.chats.create/send/get` with `factory.concurrency` (default 3); one chat
       per stage, named "Factory · <run> · <stage>", in the run's project.
-- [ ] Unattended runs (D-438): widen D-363 so Jig factory may start stage chats in "Don't ask" when
+- [x] Unattended runs (D-438): widen D-363 so Jig factory may start stage chats in "Don't ask" when
       **you** picked it on the Plan step (user-only, like Add tasks); new decision entry
       ([architecture.md](28-factory/architecture.md) → The stage runner).
-- [ ] Recipes loader (`lib/recipes.ts`): built-in `addons/factory/recipes/*.md`, overrides in
+- [x] Recipes loader (`lib/recipes.ts`): built-in `addons/factory/recipes/*.md`, overrides in
       `<repo>/.jig/factory/recipes/`, validation, hot reload; tracks as data (`tracks/*.json`).
 - [ ] Jig's tools for stage chats (`claude.tool` slot): `factory_brief`, `factory_report`,
       `factory_ask`, `factory_questions` (interview), and `claude.context` telling a stage chat its
       role, run and what to report. All engine-neutral (Claude and ChatGPT chats); fake-engine rows
       for each. A recipe's provider and model come from `addons/shared/providers.ts` (D-412).
-- [ ] Output files with front-matter status in `docs/factory/<run>/` on branch `factory/<slug>` (D-427),
+- [x] Output files with front-matter status in `docs/factory/<run>/` on branch `factory/<slug>` (D-427),
       committed by the stage chat; the Conductor reads them back.
 - [ ] Run tab live (stage graph, outputs grid, timeline, chats), Inspector (state, prompts,
       reports, timings), re-run a stage, fork a run from a stage.

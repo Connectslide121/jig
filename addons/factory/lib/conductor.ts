@@ -37,8 +37,8 @@ function stageOf(run: Run, id: string): StageRun | undefined {
 export function advance(track: Track, input: Run, at = now()): { run: Run; opened: GateId[] } {
   let run = input;
   const opened: GateId[] = [];
-  if (run.state === "stopped" || run.state === "stuck" || run.state === "interview") return { run, opened };
-  if (run.state === "planning") run = { ...run, state: "running" };
+  if (run.state === "stopped" || run.state === "stuck") return { run, opened };
+  if (run.state === "planning" || run.state === "interview") run = { ...run, state: "running" };
   for (let guard = 0; guard < 100; guard++) {
     const steps = nextSteps(track, run, factsOf(run));
     if (!steps.length) break;
@@ -92,7 +92,18 @@ export function advance(track: Track, input: Run, at = now()): { run: Run; opene
     }
     run = deriveState(run);
   }
-  return { run: { ...deriveState(run), updatedAt: run.updatedAt }, opened };
+  return { run: settle(run), opened };
+}
+
+/** The run's state: `interview` until its interview (S1) is over, else what its stages and gates say. */
+export function settle(input: Run): Run {
+  if (input.state === "stopped" || input.state === "stuck") return input;
+  const s1 = input.stages.find((s) => s.id === "S1");
+  const interviewing = !!s1 && s1.status !== "done" && s1.status !== "skipped";
+  if (interviewing) return input.state === "interview" ? input : { ...input, state: "interview" };
+  return deriveState(
+    input.state === "interview" || input.state === "planning" ? { ...input, state: "running" } : input,
+  );
 }
 
 /** The critic's notes for the next version of the demo. */
@@ -170,7 +181,7 @@ export function resetFrom(
     .map((g) => (g.id === options.keepGate ? { ...g, status: "closed" as const } : g));
   const state =
     input.state === "stopped" || input.state === "done" || input.state === "stuck" ? "running" : input.state;
-  return deriveState({ ...input, stages, gates, state, updatedAt: at });
+  return settle({ ...input, stages, gates, state, updatedAt: at });
 }
 
 /** "Ask for changes" at a gate: the stages it runs again. */
@@ -237,13 +248,23 @@ export const BACKGROUND_WAIT_MS = 10 * 60_000;
  */
 export type TurnStep = "wait" | "resume" | "nudge" | "finish" | "fail" | "ask" | "error";
 
+/** When the Conductor last wrote to the stage's chat: its prompt, a nudge, a "carry on" or answers. */
+export function lastSent(stage: StageRun): string {
+  return (
+    [stage.sentAt, stage.nudgedAt, stage.resumedAt]
+      .filter((x): x is string => !!x)
+      .sort()
+      .at(-1) ?? ""
+  );
+}
+
 export function afterTurn(
   stage: StageRun,
   chat: ChatState,
   input: { now?: number; catchingUp?: boolean; openQuestions?: number } = {},
 ): TurnStep {
   const nowMs = input.now ?? Date.now();
-  const sent = stage.resumedAt ?? stage.nudgedAt ?? stage.sentAt ?? "";
+  const sent = lastSent(stage);
   if (chat.limit) return "wait";
   if (chat.status === "error") return stage.report ? (stage.report.failed ? "fail" : "finish") : "error";
   if (chat.status !== "idle") return "wait";

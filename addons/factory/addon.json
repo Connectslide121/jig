@@ -2,11 +2,13 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "factory",
   "name": "Jig factory",
-  "description": "Turns an idea into an interview, a polished demo and a full pack of documents and material: runs on a floor in lanes (Interview, Demo, Review, Pack, Launch, Done), each run's stages, outputs and timeline, and an inbox of everything waiting for a person across projects. Starting runs comes in a later version; sample runs show how it works.",
-  "version": "0.1.0",
+  "description": "Turns an idea into an interview, a polished demo and a full pack of documents and material: each run goes through its stages in chats of its own, in a worktree on its own branch, stopping at gates for you. Runs on a floor in lanes (Interview, Demo, Review, Pack, Launch, Done), each run's stages, outputs and timeline, and an inbox of everything waiting for a person across projects. Sample runs show how it works.",
+  "version": "0.2.0",
   "icon": "factory",
   "permissions": ["chat", "ai", "exec", "fs:read", "fs:write"],
-  "storage": { "scope": "project" },
+  "storage": {
+    "scope": "project"
+  },
   "contributes": {
     "views": [
       {
@@ -19,11 +21,31 @@
       }
     ],
     "tabs": [
-      { "type": "floor", "title": "Jig factory", "icon": "factory", "component": "FloorTab" },
-      { "type": "run", "title": "Run", "icon": "factory", "component": "RunTab" },
-      { "type": "inbox", "title": "Jig factory inbox", "icon": "inbox", "component": "InboxTab" }
+      {
+        "type": "floor",
+        "title": "Jig factory",
+        "icon": "factory",
+        "component": "FloorTab"
+      },
+      {
+        "type": "run",
+        "title": "Run",
+        "icon": "factory",
+        "component": "RunTab"
+      },
+      {
+        "type": "inbox",
+        "title": "Jig factory inbox",
+        "icon": "inbox",
+        "component": "InboxTab"
+      }
     ],
-    "topbar": [{ "id": "factory", "component": "FactoryButton" }],
+    "topbar": [
+      {
+        "id": "factory",
+        "component": "FactoryButton"
+      }
+    ],
     "actions": [
       {
         "id": "open-floor",
@@ -39,6 +61,97 @@
         "icon": "inbox",
         "run": "openInbox"
       }
+    ],
+    "watchers": [
+      {
+        "id": "tick",
+        "every": "1m",
+        "atStart": true,
+        "run": "tick"
+      }
+    ],
+    "context": {
+      "run": "context"
+    },
+    "tools": [
+      {
+        "id": "brief",
+        "description": "Gives this Jig factory stage its run: the brief, the plan, the files the stage reads and writes, the outputs so far and any changes asked at a gate. Only in a chat that runs a stage of a Jig factory run (its instructions say so).",
+        "params": {},
+        "readOnly": true,
+        "run": "toolBrief",
+        "alwaysLoad": true
+      },
+      {
+        "id": "questions",
+        "description": "The interviewer posts question cards for the person: 3 to 5 per round, each with a suggested answer and, when it helps, options. End your turn after calling it; the answers come back as your next message. Only in a chat that runs a stage of a Jig factory run (its instructions say so).",
+        "params": {
+          "questions": {
+            "type": "array",
+            "description": "The cards: [{ text, suggestion, options? }], text the question, suggestion the answer you'd propose, options a few short choices"
+          }
+        },
+        "readOnly": true,
+        "run": "toolQuestions"
+      },
+      {
+        "id": "report",
+        "description": "Reports that this Jig factory stage is done: the files it wrote (relative to the run's folder), a two-line summary and notes for the reviewer; a critic also gives quality { pass, score }. Set failed when the stage couldn't do its work. Call it once, at the end, then end your turn. Only in a chat that runs a stage of a Jig factory run (its instructions say so).",
+        "params": {
+          "summary": {
+            "type": "string",
+            "description": "What the stage made, in one or two sentences"
+          },
+          "outputs": {
+            "type": "array",
+            "description": "The files written, relative to the run's folder, e.g. [\"scout.md\"]; the main one first"
+          },
+          "notes": {
+            "type": "array",
+            "description": "Short lines for the reviewer: decisions, open points; a critic's fix list",
+            "optional": true
+          },
+          "quality": {
+            "type": "object",
+            "description": "Critique stages only: { pass: boolean, score: number 0-100 }",
+            "optional": true
+          },
+          "failed": {
+            "type": "boolean",
+            "description": "true when the stage couldn't do its work (it is retried once, then waits for a person)",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolReport",
+        "alwaysLoad": true
+      },
+      {
+        "id": "ask",
+        "description": "This Jig factory stage can't go on without a person: the run shows your question and waits. End your turn after calling it; the answer comes back in this chat. Only in a chat that runs a stage of a Jig factory run (its instructions say so).",
+        "params": {
+          "question": {
+            "type": "string",
+            "description": "What you need to know or need done, in one or two sentences"
+          }
+        },
+        "readOnly": true,
+        "run": "toolAsk"
+      },
+      {
+        "id": "runs",
+        "description": "Lists a project's Jig factory runs: their state, the stages running, the gates and stages waiting for a person, and how many outputs each has. Use it when asked how the factory is doing.",
+        "params": {
+          "project": {
+            "type": "string",
+            "description": "The project's name or id; leave out for this chat's project",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolRuns"
+      }
     ]
-  }
+  },
+  "exports": ["runs"]
 }
