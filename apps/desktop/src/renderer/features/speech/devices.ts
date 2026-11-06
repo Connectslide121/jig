@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { windowsDefaultName } from "../../../shared/meetingDevices";
 import { useConfig } from "../../stores/config";
 
 /**
@@ -14,6 +15,9 @@ export interface AudioDevice {
 export interface AudioDevices {
   inputs: AudioDevice[];
   outputs: AudioDevice[];
+  /** The names of the devices "System default" stands for now, when the system tells. */
+  defaultInput?: string;
+  defaultOutput?: string;
   /** The system hides names until the microphone has been used once. */
   named: boolean;
 }
@@ -30,7 +34,13 @@ async function listDevices(): Promise<AudioDevices> {
     real
       .filter((d) => d.kind === kind)
       .map((d, i) => ({ id: d.deviceId, label: d.label || `${name} ${i + 1}` }));
-  return { inputs: of("audioinput", "Microphone"), outputs: of("audiooutput", "Speaker"), named };
+  return {
+    inputs: of("audioinput", "Microphone"),
+    outputs: of("audiooutput", "Speaker"),
+    defaultInput: windowsDefaultName(all, "audioinput"),
+    defaultOutput: windowsDefaultName(all, "audiooutput"),
+    named,
+  };
 }
 
 /** The microphones and speakers, kept up to date as devices are plugged in or out. */

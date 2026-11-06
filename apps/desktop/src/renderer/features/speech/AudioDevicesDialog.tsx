@@ -1,20 +1,26 @@
 import { useEffect, useState } from "react";
+import { systemDefaultLabel } from "../../../shared/meetingDevices";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Button, Dialog, Select } from "../../ui";
 import { SettingRow } from "../settings/parts";
 import { type AudioDevice, useAudioDevices } from "./devices";
 
-/** A device Select: "System default", the devices, and the chosen one even while it's unplugged. */
+/**
+ * A device Select: "System default (the device it is now)", the devices, and the chosen one even
+ * while it's unplugged. Same labels as the meeting device selects (D-323).
+ */
 function DeviceSelect({
   label,
   value,
   devices,
+  defaultName,
   testId,
   onChange,
 }: {
   label: string;
   value: string;
   devices: AudioDevice[] | undefined;
+  defaultName: string | undefined;
   testId: string;
   onChange: (id: string) => void;
 }) {
@@ -24,10 +30,11 @@ function DeviceSelect({
       value={value}
       aria-label={label}
       data-testid={testId}
-      className="w-56"
+      className="w-56 truncate"
+      title={value ? devices?.find((d) => d.id === value)?.label : defaultName}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="">System default</option>
+      <option value="">{systemDefaultLabel(defaultName)}</option>
       {devices?.map((d) => (
         <option key={d.id} value={d.id}>
           {d.label}
@@ -61,6 +68,7 @@ export function AudioDeviceRows() {
           label="Microphone"
           value={speech.inputDevice}
           devices={devices?.inputs}
+          defaultName={devices?.defaultInput}
           testId="speech-input-device"
           onChange={(id) => void updateConfig({ speech: { inputDevice: id } })}
         />
@@ -77,6 +85,7 @@ export function AudioDeviceRows() {
           label="Speaker"
           value={speech.outputDevice}
           devices={devices?.outputs}
+          defaultName={devices?.defaultOutput}
           testId="speech-output-device"
           onChange={(id) => void updateConfig({ speech: { outputDevice: id } })}
         />

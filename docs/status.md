@@ -463,6 +463,12 @@ Tried with the test meeting service (e2e test, screenshots in Jig Dark and Light
 5. If a select still names the wrong device, send the call window's console lines and what Windows
    Settings → Sound shows as Default device and Default communication device.
 
+Speech devices (2026-11-06): Settings → Speech and the talking window's Audio devices now name the
+system default the same way ("System default (JBL Tune 775NC)"), with the same Windows-default lookup
+as meetings. Names show once Jig has used the microphone. **Check on your machine:** Settings → Speech
+should name your default microphone and speaker; change Windows' default output and the Speaker select
+follows within a second.
+
 Noise suppression on your microphone (2026-11-04, D-322): colleagues heard Jon's typing in Jig calls
 (not with the Teams app) and found his microphone worse overall. Jig's calls had no voice processing
 of their own; now every call (join, call, answer) starts **Azure Communication Services' deep noise

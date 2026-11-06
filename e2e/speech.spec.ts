@@ -177,12 +177,12 @@ test("speech: microphone, speaker and noise filter in Settings and while talking
 }) => {
   await page.keyboard.press("Control+,");
   await page.getByTestId("settings-nav-speech").click();
-  // Chromium's fake devices (tests) are listed after "System default".
+  // Chromium's fake devices (tests) are listed after "System default" (with the default's name).
   const mic = page.getByTestId("speech-input-device");
-  await expect(mic.locator("option").first()).toHaveText("System default");
+  await expect(mic.locator("option").first()).toHaveText(/^System default/);
   await expect.poll(() => mic.locator("option").count()).toBeGreaterThan(1);
   await expect(page.getByTestId("speech-output-device").locator("option").first()).toHaveText(
-    "System default",
+    /^System default/,
   );
   await expect(page.getByTestId("settings-speech-noise")).toHaveValue("strong");
   await page.getByTestId("settings-speech-noise").selectOption("light");
