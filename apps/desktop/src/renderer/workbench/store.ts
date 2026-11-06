@@ -14,6 +14,7 @@ import {
   normalizeLayout,
   openTab,
   openViewTab,
+  pinTab,
   type SideRegion,
   saveNamedLayout,
   setBottomSpan,
@@ -22,6 +23,7 @@ import {
   showView,
   splitBeside,
   toggleRegion,
+  unpinTab,
   updateTabParams,
   VIEW_TAB,
 } from "../../shared/layout";
@@ -119,15 +121,24 @@ export const workbench = {
     });
     return id;
   },
-  /** Closes a tab (asking first when it has unsaved work). */
+  /** Closes a tab (asking first when it has unsaved work). A pinned tab stays until it is unpinned. */
   async closeTab(tabId: string) {
-    if (await confirmClose([tabId])) updateLayout((l) => closeTab(l, tabId));
+    await workbench.closeTabs([tabId]);
   },
-  /** Closes several tabs (asking once if any has unsaved work). */
+  /** Closes several tabs (asking once if any has unsaved work); pinned ones are left alone. */
   async closeTabs(tabIds: string[]) {
-    if (!tabIds.length || !(await confirmClose(tabIds))) return;
-    updateLayout((l) => tabIds.reduce((acc, id) => closeTab(acc, id), l));
+    const pinned = new Set(
+      useWorkbench
+        .getState()
+        .layout?.main.tabs.filter((t) => t.pinned)
+        .map((t) => t.id),
+    );
+    const ids = tabIds.filter((id) => !pinned.has(id));
+    if (!ids.length || !(await confirmClose(ids))) return;
+    updateLayout((l) => ids.reduce((acc, id) => closeTab(acc, id), l));
   },
+  pinTab: (tabId: string) => updateLayout((l) => pinTab(l, tabId)),
+  unpinTab: (tabId: string) => updateLayout((l) => unpinTab(l, tabId)),
   activateTab: (tabId: string) => updateLayout((l) => activateTab(l, tabId)),
   moveView(viewId: string, region: SideRegion) {
     recordMove(viewId, region);

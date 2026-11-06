@@ -249,7 +249,9 @@ export async function deleteSession(meta: SessionMeta): Promise<void> {
   });
   if (!ok) return;
   await call("sessions.delete", { id: meta.id });
-  updateLayout((l) => closeTabsWhere(l, (t) => t.type === "jig.chat" && t.params.sessionId === meta.id));
+  updateLayout((l) =>
+    closeTabsWhere(l, (t) => t.type === "jig.chat" && t.params.sessionId === meta.id, true),
+  );
   forgetSession(meta.id);
 }
 

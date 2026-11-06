@@ -46,7 +46,10 @@ export const TabSchema = z.object({
   id: z.string(),
   type: z.string(),
   params: z.record(z.string(), z.unknown()).default({}),
-  /** Pinned tabs are not replaced by the next preview-style open (reserved for later use). */
+  /**
+   * Pinned tabs sit first in `main.tabs` (in the order they were pinned), can't be closed until they are
+   * unpinned, and are never closed to make room for new ones.
+   */
   pinned: z.boolean().optional(),
 });
 export type LayoutTab = z.infer<typeof TabSchema>;
@@ -263,16 +266,19 @@ export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
   if (layout.main.active && !layout.main.tabs.some((t) => t.id === layout.main.active))
     layout.main.active = layout.main.tabs[0]?.id;
   normalizeSplit(layout);
-  // A view is in one place: in a sidebar, its main-area tab closes.
-  return closeTabsWhere(
-    layout,
-    (t) => t.type === VIEW_TAB && regionOf(layout, String(t.params.viewId)) !== undefined,
+  // A view is in one place: in a sidebar, its main-area tab closes (pinned or not: it moved).
+  return groupPinned(
+    closeTabsWhere(
+      layout,
+      (t) => t.type === VIEW_TAB && regionOf(layout, String(t.params.viewId)) !== undefined,
+      true,
+    ),
   );
 }
 
 /** Moves a view to a region (at the end) and shows it there. A view is in one place: its main tab closes. */
 export function moveView(input: Layout, viewId: string, to: SideRegion): Layout {
-  const layout = clone(closeTabsWhere(input, isViewTab(viewId)));
+  const layout = clone(closeTabsWhere(input, isViewTab(viewId), true));
   removeEverywhere(layout, viewId);
   layout[to].views.push(viewId);
   layout[to].active = viewId;
@@ -431,7 +437,7 @@ export function openTab(
     layout.main.tabs.splice(victim, 1);
   }
   normalizeSplit(layout);
-  return { layout, tabId: id };
+  return { layout: groupPinned(layout), tabId: id };
 }
 
 export type MainPane = "left" | "right";
@@ -513,10 +519,13 @@ export function unsplit(input: Layout): Layout {
   return layout;
 }
 
-/** Closes a tab; the neighbour to the right (else left) becomes active. */
-export function closeTab(input: Layout, tabId: string): Layout {
+/**
+ * Closes a tab; the neighbour to the right (else left) becomes active. A pinned tab stays until it is
+ * unpinned, unless `force` (its content is gone: a deleted chat, a removed project).
+ */
+export function closeTab(input: Layout, tabId: string, force = false): Layout {
   const index = input.main.tabs.findIndex((t) => t.id === tabId);
-  if (index < 0) return input;
+  if (index < 0 || (input.main.tabs[index]?.pinned && !force)) return input;
   const layout = clone(input);
   const pane = paneOf(layout, tabId);
   const inPane = paneTabs(layout, pane);
@@ -540,6 +549,11 @@ export function closeTab(input: Layout, tabId: string): Layout {
   return layout;
 }
 
+/** Closes every tab that isn't pinned. */
+export function closeUnpinnedTabs(input: Layout): Layout {
+  return closeTabsWhere(input, (t) => !t.pinned);
+}
+
 export function closeOtherTabs(input: Layout, keepId: string): Layout {
   const layout = clone(input);
   layout.main.tabs = layout.main.tabs.filter((t) => t.id === keepId || t.pinned);
@@ -548,9 +562,48 @@ export function closeOtherTabs(input: Layout, keepId: string): Layout {
   return layout;
 }
 
+/** Pinned tabs first, each group in its own order. */
+export function groupPinned(input: Layout): Layout {
+  const tabs = input.main.tabs;
+  if (tabs.every((t, i) => i === 0 || Boolean(tabs[i - 1]!.pinned) || !t.pinned)) return input;
+  const layout = clone(input);
+  layout.main.tabs = [...tabs.filter((t) => t.pinned), ...tabs.filter((t) => !t.pinned)];
+  return layout;
+}
+
+/** Pins a tab: it moves to the end of the pinned group (the order they were pinned in). */
+export function pinTab(input: Layout, tabId: string): Layout {
+  const tab = input.main.tabs.find((t) => t.id === tabId);
+  if (!tab || tab.pinned) return input;
+  const layout = clone(input);
+  const tabs = layout.main.tabs;
+  const [moved] = tabs.splice(
+    tabs.findIndex((t) => t.id === tabId),
+    1,
+  );
+  moved!.pinned = true;
+  tabs.splice(tabs.filter((t) => t.pinned).length, 0, moved!);
+  return layout;
+}
+
+/** Unpins a tab: it moves to the start of the unpinned group. */
+export function unpinTab(input: Layout, tabId: string): Layout {
+  const tab = input.main.tabs.find((t) => t.id === tabId);
+  if (!tab?.pinned) return input;
+  const layout = clone(input);
+  const tabs = layout.main.tabs;
+  const [moved] = tabs.splice(
+    tabs.findIndex((t) => t.id === tabId),
+    1,
+  );
+  delete moved!.pinned;
+  tabs.splice(tabs.filter((t) => t.pinned).length, 0, moved!);
+  return layout;
+}
+
 /** Closes every tab matching `predicate` (e.g. all tabs of a removed project). */
-export function closeTabsWhere(input: Layout, predicate: (tab: LayoutTab) => boolean): Layout {
-  return input.main.tabs.filter(predicate).reduce((l, t) => closeTab(l, t.id), input);
+export function closeTabsWhere(input: Layout, predicate: (tab: LayoutTab) => boolean, force = false): Layout {
+  return input.main.tabs.filter(predicate).reduce((l, t) => closeTab(l, t.id, force), input);
 }
 
 /** Activates a tab; in a split, its pane gets the focus (the other pane keeps its tab). */
@@ -584,7 +637,10 @@ export function moveTab(input: Layout, tabId: string, toIndex: number): Layout {
   const index = tabs.findIndex((t) => t.id === tabId);
   if (index < 0) return input;
   const [tab] = tabs.splice(index, 1);
-  tabs.splice(Math.max(0, Math.min(toIndex, tabs.length)), 0, tab!);
+  // A tab stays in its own group: pinned ones first, the rest after them.
+  const pinned = tabs.filter((t) => t.pinned).length;
+  const [lo, hi] = tab!.pinned ? [0, pinned] : [pinned, tabs.length];
+  tabs.splice(Math.max(lo, Math.min(toIndex, hi)), 0, tab!);
   return layout;
 }
 

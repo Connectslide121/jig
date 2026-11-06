@@ -1,7 +1,19 @@
-import { Columns2, PanelBottom, PanelLeft, PanelRight, Settings, Sparkles, Square, X } from "lucide-react";
+import {
+  Columns2,
+  PanelBottom,
+  PanelLeft,
+  PanelRight,
+  Pin,
+  PinOff,
+  Settings,
+  Sparkles,
+  Square,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   closeOtherTabs,
+  closeUnpinnedTabs,
   type LayoutTab,
   type MainPane,
   moveTab,
@@ -91,6 +103,7 @@ function TabButton({
       tabIndex={-1}
       aria-selected={active}
       data-testid={`tab-${tab.type}`}
+      data-pinned={tab.pinned ? "true" : undefined}
       title={title}
       draggable
       onDragStart={(e) => {
@@ -163,7 +176,21 @@ function TabButton({
           onSelect: () => updateLayout((l) => moveTabToPane(l, tab.id, pane === "right" ? "left" : "right")),
         },
         { separator: true },
-        { label: "Close", icon: X, onSelect: () => workbench.closeTab(tab.id) },
+        tab.pinned
+          ? {
+              label: "Unpin tab",
+              icon: PinOff,
+              testId: "tab-unpin",
+              onSelect: () => workbench.unpinTab(tab.id),
+            }
+          : { label: "Pin tab", icon: Pin, testId: "tab-pin", onSelect: () => workbench.pinTab(tab.id) },
+        {
+          label: "Close",
+          icon: X,
+          disabled: tab.pinned,
+          testId: "tab-close",
+          onSelect: () => workbench.closeTab(tab.id),
+        },
         {
           label: "Close others",
           onSelect: async () => {
@@ -176,15 +203,17 @@ function TabButton({
         {
           label: "Close all",
           onSelect: async () => {
-            const all = (useWorkbench.getState().layout?.main.tabs ?? []).map((t) => t.id);
-            if (await confirmClose(all))
-              updateLayout((l) => ({ ...l, main: { tabs: [], active: undefined } }));
+            const all = (useWorkbench.getState().layout?.main.tabs ?? [])
+              .filter((t) => !t.pinned)
+              .map((t) => t.id);
+            if (await confirmClose(all)) updateLayout(closeUnpinnedTabs);
           },
         },
         ...(split ? [{ label: "One pane", icon: Square, onSelect: () => updateLayout(unsplit) }] : []),
       ])}
       className={cn(
-        "group relative flex h-full max-w-56 min-w-24 shrink-0 cursor-default items-center gap-1.5 border-r border-line pr-1 pl-3 text-xs",
+        "group relative flex h-full min-w-24 shrink-0 cursor-default items-center gap-1.5 border-r border-line pr-1 pl-3 text-xs",
+        tab.pinned ? "max-w-40" : "max-w-56",
         active ? "bg-canvas text-fg" : "bg-surface text-muted hover:text-fg",
         dragOver && "bg-hover",
       )}
@@ -209,20 +238,42 @@ function TabButton({
         />
       )}
       <span className="min-w-0 flex-1 truncate">{title}</span>
-      <button
-        type="button"
-        aria-label={`Close ${title}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          workbench.closeTab(tab.id);
-        }}
-        className={cn(
-          "flex size-5 items-center justify-center rounded-sm hover:bg-hover",
-          active ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+      {/* Fixed slots, so hovering or activating a tab never moves its title. */}
+      <div className="flex shrink-0 items-center">
+        <button
+          type="button"
+          aria-label={tab.pinned ? `Unpin ${title}` : `Pin ${title}`}
+          title={tab.pinned ? "Unpin tab" : "Pin tab"}
+          data-testid={tab.pinned ? "tab-unpin-button" : "tab-pin-button"}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (tab.pinned) workbench.unpinTab(tab.id);
+            else workbench.pinTab(tab.id);
+          }}
+          className={cn(
+            "flex size-5 items-center justify-center rounded-sm hover:bg-hover",
+            tab.pinned ? "text-accent" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+          )}
+        >
+          {tab.pinned ? <Pin className="size-3 fill-current" /> : <Pin className="size-3" />}
+        </button>
+        {!tab.pinned && (
+          <button
+            type="button"
+            aria-label={`Close ${title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              workbench.closeTab(tab.id);
+            }}
+            className={cn(
+              "flex size-5 items-center justify-center rounded-sm hover:bg-hover",
+              active ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+            )}
+          >
+            <X className="size-3" />
+          </button>
         )}
-      >
-        <X className="size-3" />
-      </button>
+      </div>
     </div>
   );
 }

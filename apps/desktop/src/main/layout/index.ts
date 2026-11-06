@@ -14,7 +14,11 @@ let persistentChats: (() => Promise<Set<string>>) | undefined;
 async function savedLayout(layout: Layout): Promise<Layout> {
   if (!persistentChats) return layout;
   const ids = await persistentChats();
-  return closeTabsWhere(layout, (tab) => tab.type === "jig.chat" && !ids.has(String(tab.params.sessionId)));
+  return closeTabsWhere(
+    layout,
+    (tab) => tab.type === "jig.chat" && !ids.has(String(tab.params.sessionId)),
+    true,
+  );
 }
 
 export async function getLayout(): Promise<Layout> {

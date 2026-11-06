@@ -32,7 +32,7 @@ export async function removeProject(project: ProjectInfo): Promise<void> {
   });
   if (!ok) return;
   await call("projects.remove", { id: project.id });
-  updateLayout((l) => closeTabsWhere(l, (t) => t.params.projectId === project.id));
+  updateLayout((l) => closeTabsWhere(l, (t) => t.params.projectId === project.id, true));
 }
 
 export function projectMenu(project: ProjectInfo): MenuEntry[] {

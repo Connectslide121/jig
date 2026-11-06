@@ -6,6 +6,7 @@ import {
   closeOtherTabs,
   closeTab,
   closeTabsWhere,
+  closeUnpinnedTabs,
   cycleTab,
   defaultLayout,
   deleteNamedLayout,
@@ -23,6 +24,7 @@ import {
   paneActive,
   panelOfView,
   paneTabs,
+  pinTab,
   reorderView,
   revealAction,
   saveNamedLayout,
@@ -33,6 +35,7 @@ import {
   splitBeside,
   tabKey,
   toggleRegion,
+  unpinTab,
   updateTabParams,
   VIEW_TAB,
   viewVisible,
@@ -204,6 +207,68 @@ describe("tabs", () => {
     for (let n = 0; n < MAX_TABS + 5; n++) layout = openTab(layout, { type: "t", params: { n } }).layout;
     expect(layout.main.tabs).toHaveLength(MAX_TABS);
     expect(layout.main.tabs.some((t) => t.params.n === MAX_TABS + 4)).toBe(true);
+  });
+});
+
+describe("pinned tabs", () => {
+  const four = () => {
+    let layout = base();
+    for (const n of [1, 2, 3, 4]) layout = openTab(layout, { type: "t", params: { n } }).layout;
+    return { layout, ids: layout.main.tabs.map((t) => t.id) as [string, string, string, string] };
+  };
+  const order = (l: ReturnType<typeof base>) => l.main.tabs.map((t) => t.id);
+
+  it("pins into the pinned group in pin order, unpins to the start of the unpinned group", () => {
+    const { layout, ids } = four();
+    const [a, b, c, d] = ids;
+    let l = pinTab(layout, c);
+    l = pinTab(l, b);
+    expect(order(l)).toEqual([c, b, a, d]);
+    expect(l.main.tabs.filter((t) => t.pinned).map((t) => t.id)).toEqual([c, b]);
+    expect(pinTab(l, c)).toBe(l);
+    l = unpinTab(l, c);
+    expect(order(l)).toEqual([b, c, a, d]);
+    expect(l.main.tabs[1]?.pinned).toBeUndefined();
+    expect(unpinTab(l, d)).toBe(l);
+  });
+
+  it("keeps new tabs out of the pinned group", () => {
+    let { layout, ids } = four();
+    layout = pinTab(layout, ids[0]);
+    layout = activateTab(layout, ids[0]);
+    const opened = openTab(layout, { type: "t", params: { n: 5 } });
+    expect(order(opened.layout)[0]).toBe(ids[0]);
+    expect(order(opened.layout)[1]).toBe(opened.tabId);
+  });
+
+  it("moves tabs only within their own group", () => {
+    const { layout, ids } = four();
+    const [a, b, c, d] = ids;
+    const l = pinTab(pinTab(layout, a), b);
+    expect(order(moveTab(l, d, 0))).toEqual([a, b, d, c]);
+    expect(order(moveTab(l, a, 3))).toEqual([b, a, c, d]);
+    expect(order(moveTab(l, c, 0))).toEqual([a, b, c, d]);
+  });
+
+  it("is never closed by closing paths, only by force", () => {
+    const { layout, ids } = four();
+    const [a, b, c] = ids;
+    const l = pinTab(layout, a);
+    expect(closeTab(l, a)).toBe(l);
+    expect(order(closeTab(l, a, true))).toEqual([b, c, ids[3]]);
+    expect(order(closeTabsWhere(l, () => true))).toEqual([a]);
+    expect(order(closeUnpinnedTabs(l))).toEqual([a]);
+    expect(order(closeOtherTabs(l, c))).toEqual([a, c]);
+  });
+
+  it("groups pinned tabs first when a saved layout lists them elsewhere", () => {
+    const { layout, ids } = four();
+    const l = structuredClone(layout);
+    l.main.tabs[2]!.pinned = true;
+    expect(order(normalizeLayout(l, views))[0]).toBe(ids[2]);
+    expect(LayoutSchema.parse(JSON.parse(JSON.stringify(pinTab(layout, ids[1])))).main.tabs[0]?.pinned).toBe(
+      true,
+    );
   });
 });
 

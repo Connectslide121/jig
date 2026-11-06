@@ -405,7 +405,7 @@
         "apps/desktop/src/renderer/features/goto/**",
         "apps/desktop/src/renderer/features/home/**"
       ],
-      "specs": ["workbench.spec.ts", "navigation.spec.ts", "split.spec.ts", "ux.spec.ts"]
+      "specs": ["workbench.spec.ts", "navigation.spec.ts", "split.spec.ts", "ux.spec.ts", "tab-pin.spec.ts"]
     },
     {
       "files": ["apps/desktop/src/renderer/ui/**"],
