@@ -190,4 +190,6 @@ stops on failing unit or e2e tests:
 Report the release link, version, installer/hash and validation outcome. Installed Windows Jig
 downloads updates automatically and offers Install and restart. Versions 0.1.0/0.1.1 need one manual
 upgrade to gain this updater. Do not install or restart the user's app without authorization or during
-an active meeting. No developer UI, GitHub credential store or required CI service is introduced.
+an active meeting. Installing is the user's Install and restart, never this skill's, also when the
+release runs as a task-queue task: report and end the task; the queue pauses by itself while Jig
+installs and goes on after the restart, and a task Jig cut off is told to carry on (D-394, D-395). No developer UI, GitHub credential store or required CI service is introduced.

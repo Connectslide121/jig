@@ -82,8 +82,22 @@ went, so you read the results as a table instead of scrolling one long chat.
   also ends without a report is the task "No report" (with Claude's last answer). No request when you
   stopped the turn or rejected a tool call in it (`chats.get`'s `userStoppedAt`): it stays No report,
   so nothing restarts work you stopped. The rules are `chatFinished`/`afterTurn` in `lib/tasks.ts`.
+- **When Jig closed in the middle of a task (D-394):** a quit, an update's restart or a crash cuts the
+  running turn off; main records it on the chat (`chats.get`'s `cutOffAt`, cleared when its next turn
+  starts). After the restart the queue sends that chat one message instead of the report request
+  ("Task queue: Jig restarted, carry on with task N": carry on where you left off, then report),
+  recorded on the task (`resumedAt`), so it never loops. Not when you stopped one of the task's
+  turns, the task has a report, or the queue already asked for it. A second cut-off falls back to the
+  rules above: asked for the report if the chat had answered since, else Interrupted.
+- **While Jig updates (D-395):** Install and restart (Settings or the update toast, and an update from
+  source) sends add-ons `app.updating` and waits up to 1.5 s for them before the update goes on.
+  Every running queue pauses (`held`, reason `update`), so no task starts while Jig closes, and runs
+  again by itself after the restart (the watcher runs a few seconds after Jig starts, and the view's
+  read). A hold that outlives 5 minutes without a restart (the install didn't happen) ends too
+  (`UPDATE_HOLD_MS`). Start, Pause and Reset clear it: they are yours.
 - **Late reports (D-318):** `addon_tasks_report` takes an optional `taskId`: a chat may report its
-  own tasks that ended as No report or Interrupted (Jig closed), never another chat's. Without it, the
+  own tasks that ended as No report or Interrupted (Jig closed before the chat answered; a turn it cut
+  off after that is carried on instead, D-394), never another chat's. Without it, the
   report goes to the running task; once that has a report, to the chat's earliest task still missing
   one; with no running task, to the most recent one missing it (`reportTarget`). A late report sets
   the status from the outcome, keeps the times and cost, marks the row "reported late" (beside the
@@ -163,8 +177,9 @@ went, so you read the results as a table instead of scrolling one long chat.
   that is already planned as follow-ups.
 - **How it follows the chats:** the host API `api.chats` (`create`, `send`, `get`; the `chat`
   permission) starts and reads chats, and main calls the host export `chatChanged` when a chat it
-  started changes status. A watcher (every minute) catches up after a restart; a task whose chat
-  went idle without answering is marked "Interrupted".
+  started changes status. A watcher (every minute, and a few seconds after Jig starts) catches up
+  after a restart: a task whose turn Jig cut off is told to carry on (D-394), and one whose chat went
+  idle without answering is marked "Interrupted".
 - **One queue per project** (D-248): the view's project picker (top right, with each project's
   status: "Needs you", "Running" or "N queued", in the menu's badge slot) switches; the view follows Jig's project picker; picking another project in the view only overrides what it
   shows, until the global project changes again. Queues run

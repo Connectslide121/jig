@@ -75,6 +75,11 @@ describe("chatInfo", () => {
     expect(chatInfo(snap()).userStoppedAt).toBeUndefined();
   });
 
+  it("says when Jig closed in the middle of its last turn (D-394)", () => {
+    expect(chatInfo(snap({ cutOffAt: "2025-01-01T10:07:00Z" })).cutOffAt).toBe("2025-01-01T10:07:00Z");
+    expect(chatInfo(snap())).not.toHaveProperty("cutOffAt");
+  });
+
   it("takes the last top-level answer, the queue and the error", () => {
     expect(chatInfo(snap({ lastError: "boom", projectId: "p1" }))).toEqual({
       id: "s1",

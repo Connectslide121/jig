@@ -13,7 +13,6 @@ import {
   afterTurn,
   applyReport,
   canReportLate,
-  chatFinished,
   chatToContinue,
   checkProviderChoices,
   closeRun,
@@ -23,7 +22,7 @@ import {
   emptyQueue,
   finishTask,
   historyFiles,
-  interruptedTurn,
+  holdForUpdate,
   isActive,
   joinQueues,
   limitedTask,
@@ -46,10 +45,13 @@ import {
   type Queue,
   type Run,
   recordRuns,
+  releaseHold,
   removeTasks,
   reportTarget,
   requeue,
   resetTasks,
+  resumeFrom,
+  resumeText,
   runsOn,
   STATUS_LABEL,
   setLeftOut,
@@ -207,27 +209,46 @@ function settle(api: AddonHostApi, q: Queue, task: Task, chat: AddonChatInfo): Q
 }
 
 /**
- * A task's chat stopped working (D-318): still busy in the background → wait; ended without a report
- * → ask it once for the report (a message from the task queue, not from you), and follow that turn;
- * otherwise record the task. Never asks when you stopped the turn or rejected a tool call yourself.
+ * A task's chat stopped working: what happens follows `afterTurn` (D-318, D-394). Cut off by Jig
+ * closing → tell it once to carry on; still busy in the background → wait; ended without a report →
+ * ask it once for the report; never answered → Interrupted; otherwise record the task. Both messages
+ * come from the task queue, not from you, and their turn is followed as the task's.
  */
-async function turnEnded(api: AddonHostApi, q: Queue, task: Task, chat: AddonChatInfo): Promise<Queue> {
-  const next = afterTurn(task, chat);
+async function turnEnded(
+  api: AddonHostApi,
+  q: Queue,
+  task: Task,
+  chat: AddonChatInfo,
+  catchingUp = false,
+): Promise<Queue> {
+  const next = afterTurn(task, chat, Date.now(), catchingUp);
   if (next === "wait") return q;
+  if (next === "interrupted")
+    return replace(q, {
+      ...task,
+      status: "error",
+      error: "Interrupted: Jig closed before the chat finished",
+      interrupted: true,
+      finishedAt: new Date().toISOString(),
+    });
   if (next === "finish" || !task.sessionId) return settle(api, q, task, chat);
-  const asked: Task = { ...task, nudgedAt: new Date().toISOString(), sawBusy: false };
-  const saved = replace(q, asked);
+  const at = new Date().toISOString();
+  const sent: Task =
+    next === "resume"
+      ? { ...task, resumedAt: at, sawBusy: false }
+      : { ...task, nudgedAt: at, sawBusy: false };
+  const saved = replace(q, sent);
   // Saved before the message goes, so its turn is followed as this task's.
   if (task.projectId) await api.storage.set(KEY, saved, scope(task.projectId));
   try {
-    await api.chats.send({
-      sessionId: task.sessionId,
-      text: nudgeText(saved, asked),
-      from: nudgeFrom(saved, asked),
-    });
+    await api.chats.send(
+      next === "resume"
+        ? { sessionId: task.sessionId, text: resumeText(saved, sent), from: resumeFrom(saved, sent) }
+        : { sessionId: task.sessionId, text: nudgeText(saved, sent), from: nudgeFrom(saved, sent) },
+    );
     return saved;
   } catch {
-    return settle(api, saved, asked, chat);
+    return settle(api, saved, sent, chat);
   }
 }
 
@@ -325,17 +346,9 @@ async function reconcile(api: AddonHostApi, q: Queue): Promise<Queue> {
       });
     } else if (chat.limit) {
       q = replace(q, limitedTask(task, chat.limit));
-    } else if (chatFinished(task, chat)) {
-      q = await turnEnded(api, q, task, chat);
-    } else if (interruptedTurn(task, chat) && !chat.queued) {
-      // Idle with no answer since the task was sent: Jig closed before the chat got to it.
-      q = replace(q, {
-        ...task,
-        status: "error",
-        error: "Interrupted: Jig closed before the chat finished",
-        interrupted: true,
-        finishedAt: new Date().toISOString(),
-      });
+    } else {
+      // After a restart: cut off, finished, or never got to it (`afterTurn`).
+      q = await turnEnded(api, q, task, chat, true);
     }
   }
   return q;
@@ -357,7 +370,10 @@ export async function list(args: ProjectArgs, api: AddonHostApi): Promise<Queue>
   const projectId = await projectArg(api, args?.projectId);
   return change(api, projectId, async (q) => {
     const next = await reconcile(api, q);
-    return [next, next];
+    // Held for an update that has happened since: it goes on at once, not at the next tick (D-395).
+    const woken = releaseHold(next, !heldHere.has(projectId));
+    const result = woken === next ? next : await advance(api, woken);
+    return [result, result];
   });
 }
 
@@ -724,7 +740,7 @@ export async function reset(args: ProjectArgs & { ids?: string[] }, api: AddonHo
   const ids = Array.isArray(args.ids) ? args.ids.filter((id) => typeof id === "string") : undefined;
   const dropped = await change(api, projectId, async (q) => {
     const next = resetTasks(q, ids);
-    if (!ids) return [next, q.runId];
+    if (!ids) return [unheld(next), q.runId];
     // A task taken back while its chat runs pauses the queue, so it isn't sent again at once.
     const wasActive = q.tasks.some((t) => ids.includes(t.id) && isActive(t));
     return [wasActive ? { ...next, running: false } : await advance(api, next), undefined];
@@ -772,15 +788,39 @@ export async function park(
   await change(api, await projectArg(api, args?.projectId), (q) => [setParked(q, ids, !!args.on), undefined]);
 }
 
+/** A queue without Jig's hold for an update: Start, Pause and Reset are yours to decide (D-395). */
+const unheld = ({ held: _held, ...q }: Queue): Queue => q;
+
 export async function start(args: ProjectArgs, api: AddonHostApi): Promise<void> {
   await change(api, await projectArg(api, args?.projectId), async (q) => [
-    await advance(api, openRun({ ...q, running: true })),
+    await advance(api, openRun({ ...unheld(q), running: true })),
     undefined,
   ]);
 }
 
 export async function pause(args: ProjectArgs, api: AddonHostApi): Promise<void> {
-  await change(api, await projectArg(api, args?.projectId), (q) => [{ ...q, running: false }, undefined]);
+  await change(api, await projectArg(api, args?.projectId), (q) => [
+    { ...unheld(q), running: false },
+    undefined,
+  ]);
+}
+
+/** The projects whose queues this Jig held for an update: still here means the update didn't happen. */
+const heldHere = new Set<string>();
+
+/**
+ * `app.updating` (D-395): Jig closes in a moment to install an update. Every running queue pauses
+ * (`held`), so no task starts while Jig closes, and starts again by itself after the
+ * restart (`tick`, `list`). A task already running is carried on after the restart (`afterTurn`).
+ */
+export async function updating(_args: unknown, api: AddonHostApi): Promise<void> {
+  await ready(api);
+  for (const p of await api.projects())
+    await change(api, p.id, (q) => {
+      const next = holdForUpdate(q);
+      if (next.held) heldHere.add(p.id);
+      return [next, undefined];
+    });
 }
 
 export async function setStopOnFailure(
@@ -878,9 +918,10 @@ export async function tick(_args: unknown, api: AddonHostApi): Promise<void> {
   await showWaiting(api);
   for (const p of await api.projects()) {
     const q = await load(api, p.id);
-    if (!q.running && !q.tasks.some(isActive)) continue;
+    if (!q.running && !q.held && !q.tasks.some(isActive)) continue;
+    // A queue held for an update starts again after the restart, or when the update never came (D-395).
     await change(api, p.id, async (current) => [
-      await advance(api, await reconcile(api, current)),
+      await advance(api, releaseHold(await reconcile(api, current), !heldHere.has(p.id))),
       undefined,
     ]);
   }

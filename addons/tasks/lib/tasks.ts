@@ -66,6 +66,8 @@ export interface Task {
   parked?: boolean;
   /** When the queue asked its chat for the report, after a turn ended without one (once per task). */
   nudgedAt?: string;
+  /** When the queue told its chat to carry on, after Jig closed in the middle of its turn (once per task, D-394). */
+  resumedAt?: string;
   /** Its report came after it was marked No report or Interrupted (`addon_tasks_report` with taskId). */
   reportedLate?: boolean;
   /**
@@ -105,6 +107,11 @@ export interface Queue {
   runId?: string;
   /** "Runs on": the provider of the queue's new chats; none = the project's default (D-330). */
   provider?: TaskProvider;
+  /**
+   * Paused by Jig, not by you (D-395): it was running when Jig closed to install an update, and starts
+   * again by itself after the restart. Start or Pause clears it.
+   */
+  held?: { reason: "update"; at: string };
 }
 
 /** A run kept in the history: the tasks that ran in it, as they ended (or are now, while it runs). */
@@ -131,6 +138,10 @@ export interface ChatState {
   background?: number;
   /** When you last stopped one of its turns or rejected a tool call in it. */
   userStoppedAt?: string;
+  /** Jig closed in the middle of its last turn (D-394): when it noticed. */
+  cutOffAt?: string;
+  /** Messages waiting in its queue. */
+  queued?: number;
   /** Who runs it now. */
   provider?: TaskProvider;
   model?: string;
@@ -380,9 +391,12 @@ export function chatToContinue(queue: Queue, task: Task): string | undefined {
  */
 export const BACKGROUND_WAIT_MS = 20 * 60_000;
 
-/** The chat answered since the task (or the queue's request for its report) was sent. */
+/** The queue's last message to the task's chat: the task, its "carry on" or its request for the report. */
+const lastSent = (task: Task) => task.nudgedAt ?? task.resumedAt ?? task.sentAt;
+
+/** The chat answered since the queue's last message to it. */
 function answeredSince(task: Task, chat: ChatState): boolean {
-  const since = task.nudgedAt ?? task.sentAt;
+  const since = lastSent(task);
   return !!task.sawBusy || !!(chat.lastAnswerAt && since && chat.lastAnswerAt >= since);
 }
 
@@ -406,20 +420,62 @@ export function chatFinished(task: Task, chat: ChatState, now = Date.now()): boo
 
 /** Idle without an answer since the task was sent: Jig closed before the chat got to it. */
 export function interruptedTurn(task: Task, chat: ChatState): boolean {
-  return chat.status === "idle" && !chat.background && !answeredSince(task, chat);
+  return chat.status === "idle" && !chat.background && !chat.queued && !answeredSince(task, chat);
 }
 
+/** You stopped one of the task's turns or rejected a tool call in it. */
+const userStopped = (task: Task, chat: ChatState) =>
+  !!(chat.userStoppedAt && task.sentAt && chat.userStoppedAt >= task.sentAt);
+
 /**
- * What the queue does when a task's chat stops working (D-318): `wait` (not finished yet), `nudge`
- * (it ended without a report: ask once for it), or `finish` (record it: a report, a failed chat, a
- * second turn without one, or you stopped the turn or rejected a tool call yourself, so nothing
- * restarts work you stopped).
+ * Jig closed in the middle of the task's turn (D-394): the chat is idle again and says its last turn
+ * was cut off after the queue's last message to it.
  */
-export function afterTurn(task: Task, chat: ChatState, now = Date.now()): "wait" | "nudge" | "finish" {
-  if (!chatFinished(task, chat, now)) return "wait";
+export function cutOffTurn(task: Task, chat: ChatState): boolean {
+  const since = lastSent(task);
+  return chat.status === "idle" && !chat.limit && !!(chat.cutOffAt && since && chat.cutOffAt >= since);
+}
+
+/** What the queue does next with a running task's chat: see `afterTurn`. */
+export type TurnStep = "wait" | "resume" | "nudge" | "finish" | "interrupted";
+
+/**
+ * What the queue does when a task's chat stops working (D-318, D-394), in this order:
+ * - `resume`: Jig closed in the middle of the task's work (a quit, an update's restart). Tell the chat
+ *   once to carry on and report (`resumedAt`), unless you stopped one of its turns yourself or the
+ *   queue already asked for the report.
+ * - `wait`: not finished yet (busy, work in the background, a plan limit).
+ * - `finish`: record it: a report, a failed chat, a turn without one after the queue asked for it, or
+ *   you stopped a turn or rejected a tool call yourself, so nothing restarts work you stopped.
+ * - `nudge`: it ended without a report: ask once for it, never for more work. Also a second cut-off
+ *   after it was told to carry on, once it had answered.
+ * - `interrupted`: only when the queue catches up on its chats (`catchingUp`: its watcher, the view's
+ *   read), idle without having answered at all since the queue's last message (Jig closed before the
+ *   chat got to it, or a second cut-off before it answered): Interrupted, reportable late. A chat's own
+ *   status change waits instead: the message it was just sent may not have started its turn yet.
+ */
+export function afterTurn(task: Task, chat: ChatState, now = Date.now(), catchingUp = false): TurnStep {
+  if (cutOffTurn(task, chat) && !task.resumedAt && !task.nudgedAt && !task.report && !userStopped(task, chat))
+    return "resume";
+  if (!chatFinished(task, chat, now))
+    return catchingUp && interruptedTurn(task, chat) ? "interrupted" : "wait";
   if (task.report || chat.status === "error" || task.nudgedAt) return "finish";
-  if (chat.userStoppedAt && task.sentAt && chat.userStoppedAt >= task.sentAt) return "finish";
+  if (userStopped(task, chat)) return "finish";
   return "nudge";
+}
+
+/** The message that tells a task's chat to carry on after Jig closed in the middle of its turn (D-394). */
+export function resumeText(queue: Pick<Queue, "tasks">, task: Task): string {
+  const n = queue.tasks.findIndex((t) => t.id === task.id) + 1;
+  return [
+    `Jig restarted while you were working on task ${n} (taskId "${task.id}"), so your last turn was cut off.`,
+    "Carry on where you left off (check what was already done first), then report with addon_tasks_report.",
+  ].join(" ");
+}
+
+/** The line the chat's transcript shows for that message. */
+export function resumeFrom(queue: Pick<Queue, "tasks">, task: Task): string {
+  return `Task queue: Jig restarted, carry on with task ${queue.tasks.findIndex((t) => t.id === task.id) + 1}`;
 }
 
 /** The message that asks a chat for a task's report: only the report, never more work (D-318). */
@@ -617,6 +673,28 @@ export function limitedTask(task: Task, limit: NonNullable<ChatState["limit"]>):
     sawBusy: true,
     ...(limit.state === "waiting" && limit.resetsAt ? { limitResetsAt: limit.resetsAt } : {}),
   };
+}
+
+/**
+ * How long a queue held for an update stays held while Jig keeps running: the install didn't happen
+ * (cancelled, failed), so it starts again rather than wait forever (D-395).
+ */
+export const UPDATE_HOLD_MS = 5 * 60_000;
+
+/** Jig closes to install an update (D-395): a running queue pauses, remembering to start again. */
+export function holdForUpdate(queue: Queue, at = new Date().toISOString()): Queue {
+  return queue.running ? { ...queue, running: false, held: { reason: "update", at } } : queue;
+}
+
+/**
+ * A queue held for an update starts again: after the restart (`restarted`: this Jig didn't hold it),
+ * or once `UPDATE_HOLD_MS` passed without one. Otherwise it stays as it is.
+ */
+export function releaseHold(queue: Queue, restarted: boolean, now = Date.now()): Queue {
+  if (!queue.held) return queue;
+  if (!restarted && now - Date.parse(queue.held.at) < UPDATE_HOLD_MS) return queue;
+  const { held: _held, ...rest } = queue;
+  return { ...rest, running: true };
 }
 
 /** The queue stops after a task that didn't go well, when "stop when a task fails" is on. */

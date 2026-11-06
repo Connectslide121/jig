@@ -32,6 +32,7 @@ import { addAddonAttachment, copyAddonAttachments, removeAddonAttachments } from
 import { notificationsAllowed } from "../sessions/notify";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
+import { ANNOUNCE_TIMEOUT_MS, beforeUpdate } from "../updates/announce";
 import { APP_ICON } from "../window";
 import { Badges, ownViewId } from "./badges";
 import { addonChats } from "./chats";
@@ -341,9 +342,14 @@ export async function startAddons(): Promise<void> {
 
   // What happens in Jig, for add-ons' events (D-215).
   const dispatch: Dispatch = (name, payload) => {
-    s.dispatchEvent(name, payload);
+    void s.dispatchEvent(name, payload);
     emit("addons.jigEvent", { name, payload });
   };
+  // Jig closes to install an update: add-ons hold their work first, waited for briefly (D-395).
+  beforeUpdate((info) => {
+    emit("addons.jigEvent", { name: "app.updating", payload: info });
+    return s.dispatchEvent("app.updating", info, ANNOUNCE_TIMEOUT_MS);
+  });
   const lastStatus = new Map<string, SessionStatus>();
   onSessionStatus((meta) => {
     const event = chatEventFor(lastStatus.get(meta.id), meta);

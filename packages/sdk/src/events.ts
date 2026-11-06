@@ -12,6 +12,8 @@ export const JIG_EVENTS = {
   "project.active": "You switched the active project.",
   "azure.tenant":
     "You switched the Azure tenant: every az Jig runs now uses it; drop Azure/DevOps caches and reload.",
+  "app.updating":
+    "Jig is about to close to install an update and starts again by itself: hold work that shouldn't start now.",
 } as const;
 
 export type JigEventName = keyof typeof JIG_EVENTS;
@@ -46,6 +48,12 @@ export interface JigEventPayloads {
     domain?: string;
     initials?: string;
   };
+  /**
+   * Jig closes in a moment to install an update (Install and restart, D-395), and starts again by
+   * itself. Host code has about a second and a half before the update goes on: Jig waits for it until
+   * then. `version` is the update's, when known.
+   */
+  "app.updating": { version?: string };
 }
 
 export const JIG_EVENT_NAMES = Object.keys(JIG_EVENTS) as JigEventName[];

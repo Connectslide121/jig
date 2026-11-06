@@ -13,6 +13,7 @@ import { requestQuit } from "../quit";
 import { sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { claudeBinary } from "../terminals/claudeBinary";
+import { announceUpdate } from "../updates/announce";
 import { restarter, sourceRepo } from "../updates/relaunch";
 import { sourceStatus, updateSource } from "../updates/source";
 import {
@@ -146,8 +147,12 @@ export function registerSetupHandlers(): void {
       log.info(`Updated ${result.from.slice(0, 8)} → ${result.to.slice(0, 8)}`);
       const restart = restarter();
       if (!restart) return { restarting: false };
+      // Add-ons hold their work first (the task queue starts no task while Jig closes, D-395).
       const restarting = await requestQuit(
-        () => setTimeout(() => restart(join(repo, "apps", "desktop"), result.previous), 300),
+        () =>
+          void announceUpdate().then(() =>
+            setTimeout(() => restart(join(repo, "apps", "desktop"), result.previous), 300),
+          ),
         "update",
       );
       return { restarting };

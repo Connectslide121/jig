@@ -58,7 +58,14 @@
       {
         "id": "tick",
         "every": "1m",
+        "atStart": true,
         "run": "tick"
+      }
+    ],
+    "events": [
+      {
+        "on": "app.updating",
+        "run": "updating"
       }
     ],
     "context": {

@@ -3,6 +3,7 @@ import electronUpdater from "electron-updater";
 import type { UpdateInfo } from "../../shared/setup";
 import { emit } from "../ipc/router";
 import { logger } from "../log";
+import { announceUpdate } from "./announce";
 
 const log = logger("updates");
 let state: UpdateInfo | undefined;
@@ -124,7 +125,11 @@ export function installWindowsUpdate(): boolean {
   // Jig first says what happens next (a modal), so closing isn't a surprise; then the installer's own
   // window shows its progress and starts Jig again with --updated (D-236, D-252).
   send({ download: "installing", detail: `Installing Jig ${state?.latest ?? "update"}…` });
-  setTimeout(() => updater().quitAndInstall(false, true), INSTALL_NOTICE_MS);
+  // Meanwhile add-ons hold their work (the task queue starts no task while Jig closes, D-395).
+  const notice = new Promise((resolve) => setTimeout(resolve, INSTALL_NOTICE_MS));
+  void Promise.all([announceUpdate({ version: state?.latest }), notice]).then(() =>
+    updater().quitAndInstall(false, true),
+  );
   return true;
 }
 

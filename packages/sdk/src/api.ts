@@ -496,6 +496,11 @@ export interface AddonChatInfo {
   background: number;
   /** When you last stopped one of its turns (Stop) or rejected a tool call in it. */
   userStoppedAt?: string;
+  /**
+   * Jig closed (quit, restarted to update, crashed) in the middle of its last turn: when Jig noticed.
+   * The turn didn't finish; cleared when its next turn starts (D-394).
+   */
+  cutOffAt?: string;
   /** While it needs you: what waits for you in it, a question, a plan to approve or a permission. */
   waitingFor?: "permission" | "question" | "plan";
   /**

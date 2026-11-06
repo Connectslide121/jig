@@ -93,6 +93,7 @@ export function chatInfo({ meta, items, queue }: SessionSnapshot): AddonChatInfo
     queued: queue?.length ?? 0,
     background: meta.backgroundTasks?.length ?? 0,
     ...(stoppedAt ? { userStoppedAt: stoppedAt } : {}),
+    ...(meta.cutOffAt ? { cutOffAt: meta.cutOffAt } : {}),
     ...(waiting ? { waitingFor: waiting } : {}),
     ...(limit
       ? {

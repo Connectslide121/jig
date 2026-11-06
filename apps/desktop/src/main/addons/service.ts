@@ -288,16 +288,31 @@ export class AddonService {
     for (const l of this.loaded.values()) l.host?.setAzure(azure);
   }
 
-  /** Runs the host code of every add-on that listens to this event (`contributes.events`, D-215). */
-  dispatchEvent(name: JigEventName, payload: unknown): void {
+  /**
+   * Runs the host code of every add-on that listens to this event (`contributes.events`, D-215).
+   * With `timeoutMs`, resolves when they all answered or that time passed (one that takes longer goes
+   * on unwaited): only `app.updating` is waited for (D-395).
+   */
+  dispatchEvent(name: JigEventName, payload: unknown, timeoutMs = 0): Promise<void> {
+    const runs: Promise<unknown>[] = [];
     for (const l of this.loaded.values()) {
       if (!l.info.enabled || !l.host || l.info.errors.length) continue;
       for (const e of l.record.manifest?.contributes.events ?? [])
         if (e.on === name)
-          void l.host
-            .call(e.run, payload)
-            .catch((error: Error) => log.warn(`Event ${name} in ${l.info.id} failed: ${error.message}`));
+          runs.push(
+            l.host
+              .call(e.run, payload)
+              .catch((error: Error) => log.warn(`Event ${name} in ${l.info.id} failed: ${error.message}`)),
+          );
     }
+    if (!runs.length || timeoutMs <= 0) return Promise.resolve();
+    let timer: NodeJS.Timeout | undefined;
+    return Promise.race([
+      Promise.all(runs).then(() => undefined),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+      }),
+    ]).finally(() => clearTimeout(timer));
   }
 
   /**

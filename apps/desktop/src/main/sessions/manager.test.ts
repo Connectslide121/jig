@@ -182,6 +182,30 @@ describe("SessionManager", () => {
     await m.shutdown();
   });
 
+  it("marks a turn Jig closed in the middle of as cut off, until the next turn starts (D-394)", async () => {
+    const m = manager();
+    const chat = await create(m);
+    await m.send(chat.id, "Hello");
+    await until(async () => (await metaOf(m, chat.id)).turns === 1);
+    await m.send(chat.id, "hold until released");
+    await until(async () => (await metaOf(m, chat.id)).status === "working");
+    await m.shutdown();
+    const again = manager();
+    const meta = await metaOf(again, chat.id);
+    expect(meta.status).toBe("idle");
+    expect(meta.cutOffAt).toBeTruthy();
+    await again.send(chat.id, "Carry on");
+    expect((await metaOf(again, chat.id)).cutOffAt).toBeUndefined();
+    await until(async () => (await metaOf(again, chat.id)).status === "idle");
+    await again.shutdown();
+    // A chat that was idle when Jig closed wasn't cut off; a busy one a crash left behind was.
+    expect((await metaOf(manager(), chat.id)).cutOffAt).toBeUndefined();
+    const file = join(dir, `${chat.id}.json`);
+    const saved = JSON.parse(await readFile(file, "utf8"));
+    await writeFile(file, JSON.stringify({ ...saved, meta: { ...saved.meta, status: "working" } }));
+    expect((await metaOf(manager(), chat.id)).cutOffAt).toBeTruthy();
+  });
+
   it("reads chats saved without a provider as Claude chats", async () => {
     const m = manager();
     const old = await create(m);

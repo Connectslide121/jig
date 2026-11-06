@@ -409,7 +409,9 @@ Besides slots, the API gives add-ons toasts with buttons, system notifications, 
 views, live program output (`spawn`), file watching, and calling each other's shared host methods
 (`exports`) — `docs/reference/addon-api.md` (D-215). Jig's events come from `main/addons/jigEvents.ts`
 (chat status, the projects' `.git` folders, the active project) and are dispatched by
-`AddonService.dispatchEvent` and the `addons.jigEvent` event.
+`AddonService.dispatchEvent` and the `addons.jigEvent` event. `app.updating` comes from
+`main/updates/announce.ts` right before Jig closes to install an update; the update waits up to 1.5 s
+for the hosts that listen (D-395).
 
 ### 8.2 Runtime
 
@@ -579,9 +581,12 @@ and installing an update (`updates.apply` calls `requestQuit(then, "update")`).
    workbench window a system message box asks instead.
 3. The modal answers with `quit.decide`: Cancel ends it; an action runs (an add-on's host export) and
    then quits; Quit anyway quits. Quitting runs the waiting continuation (`app.quit()`, or the update's
-   installer/restart).
+   installer/restart). An update first runs `announceUpdate` (add-ons hear `app.updating` and hold
+   their work, e.g. the task queue pauses; waited for up to 1.5 s, D-395).
 4. The flow's prepended `before-quit` listener then runs the flushes from `beforeQuitting` once (the
-   sessions' last writes) and quits for real. Other `before-quit` listeners (Meetings marks the call
+   sessions' last writes; a chat still in a turn is saved with `cutOffAt`, and one a crash left busy
+   gets it when loaded, so the task queue carries its task on after the restart, D-394) and quits for
+   real. Other `before-quit` listeners (Meetings marks the call
    window as closing) act only when the event isn't `defaultPrevented`.
 
 ## 13. Testing

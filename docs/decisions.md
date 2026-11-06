@@ -6742,3 +6742,47 @@ stopped for good.
 - **Layout:** like What Jig can do: a resizable version list (version, date, a dot for the running
   version in a fixed slot at the right) that hides in narrow tabs, and the notes rendered as
   Markdown, newest first.
+
+## D-394: Tasks: a task whose turn Jig cut off by closing carries on once
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-06 (task t150), after 2026-11-05: Jig restarted to install 0.14.0 while
+  task t103 was investigating; the chat was idle afterwards, had answered since the task was sent and
+  had no report, so the queue asked for the report ("Don't continue the task's work") and t103
+  reported Partly done with only its investigation. The names and details are Claude, on my own.
+- **The fact, from main:** `SessionMeta.cutOffAt`: set when Jig quits while a chat is working,
+  starting or waiting for you (`shutdown`), or when it loads a chat saved busy (a crash or a killed
+  process); cleared when the chat's next turn starts. Add-ons read it as `AddonChatInfo.cutOffAt`
+  (`chats.get`). No new IPC method: chat state reaches add-ons only through the host API.
+- **The rule, one place:** `afterTurn` (`addons/tasks/lib/tasks.ts`) returns `resume` when the chat
+  is idle and was cut off after the queue's last message to it (the task, or its "carry on"), unless
+  the task was already resumed, was asked for its report, has a report, or you stopped one of its
+  turns. `resume` sends one message from the queue ("Task queue: Jig restarted, carry on with task N":
+  carry on, check what was done, then report) and records `resumedAt`, so a task is resumed at most
+  once. A second cut-off falls back to the D-318 rules (report request if it answered, else
+  Interrupted). "Interrupted" moved into `afterTurn` too, only while catching up (`catchingUp`: the
+  watcher and the view's read), as before; a chat's own status change waits instead.
+- **Why not resume every time:** a task that keeps getting cut off (a crash it causes) would loop.
+- The Tasks watcher now also runs a few seconds after Jig starts (`atStart`), so a cut-off task goes
+  on right after a restart instead of up to a minute later.
+
+## D-395: Tasks: queues hold while Jig installs an update, and pick up after the restart
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-06 (task t150): the 0.14.0 install started in the same second the queue
+  started its next task. The mechanism is Claude, on my own.
+- **How:** a new Jig event, `app.updating` (`{ version? }`), for add-ons. Install and restart
+  (`installWindowsUpdate`, after the quit modal) and the update from source call `announceUpdate`
+  (`main/updates/announce.ts`), which runs the listeners `main/addons` registered: the event goes to
+  the renderer and to every host listening, and the update waits for those hosts up to 1.5 s (within
+  the installer's 2 s notice) before Jig closes. `dispatchEvent` takes an optional time limit for
+  this; other events stay fire-and-forget.
+- **The Tasks queue** (`updating`): every running queue pauses with `held: { reason: "update", at }`.
+  A host that holds a queue remembers it in memory; a host that finds a hold it didn't make (Jig
+  restarted) runs the queue again by itself (`releaseHold` in the watcher and the view's read), and so
+  does one whose hold outlived 5 minutes (`UPDATE_HOLD_MS`: the install didn't happen). Start, Pause
+  and Reset clear the hold. A task already running when Jig closes is carried on by D-394.
+- **The release skill** never installs: it publishes, and Installed Jig offers the update; Install
+  and restart is the user's. It now says the queue holds, so a release task needn't wait for anything.
+- **Not done:** a "Jig is updating" label in the queue's header: the hold lasts the 2 s before Jig
+  closes and ends right after the restart, so the paused state is hardly seen.

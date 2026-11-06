@@ -247,6 +247,14 @@
     },
     {
       "files": [
+        "apps/desktop/src/main/sessions/manager.ts",
+        "apps/desktop/src/main/addons/chats.ts",
+        "apps/desktop/src/main/updates/announce.ts"
+      ],
+      "specs": ["tasks.spec.ts"]
+    },
+    {
+      "files": [
         "apps/desktop/src/main/ai/**",
         "apps/desktop/src/main/providers/**",
         "apps/desktop/src/main/engine/fake.ts",

@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
+import type { Queue } from "../addons/tasks/lib/tasks";
 import { expect, hostCall, launchJig, settledBox, test } from "./fixtures";
 
 const TINY_PNG =
@@ -837,6 +838,43 @@ test("Tasks: a task for ChatGPT while it isn't signed in is blocked and pauses t
     await app.close();
     await rm(home, { recursive: true, force: true });
   }
+});
+
+test("Tasks: a task Jig closed in the middle of carries on after the restart and reports (D-394)", async ({
+  app,
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const ids = await twoProjects(page, jigHome);
+  const tasks = (p: Page, method: string, args: unknown) =>
+    hostCall(p, "addons.call", { id: "tasks", method, args });
+  const task = async (p: Page) =>
+    ((await tasks(p, "list", { projectId: ids.shop })) as { value: Queue }).value.tasks[0]!;
+  await tasks(page, "add", { projectId: ids.shop, prompts: ["hold until released"], newChat: true });
+  await tasks(page, "start", { projectId: ids.shop });
+  await expect.poll(async () => (await task(page)).sawBusy, { timeout: 20000 }).toBe(true);
+  // Jig closes while the chat works on it (an update's restart).
+  await app.close();
+  const again = await launchJig(jigHome);
+  const page2 = await again.firstWindow();
+  await page2.waitForSelector("[data-testid=app-root] [data-testid=main-area]");
+  // The queue tells the chat once to carry on (not only to report), and it finishes the task.
+  await expect
+    .poll(async () => (await task(page2)).status, { timeout: 30000, intervals: [500] })
+    .toBe("done");
+  const done = await task(page2);
+  expect(done.resumedAt).toBeTruthy();
+  expect(done.nudgedAt).toBeUndefined();
+  expect(done.report?.summary).toContain("Jig restarted while you were working on task 1");
+  const view = await openTasks(page2);
+  await view.getByTestId("task-t1").click();
+  await page2.getByTestId("task-open-chat").click();
+  await expect(page2.getByTestId("jig-message")).toHaveCount(1);
+  await expect(page2.getByTestId("jig-message")).toContainText(
+    "Task queue: Jig restarted, carry on with task 1",
+  );
+  await again.close();
 });
 
 test("Tasks: a task held by the fake engine stays Running until the test releases it", async ({

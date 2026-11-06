@@ -1,5 +1,18 @@
 # Status
 
+Task queue survives Jig restarting (2026-11-06, D-394, D-395, Jon): when Jig closes in the middle of
+a task (an update's restart, a quit, a crash), the queue no longer asks that chat only for its report
+after the restart: it tells it once "Task queue: Jig restarted, carry on with task N", and the chat
+finishes the work and reports. A second cut-off falls back to asking for the report (or Interrupted).
+Install and restart (Settings, the update toast, an update from source) now pauses every running queue
+first, so no new task starts while Jig closes, and the queues run again by themselves after the
+restart (within a few seconds: the queue's watcher now also runs right after Jig starts). Add-ons get
+this as the `app.updating` event, and `chats.get` says when a chat's last turn was cut off
+(`cutOffAt`). Unit tests and a `tasks.spec.ts` restart test cover it.
+**Check on your machine:** with a queue running a long task, Install and restart an update: no next
+task starts during the install, and after the restart the running task's chat gets the "carry on"
+message and the queue goes on.
+
 Calmer chat header (2026-11-05, Jon): the chat's header no longer shows "3380k tokens · ≈ $2.03".
 Tokens and cost are only in the chat overview (the chart button): the "This chat" card has a Tokens
 row and a new Cost row ("≈ $2.03", or "—" when there's no estimate, e.g. ChatGPT chats), and Show

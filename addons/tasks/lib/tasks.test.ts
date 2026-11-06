@@ -19,6 +19,7 @@ import {
   continuesChat,
   counts,
   currentSlot,
+  cutOffTurn,
   deletePermission,
   dropSlots,
   duration,
@@ -26,6 +27,7 @@ import {
   emptyQueue,
   finishTask,
   historyFiles,
+  holdForUpdate,
   interruptedTurn,
   isParked,
   joinQueues,
@@ -51,11 +53,14 @@ import {
   type Queue,
   type Run,
   recordRuns,
+  releaseHold,
   removeTasks,
   reportTarget,
   requeue,
   resetTask,
   resetTasks,
+  resumeFrom,
+  resumeText,
   runOutcome,
   runProviders,
   runProvidersText,
@@ -74,6 +79,7 @@ import {
   taskContext,
   titleFor,
   titleOf,
+  UPDATE_HOLD_MS,
   unusedFiles,
 } from "./tasks";
 
@@ -350,12 +356,94 @@ describe("ending a task's turn (D-318)", () => {
     expect(interruptedTurn(task, chat({ background: 1 }))).toBe(false);
     expect(interruptedTurn(task, chat({ lastAnswerAt: answeredAt }))).toBe(false);
   });
+  it("marks a turn Jig never got to Interrupted, but only when catching up", () => {
+    expect(afterTurn(task, chat(), Date.now(), true)).toBe("interrupted");
+    expect(afterTurn(task, chat())).toBe("wait");
+    expect(afterTurn(task, chat({ queued: 1 }), Date.now(), true)).toBe("wait");
+  });
   it("asks only for the report, by task number and id", () => {
     const q = pic("Ab");
     const text = nudgeText(q, q.tasks[1]!);
     expect(text).toContain('report of task 2 ("b", taskId "b")');
     expect(text).toContain("Don't continue the task's work unless the user asks");
     expect(nudgeFrom(q, q.tasks[1]!)).toBe("Task queue: asked for the report of task 2");
+  });
+});
+
+describe("a turn Jig cut off by closing (D-394)", () => {
+  const sentAt = "2025-01-01T10:00:00Z";
+  const cutOffAt = "2025-01-01T10:05:00Z";
+  const task: Task = {
+    id: "t1",
+    title: "a",
+    prompt: "a",
+    newChat: true,
+    status: "running",
+    sentAt,
+    sawBusy: true,
+  };
+  const cut = chat({ lastAnswerAt: "2025-01-01T10:04:00Z", cutOffAt });
+  it("carries on once, even after it had answered (where it used to ask for the report)", () => {
+    expect(afterTurn(task, cut, Date.now(), true)).toBe("resume");
+    expect(afterTurn(task, cut)).toBe("resume");
+    // Without the cut-off the same chat is asked for its report.
+    expect(afterTurn(task, chat({ lastAnswerAt: "2025-01-01T10:04:00Z" }))).toBe("nudge");
+    // Cut off before it answered at all: carries on too, rather than Interrupted.
+    expect(afterTurn({ ...task, sawBusy: false }, chat({ cutOffAt }), Date.now(), true)).toBe("resume");
+  });
+  it("a second cut-off falls back to the usual rules", () => {
+    const resumed: Task = { ...task, resumedAt: "2025-01-01T10:06:00Z", sawBusy: false };
+    const again = "2025-01-01T10:09:00Z";
+    // It answered after carrying on: asked for the report.
+    expect(afterTurn(resumed, chat({ lastAnswerAt: "2025-01-01T10:08:00Z", cutOffAt: again }))).toBe("nudge");
+    // It hadn't answered yet: Interrupted.
+    expect(afterTurn(resumed, chat({ cutOffAt: again }), Date.now(), true)).toBe("interrupted");
+    // Its "carry on" turn hasn't started yet: waits for it.
+    expect(afterTurn(resumed, chat({ lastAnswerAt: "2025-01-01T10:04:00Z" }))).toBe("wait");
+  });
+  it("doesn't carry on a turn you stopped, a reported task, one asked for its report or an older cut-off", () => {
+    expect(afterTurn(task, chat({ ...cut, userStoppedAt: "2025-01-01T10:03:00Z" }))).toBe("finish");
+    expect(afterTurn({ ...task, report: parseReport({ outcome: "done", summary: "ok" }) }, cut)).toBe(
+      "finish",
+    );
+    const asked: Task = { ...task, nudgedAt: "2025-01-01T10:04:30Z", sawBusy: false };
+    expect(afterTurn(asked, chat({ lastAnswerAt: "2025-01-01T10:04:40Z", cutOffAt }))).toBe("finish");
+    expect(afterTurn(task, chat({ ...cut, cutOffAt: "2025-01-01T09:00:00Z" }))).toBe("nudge");
+    // A chat still busy or stopped by its plan's limit isn't cut off.
+    expect(afterTurn(task, chat({ ...cut, status: "working" }))).toBe("wait");
+    expect(cutOffTurn(task, chat({ ...cut, limit: { provider: "claude", state: "ask" } }))).toBe(false);
+  });
+  it("tells the chat to carry on and report, by task number and id", () => {
+    const q = pic("Ab");
+    const text = resumeText(q, q.tasks[1]!);
+    expect(text).toContain('task 2 (taskId "b")');
+    expect(text).toContain("Carry on where you left off");
+    expect(text).toContain("addon_tasks_report");
+    expect(resumeFrom(q, q.tasks[1]!)).toBe("Task queue: Jig restarted, carry on with task 2");
+  });
+});
+
+describe("holding for an update (D-395)", () => {
+  const at = "2025-01-01T10:00:00Z";
+  it("holds a running queue, and leaves a paused one alone", () => {
+    const running = { ...emptyQueue(), running: true };
+    expect(holdForUpdate(running, at)).toEqual({
+      ...running,
+      running: false,
+      held: { reason: "update", at },
+    });
+    expect(holdForUpdate(emptyQueue(), at)).toEqual(emptyQueue());
+  });
+  it("starts again after the restart, or when the update never came", () => {
+    const held = holdForUpdate({ ...emptyQueue(), running: true }, at);
+    const soon = Date.parse(at) + 60_000;
+    expect(releaseHold(held, false, soon)).toBe(held);
+    expect(releaseHold(held, true, soon)).toEqual({ ...emptyQueue(), running: true });
+    expect(releaseHold(held, false, Date.parse(at) + UPDATE_HOLD_MS)).toEqual({
+      ...emptyQueue(),
+      running: true,
+    });
+    expect(releaseHold(emptyQueue(), true)).toEqual(emptyQueue());
   });
 });
 

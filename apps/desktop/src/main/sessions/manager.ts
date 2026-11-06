@@ -89,6 +89,9 @@ const QueuedSchema = z.object({
     .optional(),
 });
 
+/** A chat in the middle of a turn. */
+const BUSY: SessionMeta["status"][] = ["working", "needs_you", "starting"];
+
 const SessionFileSchema = z.object({
   meta: z.custom<SessionMeta>((v) => typeof v === "object" && v !== null && "id" in v),
   items: z.array(z.custom<ChatItem>()).default([]),
@@ -266,15 +269,25 @@ export class SessionManager {
               (item) => item.kind === "user" || item.kind === "assistant" || item.kind === "tool",
             );
           if (data.meta.draft || legacyEmpty) continue;
-          // A process can't survive a restart: anything "working" is idle now.
+          // A process can't survive a restart: anything "working" is idle now, its turn cut off (D-394;
+          // a clean quit marked it already, a crash or a killed process didn't).
           const status = data.meta.status === "error" ? "error" : "idle";
+          const cutOffAt =
+            data.meta.cutOffAt ?? (BUSY.includes(data.meta.status) ? new Date().toISOString() : undefined);
           // A chat that was carrying on with the other provider when Jig closed asks again (D-338).
           const limit: ChatLimit | undefined =
             data.meta.limit?.state === "continuing" ? { ...data.meta.limit, state: "ask" } : data.meta.limit;
           const live: Live = {
             // Nor do its background tasks.
             state: {
-              meta: { ...data.meta, status, limit, backgroundTasks: undefined, azureTenant: undefined },
+              meta: {
+                ...data.meta,
+                status,
+                limit,
+                cutOffAt,
+                backgroundTasks: undefined,
+                azureTenant: undefined,
+              },
               items: data.items,
             },
             queue: data.queue,
@@ -648,8 +661,9 @@ export class SessionManager {
         this.replaceItem(live, { ...card, status: "dismissed" });
       live.state.meta = { ...live.state.meta, limit: undefined };
     }
-    // Busy from now on, before any await: a second send right away is queued, not started twice.
-    live.state.meta = { ...live.state.meta, status: "starting" };
+    // Busy from now on, before any await: a second send right away is queued, not started twice. A
+    // turn cut off by Jig closing is behind it now (D-394).
+    live.state.meta = { ...live.state.meta, status: "starting", cutOffAt: undefined };
     let data: EnginePart[] = [];
     try {
       data = await readAttachments(this.options.attachmentsDir, live.state.meta.id, attachments);
@@ -1761,6 +1775,9 @@ export class SessionManager {
     for (const live of this.sessions.values()) {
       clearTimeout(live.limitTimer);
       const unsaved = Boolean(live.saveTimer) || Boolean(live.engine);
+      // A turn still going is cut off: saved with the chat, so the task queue carries on with it (D-394).
+      if (BUSY.includes(live.state.meta.status))
+        live.state.meta = { ...live.state.meta, cutOffAt: new Date().toISOString() };
       this.stop(live);
       writes.push(live.saving);
       if (unsaved || live.saveTimer) writes.push(this.scheduleSave(live, true));

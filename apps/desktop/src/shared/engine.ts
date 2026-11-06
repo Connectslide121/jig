@@ -283,6 +283,11 @@ export interface SessionMeta {
   handoffPending?: { from: ChatProvider; reason: ProviderSpan["reason"] };
   /** Its provider's plan limit stopped it (D-338). */
   limit?: ChatLimit;
+  /**
+   * Jig closed in the middle of its last turn (quit, restart, update or crash): when it found out.
+   * Cleared when its next turn starts (D-394).
+   */
+  cutOffAt?: string;
   /** New regular chat with no submitted prompt yet: memory-only, absent from saved layout/history. */
   draft?: boolean;
   /** The project you put the chat in (D-101); none = the "No project" group. Never set by the folder. */
