@@ -365,7 +365,12 @@
     },
     { "files": ["apps/launcher/**"], "specs": ["launcher.spec.ts"] },
     {
-      "files": ["apps/desktop/src/renderer/features/skills/**", "apps/desktop/src/main/skills/**", "apps/desktop/src/shared/skills.ts", "skills/*/.claude-plugin/**"],
+      "files": [
+        "apps/desktop/src/renderer/features/skills/**",
+        "apps/desktop/src/main/skills/**",
+        "apps/desktop/src/shared/skills.ts",
+        "skills/*/.claude-plugin/**"
+      ],
       "specs": ["skills.spec.ts"]
     },
     {
