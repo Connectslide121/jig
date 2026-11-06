@@ -109,6 +109,7 @@ import {
   duration,
   fileName,
   formatMs,
+  handoverOrder,
   hasStopLine,
   isActive,
   isFinished,
@@ -214,8 +215,10 @@ const COL = {
    * Who runs the chat: always the mark, in the same place on every row (D-330); with room, the model
    * beside it (D-408), in a fixed width so nothing after it moves.
    */
-  provider: "@max-2xl:w-4 @2xl:w-16 flex shrink-0 items-center gap-1",
+  provider: "@max-2xl:w-8 @2xl:w-20 flex shrink-0 items-center gap-1",
 };
+/** Room for two marks side by side (a handover, a mixed run), so one or two line up the same. */
+const MARKS = "flex w-8 shrink-0 items-center gap-1";
 /** History's "Ran on": the marks alone when narrow, with the name beside them when there's room. */
 const RAN_ON = "@max-xl:w-8 @xl:w-20 flex shrink-0 items-center gap-1";
 /** Every value column: one line, right-aligned, digits of equal width. */
@@ -1706,6 +1709,17 @@ function HistoryPanel({
   );
 }
 
+/** One provider's mark, or two side by side in a fixed slot: a chat handed over, a run that mixed them. */
+function ProviderMarks({ providers }: { providers: TaskProvider[] }) {
+  return (
+    <span className={MARKS}>
+      {providers.map((p) => (
+        <ProviderMark key={p} provider={p} iconOnly />
+      ))}
+    </span>
+  );
+}
+
 /**
  * The providers a run's tasks ran on (from the tasks, never the queue's setting): one mark, or both
  * when it mixed them, the counts in the tooltip. Empty for a run from before Jig kept it.
@@ -1715,9 +1729,7 @@ function RanOn({ tasks, className, testId }: { tasks: Task[]; className: string;
   const text = runProvidersText(ran);
   return (
     <span className={className} title={text ? `Ran on ${text}` : undefined} data-testid={testId}>
-      {ran.counts.map((c) => (
-        <ProviderMark key={c.provider} provider={c.provider} iconOnly />
-      ))}
+      <ProviderMarks providers={ran.counts.map((c) => c.provider)} />
       {ran.counts.length > 0 && (
         <span className="@max-xl:hidden @xl:inline min-w-0 truncate text-xs text-muted">
           {ran.counts.length > 1 ? "Mixed" : PROVIDER_LABEL[ran.counts[0]!.provider]}
@@ -2467,21 +2479,26 @@ function TaskRow({
   );
 }
 
-/** A row's provider: the mark alone, the provider, model and where they come from in its tooltip. */
+/**
+ * A row's provider: the mark alone (both, in handover order, when its chat was handed over, D-338),
+ * the provider, model and where they come from in its tooltip.
+ */
 function ProviderSlot({ on, testId }: { on: RunsOn; testId: string }) {
   return (
-    <span
-      className={COL.provider}
-      title={`Runs on ${runsOnText(on)} (${SOURCE_TEXT[on.from]})`}
-      data-testid={testId}
-    >
-      <ProviderMark provider={on.provider} iconOnly />
+    <span className={COL.provider} title={runsOnTitle(on)} data-testid={testId}>
+      <ProviderMarks providers={handoverOrder(on)} />
       <span className="@max-2xl:hidden @2xl:inline min-w-0 truncate text-xs text-muted">
         {on.model ? modelShort(on.model) : ""}
       </span>
     </span>
   );
 }
+
+/** "Runs on Claude · Opus (its chat's)", after a handover "Started on ChatGPT, continued on Claude · Opus". */
+const runsOnTitle = (on: RunsOn) =>
+  on.startedOn
+    ? `Started on ${PROVIDER_LABEL[on.startedOn]}, continued on ${runsOnText(on)} after its limit`
+    : `Runs on ${runsOnText(on)} (${SOURCE_TEXT[on.from]})`;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -2543,13 +2560,11 @@ function TaskDialog({
           title={`${runsOnText(on)} (${SOURCE_TEXT[on.from]})`}
           data-testid="task-runs-on"
         >
-          <ProviderMark provider={on.provider} iconOnly />
+          <ProviderMarks providers={handoverOrder(on)} />
           <span className="truncate">
             {runsOnText(on)}
             {/* Its chat hit that provider's limit and carried on with this one (D-338). */}
-            {task.startedOn && task.startedOn !== on.provider
-              ? ` · started on ${PROVIDER_LABEL[task.startedOn]}`
-              : ""}
+            {on.startedOn ? ` · started on ${PROVIDER_LABEL[on.startedOn]}` : ""}
           </span>
         </span>,
       ],

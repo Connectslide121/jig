@@ -7082,3 +7082,23 @@ starts a chat can override both. The details are **Claude, on my own**.
   queue's model.
 - **Reorganize** (D-397) is unchanged: only a task's own provider or model makes it start its own
   chat; a queue model never fixes a task.
+
+## D-409: Provider marks: a handed-over task shows both, and Claude's asterisk fills the box
+
+**Jon:** a task whose chat was handed over to the other provider (D-338) shows both marks in its row,
+in handover order, like History's "Mixed" already does for a run; and Claude's mark must look as big
+as ChatGPT's everywhere, fixed in the mark itself, not per place. The details are **Claude, on my own**.
+
+- **Handover pair:** `runsOn` returns `startedOn` beside `provider` when the task's own chat started
+  on the other provider (`Task.startedOn`, already recorded by D-338); `handoverOrder` (pure, tested)
+  lists them, started-on first. The queue's and History's task rows, the chat rows above them and the
+  task's details draw them through one `ProviderMarks` (also used by the "Ran on"/"Mixed" cell): a
+  fixed `w-8` slot for one or two marks, so rows with one or two line up. The provider column grew
+  from `w-4`/`w-16` to `w-8`/`w-20` to fit it. A later task that continues that chat shows only the
+  provider that finished it (it ran there alone). The row's tooltip says "Started on ChatGPT,
+  continued on Claude · Opus after its limit".
+- **Claude's mark:** Lucide's `Asterisk` reaches only radius 7 of its 24-unit box while `Aperture`'s
+  circle has radius 10, so Claude's looked smaller. `ProviderMark.tsx` now draws its own
+  `ClaudeAsterisk` with `createLucideIcon`: the same three arms at radius 10 with Lucide's stroke, so
+  every place that shows `PROVIDER_MARKS` (footer, pickers, chat list, divider, tasks) changed at
+  once. Still a Lucide icon in style and API; no new icon set.

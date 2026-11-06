@@ -163,6 +163,75 @@ test("Tasks queue with stop lines: planned, running and after it stopped, at all
   await shoot("tasks-stops-stopped", "t3", "Queued");
 });
 
+test("Tasks: a task handed over after a limit shows both marks, in the queue, History and its chat", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(180_000);
+  await mkdir(join(jigHome, "shop"), { recursive: true });
+  await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
+  const projects = (await hostCall(page, "projects.list")) as {
+    value: { projects: Array<{ id: string }> };
+  };
+  const projectId = projects.value.projects[0]!.id;
+  await hostCall(page, "projects.setActive", { id: projectId });
+  await hostCall(page, "config.update", { engine: { onLimit: "switch" } });
+  await expect
+    .poll(
+      async () =>
+        ((await hostCall(page, "usage.get")) as { value: { chatgpt: { state: string } } }).value.chatgpt
+          .state,
+      { timeout: 15000 },
+    )
+    .toBe("ok");
+  const tasks = (method: string, args: Record<string, unknown> = {}) =>
+    hostCall(page, "addons.call", { id: "tasks", method, args: { projectId, ...args } });
+  // t1 hits Claude's limit and ChatGPT finishes it; t2 runs on Claude alone; t3 waits.
+  await tasks("add", {
+    prompts: ["update the readme and hit the limit", "write the changelog", "tidy the styles"],
+    newChat: true,
+  });
+  await tasks("stop", { id: "t2", on: true });
+  await tasks("start");
+  const status = async () =>
+    ((await tasks("list")) as { value: { tasks: Array<{ id: string; status: string }> } }).value.tasks.map(
+      (t) => `${t.id}:${t.status}`,
+    );
+  await expect.poll(status, { timeout: 60_000 }).toEqual(["t1:done", "t2:done", "t3:queued"]);
+
+  // One placement at a time, with a pause: the app saves its own layout a moment after a change.
+  for (const placement of ["sidebar", "bottom", "tab"] as const) {
+    await page.waitForTimeout(800);
+    const shot = await shootView(page, "addon.tasks.tasks", "tasks-handover-queue", {
+      placements: [placement],
+      ready: async (panel) => {
+        await expect(
+          panel.getByTestId("task-provider-t1").getByTestId("provider-mark-chatgpt"),
+        ).toBeVisible();
+      },
+    });
+    console.log(shot.join("\n"));
+  }
+  // History, in the tab (the last placement): the run list (Mixed), then the run's task rows.
+  const view = page.getByTestId("tasks-view");
+  await view.getByRole("tab", { name: "History" }).click();
+  await expect(view.getByTestId("tasks-run-0")).toBeVisible();
+  const runs = join(SHOTS_DIR, "tasks-handover-history-tab.png");
+  await page.screenshot({ path: runs });
+  await view.getByTestId("tasks-run-0").click();
+  await expect(view.getByTestId("tasks-run")).toBeVisible();
+  const run = join(SHOTS_DIR, "tasks-handover-run-tab.png");
+  await page.screenshot({ path: run });
+  // Its chat: the limit card, the divider with both marks, the composer's provider picker and the footer.
+  await view.getByTestId("task-t1").click();
+  await page.getByTestId("task-open-chat").click();
+  await expect(page.getByTestId("handoff-divider")).toBeVisible();
+  await page.getByTestId("handoff-divider").scrollIntoViewIfNeeded();
+  const chat = join(SHOTS_DIR, "tasks-handover-chat.png");
+  await page.screenshot({ path: chat });
+  console.log([runs, run, chat].join("\n"));
+});
+
 /** An `az` for the Teams setup shots: answers like the Azure CLI, and fails at the storage account. */
 const SHOTS_AZ = `
 const args = ${AZ_ARGV};

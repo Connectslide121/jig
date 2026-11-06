@@ -66,6 +66,9 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       `Project.onLimit`, the task queue following it, fake "hit the limit", `e2e/limit-handoff.spec.ts`.
 - [ ] Try a real limit with both providers signed in: the reset time on the card, Continue, and the
       handoff the other provider gets (D-338).
+- [x] **A handed-over task shows both provider marks; Claude's mark as big as ChatGPT's** (added
+      2026-11-06, D-409): `runsOn().startedOn`, `handoverOrder`, one `ProviderMarks` slot for task
+      rows and "Mixed", `ClaudeAsterisk` in `ProviderMark.tsx`; unit tests, `e2e/limit-handoff.spec.ts`.
 - [x] **A limit nobody answers resumes by itself at the reset** (added 2026-11-05, D-376): `ask`
       waits automatically (`ChatLimit.auto`), the card keeps its choices and gets Don't resume, the
       header says when it resumes, `SessionManager.wake` on resume/unlock, stale resets ignored,

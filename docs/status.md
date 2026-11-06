@@ -805,6 +805,13 @@ ChatGPT and Claude, e.g. a task on Claude in a ChatGPT queue or a handover; the 
 name or "Mixed" beside the marks when there's room); the run page's header shows the same. Runs from
 before Jig kept a task's provider leave it empty. Unit tests and `e2e/tasks.spec.ts` cover it.
 
+A handed-over task shows both marks (2026-11-06, D-409): in the queue and in a past run, a task whose
+chat hit one provider's limit and was finished by the other shows both marks in handover order (e.g.
+ChatGPT, then Claude), in a fixed two-mark slot so every row's marks line up; its tooltip says
+"Started on ChatGPT, continued on Claude". Claude's mark is now drawn to the same size as ChatGPT's
+everywhere (footer, pickers, chat list, the handover divider, tasks). Unit tests and
+`e2e/limit-handoff.spec.ts` cover it; `e2e/ui-shots.spec.ts` shoots the queue, History and the chat.
+
 A chat can revise its task's report (2026-11-05, D-353): when you follow up in a task's chat after it
 reported (say it reported Partly done and you cleared up a misunderstanding), ask it to report the
 task again: `addon_tasks_report` with the task's id replaces the report, the status follows the new

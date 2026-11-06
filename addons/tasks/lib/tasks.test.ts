@@ -26,6 +26,7 @@ import {
   editTasks,
   emptyQueue,
   finishTask,
+  handoverOrder,
   hasStopLine,
   historyFiles,
   holdForUpdate,
@@ -1278,6 +1279,19 @@ describe("who runs a task (D-330)", () => {
     q = { ...q, tasks: q.tasks.map((t) => (t.id === "t1" ? { ...t, ranOn: "chatgpt" as const } : t)) };
     expect(runsOn(q, q.tasks[1]!, "claude")).toEqual({ provider: "chatgpt", from: "chat" });
     expect(runsOn(q, q.tasks[0]!, "claude")).toEqual({ provider: "chatgpt", from: "ran" });
+    // Handed over after a limit: the provider it started on comes along, in handover order.
+    q = {
+      ...q,
+      tasks: q.tasks.map((t) =>
+        t.id === "t1" ? { ...t, ranOn: "claude" as const, startedOn: "chatgpt" as const } : t,
+      ),
+    };
+    const handedOver = runsOn(q, q.tasks[0]!, "claude");
+    expect(handedOver).toEqual({ provider: "claude", startedOn: "chatgpt", from: "ran" });
+    expect(handoverOrder(handedOver)).toEqual(["chatgpt", "claude"]);
+    expect(handoverOrder({ provider: "claude" })).toEqual(["claude"]);
+    // The task that continues it runs on the provider that finished it, without the pair.
+    expect(runsOn(q, q.tasks[1]!, "claude")).toEqual({ provider: "claude", from: "chat" });
   });
 
   it("gives new chats the queue's model, only on the queue's provider (D-408)", () => {

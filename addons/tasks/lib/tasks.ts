@@ -1713,8 +1713,14 @@ export interface RunsOn {
   provider: TaskProvider;
   /** The model asked for; none = the provider's default (the project's model for its own provider). */
   model?: string;
+  /** Its chat started on this other provider and was handed over to `provider` (D-338). */
+  startedOn?: TaskProvider;
   from: RunsOnSource;
 }
+
+/** The providers a task's chat ran on, in handover order: the one it started on first (D-338). */
+export const handoverOrder = (on: Pick<RunsOn, "provider" | "startedOn">): TaskProvider[] =>
+  on.startedOn ? [on.startedOn, on.provider] : [on.provider];
 
 /**
  * The provider a task runs on (D-330): once it started, the one its chat ran on; a task that continues
@@ -1728,7 +1734,12 @@ export function runsOn(
   projectDefault: TaskProvider,
 ): RunsOn {
   if (task.ranOn)
-    return { provider: task.ranOn, ...(task.ranModel ? { model: task.ranModel } : {}), from: "ran" };
+    return {
+      provider: task.ranOn,
+      ...(task.ranModel ? { model: task.ranModel } : {}),
+      ...(task.startedOn && task.startedOn !== task.ranOn ? { startedOn: task.startedOn } : {}),
+      from: "ran",
+    };
   const group = chatGroups(queue).find((g) => g.tasks.some((x) => x.task.id === task.id));
   const tasks = group?.tasks.map((x) => x.task) ?? [];
   if (tasks[0] && tasks[0] !== task) {

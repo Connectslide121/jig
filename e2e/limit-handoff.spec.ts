@@ -120,7 +120,15 @@ test("Tasks: with 'continue with the other provider', a task that hits Claude's 
   });
   await view.getByTestId("tasks-start").click();
   await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 60000 });
-  await expect(view.getByTestId("task-provider-t1").getByTestId("provider-mark-chatgpt")).toBeVisible();
+  // Both marks, in handover order: Claude, then ChatGPT that finished it.
+  const marks = view.getByTestId("task-provider-t1").locator("[data-testid^='provider-mark-']");
+  await expect(marks).toHaveCount(2);
+  await expect(marks.nth(0)).toHaveAttribute("data-testid", "provider-mark-claude");
+  await expect(marks.nth(1)).toHaveAttribute("data-testid", "provider-mark-chatgpt");
+  await expect(view.getByTestId("task-provider-t1")).toHaveAttribute(
+    "title",
+    /Started on Claude, continued on ChatGPT/,
+  );
   await view.getByTestId("task-t1").click();
   await expect(page.getByTestId("task-runs-on")).toContainText("ChatGPT");
   await expect(page.getByTestId("task-runs-on")).toContainText("started on Claude");
