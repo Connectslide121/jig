@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, hostCall, launchJig, test } from "./fixtures";
+import { expect, hostCall, launchJig, openViewFromMenu, test } from "./fixtures";
 
 test("Build something… makes a new add-on, previews it, and Accept makes it live", async ({ page }) => {
   await page.keyboard.press("Control+Shift+B");
@@ -86,9 +86,7 @@ test("a chat can ask for a build; the card follows it", async ({ page, jigHome }
 });
 
 test("Change this with AI on an add-on view starts a build about that add-on", async ({ page }) => {
-  await page.getByTestId("tools-group-View").click();
-  await page.getByRole("menuitem", { name: "Views" }).hover();
-  await page.getByRole("menuitem", { name: "Repos" }).click();
+  await openViewFromMenu(page, "Repos");
   await page.getByTestId("view-menu-addon.repos.overview").click();
   await page.getByTestId("change-with-ai").click();
   await expect(page.getByTestId("build-dialog")).toBeVisible();

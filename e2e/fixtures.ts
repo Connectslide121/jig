@@ -134,4 +134,18 @@ export async function settledBox(locator: Locator): ReturnType<Locator["bounding
   return box;
 }
 
+/**
+ * Opens a view from View → Views. Add-ons mount one after another after the window loads, and an open
+ * menu lists only what was there when it opened, so it opens the menu again until the view is listed.
+ */
+export async function openViewFromMenu(page: Page, name: string): Promise<void> {
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await page.getByTestId("tools-group-View").click();
+    await page.getByRole("menuitem", { name: "Views" }).hover();
+    await expect(page.getByRole("menuitem", { name, exact: true })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 20_000 });
+  await page.getByRole("menuitem", { name, exact: true }).click();
+}
+
 export { expect };

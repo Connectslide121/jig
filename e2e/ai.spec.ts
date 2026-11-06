@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, openViewFromMenu, test } from "./fixtures";
 
 async function chat(page: import("@playwright/test").Page, jigHome: string) {
   const dir = join(jigHome, "demo");
@@ -130,9 +130,7 @@ test("A failed script offers Ask Claude, with its output in a new chat", async (
     }),
   );
   await hostCall(page, "projects.add", { path: dir });
-  await page.getByTestId("tools-group-View").click();
-  await page.getByRole("menuitem", { name: "Views" }).hover();
-  await page.getByRole("menuitem", { name: "Scripts" }).click();
+  await openViewFromMenu(page, "Scripts");
   const view = page.getByTestId("scripts-view");
   await view.getByRole("button", { name: "Run check" }).click({ timeout: 15000 });
 
