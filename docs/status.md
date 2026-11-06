@@ -1,5 +1,13 @@
 # Status
 
+Jig factory's demo kit (2026-11-07, phase 28 session 1, D-441): the kit demos are built with lives on
+branch `demo-kit` (to become its own `jig-demo-kit` repository); `npm run check -- <demo>` there is
+the quality gate (offline, four widths and dark, accessibility, layout shift, alignment, real-data
+scan). In Jig: **Settings → Jig factory → Demo kit folder** (protected: chats can't change it).
+Settings → Skills can now list skills that start off. **Check on your machine:** clone the kit beside
+Jig, `npm install && npm run setup && npm run check -- demos/sample`, open
+`demos/sample/dist/index.html`; set the folder in Settings → Jig factory.
+
 Jig factory, first look (2026-11-07, phase 28 session 0, D-424…D-440): a new built-in add-on with a
 **factory** button in the top bar (its count is what waits for you across projects): Floor, Inbox,
 Runs, Load sample runs. The **Floor** tab shows the active project's runs as cards in six lanes

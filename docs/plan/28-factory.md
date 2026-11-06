@@ -79,8 +79,15 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   shows the order.
 - **Current session:** 1, the demo kit and the quality gate — in progress.
 - **Done:** session 0 (decisions D-424…D-440, `addons/factory` with the Floor, Run and Inbox on
-  sample runs).
-- **Half done / next step:** see session 1's checklist below.
+  sample runs). Session 1: the demo kit (all of it, passing its own gate), the
+  `factory.demoKitPath` setting, skills that can start off (D-441).
+- **The demo kit's code:** branch **`demo-kit`** of this GitHub repository (its own history; it is
+  meant to become the repository `jig-demo-kit`, D-429, which could not be created from the agent).
+  Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
+  `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it.
+- **Half done / next step:** session 1's last two items: vendor the four skills of D-430
+  (`scripts/vendor-skills.py`, catalog entries with `"defaultEnabled": false`) and write the
+  Jig-authored critic rubric skill from demo-quality.md; then tick, run `npm run e2e:changed`.
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -126,28 +133,35 @@ logic pure. The top bar menu has Floor, Inbox, Runs and the sample entries; **Ne
 session 3. Screenshots: `JIG_UI_SHOTS=1 xvfb-run -a npx playwright test e2e/factory.spec.ts -g "Dark
 and Light"` (view at sidebar, panel and tab; Floor, Run and Inbox at a wide and a narrow window).
 
-### 1. The demo kit and the quality gate — in progress
+### 1. The demo kit and the quality gate — in progress (skills and rubric left)
 
 Its own repository (D-429); this session creates it beside `jig/` and adds only a setting in Jig.
 
-- [ ] Demo kit repo: Vite + React + TS + Tailwind v4 + shadcn/ui, hash routes, relative base, one
+- [x] Demo kit repo: Vite + React + TS + Tailwind v4 + shadcn/ui, hash routes, relative base, one
       static folder output; shells (sidebar app, top-nav app, phone frame, tablet frame, landing).
-- [ ] Built-in: PROTOTYPE · sample data banner, version and change log, story mode ("what to try"
+- [x] Built-in: PROTOTYPE · sample data banner, version and change log, story mode ("what to try"
       panel), presenter mode (arrow keys, hotspots), theme switch, reduced motion.
-- [ ] Tokens pipeline: DTCG 2025.10 `tokens.json` → Style Dictionary v5 → CSS variables + Tailwind
+- [x] Tokens pipeline: DTCG 2025.10 `tokens.json` → Style Dictionary v5 → CSS variables + Tailwind
       theme. A sample product kit (neutral brand).
-- [ ] Block registry (shadcn registry format) with the first blocks: app shell, data table, KPI
+- [x] Block registry (shadcn registry format) with the first blocks: app shell, data table, KPI
       strip, chart card, calendar/schedule, kanban, detail drawer, form in a modal, empty state.
-- [ ] Storybook catalogue of the kit.
-- [ ] `npm run check` in the kit = the quality gate: build, offline load, no console errors, axe
+- [x] Storybook catalogue of the kit.
+- [x] `npm run check` in the kit = the quality gate: build, offline load, no console errors, axe
       (0 serious/critical), screenshots at 1440/1280/834/390, layout shift, banner present, real-data
       scan; writes `check.json` + screenshots ([demo-quality.md](28-factory/demo-quality.md)).
-- [ ] Jig setting `factory.demoKitPath` (`ConfigSchema`, `SETTINGS_GUIDE`, `state.md`).
+- [x] Jig setting `factory.demoKitPath` (`ConfigSchema`, `SETTINGS_GUIDE`, `state.md`).
 - [ ] Vendored skills (D-430) into `skills/` with pins and licences, plus the factory's own critic
       rubric as a reference file.
 
 **Done when:** a hand-written brief turned into a demo with the kit passes `npm run check` and looks
 like a product, not an MVP.
+
+Session 1 notes: the kit is on branch `demo-kit` (see "Where we are"); commands in its README
+(`new`, `dev`, `build`, `check`, `storybook`, `registry:build`). `demos/sample` ("Fabrikam Field", a
+dispatcher at 07:40) passes `npm run check` in ~25 s: one offline HTML file of 1.2 MB, 4 widths plus
+dark, axe, layout shift, alignment, story targets, real-data scan; `check.json` and screenshots in
+`<demo>/check/`. A new demo from the template passes too, inside or outside the kit folder. The
+setting shows on Settings → Jig factory (core page, D-441: add-ons can't read core settings yet).
 
 ### 2. The add-on core: Conductor and stage runner — not started
 
