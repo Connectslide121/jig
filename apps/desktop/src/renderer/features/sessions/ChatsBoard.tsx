@@ -7,7 +7,7 @@ import { useProjects } from "../../workbench/projects";
 import { workbench } from "../../workbench/store";
 import { ProjectSwatch } from "../projects/colors";
 import { boardColumns, boardSummary } from "./board";
-import { StatusDot } from "./status";
+import { ChatIcon } from "./status";
 import { useSeenTurns, useSessions } from "./store";
 
 /**
@@ -76,7 +76,7 @@ function BoardCard({ meta, now }: { meta: SessionMeta; now: number }) {
     >
       <span className="flex w-full items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-sm">{meta.title || "New chat"}</span>
-        <StatusDot status={meta.status} />
+        <ChatIcon meta={meta} />
       </span>
       <span className="flex w-full items-center gap-2 text-xs text-muted">
         <span className="flex size-3 shrink-0 items-center justify-center">

@@ -7,7 +7,7 @@ import type { TabProps } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { DiffLines } from "../preview/viewers";
-import { StatusDot } from "../sessions/status";
+import { ChatIcon } from "../sessions/status";
 import { useSessions } from "../sessions/store";
 
 const FILE_TONE = {
@@ -202,7 +202,7 @@ export function AttemptsTab({ params, active }: TabProps) {
               data-testid={`attempt-${a.index}`}
             >
               <div className="flex items-center gap-2">
-                {meta && <StatusDot status={meta.status} />}
+                {meta && <ChatIcon meta={meta} />}
                 <span className="text-sm font-semibold text-fg">Attempt {a.index}</span>
                 {verdict?.winner === a.index && <Badge tone="accent">Jig's pick</Badge>}
                 <div className="flex-1" />

@@ -36,14 +36,17 @@ test("Home: New chat opens a chat; New chat in the top bar; tab dots; Ctrl+K", a
   await fresh.getByRole("button", { name: "Explain how this project is organised" }).click();
   await expect(fresh.getByTestId("composer-input")).toHaveValue("Explain how this project is organised");
 
-  // A working chat shows a dot on its tab while you look at another one.
-  await fresh.getByTestId("composer-input").fill("slow answer");
+  // A working chat shows its mark on its tab and in the Chats list while you look at another one;
+  // once done, both say it finished and you haven't seen it (D-416).
+  await fresh.getByTestId("composer-input").fill("answer, hold until released");
   await page.keyboard.press("Enter");
   await page.getByRole("tab").first().click();
-  await expect(page.getByRole("tab").nth(1).getByTestId("tab-status")).toHaveAttribute(
-    "data-status",
-    "working",
-  );
+  const tabMark = page.getByRole("tab").nth(1).getByTestId("status-mark");
+  await expect(tabMark).toHaveAttribute("data-status", "working");
+  await expect
+    .poll(async () => ((await hostCall(page, "fake.release", {})) as { value: number }).value)
+    .toBeGreaterThan(0);
+  await expect(tabMark).toHaveAttribute("data-status", "unread", { timeout: 15000 });
 
   // Ctrl+K opens the shared search.
   await page.keyboard.press("Control+k");

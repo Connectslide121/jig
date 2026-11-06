@@ -7276,8 +7276,13 @@ own**.
   (in the icon's colour, a chat's project colour), a bell that rings briefly every few seconds
   (warning colour) when it needs you, an alert icon (danger) after an error. Idle and finished show
   the plain icon. Reduced motion keeps the marks still.
-- **Dropped:** the tab's "unread" status (a finished turn not seen yet). The Chats board's Finished
-  column still tracks it (`useSeenTurns`).
+- **Update, same day (Jon):** "finished, not seen" is back, and the same marks go in the Chats
+  sidebar. One mark for a chat everywhere: `ChatIcon` (`features/sessions/status.tsx`) in its tab
+  (the tab type's `IconView`), the Chats list, the chat's header, the Chats board, Home and Attempts.
+  It is the speech bubble in the project's colour; working, needs you and error replace it with
+  `StatusMark` (`ui/StatusMark.tsx`); a finished turn you haven't seen (`useSeenTurns`) turns it into
+  the bubble with a dot in its corner, the dot drawn in the text colour (`.jig-unread`), like an
+  unread badge. The round status dots (`StatusDot`) are gone; projects stay squares.
 
 ## D-417: Jig says when a switched-on add-on fails to load
 

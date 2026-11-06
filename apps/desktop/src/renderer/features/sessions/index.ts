@@ -10,12 +10,12 @@ import { useHostEvent } from "../../lib/host";
 import { useProjects } from "../../workbench/projects";
 import { registerAction, registerTabType, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
-import { projectFillClass } from "../projects/colors";
 import { newSession } from "./actions";
 import { ChatsBoard } from "./ChatsBoard";
 import { ChatTab } from "./ChatTab";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { SessionsHeaderActions, SessionsView, sessionsHeaderMenu } from "./SessionsView";
+import { ChatIconById } from "./status";
 import { applySessionUpdates, loadSessions, useSessions } from "./store";
 
 export function registerSessions(): void {
@@ -41,20 +41,8 @@ export function registerSessions(): void {
     title: () => "Chat",
     useTitle: (params) => useSessions((s) => s.metas[String(params.sessionId)]?.title ?? ""),
     icon: MessageSquare,
-    // Filled in its project's colour, so tabs show which project a chat belongs to.
-    useIconClass: (params) => {
-      const projectId = useSessions((s) => s.metas[String(params.sessionId)]?.projectId);
-      const color = useProjects((s) => s.projects.find((p) => p.id === projectId)?.color);
-      return color ? projectFillClass(color) : undefined;
-    },
-    useStatus: (params) => {
-      const id = String(params.sessionId);
-      const status = useSessions((s) => s.metas[id]?.status);
-      if (status === "needs_you") return "attention";
-      if (status === "working" || status === "starting") return "working";
-      if (status === "error") return "error";
-      return undefined;
-    },
+    // Its project's colour and its state, the same mark as in the Chats list (D-416).
+    IconView: ChatIconById,
     component: ChatTab,
     owner: "core",
   });

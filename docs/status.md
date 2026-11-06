@@ -352,8 +352,10 @@ project recolours it. Chats with no project keep the outline icon. Checked in Ji
 projects (yellow, blue, green) and the fake engine.
 No status dots on tabs (2026-11-06, D-416, Jon): while a chat works, three dots bounce in its icon's
 place (in the project colour); when it needs you, a bell rings there now and then; after an error, an
-alert icon. Idle and finished chats show just the icon (the orange "finished, not seen" dot is gone;
-the Chats board still has a Finished column). The title never moves.
+alert icon. A chat that finished a turn you haven't seen shows its bubble with a bright dot in the
+corner; idle chats show just the bubble. The same marks are in the Chats sidebar, the chat's header,
+the Chats board, Home and Attempts (no more round status dots). The title never moves. Checked in Jig
+Dark with the fake engine (idle, working, needs you, finished unseen, in tabs and the sidebar).
 
 No provider in the chat header (2026-11-04, D-340, Jon): the chat tab's top bar no longer shows
 Claude or ChatGPT; the composer's provider picker already says who runs the chat. The header's

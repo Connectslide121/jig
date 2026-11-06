@@ -19,7 +19,7 @@ import { fillComposer } from "./drafts";
 import { resetTime } from "./LimitCard";
 import { renameSession, sessionMenu } from "./menus";
 import { canChangeProject, showProjectOf, switchChatProject } from "./project";
-import { STATUS_LABEL, StatusDot } from "./status";
+import { ChatIcon, STATUS_LABEL } from "./status";
 import { holdTranscript, markSeen, useSessions } from "./store";
 import { Transcript } from "./Transcript";
 
@@ -118,7 +118,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
   return (
     <div className="flex h-full flex-col" data-testid="chat" data-panel="chat">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-4">
-        <StatusDot status={meta.status} />
+        <ChatIcon meta={meta} />
         <button
           type="button"
           className="min-w-0 truncate text-sm font-medium hover:underline"

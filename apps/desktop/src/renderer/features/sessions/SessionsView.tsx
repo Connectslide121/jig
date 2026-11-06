@@ -30,7 +30,7 @@ import {
 } from "./grouping";
 import { sessionMenu } from "./menus";
 import { showProjectOf } from "./project";
-import { STATUS_LABEL, StatusDot } from "./status";
+import { ChatIcon, STATUS_LABEL, StatusIcon } from "./status";
 import { useSessions } from "./store";
 
 function relative(iso: string): string {
@@ -54,7 +54,7 @@ function GroupMarkView({ mark }: { mark: GroupMark }) {
   }
   if (mark.kind === "none") return <span className="size-2.5 shrink-0 rounded-xs bg-hint" />;
   if (mark.kind === "pinned") return <Pin className="size-3 shrink-0" />;
-  if (mark.kind === "status") return <StatusDot status={mark.status} className="mx-0.5" />;
+  if (mark.kind === "status") return <StatusIcon status={mark.status} />;
   return <Clock className="size-3 shrink-0" />;
 }
 
@@ -133,7 +133,7 @@ export function SessionsView() {
             <span className="flex size-3 shrink-0 items-center justify-center">
               {m.pinned && <Pin className="size-3 shrink-0 text-hint" aria-label="Pinned" />}
             </span>
-            <StatusDot status={m.status} />
+            <ChatIcon meta={m} />
           </span>
         }
         className={cn(

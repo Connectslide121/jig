@@ -33,7 +33,7 @@ import { openProjectDialog } from "../projects/ProjectDialog";
 import { projectMenu } from "../projects/projectMenu";
 import { useDashboardWidgets } from "../projects/widgets";
 import { newSession } from "../sessions/actions";
-import { STATUS_LABEL, StatusDot } from "../sessions/status";
+import { ChatIcon, STATUS_LABEL } from "../sessions/status";
 import { useSessions } from "../sessions/store";
 
 /** First things people ask Claude in a project; a click opens a new chat with it ready to send. */
@@ -209,7 +209,7 @@ export function Home({ project }: { project: ProjectInfo }) {
                 onClick={() => workbench.openTab("jig.chat", { sessionId: m.id })}
                 className="flex min-w-0 items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-hover"
               >
-                <StatusDot status={m.status} />
+                <ChatIcon meta={m} />
                 <span className="min-w-0 flex-1 truncate text-sm text-fg">{m.title}</span>
                 {m.status !== "idle" && (
                   <span className={cn("text-2xs", m.status === "needs_you" ? "text-warning" : "text-muted")}>

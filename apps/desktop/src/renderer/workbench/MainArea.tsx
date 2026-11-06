@@ -1,6 +1,4 @@
 import {
-  BellRing,
-  CircleAlert,
   Columns2,
   type LucideIcon,
   PanelBottom,
@@ -30,7 +28,7 @@ import {
 import { requestBuild } from "../addons/buildRequests";
 import { AboutPage } from "../features/about/AboutTab";
 import { Home } from "../features/home/Home";
-import { cn, contextMenu, ErrorBoundary, FileIcon, OverlayScrollbar } from "../ui";
+import { cn, contextMenu, ErrorBoundary, FileIcon, OverlayScrollbar, StatusMark } from "../ui";
 import { confirmClose, useDirtyTabs } from "./dirty";
 import { useSplitRatio } from "./Pane";
 import { useActiveProject } from "./projects";
@@ -47,43 +45,15 @@ function useTabTitle(tab: LayoutTab): string {
 }
 
 const noStatus = () => undefined;
-const STATUS_TITLE = {
-  working: "Jig is working",
-  attention: "Needs you",
-  error: "Stopped with an error",
-};
-const noIconClass = () => undefined;
-
 /**
- * The tab's icon, or in its place what its status wants you to see (D-416): three bouncing dots
- * while it works (in the icon's colour), a ringing bell when it needs you, an alert on an error.
- * Same slot either way, so the title never moves. Idle and finished show the plain icon.
+ * The tab's icon, or in its place what its status wants you to see (`StatusMark`, D-416). Same slot
+ * either way, so the title never moves. A tab type can draw the whole icon itself (`IconView`).
  */
 function TabIcon({ tab, Icon }: { tab: LayoutTab; Icon: LucideIcon }) {
   const def = useRegistry((s) => s.tabTypes[tab.type]);
-  const extra = (def?.useIconClass ?? noIconClass)(tab.params);
   const status = (def?.useStatus ?? noStatus)(tab.params);
-  if (!status) return <Icon className={cn("size-3.5", extra)} />;
-  const mark = { title: STATUS_TITLE[status], "data-testid": "tab-status", "data-status": status };
-  if (status === "working")
-    return (
-      <span {...mark} className={cn("jig-typing flex size-3.5 items-center gap-px", extra)}>
-        <span className="size-1 rounded-full bg-current" />
-        <span className="size-1 rounded-full bg-current" />
-        <span className="size-1 rounded-full bg-current" />
-      </span>
-    );
-  if (status === "attention")
-    return (
-      <span {...mark} className="flex">
-        <BellRing className="jig-ring size-3.5 text-warning" />
-      </span>
-    );
-  return (
-    <span {...mark} className="flex">
-      <CircleAlert className="size-3.5 text-danger" />
-    </span>
-  );
+  if (def?.IconView) return <def.IconView params={tab.params} />;
+  return status ? <StatusMark status={status} /> : <Icon className="size-3.5" />;
 }
 
 function TabButton({

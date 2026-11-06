@@ -174,12 +174,13 @@ slot, so the title never moves, D-416):
 - `attention` (needs you): a bell in the warning colour that rings briefly every few seconds (`.jig-ring`);
 - `error`: an alert icon in the danger colour.
 
-No status (idle, finished) shows the plain icon. Reduced motion keeps the marks still. Chat tabs
-report it from the chat's status.
+No status (idle, finished) shows the plain icon. Reduced motion keeps the marks still. The marks are
+`StatusMark` (`ui/StatusMark.tsx`).
 
-A tab type can also colour its icon with `useIconClass(params)` (extra classes, token utilities only).
-Chat tabs fill their speech bubble in the chat's project colour (`projectFillClass`); a chat with no
-project keeps the plain outline.
+A tab type can draw its icon itself with `IconView` (a component given the tab's params). Chat tabs
+use it for `ChatIcon`, the chat's mark everywhere (the Chats list too): the speech bubble filled in
+the project's colour (`projectFillClass`; outline without a project), the status marks above in its
+place, and the bubble with a bright corner dot when it finished a turn you haven't seen.
 
 ## Menus and shortcuts
 
