@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { ChatItem } from "../../../shared/engine";
-import { compactRows, type Entry, type Row, rowIndexOf, stepsSummary, WINDOW, windowStart } from "./compact";
+import {
+  compactRows,
+  type Entry,
+  type Row,
+  rowIndexOf,
+  stepImages,
+  stepsSummary,
+  WINDOW,
+  windowStart,
+} from "./compact";
 
 const at = "";
 const tool = (
@@ -89,5 +98,22 @@ describe("the transcript's window", () => {
     expect(rowIndexOf(rows, "a")).toBe(0);
     expect(rowIndexOf(rows, "c")).toBe(1);
     expect(rowIndexOf(rows, "x")).toBe(-1);
+  });
+});
+
+describe("stepImages", () => {
+  it("lists the steps' saved images in order, subagents' included, each once", () => {
+    const shot = (id: string, ...paths: string[]) =>
+      ({
+        ...tool(id, "mcp__jig__jig_browser_screenshot", {}),
+        images: paths.map((path) => ({ path, mime: "image/png", name: path, kind: "image" })),
+      }) as ChatItem;
+    const entries: Entry[] = [
+      entry(tool("b", "Bash", { command: "ls" })),
+      entry(shot("s1", "a.png", "b.png")),
+      { item: tool("t", "Agent", {}), children: [shot("s2", "c.png"), shot("s3", "a.png")] },
+    ];
+    expect(stepImages(entries)).toEqual(["a.png", "b.png", "c.png"]);
+    expect(stepImages([entry(tool("r", "Read", { file_path: "x.ts" }))])).toEqual([]);
   });
 });

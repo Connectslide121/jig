@@ -58,7 +58,10 @@ resolved active model is recorded separately and never replaces the selected ali
   +4 −1", a single command's description, failures counted, a spinner and the current step while
   it runs (the latest line keeps its spinner and says Working between steps while the chat works); click it for the cards. Subagents' hand-backs in chats opened from Claude Code are a
   step too ("Message from subagent"). Questions,
-  permission prompts, plans, results and notices stay in view. The whole-chat changes row stays
+  permission prompts, plans, results and notices stay in view, and so do the images the steps
+  produced (screenshots, images Jig read): small previews in fixed boxes under the folded line
+  (`StepImages`, from the copies saved with the chat, so they stay after the files are deleted);
+  click one to open it in a tab. The whole-chat changes row stays
   above the input. Detailed shows every step as its card. Find in chat opens the line that holds a match.
 - **An empty chat** shows where Jig runs, starter prompts (a click puts one in the box) and the
   message box's shortcuts.

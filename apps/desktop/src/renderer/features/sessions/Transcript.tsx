@@ -35,6 +35,7 @@ import {
   type Entry,
   type Row,
   rowIndexOf,
+  stepImages,
   stepsSummary,
   WINDOW,
   windowStart,
@@ -44,6 +45,7 @@ import { HandoffDivider, LimitCard } from "./LimitCard";
 import { PermissionCard } from "./PermissionCard";
 import { useChatCapabilities } from "./provider";
 import { restoreFiles, rewindChat } from "./restore";
+import { StepImages } from "./StepImages";
 import { useSessions } from "./store";
 import { ToolCard } from "./ToolCard";
 import { isPromoted, useToolRenderers } from "./toolRenderers";
@@ -394,6 +396,7 @@ function StepsRow({
   live?: boolean;
 }) {
   const summary = stepsSummary(row.entries);
+  const images = stepImages(row.entries);
   const working = summary.running ?? (live ? "Working" : undefined);
   return (
     <div className="flex flex-col" data-testid="steps-row">
@@ -430,6 +433,8 @@ function StepsRow({
         {summary.detail && !working && <span className="min-w-0 truncate text-hint">· {summary.detail}</span>}
         {summary.failed > 0 && <span className="shrink-0 text-danger">· {summary.failed} failed</span>}
       </button>
+      {/* Folded, its screenshots still show (open, they're on the steps' cards). */}
+      {!open && <StepImages paths={images} />}
       {open && (
         <div className="mt-2 ml-2 flex flex-col gap-3 border-l border-line pl-3">
           {row.entries.map(({ item, children }) => (

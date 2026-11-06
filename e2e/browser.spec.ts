@@ -37,6 +37,18 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
 
   // Two sizes in one call: two images, and the window is back at its size after.
   await expect(chat.getByTestId("tool-images").nth(1).locator("img")).toHaveCount(2);
+  // In the compact view the steps fold into a line, and their screenshots still show under it;
+  // a click opens one in a tab.
+  await hostCall(page, "config.update", { chat: { view: "compact" } });
+  await expect(chat.getByTestId("step-image")).toHaveCount(3);
+  await chat.getByTestId("step-image").first().click();
+  await expect(page.getByTestId("tab-jig.image")).toBeVisible();
+  await page
+    .getByRole("tab")
+    .filter({ hasText: /browse/ })
+    .first()
+    .click();
+  await hostCall(page, "config.update", { chat: { view: "detailed" } });
   const chatId = await browserPageChat(page);
   expect(JSON.stringify(await hostCall(page, "browser.state", { chatId }))).toContain('"width":1280');
 

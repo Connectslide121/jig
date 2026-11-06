@@ -30,6 +30,18 @@ export function compactRows(
   return rows;
 }
 
+/**
+ * The images a run of steps produced (screenshots, images Claude looked at), its subagents' included,
+ * in order: shown as previews under the folded line so they're never hidden in it. Uses the copies
+ * saved with the chat, so they stay after the files are deleted.
+ */
+export function stepImages(entries: Entry[]): string[] {
+  const paths = entries
+    .flatMap((e) => [e.item, ...e.children])
+    .flatMap((item) => (item.kind === "tool" ? (item.images ?? []).map((image) => image.path) : []));
+  return [...new Set(paths)];
+}
+
 /** "a command", "3 commands". */
 const some = (n: number, one: string, many: string) => (n === 1 ? `a ${one}` : `${n} ${many}`);
 const base = (path: string) => path.split(/[\\/]/).pop() ?? path;

@@ -480,7 +480,10 @@ export function ToolCard({
       {!custom && !open && item.name === "Bash" && item.status !== "running" && item.output && (
         <OutputPeek text={item.output} error={item.status === "error"} />
       )}
-      {!custom && imagePath && item.status === "done" && <ImageThumb path={imagePath} />}
+      {/* The saved copy (below) wins: it's there even after the file is gone. */}
+      {!custom && imagePath && item.status === "done" && !item.images?.length && (
+        <ImageThumb path={imagePath} />
+      )}
       {item.images && item.images.length > 0 && (
         <div className="flex flex-wrap gap-1" data-testid="tool-images">
           {item.images.map((image) => (
