@@ -18,7 +18,7 @@ test("Test something… starts a chat on the tester model, and chats get the jig
   await page.getByTestId("dialog-confirm").click();
 
   const transcript = page.getByTestId("transcript");
-  await expect(transcript).toContainText("Test this in Claude's browser:");
+  await expect(transcript).toContainText("Test this in Jig's browser:");
   await expect(transcript).toContainText("add an item to the cart");
   // The fake engine says which model ran the chat and which subagents it had.
   await expect(transcript).toContainText("Test report (model haiku; subagents: jig-tester, jig-search)", {

@@ -60,7 +60,7 @@ export function attachmentType(name: string, mime = ""): AttachmentType {
   return {
     kind: "unsupported",
     reason:
-      "Claude can take images, PDFs, Word, Excel and PowerPoint files (.docx, .xlsx, .pptx) and text files.",
+      "Jig can take images, PDFs, Word, Excel and PowerPoint files (.docx, .xlsx, .pptx) and text files.",
   };
 }
 

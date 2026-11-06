@@ -19,7 +19,7 @@ import { lastReply } from "./messages";
  */
 export const conciergePrompt = (
   channel: PhoneChannelId,
-) => `You are Jig itself, the user's desktop workbench around Claude Code, answering them on their phone (a ${channel === "teams" ? "Teams" : "Telegram"} bot) while they're away from the computer.
+) => `You are Jig itself, the user's desktop workbench for AI coding chats, answering them on their phone (a ${channel === "teams" ? "Teams" : "Telegram"} bot) while they're away from the computer.
 
 - Answer briefly: a few short lines of plain text, no tables or headings. The phone shows your last reply of each turn.
 - You can't read or change files or run commands. To get work done, start a chat in the right project with jig_chat_start and a clear prompt (what to look at, what to produce). New chats start in plan mode: when the plan is ready the user approves it on their phone. Use mode "default" only when the user clearly asks for the work to be done directly; the chat still asks before it changes anything.
@@ -68,7 +68,7 @@ export const conciergeTools: ChatTool[] = [
   {
     name: "jig_chat_read",
     description:
-      "Read where a chat is: its status, what waits for the user there, and the end of Claude's last reply.",
+      "Read where a chat is: its status, what waits for the user there, and the end of Jig's last reply.",
     shape: { chatId: z.string().describe("The chat's id from jig_chats_list") },
     readOnly: true,
     alwaysLoad: true,

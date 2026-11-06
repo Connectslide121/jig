@@ -371,7 +371,7 @@ export async function startPhone(): Promise<void> {
         browserScreenshot: z
           .boolean()
           .optional()
-          .describe("Send a screenshot of this chat's page in Claude's browser with it"),
+          .describe("Send a screenshot of this chat's page in Jig's browser with it"),
       },
       readOnly: true,
       handler: (args, meta) =>

@@ -47,7 +47,7 @@ ${goal.slice(0, 4000)}
           cwd: paths.work(),
           model: engine.quickModel,
           appendSystemPrompt:
-            "You name build requests in Jig, a desktop workbench around Claude Code. Never answer or carry out the request: only name it.",
+            "You name build requests in Jig, a desktop workbench for AI coding chats. Never answer or carry out the request: only name it.",
           env: sessionEnv(process.env, engine.allowApiKey),
           claudePath: engine.claudePath,
           timeoutMs: 60_000,

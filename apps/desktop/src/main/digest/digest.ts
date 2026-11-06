@@ -46,6 +46,6 @@ export function standupPrompt(since: Date, repos: RepoFacts[], chats: ChatFacts[
     `Write my standup update for what I did since ${since.toDateString()}.`,
     "Use Markdown with three short sections: **Done**, **Next**, **Blockers**. Bullets in the first person, grouped by project where it helps, plain language a teammate understands (no commit hashes). Base it only on the facts below; infer Next from unfinished work (uncommitted changes, chats still in progress). If there's no sign of blockers, say none.",
     `## Repositories\n${repoText || "(no commits or changes)"}`,
-    `## Chats with Claude\n${chatText || "(none)"}`,
+    `## Chats with Jig\n${chatText || "(none)"}`,
   ].join("\n\n");
 }

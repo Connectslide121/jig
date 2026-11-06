@@ -67,7 +67,7 @@ export function normalizeUrl(input: string): string {
   const withScheme = host ? `${LOCAL.test(raw) ? "http" : "https"}://${raw}` : raw;
   const url = new URL(withScheme);
   if (!["http:", "https:", "file:"].includes(url.protocol))
-    throw new Error(`Claude's browser opens http(s) and file pages only, not ${url.protocol}`);
+    throw new Error(`Jig's browser opens http(s) and file pages only, not ${url.protocol}`);
   return url.toString();
 }
 

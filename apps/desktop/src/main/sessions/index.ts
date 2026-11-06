@@ -290,7 +290,7 @@ export function startSessions(): void {
         {
           cwd: meta.cwd,
           system:
-            "You name chats in Jig, a desktop workbench around Claude Code. Never answer or carry out the message: only name it.",
+            "You name chats in Jig, a desktop workbench for AI coding chats. Never answer or carry out the message: only name it.",
           timeoutMs: 60_000,
         },
       );
@@ -430,7 +430,7 @@ export function startSessions(): void {
         if (correctionSignal(event.text))
           publishActivity({
             kind: "friction",
-            text: "corrected Claude",
+            text: "corrected Jig",
             projectId,
             detail: { signal: "correction" },
           });

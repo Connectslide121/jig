@@ -107,7 +107,7 @@ export function habitPatterns(events: ActivityEvent[]): Pattern[] {
   if (oneOff.length / chats.length >= 0.6)
     add(
       "one-off",
-      "Mostly short one-off asks (one bug, one function) in separate chats, instead of handing Claude whole tasks",
+      "Mostly short one-off asks (one bug, one function) in separate chats, instead of handing Jig whole tasks",
       oneOff.map((c) => c.prompts[0]!),
       oneOff.length,
       { count: 6, days: 3 },
@@ -117,7 +117,7 @@ export function habitPatterns(events: ActivityEvent[]): Pattern[] {
   const unplanned = chats.filter((c) => c.edits >= 15 && !c.planned);
   add(
     "no-plan",
-    "Big changes (15+ edits in a chat) started without asking Claude for a plan first",
+    "Big changes (15+ edits in a chat) started without asking Jig for a plan first",
     unplanned.map((c) => c.prompts[0]!),
     unplanned.length,
     { count: 3, days: 2 },

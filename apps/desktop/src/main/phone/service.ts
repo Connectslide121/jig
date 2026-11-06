@@ -1555,7 +1555,7 @@ export class PhoneService {
         this.rooms.get(sessionId)?.echo.push(text.trim());
         await this.deps.chats.send(sessionId, text);
         await this.send(
-          { text: `↩️ Sent to ${title}${busy ? ": Claude reads it at its next step" : ""}.`, silent: true },
+          { text: `↩️ Sent to ${title}${busy ? ": Jig reads it at its next step" : ""}.`, silent: true },
           { sessionId, thread: here },
         );
       }

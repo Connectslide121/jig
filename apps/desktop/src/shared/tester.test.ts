@@ -24,11 +24,11 @@ describe("the tester", () => {
 
   it("writes a test chat's first message with what to test, the URL and how to report", () => {
     const text = testChatMessage("  Log in and add an item to the cart  ", " http://localhost:5173 ");
-    expect(text.startsWith("Test this in Claude's browser at http://localhost:5173:\n\nLog in and add")).toBe(
+    expect(text.startsWith("Test this in Jig's browser at http://localhost:5173:\n\nLog in and add")).toBe(
       true,
     );
     expect(text).toContain("never start servers yourself");
-    expect(testChatMessage("Check the menu")).toMatch(/^Test this in Claude's browser:\n/);
+    expect(testChatMessage("Check the menu")).toMatch(/^Test this in Jig's browser:\n/);
   });
 });
 

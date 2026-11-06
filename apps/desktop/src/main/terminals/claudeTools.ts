@@ -10,7 +10,7 @@ import type { TerminalManager } from "./manager";
 const describe = (t: TerminalInfo) =>
   `${t.id} — "${t.title}"${t.command ? ` (${t.command})` : ""} in ${t.cwd}: ${
     t.status === "running" ? "running" : `exited with code ${t.exitCode}`
-  }${t.sessionId ? " [started by Claude]" : ""}`;
+  }${t.sessionId ? " [started by Jig]" : ""}`;
 
 /**
  * What a chat is told when a terminal it started finishes by itself (not stopped): the message Claude

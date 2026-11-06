@@ -57,8 +57,8 @@ const tooLarge = (kind: ChatAttachment["kind"]) =>
   new JigError(
     "too_large",
     kind === "image"
-      ? "The image is larger than 5 MB, the most Claude accepts"
-      : `The file is larger than ${limitFor(kind) / MB} MB, the most Jig sends to Claude`,
+      ? "The image is larger than 5 MB, the most the AI accepts"
+      : `The file is larger than ${limitFor(kind) / MB} MB, the most Jig sends to the AI`,
   );
 
 type AttachmentInput = { data?: string; mime?: string; name?: string; path?: string };

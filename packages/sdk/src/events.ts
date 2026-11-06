@@ -4,8 +4,8 @@
  * Documented in docs/reference/addon-api.md — keep both in sync.
  */
 export const JIG_EVENTS = {
-  "chat.finished": "A chat finished its turn (Claude stopped working and is waiting for you).",
-  "chat.needsYou": "A chat needs you: Claude asks a question or for permission.",
+  "chat.finished": "A chat finished its turn (Jig stopped working and is waiting for you).",
+  "chat.needsYou": "A chat needs you: Jig asks a question or for permission.",
   "chat.failed": "A chat stopped with an error.",
   "git.commit": "A commit was made in a repository of a project (in Jig, a terminal or another app).",
   "git.branch": "A repository of a project switched branch.",

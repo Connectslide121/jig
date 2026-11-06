@@ -8,9 +8,9 @@ const meta = (patch: Partial<SessionMeta>) =>
 describe("chat notifications", () => {
   it("notifies when a working chat needs you, finishes or fails", () => {
     expect(notificationFor("working", meta({ status: "needs_you" }))?.title).toBe(
-      "Claude needs you: Fix the cart",
+      "Jig needs you: Fix the cart",
     );
-    expect(notificationFor("working", meta({ status: "idle" }))?.title).toBe("Claude finished: Fix the cart");
+    expect(notificationFor("working", meta({ status: "idle" }))?.title).toBe("Jig finished: Fix the cart");
     expect(notificationFor("working", meta({ status: "error", lastError: "Boom\nstack" }))?.body).toBe(
       "Boom",
     );

@@ -398,7 +398,7 @@ export function teamsAppManifest(input: {
     name: { short: "Jig", full: "Jig on your phone" },
     description: {
       short: "Your Jig: chats, questions and permissions on your phone.",
-      full: "Your own bot for Jig, the desktop workbench around Claude Code: it messages you when a chat needs you, finishes or stops, and you answer from Teams. Its team has a channel per project and a thread per chat. It talks only to you, through a relay in your own Azure.",
+      full: "Your own bot for Jig, the desktop workbench for AI coding chats: it messages you when a chat needs you, finishes or stops, and you answer from Teams. Its team has a channel per project and a thread per chat. It talks only to you, through a relay in your own Azure.",
     },
     icons: { color: "color.png", outline: "outline.png" },
     accentColor: "#E0A458",

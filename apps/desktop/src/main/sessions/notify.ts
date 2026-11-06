@@ -13,11 +13,11 @@ export function notificationFor(
   if (previous !== "working" && previous !== "starting") return undefined;
   const title = meta.title.length > 60 ? `${meta.title.slice(0, 59)}…` : meta.title;
   if (meta.status === "needs_you")
-    return { title: `Claude needs you: ${title}`, body: "A permission or question is waiting." };
-  if (meta.status === "idle") return { title: `Claude finished: ${title}`, body: "Your turn." };
+    return { title: `Jig needs you: ${title}`, body: "A permission or question is waiting." };
+  if (meta.status === "idle") return { title: `Jig finished: ${title}`, body: "Your turn." };
   if (meta.status === "error")
     return {
-      title: `Claude stopped: ${title}`,
+      title: `Jig stopped: ${title}`,
       body: meta.lastError?.split("\n")[0] ?? "The turn ended with an error.",
     };
   return undefined;

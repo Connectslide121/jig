@@ -70,7 +70,7 @@ describe("reflection 2", () => {
     expect(REFLECTION_INSTRUCTIONS).toContain("none if unsure");
     expect(REFLECTION_INSTRUCTIONS).toContain("without a repeated user reminder");
     expect(REFLECTION_INSTRUCTIONS).toContain("repository implementation details");
-    expect(featuresText()).toMatch(/Claude’s browser:.*\[actionId: jig.openClaudeBrowser\]/);
+    expect(featuresText()).toMatch(/Jig’s browser:.*\[actionId: jig.openClaudeBrowser\]/);
     expect(featuresText()).toMatch(/- Browser:.*\[actionId: jig.openBrowser\]/);
   });
   it("gives Claude the notes, profile, work summary and whether tips are allowed", () => {

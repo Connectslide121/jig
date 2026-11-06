@@ -141,7 +141,7 @@ export function codexHelperTools(meta: SessionMeta): ChatTool[] {
     {
       name: TEST_TOOL,
       description:
-        "Tests web UI in Claude's browser on a small, cheap model: give it the URL (the dev server must already run) and exactly what to check, step by step. A separate Codex with only the browser tools reports PASS/FAIL per check with screenshots and never changes code. Use it for checking pages after a change, instead of clicking through them yourself.",
+        "Tests web UI in Jig's browser on a small, cheap model: give it the URL (the dev server must already run) and exactly what to check, step by step. A separate Codex with only the browser tools reports PASS/FAIL per check with screenshots and never changes code. Use it for checking pages after a change, instead of clicking through them yourself.",
       shape: {
         url: z.string().describe("The page to test, on a dev server that already runs"),
         steps: z.string().describe("What to do and check, step by step"),

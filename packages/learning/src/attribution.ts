@@ -154,7 +154,7 @@ export function workedText(s: WorkedSummary, chatMinutes?: number): string {
   if (!s.commits) return "";
   const n = (x: number) => x.toLocaleString("en-US");
   const parts = [
-    `${s.commits} commit${s.commits === 1 ? "" : "s"}: ${n(s.ai)} lines by Claude, ${n(s.hand)} by hand.`,
+    `${s.commits} commit${s.commits === 1 ? "" : "s"}: ${n(s.ai)} lines by Jig, ${n(s.hand)} by hand.`,
   ];
   const rate = (churn: number, total: number) => (total ? churn / total : 0);
   const ai = rate(s.churn.ai, s.ai);
@@ -162,16 +162,16 @@ export function workedText(s: WorkedSummary, chatMinutes?: number): string {
   if (s.churn.ai + s.churn.hand > 0) {
     if (ai > 0 && hand > 0 && Math.max(ai, hand) / Math.min(ai, hand) >= 1.5)
       parts.push(
-        `${hand > ai ? "Hand-written" : "Claude's"} lines were changed again ${(Math.max(ai, hand) / Math.min(ai, hand)).toFixed(1)}× as often.`,
+        `${hand > ai ? "Hand-written" : "Jig's"} lines were changed again ${(Math.max(ai, hand) / Math.min(ai, hand)).toFixed(1)}× as often.`,
       );
     else
       parts.push(
-        `${n(s.churn.ai + s.churn.hand)} recent lines were changed again (${n(s.churn.ai)} by Claude, ${n(s.churn.hand)} by hand).`,
+        `${n(s.churn.ai + s.churn.hand)} recent lines were changed again (${n(s.churn.ai)} by Jig, ${n(s.churn.hand)} by hand).`,
       );
   }
   for (const f of s.fixes.slice(0, 2))
     parts.push(
-      `The fix in ${f.commit} changed ${f.origin === "ai" ? "lines Claude wrote" : "hand-written lines"} from the days before.`,
+      `The fix in ${f.commit} changed ${f.origin === "ai" ? "lines Jig wrote" : "hand-written lines"} from the days before.`,
     );
   if (chatMinutes) parts.push(`About ${Math.round(chatMinutes / 6) / 10} h in Jig chats (an estimate).`);
   return parts.join(" ");

@@ -19,11 +19,11 @@ export const SLOTS = {
   "chat.toolbar": "A button above the chat composer.",
   "chat.toolRenderer": "A custom card for a tool's result in the chat.",
   "chat.permissionRenderer":
-    "A custom approval card for one of the add-on's tools in the chat: the user can change what Claude asked before allowing it.",
+    "A custom approval card for one of the add-on's tools in the chat: the user can change what Jig asked before allowing it.",
   prompt: "A reusable prompt shown as a button above the composer.",
   watcher: "Host code that runs on an interval (e.g. check pipeline runs).",
-  "claude.tool": "A tool Claude can use in every chat (host code; read-only tools run without asking).",
-  "claude.context": "What Claude should know in every turn of a chat (host code returning text).",
+  "claude.tool": "A tool Jig can use in every chat (host code; read-only tools run without asking).",
+  "claude.context": "What Jig should know in every turn of a chat (host code returning text).",
   "jig.event":
     "Host code that runs when something happens in Jig: a chat finished or needs you, a commit, a branch switch, another active project.",
   "search.provider":

@@ -979,7 +979,7 @@ export class SessionManager {
         error: `This message is from before the chat continued with ${NAME[handoff.to]}.`,
       };
     if (["working", "needs_you", "starting"].includes(live.state.meta.status))
-      return { canRewind: false, error: "Wait until Claude has finished, or stop it first." };
+      return { canRewind: false, error: "Wait until Jig has finished, or stop it first." };
     const result = await this.startEngine(live).rewindFiles(item.messageId, dryRun);
     if (!dryRun && result.canRewind) {
       const n = result.filesChanged?.length ?? 0;
@@ -1006,7 +1006,7 @@ export class SessionManager {
   async rewind(id: string, itemId: string, files: boolean): Promise<{ text: string; files?: RewindResult }> {
     const live = await this.live(id);
     if (["working", "needs_you", "starting"].includes(live.state.meta.status))
-      throw new JigError("invalid_args", "Wait until Claude has finished, or stop it first.");
+      throw new JigError("invalid_args", "Wait until Jig has finished, or stop it first.");
     const index = live.state.items.findIndex((i) => i.id === itemId);
     const item = live.state.items[index];
     if (item?.kind !== "user") throw new JigError("not_found", "That message isn't in this chat");
@@ -1033,7 +1033,7 @@ export class SessionManager {
       id: `rewind-${Date.now()}`,
       at: new Date().toISOString(),
       tone: "info",
-      text: `Rewound to before “${summarize(item.text || "your message")}”${restored ? `; ${restored.filesChanged?.length ?? 0} file(s) restored` : ""}. Claude doesn't remember what came after.`,
+      text: `Rewound to before “${summarize(item.text || "your message")}”${restored ? `; ${restored.filesChanged?.length ?? 0} file(s) restored` : ""}. Jig doesn't remember what came after.`,
     };
     live.state.items = [...before, notice];
     live.state.meta = {
@@ -1120,7 +1120,7 @@ export class SessionManager {
   async setDirs(id: string, dirs: string[]): Promise<void> {
     const live = await this.live(id);
     if (["working", "needs_you", "starting"].includes(live.state.meta.status))
-      throw new JigError("invalid_args", "Wait until Claude has finished, or stop it first.");
+      throw new JigError("invalid_args", "Wait until Jig has finished, or stop it first.");
     this.stop(live);
     this.setMeta(live, { addDirs: dirs.length ? dirs : undefined });
   }
@@ -1551,7 +1551,7 @@ export class SessionManager {
     // stop that turn once it has been sent, rather than not at all.
     if (!live.engine && live.starting) await live.starting;
     if (!live.engine) return;
-    if (live.state.meta.status === "working") this.friction(live, "interrupt", "stopped Claude mid-turn");
+    if (live.state.meta.status === "working") this.friction(live, "interrupt", "stopped Jig mid-turn");
     abortJigToolCalls(id);
     await live.engine.interrupt().catch((error) => log.warn("Interrupt failed", error));
   }

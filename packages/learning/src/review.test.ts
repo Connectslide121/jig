@@ -22,7 +22,7 @@ describe("practicePatterns", () => {
       ev(3, "terminal.command", "chmod 644 a.txt"),
     ]);
     const summaries = patterns.map((p) => p.summary);
-    expect(summaries).toContain("Security: A secret (key, token or password) was in a message to Claude");
+    expect(summaries).toContain("Security: A secret (key, token or password) was in a message to Jig");
     expect(summaries).toContain(
       "Security: A script downloaded from the internet was piped straight into a shell",
     );
@@ -30,14 +30,14 @@ describe("practicePatterns", () => {
     expect(force?.count).toBe(2);
     expect(patterns.every((p) => p.kind === "practice" && p.key.startsWith("x-"))).toBe(true);
     expect(summaries.some((s) => /chmod/.test(s))).toBe(false);
-    const secret = patterns.find((p) => p.summary.includes("message to Claude"))!;
+    const secret = patterns.find((p) => p.summary.includes("message to Jig"))!;
     expect(secret.score).toBeGreaterThan(force!.score);
   });
 
   it("notices commits with no tests run, and not when tests ran", () => {
     const commits = [1, 1, 2, 2, 3].map((d) => ev(d, "git", "git commit"));
     expect(practicePatterns(commits).map((p) => p.summary)).toEqual([
-      "Commits without any tests being run (by you or Claude) in this time",
+      "Commits without any tests being run (by you or Jig) in this time",
     ]);
     expect(practicePatterns([...commits, ev(2, "session.tool", "npm test")])).toEqual([]);
   });

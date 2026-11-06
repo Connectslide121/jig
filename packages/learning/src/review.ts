@@ -22,7 +22,7 @@ const command = (re: RegExp) => (e: ActivityEvent) => COMMANDISH.has(e.kind) && 
 const RULES: PracticeRule[] = [
   {
     id: "secret-in-chat",
-    label: "A secret (key, token or password) was in a message to Claude",
+    label: "A secret (key, token or password) was in a message to Jig",
     security: true,
     min: { count: 1, days: 1 },
     test: (e) => e.kind === "prompt" && e.text.includes(SECRET),
@@ -128,7 +128,7 @@ export function practicePatterns(events: ActivityEvent[]): Pattern[] {
     out.push({
       key: `x-${hashKey("untested-commits")}`,
       kind: "practice",
-      summary: "Commits without any tests being run (by you or Claude) in this time",
+      summary: "Commits without any tests being run (by you or Jig) in this time",
       ...s,
       score: 10 + s.count,
     });

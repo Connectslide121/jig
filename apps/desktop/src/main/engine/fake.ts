@@ -389,7 +389,7 @@ export class FakeEngine implements Engine {
         }
         contextTokens = Math.min(CONTEXT_MAX, contextTokens + (lower.includes("big file") ? 130_000 : 9_000));
         // A test chat's message mentions PASS/FAIL, which must not end the turn with an error.
-        const isTestChat = lower.startsWith("test this in claude's browser");
+        const isTestChat = lower.startsWith("test this in jig's browser");
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
         if (lower.includes("hold until released")) {
           // Stays running until the test calls `fake.release`, then goes on with the rest of the script
@@ -1419,7 +1419,7 @@ ${output.slice(0, 600)}`,
                     requestId: toolId,
                     toolName: "Bash",
                     input,
-                    title: "Claude wants to run npm test",
+                    title: "Jig wants to run npm test",
                     canAlwaysAllow: true,
                   },
                   signal,
@@ -2016,7 +2016,7 @@ ${output.slice(0, 600)}`,
       return JSON.stringify({
         suggestions: [
           {
-            title: "Keep keys out of your messages to Claude",
+            title: "Keep keys out of your messages to Jig",
             why: `${practice[2]}.`,
             goal: "Move the key into an environment variable, rotate it, and refer to it by name in chats",
             level: 1,
@@ -2033,15 +2033,15 @@ ${output.slice(0, 600)}`,
           {
             title: "Ask for the whole feature in one go",
             why: `${habit[2]}.`,
-            goal: "Describe the whole feature once, with how to check it's done, and let Claude plan and build it",
+            goal: "Describe the whole feature once, with how to check it's done, and let Jig plan and build it",
             level: 1,
             kind: "prompting-tip",
             before:
               "write a function that validates orders\nnow write an endpoint for it\nok now add a service that calls it",
             changes: [
               "One request for the whole feature: Claude plans all the layers together instead of waiting for the next piece",
-              "Points to the existing products code: Claude follows your patterns instead of guessing",
-              "Says when it's done (the tests pass): Claude checks its own work",
+              "Points to the existing products code: Jig follows your patterns instead of guessing",
+              "Says when it's done (the tests pass): Jig checks its own work",
             ],
             example:
               "Add order validation to the Shop API end to end: a validator, a POST /orders endpoint that uses it, and the service between them, following the existing products code. Done when the tests for all three pass. Plan it first.",

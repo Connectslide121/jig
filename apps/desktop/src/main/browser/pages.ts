@@ -180,7 +180,7 @@ export class BrowserPages {
       log.info(`Closing a browser page to keep at most ${MAX_PAGES} open`);
       this.close(
         chatId,
-        `Your page of Claude's browser was closed to make room (at most ${MAX_PAGES} chats have one at a time); open it again with jig_browser_open.`,
+        `Your page of Jig's browser was closed to make room (at most ${MAX_PAGES} chats have one at a time); open it again with jig_browser_open.`,
       );
     }
   }
@@ -194,7 +194,7 @@ export class BrowserPages {
           log.info("Closing an idle browser page");
           this.close(
             chatId,
-            `Your page of Claude's browser was closed after ${IDLE_MS / 60_000} minutes unused; open it again with jig_browser_open.`,
+            `Your page of Jig's browser was closed after ${IDLE_MS / 60_000} minutes unused; open it again with jig_browser_open.`,
           );
         }
       if (!this.pages.size) {

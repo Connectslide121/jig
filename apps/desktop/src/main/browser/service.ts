@@ -180,7 +180,7 @@ export class BrowserPage {
     window.on("closed", () => {
       if (!current()) return;
       this.window = undefined;
-      this.gone.abort(new Error("Claude's browser was closed"));
+      this.gone.abort(new Error("Jig's browser was closed"));
       this.changed();
     });
     this.captureNetwork(c);
@@ -691,7 +691,7 @@ export class BrowserPage {
     this.pending = undefined;
     const window = this.window;
     this.window = undefined;
-    this.gone.abort(new Error("Claude's browser was closed"));
+    this.gone.abort(new Error("Jig's browser was closed"));
     window?.destroy();
     this.notice = undefined;
     this.console = [];

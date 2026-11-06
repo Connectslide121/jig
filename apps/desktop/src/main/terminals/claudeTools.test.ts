@@ -42,7 +42,7 @@ describe("terminal tools for Claude", () => {
       expect(revealed).toEqual([id]);
       expect(m.get(id)).toMatchObject({ title: "Claude: dev server", sessionId: "chat-1" });
 
-      expect(await call("jig_terminal_list")).toContain("running [started by Claude]");
+      expect(await call("jig_terminal_list")).toContain("running [started by Jig]");
       expect(await call("jig_terminal_read", { id })).toContain("listening on 5173");
       await expect(call("jig_terminal_run", { command: "ls", cwd: "/" })).rejects.toThrow(
         /inside the project/,

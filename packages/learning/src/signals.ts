@@ -16,11 +16,11 @@ export function correctionSignal(text: string): boolean {
 }
 
 const FRICTION_LABEL: Record<string, string> = {
-  interrupt: "You stopped Claude mid-turn",
+  interrupt: "You stopped Jig mid-turn",
   rewind: "You rewound a chat to an earlier message",
-  denied: "You denied Claude a permission",
-  correction: "You corrected Claude",
-  "tool-errors": "Claude's tools failed several times in one turn",
+  denied: "You denied Jig a permission",
+  correction: "You corrected Jig",
+  "tool-errors": "Jig's tools failed several times in one turn",
   "script-failed": "A script failed",
   "long-chat": "A long chat ended without a commit",
   hopping: "You switched between projects many times in a short while",

@@ -88,7 +88,7 @@ export function guardBrowserTool(pages: BrowserPages, tool: PageTool): JigTool {
 }
 
 /**
- * Claude's browser as tools on the `jig` server: Claude opens the app it is building, reads the page,
+ * Jig's browser as tools on the `jig` server: Claude opens the app it is building, reads the page,
  * clicks and types like a person, takes screenshots (shown in the chat) and reads the console. Each
  * chat has its own page (D-320); the user watches it in the Browser view, one tab per chat's page, and
  * can take over at any time.
@@ -103,7 +103,7 @@ function tools(): PageTool[] {
     {
       name: "jig_browser_open",
       description:
-        "Open a web page in this chat's own page of Claude's browser, a real Chromium page inside Jig that the user can watch (e.g. the dev server you started: `localhost:5173`, or a file:// page). Returns the page text and its numbered interactive elements. Use it to check UI work yourself: open, click, type, screenshot, read the console. The page is this chat's own (your jig-tester subagents share it); other chats browsing at the same time have theirs and never change yours.",
+        "Open a web page in this chat's own page of Jig's browser, a real Chromium page inside Jig that the user can watch (e.g. the dev server you started: `localhost:5173`, or a file:// page). Returns the page text and its numbered interactive elements. Use it to check UI work yourself: open, click, type, screenshot, read the console. The page is this chat's own (your jig-tester subagents share it); other chats browsing at the same time have theirs and never change yours.",
       shape: { url: z.string().describe("URL, e.g. http://localhost:3000 or localhost:3000/login") },
       handler: async (args, b) => {
         const { state, timedOut, url } = await b.open(String(args.url));
@@ -118,14 +118,14 @@ function tools(): PageTool[] {
       name: "jig_browser_read",
       readOnly: true,
       description:
-        "Read this chat's page in Claude's browser: its text and the interactive elements numbered [n] for jig_browser_click / jig_browser_type. Read again after the page changes: numbers are renewed.",
+        "Read this chat's page in Jig's browser: its text and the interactive elements numbered [n] for jig_browser_click / jig_browser_type. Read again after the page changes: numbers are renewed.",
       shape: {},
       handler: async (_args, b) => pageText(b),
     },
     {
       name: "jig_browser_click",
       description:
-        "Click an element of this chat's page in Claude's browser, by its number from jig_browser_read, a CSS selector or its visible text. Real mouse events, like a person.",
+        "Click an element of this chat's page in Jig's browser, by its number from jig_browser_read, a CSS selector or its visible text. Real mouse events, like a person.",
       shape: { ...target, text: z.string().optional().describe("Visible text of a button or link") },
       handler: async (args, b) =>
         after(
@@ -140,7 +140,7 @@ function tools(): PageTool[] {
     {
       name: "jig_browser_type",
       description:
-        "Type into a field of this chat's page in Claude's browser (by number or selector). Replaces what is in it unless clear is false; submit presses Enter afterwards.",
+        "Type into a field of this chat's page in Jig's browser (by number or selector). Replaces what is in it unless clear is false; submit presses Enter afterwards.",
       shape: {
         ...target,
         text: z.string(),
@@ -160,7 +160,7 @@ function tools(): PageTool[] {
     {
       name: "jig_browser_press",
       description:
-        "Press a key in this chat's page of Claude's browser: Enter, Escape, Tab, ArrowDown, Backspace, a letter…",
+        "Press a key in this chat's page of Jig's browser: Enter, Escape, Tab, ArrowDown, Backspace, a letter…",
       shape: { key: z.string().describe("Key name, e.g. Enter, Escape, Tab, ArrowDown") },
       handler: async (args, b) => after(b, await b.press(String(args.key))),
     },
@@ -168,7 +168,7 @@ function tools(): PageTool[] {
       name: "jig_browser_screenshot",
       readOnly: true,
       description:
-        "Screenshot of this chat's page in Claude's browser (headless: nothing pops up for the user). The images come back to you and show in the chat. fullPage captures the whole page, not only the visible part; sizes takes one screenshot per window size (desktop 1280×800, tablet 820×1180, phone 390×844) and then restores the size, for responsive checks in one call. Use jig_browser_read for text.",
+        "Screenshot of this chat's page in Jig's browser (headless: nothing pops up for the user). The images come back to you and show in the chat. fullPage captures the whole page, not only the visible part; sizes takes one screenshot per window size (desktop 1280×800, tablet 820×1180, phone 390×844) and then restores the size, for responsive checks in one call. Use jig_browser_read for text.",
       shape: {
         fullPage: z.boolean().optional().describe("The whole page, not only the visible part"),
         sizes: z
@@ -212,7 +212,7 @@ function tools(): PageTool[] {
       name: "jig_browser_console",
       readOnly: true,
       description:
-        "Console messages and load errors of this chat's page in Claude's browser since it opened or was last cleared (most recent last).",
+        "Console messages and load errors of this chat's page in Jig's browser since it opened or was last cleared (most recent last).",
       shape: {
         errorsOnly: z.boolean().optional().describe("Only errors"),
         clear: z.boolean().optional().describe("Clear the list after reading"),
@@ -235,7 +235,7 @@ function tools(): PageTool[] {
       name: "jig_browser_network",
       readOnly: true,
       description:
-        "The requests this chat's page in Claude's browser made (like the Network tab in DevTools): method, status, type, time, size, URL. Filter by part of the URL, or only failed ones. Pass `id` for one request's headers (credentials redacted), request body and response body. Use it to debug API calls instead of asking the user to copy them from their browser.",
+        "The requests this chat's page in Jig's browser made (like the Network tab in DevTools): method, status, type, time, size, URL. Filter by part of the URL, or only failed ones. Pass `id` for one request's headers (credentials redacted), request body and response body. Use it to debug API calls instead of asking the user to copy them from their browser.",
       shape: {
         filter: z.string().optional().describe("Part of the URL (e.g. /api/), or a method"),
         errorsOnly: z.boolean().optional().describe("Only failed requests and HTTP errors (4xx/5xx)"),
@@ -272,7 +272,7 @@ function tools(): PageTool[] {
     {
       name: "jig_browser_eval",
       description:
-        "Run a JavaScript expression in this chat's page of Claude's browser and get its value as JSON (awaited if it is a promise). For checks the page text can't show: state, computed styles, localStorage.",
+        "Run a JavaScript expression in this chat's page of Jig's browser and get its value as JSON (awaited if it is a promise). For checks the page text can't show: state, computed styles, localStorage.",
       shape: {
         expression: z.string().describe("An expression, e.g. document.querySelectorAll('li').length"),
       },
@@ -281,7 +281,7 @@ function tools(): PageTool[] {
     {
       name: "jig_browser_resize",
       description:
-        "Resize this chat's page of Claude's browser to test responsive layouts: a preset (desktop 1280×800, tablet 820×1180, phone 390×844) or width and height.",
+        "Resize this chat's page of Jig's browser to test responsive layouts: a preset (desktop 1280×800, tablet 820×1180, phone 390×844) or width and height.",
       shape: {
         preset: z.enum(["desktop", "tablet", "phone"]).optional(),
         width: z.number().int().min(200).max(4000).optional(),
@@ -298,7 +298,7 @@ function tools(): PageTool[] {
     },
     {
       name: "jig_browser_navigate",
-      description: "Go back, forward or reload this chat's page in Claude's browser.",
+      description: "Go back, forward or reload this chat's page in Jig's browser.",
       shape: { action: z.enum(["back", "forward", "reload"]) },
       handler: async (args, b) => {
         const s = await b.navigate(args.action as "back" | "forward" | "reload");

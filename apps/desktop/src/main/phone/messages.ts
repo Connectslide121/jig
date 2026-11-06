@@ -209,7 +209,7 @@ export function permissionMessage(
       ],
     };
   }
-  const sentence = request.title ?? `Claude wants to use ${request.toolName}`;
+  const sentence = request.title ?? `Jig wants to use ${request.toolName}`;
   return {
     text: `🔐 <b>Needs you</b> · ${chatTitle(meta)}\n\n${escapeHtml(sentence)}${requestDetail(request)}\n\n<i>Reply to this message to say what to do instead.</i>`,
     buttons: [

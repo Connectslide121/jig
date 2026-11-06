@@ -15,7 +15,7 @@ export function checkAiAccess(
   if (!addon) throw new JigError("not_found", `Add-on ${id} not found`);
   if (!addon.enabled) throw new JigError("invalid_args", `${id} is turned off`);
   if (!addon.manifest?.permissions.includes("ai"))
-    throw new JigError("invalid_args", `${id} needs the "ai" permission to ask Claude`);
+    throw new JigError("invalid_args", `${id} needs the "ai" permission to ask Jig`);
 }
 
 /**

@@ -1439,7 +1439,7 @@ export async function startMeetings(): Promise<void> {
     if (language && !getConfig().meetings.aiTranslation)
       throw new JigError(
         "meeting_translation",
-        "Teams didn't translate the captions (that needs Teams Premium), and translation by Claude is off in Settings.",
+        "Teams didn't translate the captions (that needs Teams Premium), and translation by Jig is off in Settings.",
       );
     if (store.get(id).aiTranslation === (language || undefined)) return;
     translator.stop();

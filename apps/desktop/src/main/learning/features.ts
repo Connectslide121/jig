@@ -35,7 +35,7 @@ export const JIG_FEATURES: Array<{ name: string; what: string; where: string; ac
   },
   {
     name: "Plan mode and permission modes",
-    what: "let Claude plan first and approve the plan; per-chat permission mode",
+    what: "let Jig plan first and approve the plan; per-chat permission mode",
     where: "Shift+Tab in the message box",
   },
   {
@@ -59,14 +59,14 @@ export const JIG_FEATURES: Array<{ name: string; what: string; where: string; ac
     where: "mic button, Ctrl+Shift+Space",
   },
   {
-    name: "Claude’s browser",
-    what: "Claude is already instructed to verify web UI changes using its browser/tester; the user does not need to enable this or request it every time. Tool permissions still follow the chat's mode",
-    where: "opens automatically when Claude uses it; Show when used changes only its visibility",
+    name: "Jig’s browser",
+    what: "Jig is already instructed to verify web UI changes using its browser/tester; the user does not need to enable this or request it every time. Tool permissions still follow the chat's mode",
+    where: "opens automatically when Jig uses it; Show when used changes only its visibility",
     action: "jig.openClaudeBrowser",
   },
   {
     name: "Browser",
-    what: "the user's native browser for personal browsing, separate from Claude's verification tools",
+    what: "the user's native browser for personal browsing, separate from Jig's verification tools",
     where: "top-right globe button",
     action: "jig.openBrowser",
   },
@@ -78,7 +78,7 @@ export const JIG_FEATURES: Array<{ name: string; what: string; where: string; ac
   },
   {
     name: "Check before committing",
-    what: "Claude checks staged changes for secrets, debug output and unfinished code",
+    what: "Jig checks staged changes for secrets, debug output and unfinished code",
     where: "Git view",
   },
   {
@@ -104,7 +104,7 @@ export const JIG_FEATURES: Array<{ name: string; what: string; where: string; ac
   },
   {
     name: "Scripts",
-    what: "run, restart and stop every repo's scripts from one place; Ask Claude when one fails",
+    what: "run, restart and stop every repo's scripts from one place; Ask Jig when one fails",
     where: "bottom panel",
     action: "jig.runningScripts",
   },
@@ -150,7 +150,7 @@ export const JIG_FEATURES: Array<{ name: string; what: string; where: string; ac
     action: "jig.addonGallery",
   },
   {
-    name: "Claude configures Jig",
+    name: "Jig configures itself",
     what: "ask any chat to change theme, layout, settings or switch add-ons on and off",
     where: "any chat",
   },

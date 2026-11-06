@@ -11,7 +11,7 @@ export const PERMISSIONS = {
   net: "Make network requests.",
   terminal: "Open terminals and run commands in them.",
   chat: "Start chats, send them messages and read their answers.",
-  ai: "Ask Claude questions through your Claude Code (uses your plan; answers only, no tools).",
+  ai: "Ask Jig's AI questions (uses your plan; answers only, no tools).",
 } as const;
 
 const PATTERN = /^(exec|exec:[\w.+-]+|fs:read|fs:write|net|terminal|chat|ai)$/;

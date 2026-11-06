@@ -51,7 +51,7 @@ export function startBrowser(): void {
 
   const existing = (chatId: string): BrowserPage => {
     const page = browser.get(chatId);
-    if (!page) throw new Error("This chat has no page in Claude's browser");
+    if (!page) throw new Error("This chat has no page in Jig's browser");
     return page;
   };
   handle("browser.pages", () => browser.list());

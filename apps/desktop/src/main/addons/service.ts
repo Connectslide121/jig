@@ -570,7 +570,7 @@ export class AddonService {
             ...c.statusbar.map(() => "status bar item"),
             ...c.dashboard.map(() => "dashboard widget"),
             ...c.watchers.map((w) => `watcher every ${w.every}`),
-            ...c.tools.map((t) => `Claude tool ${addonToolName(info.id, t.id)}`),
+            ...c.tools.map((t) => `Jig tool ${addonToolName(info.id, t.id)}`),
             ...c.events.map((e) => `runs on ${e.on}`),
             ...c.search.map((x) => `search results "${x.title}"`),
             ...(info.manifest?.exports.length
