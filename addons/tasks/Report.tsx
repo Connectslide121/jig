@@ -24,7 +24,7 @@ import {
   reportPrompt,
   runFollowUps,
 } from "./lib/report";
-import { type Run, STATUS_LABEL, type Task } from "./lib/tasks";
+import { type Run, STATUS_LABEL, type Task, taskCode } from "./lib/tasks";
 import { STATUS_TONE, StatusIcon, type Tone } from "./parts";
 
 /**
@@ -206,25 +206,22 @@ export function RunReportTab({ ctx, params }: AddonTabProps) {
   );
 }
 
-/** A task's place in the run: "3", for links ("#3"). */
-const numberOf = (run: Run, taskId: string) => run.tasks.findIndex((t) => t.id === taskId) + 1;
-
 /** Opens a task's chat, when it has one. */
 function openTaskChat(ctx: AddonUiContext, task?: Task) {
   if (task?.sessionId) void ctx.openChat({ sessionId: task.sessionId });
 }
 
-/** Links to the tasks an item came from: "#2 #5", each opening its chat; at most three, then "+n". */
+/** Links to the tasks an item came from: "TQ-2 TQ-5", each opening its chat; at most two, then "+n". */
 function TaskLinks({ ctx, run, ids }: { ctx: AddonUiContext; run: Run; ids: string[] }) {
   const tasks = ids.map((id) => run.tasks.find((t) => t.id === id)).filter((t): t is Task => !!t);
-  const shown = tasks.slice(0, 3);
+  const shown = tasks.slice(0, 2);
   return (
-    <span className="flex w-24 shrink-0 items-center justify-end gap-0.5">
+    <span className="flex w-32 shrink-0 items-center justify-end gap-0.5">
       {shown.map((task) => (
         <button
           key={task.id}
           type="button"
-          title={`${numberOf(run, task.id)}. ${task.title}${task.sessionId ? " · open its chat" : ""}`}
+          title={`${taskCode(task.id)} ${task.title}${task.sessionId ? " · open its chat" : ""}`}
           disabled={!task.sessionId}
           onClick={(e) => {
             e.stopPropagation();
@@ -232,14 +229,14 @@ function TaskLinks({ ctx, run, ids }: { ctx: AddonUiContext; run: Run; ids: stri
           }}
           className="rounded px-1 text-xs tabular-nums text-muted hover:bg-hover hover:text-accent disabled:hover:bg-transparent disabled:hover:text-muted"
         >
-          #{numberOf(run, task.id)}
+          {taskCode(task.id)}
         </button>
       ))}
       {tasks.length > shown.length && (
         <span
           className="px-1 text-xs text-hint"
           title={tasks
-            .slice(3)
+            .slice(2)
             .map((t) => t.title)
             .join(" · ")}
         >
@@ -318,8 +315,8 @@ function ReportBody({
                     onClick={() => openTaskChat(ctx, task)}
                     data-testid={`run-report-task-${line.taskId}`}
                   >
-                    <span className="w-5 shrink-0 text-right text-xs tabular-nums text-hint">
-                      {numberOf(run, line.taskId)}
+                    <span className="w-14 shrink-0 text-xs tabular-nums text-hint">
+                      {taskCode(line.taskId)}
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-xs font-medium text-fg">{task.title}</span>
@@ -380,8 +377,8 @@ function ReportBody({
                   title={task.sessionId ? "Open its chat" : undefined}
                   onClick={() => openTaskChat(ctx, task)}
                 >
-                  <span className="w-5 shrink-0 text-right text-xs tabular-nums text-hint">
-                    {numberOf(run, item.taskId)}
+                  <span className="w-14 shrink-0 text-xs tabular-nums text-hint">
+                    {taskCode(item.taskId)}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="truncate text-xs font-medium text-fg">{task.title}</span>

@@ -15,6 +15,8 @@ export interface DraftChat {
   id: string;
   projectId: string;
   steps: DraftStep[];
+  /** The chat's short title (D-418); empty = its first task's title. */
+  title?: string;
   /** Runs on this provider and model instead of the queue's choice (D-330); its tasks share the chat's. */
   provider?: TaskProvider;
   model?: string;
@@ -109,7 +111,7 @@ export function splitAt(chats: DraftChat[], ci: number, si: number): DraftChat[]
   const chat = chats[ci];
   if (!chat || si <= 0 || si >= chat.steps.length) return chats;
   // The new chat runs where the one it came from runs.
-  const { id: _id, steps: _steps, ...same } = chat;
+  const { id: _id, steps: _steps, title: _title, ...same } = chat;
   const rest: DraftChat = { ...same, id: nextId("c"), steps: chat.steps.slice(si) };
   return [...chats.slice(0, ci), { ...chat, steps: chat.steps.slice(0, si) }, rest, ...chats.slice(ci + 1)];
 }
@@ -133,6 +135,12 @@ export function moveChat(chats: DraftChat[], ci: number, delta: -1 | 1): DraftCh
   const next = [...chats];
   [next[ci], next[to]] = [next[to]!, next[ci]!];
   return next;
+}
+
+/** A chat's title (D-418). */
+export function setChatTitle(chats: DraftChat[], ci: number, title: string): DraftChat[] {
+  const chat = chats[ci];
+  return chat ? withChat(chats, ci, { ...chat, title }) : chats;
 }
 
 export function setChatProject(chats: DraftChat[], ci: number, projectId: string): DraftChat[] {
@@ -172,6 +180,7 @@ export function draftTasks(chats: DraftChat[]): Array<{ projectId: string; tasks
           (s, i): NewTask => ({
             prompt: s.text.trim(),
             newChat: i === 0,
+            ...(i === 0 && c.title?.trim() ? { chatTitle: c.title.trim() } : {}),
             ...(s.files.length ? { attachments: s.files } : {}),
             // The chat's first task starts it, so it carries the chat's provider; the rest continue it.
             ...(i === 0 && c.provider ? { provider: c.provider } : {}),

@@ -152,7 +152,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   section of its own under the summary (its follow-ups still queueable), Jig's list "marked done
   by the user (was partly done)"; the counts and History count it as done. Its chat's later failed or
   blocked revision replaces it but never pauses the queue (`applyReport`). Remove and Run again stay.
-  From a chat, when you ask ("mark t33 done"): `addon_tasks_mark_done` (`taskId`, `note?`,
+  From a chat, when you ask ("mark TQ-33 done"): `addon_tasks_mark_done` (`taskId`, `note?`,
   `project?`), not read-only, so you approve it on its card; queued, running, skipped and done tasks
   are refused. Its own chat
   may still report it later (a revision, D-353). Only tasks still in the queue; a task only in
@@ -166,15 +166,26 @@ went, so you read the results as a table instead of scrolling one long chat.
   …", and Jig's list says "revised from …". A revision to failed or blocked pauses like a late
   report; no report ever starts or un-pauses the queue. A chat whose task ended keeps one line of
   context telling it it may report again (`taskContext`).
+- **Task codes and chat titles** (D-418): every task is `TQ-<n>` (TQ = task queue) wherever you or
+  Jig see it: the rows, the details, Edit, the delete card, the run report, `addon_tasks_list`, the
+  chats' instructions and notifications. Stored ids stay `t<n>` (`taskCode` formats, `taskIdOf` reads);
+  every tool takes `TQ-195`, `195` or the old `t195`. A chat's header is its **chat title**: a short
+  "<Area>: <what changes>" in sentence case (`CHAT_TITLE_STYLE`, said in the add and edit tools), kept
+  on the chat's first task (`chatTitle`) and given to the chat when it starts. Set it in Add tasks (each
+  chat's header), Edit (Chat title, beside Task title) or Jig's review card; without one the header
+  shows the first task's title.
 - **The results** (D-186): a bar and counts per status with the total time and cost, then a card per
-  chat: its link (opens the chat), number of tasks, project, time, cost and "n of m finished". In it,
-  a row per task: #, title (with "same chat", "queued by Jig", "a follow-up", non-default
-  permissions), the report's summary on two lines (or the error, or its last answer), started, notes,
-  follow-ups, files, time, cost, and the status at the far right. Click a row for the details: project,
+  chat: its title and link (opens the chat), number of tasks, project, time, cost and "n of m
+  finished". In it, a one-line row per task, the same height in every state (D-418): a grip slot, the
+  code, the title (with "queued by Jig", "a follow-up", non-default permissions), then quietly the
+  report's summary (or the error, or its last answer) where there's room, started, notes, follow-ups,
+  files, time, cost, and the status at the far right. The prompt isn't on the row: it's in the details.
+  A chat's only task titled like its header shows its code and outcome without the title again.
+  Click a row for the details: project,
   chat, permissions, started, finished, time, cost and who queued it; summary, things to know,
   follow-ups each with **Add to queue** (or all), the prompt, Open chat and Run again. Right-click or
   ⋯: Edit, Move up/down (Alt+↑/↓ on a focused row), Move to top/bottom, Skip, Run again, Remove.
-- **Reordering by drag and drop** (D-307): drag a queued task's row (a grip replaces its number on
+- **Reordering by drag and drop** (D-307): drag a queued task's row (a grip shows left of its code on
   hover) or a chat card's header (the whole chat, when all its tasks are queued). A line shows where it
   lands, drawn over the edge or gap so nothing moves until the drop: inside a chat (the task continues
   that chat) or between chats (it starts its own; a whole chat only goes between chats). Nothing lands
@@ -185,7 +196,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   chat. They land before the parked pool; with `parked` (when you ask for ideas) at its end, and the
   review card's **Park as ideas** switch does the same; with `sameChat` they stay one parked chat. Each prompt must stand alone. Jig starts the queue only when you say so, and you review
   the tasks first (it isn't read-only). `addon_tasks_list` shows the queue: this chat's project's,
-  another's with `project` (name or id), or with `all` every project's, one line per task (id, status,
+  another's with `project` (name or id), or with `all` every project's, one line per task (code, status,
   title) under the project's name and id (D-326), so a chat anywhere finds a task and changes it with
   `addon_tasks_edit` and its `project`.
 - **Jig can change queued tasks** (`addon_tasks_edit`, D-287): title, prompt, a paragraph appended
@@ -236,9 +247,11 @@ went, so you read the results as a table instead of scrolling one long chat.
   needing you and kept as the task's `waitingFor`.
 - **Columns:** the queue and history tables share fixed-width, one-line, right-aligned columns
   (`COL` in `ui.tsx`), sized for their longest values ("10h 59m", "12:59 PM", "$99.99", "4 of 12
-  finished"); the title takes the rest and truncates. Narrow containers drop Started, Notes,
-  Follow-ups and Files first, then Time and Cost, then the hints beside titles (container variants on
-  both sides, D-297).
+  finished") and the code (`COL.code`, left-aligned so the `TQ-` prefixes line up); the title takes the
+  rest and truncates. Started, Notes, Follow-ups and Files appear only in wide places (`@6xl`), Time and
+  Cost from `@xl`; narrow (a sidebar) the status is its icon alone (the word in its tooltip), the chat
+  header's progress reads "1/4", and the outcome and hints beside titles give way (container variants
+  on both sides, D-297).
 - **History** (D-248): every Start opens a run; the tasks it starts belong to it, and it finishes
   when the queue does. The History tab lists runs (started, tasks, done, failed, time, cost, ran on,
   status); "Ran on" (D-354) is the provider marks of what the run's tasks ran on (`runProviders`: each

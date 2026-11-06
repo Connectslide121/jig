@@ -80,6 +80,7 @@ import {
   countKeys,
   countTasks,
   countText,
+  progressShort,
   progressText,
   type QueueCounts,
   restCounts,
@@ -99,6 +100,7 @@ import {
   removeStep,
   setChatProject,
   setChatProvider,
+  setChatTitle,
   setStep,
   splitAt,
   spreadStep,
@@ -117,6 +119,7 @@ import {
   duration,
   fileName,
   formatMs,
+  groupTitle,
   handoverOrder,
   hasStopLine,
   isActive,
@@ -133,6 +136,7 @@ import {
   queueModel,
   type Run,
   type RunsOn,
+  repeatsHeader,
   runOutcome,
   runProviders,
   runProvidersText,
@@ -144,6 +148,7 @@ import {
   type TaskFile,
   type TaskProvider,
   tally,
+  taskCode,
 } from "./lib/tasks";
 import {
   costTitle,
@@ -205,13 +210,16 @@ function ModeSelect({
  * both sides because plain utilities from add-on CSS win over container variants (D-297).
  */
 const COL = {
-  started: "@max-3xl:hidden @3xl:block w-16",
-  notes: "@max-3xl:hidden @3xl:block w-12",
-  followUps: "@max-3xl:hidden @3xl:block w-20",
-  files: "@max-3xl:hidden @3xl:flex w-12 justify-end",
+  /** The task's code (TQ-195, D-418): left-aligned so the "TQ-" prefixes line up; fits TQ-9999. */
+  code: "w-12 shrink-0 whitespace-nowrap text-left text-xs tabular-nums text-hint",
+  started: "@max-6xl:hidden @6xl:block w-16",
+  notes: "@max-6xl:hidden @6xl:block w-12",
+  followUps: "@max-6xl:hidden @6xl:block w-20",
+  files: "@max-6xl:hidden @6xl:flex w-12 justify-end",
   time: "@max-xl:hidden @xl:block w-16",
   cost: "@max-xl:hidden @xl:block w-16",
-  status: "w-28",
+  /** Narrow (a sidebar): the status icon alone, its word in the tooltip; with room, the badge too (D-418). */
+  status: "@max-md:w-10 @md:w-28",
   /**
    * Who runs the chat: always the mark, in the same place on every row (D-330); with room, the model
    * beside it (D-408), in a fixed width so nothing after it moves.
@@ -219,6 +227,8 @@ const COL = {
   provider: "@max-2xl:w-8 @2xl:w-20 flex shrink-0 items-center gap-1",
 };
 /** Room for two marks side by side (a handover, a mixed run), so one or two line up the same. */
+/** The gap between a row's slots, the same in the header, the chat cards and the task rows: tighter when narrow. */
+const GAP = "@max-md:gap-2 @md:gap-3";
 const MARKS = "flex w-8 shrink-0 items-center gap-1";
 /** History's "Ran on": the marks alone when narrow, with the name beside them when there's room. */
 const RAN_ON = "@max-xl:w-8 @xl:w-20 flex shrink-0 items-center gap-1";
@@ -1305,9 +1315,14 @@ function TaskTable({
     // tasks' hints beside their titles; task and status stay.
     <div ref={scrollRef} className="@container min-h-0 flex-1 overflow-auto px-3 pb-3">
       {drag.ghost(stopFrom ? "Stop here" : dragLabel(queue, dragged))}
-      <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
-        <span className="w-6 shrink-0 text-right">#</span>
-        <span className="min-w-0 flex-1">Task and how it went</span>
+      <div
+        className={cn(
+          "sticky top-0 z-10 flex h-7 items-center whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint",
+          GAP,
+        )}
+      >
+        <span className="w-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate">Task and how it went</span>
         <span className={cn(COL.started, CELL)}>Started</span>
         <span className={cn(COL.notes, CELL)}>Notes</span>
         <span className={cn(COL.followUps, CELL)}>Follow-ups</span>
@@ -1316,7 +1331,9 @@ function TaskTable({
         <span className={cn(COL.cost, CELL)}>Cost</span>
         <span className={COL.provider} title="Runs on: Claude or ChatGPT" />
         <span className="w-7 shrink-0" />
-        <span className={cn(COL.status, CELL)}>Status</span>
+        <span className={cn(COL.status, CELL)}>
+          <span className="@max-md:hidden @md:inline">Status</span>
+        </span>
       </div>
       <div ref={listRef} className="flex flex-col gap-3 pt-2" data-testid="tasks-list">
         {work.map((group, gi) => {
@@ -1545,8 +1562,7 @@ function ParkedPool({
                 <TaskRow
                   ctx={ctx}
                   task={head}
-                  index={group.tasks[0]!.index}
-                  continues={false}
+                  sameAsHeader={false}
                   on={runsOnOf(head)}
                   onOpen={() => onOpen(head.id)}
                   onMenu={(at) => onMenu(head, at)}
@@ -2215,11 +2231,12 @@ function ChatCard({
             : undefined
         }
         className={cn(
-          "group flex h-9 items-center gap-3 border-b border-line px-3",
+          "group flex h-9 items-center border-b border-line px-3",
+          GAP,
           canDrag && ids.every((id) => dnd.dragging(id)) ? "opacity-40" : parked && "opacity-60",
         )}
       >
-        <span className="ml-2 flex size-4 shrink-0 items-center justify-center text-hint">
+        <span className="flex size-4 shrink-0 items-center justify-center text-hint">
           <MessageSquare className={cn("size-4", canDrag && "group-hover:hidden")} />
           {canDrag && <GripVertical aria-hidden className="hidden size-4 cursor-grab group-hover:block" />}
         </span>
@@ -2232,14 +2249,15 @@ function ChatCard({
               title="Open the chat"
               onClick={() => void ctx.openChat({ sessionId: group.sessionId })}
             >
-              {group.chatTitle ?? tasks[0]!.title}
+              {groupTitle(group)}
             </button>
           ) : (
             <span
               className="min-w-0 truncate font-medium text-fg"
               title="Its chat starts when its first task runs"
+              data-testid={`task-group-title-${number - 1}`}
             >
-              {tasks[0]!.title}
+              {groupTitle(group)}
             </span>
           )}
           <span className="@max-md:hidden @md:inline shrink-0 whitespace-nowrap text-xs text-hint">
@@ -2271,23 +2289,27 @@ function ChatCard({
         {parked ? (
           <span
             className={cn(COL.status, "flex shrink-0 items-center justify-end gap-1.5 text-xs text-muted")}
+            title="Parked"
           >
-            Parked
+            <span className="@max-md:hidden @md:inline">Parked</span>
             <Pause className="size-4 shrink-0 text-hint" />
           </span>
         ) : (
-          <span className={cn(COL.status, CELL, "text-xs text-muted")}>
-            {progressText(countTasks(tasks))}
+          <span
+            className={cn(COL.status, CELL, "text-xs text-muted")}
+            title={progressText(countTasks(tasks))}
+          >
+            <span className="@max-md:hidden @md:inline">{progressText(countTasks(tasks))}</span>
+            <span className="@max-md:inline @md:hidden">{progressShort(countTasks(tasks))}</span>
           </span>
         )}
       </div>
-      {group.tasks.map(({ task, index }) => (
+      {group.tasks.map(({ task }) => (
         <TaskRow
           key={task.id}
           ctx={ctx}
           task={task}
-          index={index}
-          continues={task !== tasks[0]}
+          sameAsHeader={repeatsHeader(group, task)}
           on={runsOnOf(task)}
           onOpen={() => onOpen(task.id)}
           onMenu={(at) => onMenu(task, at)}
@@ -2301,11 +2323,16 @@ function ChatCard({
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const startedAt = (task: Task) => (task.sentAt ? clock(task.sentAt) : "");
 
+/**
+ * A task's row (D-418): one line, the same height in every state, so nothing moves when a task ends. Its
+ * code (TQ-195), its title, then quietly its outcome (the report's summary, the error or its last answer)
+ * where there is room; the prompt is in its details. When its chat's header already says its title (a
+ * chat's only task, titled alike) the row doesn't repeat it: the code and the outcome are enough.
+ */
 function TaskRow({
   ctx,
   task,
-  index,
-  continues,
+  sameAsHeader,
   on,
   onOpen,
   onMenu,
@@ -2313,8 +2340,8 @@ function TaskRow({
 }: {
   ctx: AddonUiContext;
   task: Task;
-  index: number;
-  continues: boolean;
+  /** Its chat card's header says the same as its title: show it once, there. */
+  sameAsHeader: boolean;
   /** Who runs its chat. */
   on: RunsOn;
   onOpen: () => void;
@@ -2331,7 +2358,6 @@ function TaskRow({
   const tags = [
     task.reportedLate ? "reported late" : "",
     isActive(task) && task.nudgedAt ? "asked for its report" : "",
-    continues ? "same chat" : "",
     task.addedBy ? "queued by Jig" : "",
     task.from ? "a follow-up" : "",
     task.permissionMode === "plan"
@@ -2363,40 +2389,51 @@ function TaskRow({
         onMenu(e.nativeEvent);
       }}
       className={cn(
-        "group relative flex h-16 cursor-default items-center gap-3 border-b border-line px-3 last:border-b-0 hover:bg-hover",
+        "group relative flex h-9 cursor-default items-center border-b border-line px-3 last:border-b-0 hover:bg-hover",
+        GAP,
         dnd?.dragging(task.id) && "opacity-40",
       )}
     >
       {dnd?.lineAfter === task.id && <DropLine at="row" />}
+      {/* The grip's slot, under the chat card's bubble: empty until hovered, so the codes never move. */}
       <span
-        className="flex w-6 shrink-0 items-center justify-end text-xs tabular-nums text-hint"
+        className="flex w-4 shrink-0 items-center justify-center text-hint"
         title={canDrag ? "Drag to move, or Alt+↑/↓" : undefined}
       >
-        <span className={cn(canDrag && "group-hover:hidden")}>{index + 1}</span>
         {canDrag && <GripVertical aria-hidden className="hidden size-3.5 cursor-grab group-hover:block" />}
       </span>
-      <div className={cn("flex min-w-0 flex-1 flex-col", parked && "opacity-60")}>
-        <div className="flex min-w-0 items-center gap-2">
-          {continues && (
-            <CornerDownRight className="size-3.5 shrink-0 text-hint" aria-label="Continues the chat" />
-          )}
-          <span className="truncate text-sm font-medium text-fg" title={task.prompt}>
+      <span className={cn(COL.code, parked && "opacity-60")} data-testid={`task-code-${task.id}`}>
+        {taskCode(task.id)}
+      </span>
+      <div
+        className={cn("flex min-w-0 flex-1 items-center gap-2", parked && "opacity-60")}
+        title={[task.title, detail].filter(Boolean).join("\n\n")}
+      >
+        {!sameAsHeader && (
+          <span
+            className="min-w-0 max-w-fit shrink truncate text-sm font-medium text-fg"
+            data-testid={`task-title-${task.id}`}
+          >
             {task.title}
           </span>
-          {tags.length > 0 && (
-            <span className="@max-md:hidden @md:inline shrink-0 whitespace-nowrap text-2xs text-hint">
-              {tags.join(" · ")}
-            </span>
-          )}
-        </div>
-        <div
-          className={cn(
-            "line-clamp-2 text-xs",
-            !task.report && task.error ? "text-danger" : detail ? "text-muted" : "text-hint",
-          )}
-        >
-          {detail ?? task.prompt}
-        </div>
+        )}
+        {tags.length > 0 && (
+          <span className="@max-md:hidden @md:inline shrink-0 whitespace-nowrap text-2xs text-hint">
+            {tags.join(" · ")}
+          </span>
+        )}
+        {detail && (
+          <span
+            className={cn(
+              "min-w-0 flex-1 basis-0 truncate text-xs",
+              !sameAsHeader && "@max-md:hidden @md:block",
+              !task.report && task.error ? "text-danger" : "text-muted",
+            )}
+            data-testid={`task-detail-${task.id}`}
+          >
+            {detail}
+          </span>
+        )}
       </div>
       <span className={cn(COL.started, CELL, "text-xs text-muted")}>{startedAt(task)}</span>
       <span className={cn(COL.notes, CELL, "text-xs text-muted")}>{notes || ""}</span>
@@ -2438,11 +2475,14 @@ function TaskRow({
       </span>
       <span
         className={cn(COL.status, "flex shrink-0 items-center justify-end gap-1.5 whitespace-nowrap")}
+        title={parked ? "Parked" : STATUS_LABEL[task.status]}
         data-testid={`task-status-${task.id}`}
       >
         {parked ? (
           <>
-            <Badge tone="neutral">Parked</Badge>
+            <span className="@max-md:hidden @md:inline-flex">
+              <Badge tone="neutral">Parked</Badge>
+            </span>
             <Pause className="size-4 shrink-0 text-hint" />
           </>
         ) : (
@@ -2483,7 +2523,9 @@ function TaskRow({
                 <Clock aria-label={`Resumes at ${clock(task.limitResetsAt)}`} className="size-3" />
               </span>
             )}
-            <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
+            <span className="@max-md:hidden @md:inline-flex">
+              <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
+            </span>
             <StatusIcon status={task.status} />
           </>
         )}
@@ -2581,7 +2623,14 @@ function TaskDialog({
           </span>
         </span>,
       ],
-      ["Chat", task.newChat || index === 0 ? "starts a new one" : "continues the one before"],
+      [
+        "Chat",
+        task.newChat || index === 0
+          ? task.chatTitle
+            ? `starts “${task.chatTitle}”`
+            : "starts a new one"
+          : "continues the one before",
+      ],
       [
         "Permissions",
         <span key="mode" className={modeTone(task.permissionMode ?? "acceptEdits")}>
@@ -2604,9 +2653,10 @@ function TaskDialog({
       title={
         <span className="flex min-w-0 items-center gap-2">
           <StatusIcon status={task.status} />
-          <span className="truncate">
-            {index + 1}. {task.title}
+          <span className="shrink-0 tabular-nums text-muted" data-testid="task-details-code">
+            {taskCode(task.id)}
           </span>
+          <span className="truncate">{task.title}</span>
         </span>
       }
       footer={
@@ -2969,10 +3019,17 @@ function AddDialog({
             >
               <div className="flex h-9 items-center gap-2 border-b border-line pl-3 pr-1">
                 <MessageSquare className="size-4 shrink-0 text-hint" />
-                <span className="text-sm font-medium text-fg">Chat {ci + 1}</span>
-                <span className="min-w-0 flex-1 truncate text-xs text-hint">
-                  {chat.steps.length} {chat.steps.length === 1 ? "task" : "tasks"} · a new chat
-                </span>
+                <span className="shrink-0 text-sm font-medium text-fg">Chat {ci + 1}</span>
+                {/* The chat's short title (D-418): the queue card's header and the chat's name. */}
+                <Input
+                  aria-label={`Title of chat ${ci + 1}`}
+                  className="min-w-0 flex-1"
+                  placeholder="Chat title, e.g. Login: fix the redirect (else the first task's)"
+                  maxLength={80}
+                  value={chat.title ?? ""}
+                  onChange={(e) => setChats(setChatTitle(chats, ci, e.target.value))}
+                  data-testid={`tasks-add-chat-title-${ci}`}
+                />
                 <RunsOnButton
                   ctx={ctx}
                   value={{ provider: chat.provider, model: chat.model }}
@@ -3121,6 +3178,9 @@ function EditDialog({
   onClose: () => void;
   onSave: (input: {
     prompt: string;
+    title: string;
+    /** The title of the chat it starts (D-418); null when it continues one or it's empty. */
+    chatTitle: string | null;
     newChat: boolean;
     permissionMode: PermissionMode;
     attachments: TaskFile[];
@@ -3131,6 +3191,8 @@ function EditDialog({
 }) {
   const ctx = useAddon();
   const [text, setText] = useState(task.prompt);
+  const [title, setTitle] = useState(task.title);
+  const [chatTitle, setChatTitle] = useState(task.chatTitle ?? "");
   const [files, setFiles] = useState<TaskFile[]>(task.attachments ?? []);
   // Files added here: deleted again unless saved (the task's own go when the host sees them unused).
   const [added, setAdded] = useState<string[]>([]);
@@ -3164,6 +3226,8 @@ function EditDialog({
     try {
       await onSave({
         prompt: text.trim(),
+        title: title.trim(),
+        chatTitle: sameChat ? null : chatTitle.trim() || null,
         newChat: !sameChat,
         permissionMode: mode,
         attachments: files,
@@ -3184,7 +3248,7 @@ function EditDialog({
       onClose={cancel}
       width="lg"
       testId="tasks-edit-dialog"
-      title="Edit the task"
+      title={`Edit ${taskCode(task.id)}`}
       footer={
         <>
           <Button
@@ -3213,6 +3277,34 @@ function EditDialog({
       }
     >
       <div className="flex flex-col gap-3">
+        {/* Titles (D-418): the chat card's header (only for a task that starts a chat) and the task's row. */}
+        <div className="grid grid-cols-2 gap-3">
+          <label htmlFor="tasks-edit-chat-title" className="flex min-w-0 flex-col gap-1 text-xs text-muted">
+            Chat title
+            <Input
+              id="tasks-edit-chat-title"
+              value={sameChat ? "" : chatTitle}
+              disabled={sameChat}
+              maxLength={80}
+              placeholder={
+                sameChat ? "Continues the chat before" : "Area: what changes (else the task's title)"
+              }
+              onChange={(e) => setChatTitle(e.target.value)}
+              data-testid="tasks-edit-chat-title"
+            />
+          </label>
+          <label htmlFor="tasks-edit-title" className="flex min-w-0 flex-col gap-1 text-xs text-muted">
+            Task title
+            <Input
+              id="tasks-edit-title"
+              value={title}
+              maxLength={120}
+              placeholder="From the prompt when empty"
+              onChange={(e) => setTitle(e.target.value)}
+              data-testid="tasks-edit-title"
+            />
+          </label>
+        </div>
         <Textarea
           autoFocus
           rows={8}
@@ -3326,6 +3418,8 @@ export function DashboardTab({ ctx }: AddonTabProps) {
 interface ReviewItem {
   key: number;
   title: string;
+  /** The title of the chat it starts (D-418). */
+  chatTitle: string;
   prompt: string;
   newChat: boolean;
   /** Who Claude asked to run it (D-330), kept as given; checked by the add tool. */
@@ -3338,7 +3432,7 @@ function reviewItems(input: Record<string, unknown>): ReviewItem[] {
   const sameChat = input.sameChat === true;
   return (Array.isArray(input.tasks) ? input.tasks : []).flatMap((item, key): ReviewItem[] => {
     if (typeof item === "string")
-      return item.trim() ? [{ key, title: "", prompt: item, newChat: !sameChat }] : [];
+      return item.trim() ? [{ key, title: "", chatTitle: "", prompt: item, newChat: !sameChat }] : [];
     if (!item || typeof item !== "object") return [];
     const o = item as Record<string, unknown>;
     const prompt = typeof o.prompt === "string" ? o.prompt : "";
@@ -3347,6 +3441,7 @@ function reviewItems(input: Record<string, unknown>): ReviewItem[] {
       {
         key,
         title: typeof o.title === "string" ? o.title : "",
+        chatTitle: typeof o.chatTitle === "string" ? o.chatTitle : "",
         prompt,
         newChat: typeof o.newChat === "boolean" ? o.newChat : !sameChat,
         ...(o.provider !== undefined ? { provider: o.provider } : {}),
@@ -3405,6 +3500,7 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
           prompt: i.prompt.trim(),
           newChat: i.newChat,
           ...(i.title.trim() ? { title: i.title.trim() } : {}),
+          ...((i.newChat || n === 0) && i.chatTitle.trim() ? { chatTitle: i.chatTitle.trim() } : {}),
           // A task that continues a chat runs on that chat's provider: its own choice goes.
           ...((i.newChat || n === 0) && i.provider !== undefined ? { provider: i.provider } : {}),
           ...((i.newChat || n === 0) && i.model !== undefined ? { model: i.model } : {}),
@@ -3458,13 +3554,25 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
           >
             <span className="w-5 shrink-0 pt-1 text-right text-xs tabular-nums text-hint">{i + 1}</span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <Input
-                aria-label={`Title of task ${i + 1}`}
-                placeholder="Title (from the prompt when empty)"
-                value={item.title}
-                onChange={(e) => set(item.key, { title: e.target.value })}
-                data-testid={`tasks-review-title-${i}`}
-              />
+              {/* The chat's title, then the task's (D-418); a task that continues a chat keeps the field greyed. */}
+              <div className="grid grid-cols-2 gap-1">
+                <Input
+                  aria-label={`Chat title of task ${i + 1}`}
+                  placeholder={i > 0 && !item.newChat ? "Same chat as above" : "Chat title (else the task's)"}
+                  disabled={i > 0 && !item.newChat}
+                  maxLength={80}
+                  value={i > 0 && !item.newChat ? "" : item.chatTitle}
+                  onChange={(e) => set(item.key, { chatTitle: e.target.value })}
+                  data-testid={`tasks-review-chat-title-${i}`}
+                />
+                <Input
+                  aria-label={`Title of task ${i + 1}`}
+                  placeholder="Task title (from the prompt when empty)"
+                  value={item.title}
+                  onChange={(e) => set(item.key, { title: e.target.value })}
+                  data-testid={`tasks-review-title-${i}`}
+                />
+              </div>
               <Textarea
                 aria-label={`Prompt of task ${i + 1}`}
                 rows={2}
@@ -3646,7 +3754,7 @@ export function DeleteTasks({ request, status, projectId: chatProject, respond }
             className="flex h-8 shrink-0 items-center gap-3 border-b border-line px-2 last:border-b-0"
             data-testid={`tasks-delete-${id}`}
           >
-            <span className="w-12 shrink-0 text-xs tabular-nums text-hint">{id}</span>
+            <span className="w-14 shrink-0 text-xs tabular-nums text-hint">{taskCode(id)}</span>
             <span className={cn("min-w-0 flex-1 truncate text-sm", titles.has(id) ? "text-fg" : "text-hint")}>
               {titles.get(id) ?? (queue ? "Not in this queue" : "")}
             </span>

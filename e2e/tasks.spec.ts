@@ -365,7 +365,10 @@ test("Tasks: every run is kept in the history, with its results", async ({ page,
   await expect(details.getByTestId("task-facts")).toContainText("Accept file edits");
   await expect(details).toContainText("A fake note to know");
   await details.getByTestId("task-followup-0").click();
-  await expect(view.getByTestId("task-t4")).toContainText("Follow up on");
+  // Its own chat, titled like the task: the card's header says it once (D-418).
+  await expect(
+    view.getByTestId(/^task-group-\d+$/).filter({ has: page.getByTestId("task-t4") }),
+  ).toContainText("Follow up on");
   await page.keyboard.press("Escape");
 
   // The queue paused on the failure: the run is still open, with the two tasks it ran.
@@ -680,7 +683,7 @@ test("Tasks: a turn without a report is asked once for it, and a chat reports la
   // The chat shows the requests as the task queue's, not as yours.
   await page.getByTestId("task-open-chat").click();
   await expect(page.getByTestId("jig-message").first()).toContainText(
-    "Task queue: asked for the report of task 2",
+    "Task queue: asked for the report of task TQ-2",
   );
   await expect(page.getByTestId("jig-message")).toHaveCount(2);
 });
@@ -904,7 +907,7 @@ test("Tasks: a task Jig closed in the middle of carries on after the restart and
   await page2.getByTestId("task-open-chat").click();
   await expect(page2.getByTestId("jig-message")).toHaveCount(1);
   await expect(page2.getByTestId("jig-message")).toContainText(
-    "Task queue: Jig restarted, carry on with task 1",
+    "Task queue: Jig restarted, carry on with task TQ-1",
   );
   await again.close();
 });

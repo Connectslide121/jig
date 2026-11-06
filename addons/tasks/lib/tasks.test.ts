@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { countTasks } from "./counts";
 import {
@@ -5,6 +6,7 @@ import {
   afterTurn,
   applyReport,
   BACKGROUND_WAIT_MS,
+  CHAT_TITLE_STYLE,
   CHATGPT_SIGNED_OUT,
   type ChatState,
   canMarkDone,
@@ -26,6 +28,7 @@ import {
   editTasks,
   emptyQueue,
   finishTask,
+  groupTitle,
   handoverOrder,
   hasStopLine,
   historyFiles,
@@ -62,6 +65,7 @@ import {
   recordRuns,
   releaseHold,
   removeTasks,
+  repeatsHeader,
   reportTarget,
   requeue,
   resetTask,
@@ -88,7 +92,9 @@ import {
   type Task,
   type TaskReport,
   tally,
+  taskCode,
   taskContext,
+  taskIdOf,
   titleFor,
   titleOf,
   UPDATE_HOLD_MS,
@@ -201,6 +207,8 @@ describe("resetTask and resetTasks", () => {
       projectId: "p1",
       newChat: true,
       permissionMode: undefined,
+      // A task that starts its chat keeps the chat's title for when it runs again (D-418).
+      chatTitle: "A chat",
       status: "queued",
       parked: true,
     });
@@ -379,7 +387,7 @@ describe("ending a task's turn (D-318)", () => {
     const text = nudgeText(q, q.tasks[1]!);
     expect(text).toContain('report of task 2 ("b", taskId "b")');
     expect(text).toContain("Don't continue the task's work unless the user asks");
-    expect(nudgeFrom(q, q.tasks[1]!)).toBe("Task queue: asked for the report of task 2");
+    expect(nudgeFrom(q, q.tasks[1]!)).toBe("Task queue: asked for the report of task b");
   });
 });
 
@@ -432,7 +440,7 @@ describe("a turn Jig cut off by closing (D-394)", () => {
     expect(text).toContain('task 2 (taskId "b")');
     expect(text).toContain("Carry on where you left off");
     expect(text).toContain("addon_tasks_report");
-    expect(resumeFrom(q, q.tasks[1]!)).toBe("Task queue: Jig restarted, carry on with task 2");
+    expect(resumeFrom(q, q.tasks[1]!)).toBe("Task queue: Jig restarted, carry on with task b");
   });
 });
 
@@ -1081,16 +1089,16 @@ describe("taskContext, counts, duration, listing", () => {
   it("lists the queue for Claude", () => {
     expect(listing(emptyQueue())).toMatch(/empty/);
     const q = queued(["a"]);
-    expect(listing(q)).toContain("1. [Queued] a (id t1, on Claude, the project's)");
+    expect(listing(q)).toContain("1. [Queued] a (id TQ-1, on Claude, the project's)");
     expect(listing(q)).toContain("New chats run on the project's default.");
-    expect(listing({ ...q, provider: "chatgpt" }, "claude")).toContain("(id t1, on ChatGPT, the queue's)");
+    expect(listing({ ...q, provider: "chatgpt" }, "claude")).toContain("(id TQ-1, on ChatGPT, the queue's)");
   });
   it("lists a queue compactly: id, status and title per task", () => {
     const q = queued(["a", "b"]);
     q.tasks[0]!.status = "done";
     q.tasks[1]!.parked = true;
     expect(compactListing(q)).toBe(
-      "2 tasks, paused. New chats run on the project's default.\n- t1 [Done] a\n- t2 [Queued, parked] b",
+      "2 tasks, paused. New chats run on the project's default.\n- TQ-1 [Done] a\n- TQ-2 [Queued, parked] b",
     );
   });
 });
@@ -1368,7 +1376,7 @@ describe("who runs a task (D-330)", () => {
         addTasks(q, [{ prompt: "d", provider: "chatgpt" }], { projectId: "p1", newChat: false }),
         ["t4"],
       ),
-    ).toThrow(/t4 continues/);
+    ).toThrow(/TQ-4 continues/);
     expect(() =>
       checkProviderChoices(
         addTasks(q, [{ prompt: "d", provider: "chatgpt" }], { projectId: "p1", newChat: true }),
@@ -1588,7 +1596,7 @@ describe("marking a task done by hand (D-356)", () => {
       expect(canMarkDone(ended({ status }).tasks[0]!)).toBe(false);
       expect(() => markDone(ended({ status }), "t1")).toThrow("only a task that ended in Error");
     }
-    expect(() => markDone(ended({}), "t9")).toThrow("no task t9");
+    expect(() => markDone(ended({}), "t9")).toThrow("no task TQ-9");
   });
 
   it("a chat can still report it later, as a revision", () => {
@@ -1748,5 +1756,67 @@ describe("the counts around stop lines (D-398)", () => {
     const c = countTasks(q.tasks);
     expect(c.by).toMatchObject({ done: 1, upNext: 2, later: 2 });
     expect(c.willRun).toBe(3);
+  });
+});
+
+describe("task codes and chat titles (D-418)", () => {
+  it("shows ids as TQ codes and reads every form back", () => {
+    expect(taskCode("t195")).toBe("TQ-195");
+    expect(taskCode("custom")).toBe("custom");
+    for (const given of ["TQ-195", "tq-195", "TQ195", "TQ 195", "t195", "195", "#195", " TQ-195 "])
+      expect(taskIdOf(given)).toBe("t195");
+    expect(taskIdOf("TQ-007")).toBe("t7");
+    expect(taskIdOf("nope")).toBe("nope");
+  });
+  it("takes TQ codes in edits, moves and deletes", () => {
+    expect(parseTaskEdits([{ id: "TQ-3", title: "x", moveTo: { after: "TQ-1" } }])).toEqual([
+      { id: "t3", title: "x", moveTo: { after: "t1" } },
+    ]);
+    expect(parseTaskIds(["TQ-3", "t3", "4"])).toEqual(["t3", "t4"]);
+  });
+  it("keeps a chat title on the task that starts the chat, and the header falls back to its title", () => {
+    const q = addTasks(
+      emptyQueue(),
+      [
+        { prompt: "a", chatTitle: "  Login: fix the redirect\nmore " },
+        { prompt: "b", newChat: false },
+        { prompt: "c" },
+      ],
+      { projectId: "p1", newChat: true },
+    );
+    expect(q.tasks[0]!.chatTitle).toBe("Login: fix the redirect");
+    const groups = chatGroups(q);
+    expect(groups.map(groupTitle)).toEqual(["Login: fix the redirect", "c"]);
+    expect(repeatsHeader(groups[0]!, q.tasks[0]!)).toBe(false);
+    expect(repeatsHeader(groups[1]!, q.tasks[2]!)).toBe(true);
+  });
+  it("uses the started chat's real title once it ran", () => {
+    const q = addTasks(emptyQueue(), [{ prompt: "a", chatTitle: "Planned" }], { newChat: true });
+    const started = { ...q, tasks: [{ ...q.tasks[0]!, sessionId: "s1", chatTitle: "Renamed" }] };
+    expect(groupTitle(chatGroups(started)[0]!)).toBe("Renamed");
+  });
+  it("edits a chat title, and null takes it away", () => {
+    const q = addTasks(emptyQueue(), [{ prompt: "a", chatTitle: "Old" }], { newChat: true });
+    const renamed = editTasks(q, parseTaskEdits([{ id: "TQ-1", chatTitle: "Tasks: clearer rows" }]));
+    expect(renamed.tasks[0]!.chatTitle).toBe("Tasks: clearer rows");
+    const cleared = editTasks(renamed, parseTaskEdits([{ id: "t1", chatTitle: null }]));
+    expect(cleared.tasks[0]!.chatTitle).toBeUndefined();
+  });
+  it("names tasks by code to the chats", () => {
+    const q = addTasks(emptyQueue(), ["a", "b"], { newChat: true });
+    expect(listing(q)).toContain("(id TQ-1,");
+    expect(compactListing(q)).toContain("- TQ-2 [Queued] b");
+  });
+  it("tells Jig the chat title style in the add and edit tools", () => {
+    const manifest = readFileSync(new URL("../addon.json", import.meta.url), "utf8");
+    const text = JSON.parse(manifest).contributes.tools.map((t: { description: string; params: unknown }) =>
+      JSON.stringify(t),
+    );
+    expect(text.find((t: string) => t.includes('"id":"add"'))).toContain(
+      JSON.stringify(CHAT_TITLE_STYLE).slice(1, -1),
+    );
+    expect(text.find((t: string) => t.includes('"id":"edit"'))).toContain(
+      JSON.stringify(CHAT_TITLE_STYLE).slice(1, -1),
+    );
   });
 });

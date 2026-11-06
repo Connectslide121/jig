@@ -119,6 +119,11 @@ export function progressText(c: QueueCounts): string {
   return c.by.done === c.willRun ? `All ${c.willRun} done` : `${c.by.done} of ${c.willRun} done`;
 }
 
+/** The same, short, for a narrow place (D-418): "1/4", "—" when none will run. */
+export function progressShort(c: QueueCounts): string {
+  return c.willRun ? `${c.by.done}/${c.willRun}` : "—";
+}
+
 /** The counts after the lead: every one that isn't zero, except done (in the lead) and up next (the rest of it). */
 export function restCounts(c: QueueCounts): Array<{ key: CountKey; n: number }> {
   // "All skipped" already says it: no "3 skipped" after it.

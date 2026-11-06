@@ -7301,3 +7301,37 @@ own**.
   `/E:/…`, and a try/catch turned the unreadable folder into "OK"). It now resolves the path with
   `fileURLToPath` and fails on a folder it can't read. The checker no longer reads `#101` in a
   comment as a hex colour, nor a bracket variant (`data-[tone=danger]:`) as an arbitrary value.
+
+## D-418: Task queue: TQ codes, chat titles, no prompt preview
+
+- Status: accepted.
+- **Who:** Jon (2026-11-06) found the queue's list noisy (a one-task chat read as the same line twice,
+  two grey lines of prompt under every task) and asked for short chat titles, task codes in the
+  `TQ-123` form and no prompt preview; the details below are Claude, on my own.
+- **Task codes:** every task shows and is named `TQ-<n>` (`taskCode`, `lib/tasks.ts`): the rows' code
+  column, the details' and Edit's titles, the delete card, the run report, `addon_tasks_list`, the
+  queue's context and requests to task chats, tool answers and errors, notifications. Stored ids stay
+  `t<n>`: formatted at the edges, so no queue or history migrates. Every tool that takes an id
+  (`report`'s `taskId`, `edit`'s `id` and `moveTo`, `delete`'s `ids`, `mark_done`'s `taskId`) reads it
+  with `taskIdOf`, which accepts `TQ-195`, `tq195`, `#195`, `195` and the old `t195`, so chats and
+  prompts written before keep working. The reorganize and run-report prompts to the small AI keep the
+  stored ids (it answers with them; nobody reads them).
+- **Chat titles:** a task that starts a chat may carry `chatTitle` (`NewTask.chatTitle`; the existing
+  `Task.chatTitle`, which once the chat ran holds its real title): the chat card's header, and the
+  chat's name when the queue creates it. One style, `CHAT_TITLE_STYLE`: "<Area>: <what changes>",
+  sentence case, about 60 characters, high-level, no ids, builds or measurements. It is said in
+  `addon_tasks_add`'s and `addon_tasks_edit`'s descriptions (a unit test keeps the manifest and the
+  constant equal) and set in Add tasks (a field in each chat's header), Edit (Chat title beside Task
+  title, greyed while it continues a chat) and Jig's review card. Without one (older chats, an empty
+  field) the header shows the first task's title. Put back and Run again keep a chat-starting task's
+  chat title.
+- **Rows:** one line, the same height (`h-9`) in every state, so nothing moves when a task ends: a grip
+  slot (hover), the code column (fixed `w-12`, left-aligned so the `TQ-` prefixes line up), the title,
+  then quietly the outcome (report summary, error or last answer) where there is room; the prompt and
+  the full summary are in the details (and the row's tooltip). "same chat" and the ↳ mark are gone:
+  the card says which tasks share a chat. A chat's only task titled like its header shows its code and
+  outcome without repeating the title (`repeatsHeader`); a multi-task chat always shows each title.
+- **Widths:** the four detail columns (Started, Notes, Follow-ups, Files) appear from `@6xl` (they took
+  the title's room at ~800 px: Jig's root font makes `@4xl` ~784 px); narrow (`@max-md`, a sidebar) the
+  status column is the icon alone (word in its tooltip) and the chat header's progress reads "1/4", and
+  the gaps tighten, so the title keeps room beside the new code column.

@@ -63,7 +63,10 @@ test("Tasks: the all-queues dashboard shows every project's queue, needing you f
   await cards.first().click();
   const view = page.getByTestId("tasks-view");
   await expect(view.getByTestId("tasks-project")).toContainText("contoso");
-  await expect(view.getByTestId("task-t2")).toContainText("check the api");
+  // A chat's only task, titled like its chat: the card's header says it once (D-418).
+  await expect(
+    view.getByTestId(/^task-group-\d+$/).filter({ has: page.getByTestId("task-t2") }),
+  ).toContainText("check the api");
 
   // The project picker's first item opens the same tab again: still one.
   await view.getByTestId("tasks-project").click();
@@ -87,9 +90,9 @@ test("Tasks: Claude lists another project's queue, or every queue compactly", as
   const chat = { sessionId: "s-none", projectId: ids.shop };
   const other = (await call("toolList", { chat, project: "contoso" })) as { value: string };
   expect(other.value).toContain("contoso: The task queue is paused.");
-  expect(other.value).toContain("1. [Queued] write the specs (id t1, on Claude, the project's)");
+  expect(other.value).toContain("1. [Queued] write the specs (id TQ-1, on Claude, the project's)");
   const all = (await call("toolList", { chat, all: true })) as { value: string };
   expect(all.value).toBe(
-    `contoso (project id ${ids.contoso}): 1 task, paused. New chats run on the project's default.\n- t1 [Queued] write the specs`,
+    `contoso (project id ${ids.contoso}): 1 task, paused. New chats run on the project's default.\n- TQ-1 [Queued] write the specs`,
   );
 });

@@ -97,7 +97,7 @@
           },
           "taskId": {
             "type": "string",
-            "description": "The task to report when it isn't the one running now: an earlier task of this chat without a report, or one it already reported whose outcome changed (its id, e.g. t3). Leave out for the running task",
+            "description": "The task to report when it isn't the one running now: an earlier task of this chat without a report, or one it already reported whose outcome changed (its code, e.g. TQ-3). Leave out for the running task",
             "optional": true
           }
         },
@@ -107,11 +107,11 @@
       },
       {
         "id": "add",
-        "description": "Adds tasks to the user's task queue, which Jig works through one after another, each reporting back. Use it when the user asks to queue work, e.g. one task per spec, document, issue or item of a list. Each prompt must stand alone (it usually runs in a new chat): say what to do and where the material is (file paths). It returns the queue.",
+        "description": "Adds tasks to the user's task queue, which Jig works through one after another, each reporting back. Use it when the user asks to queue work, e.g. one task per spec, document, issue or item of a list. Each prompt must stand alone (it usually runs in a new chat): say what to do and where the material is (file paths). Give every task that starts a chat a chatTitle, the chat card's header and the chat's name, always written as \"<Area>: <what changes>\" in sentence case, about 60 characters at most, high-level (what the chat is about, not the first task's wording), no ids, build numbers, measurements or trailing detail; e.g. \"Tasks: clearer queue rows\" or \"Login: fix the expired-session redirect\"; each task's own title says what that task does. Tasks are named by their code (TQ-12). It returns the queue.",
         "params": {
           "tasks": {
             "type": "array",
-            "description": "The tasks in order: each a prompt string, or { title, prompt, newChat, provider, model } (newChat false continues the previous task's chat; provider \"claude\" or \"chatgpt\" and model, e.g. opus, sonnet, sol, only on a task that starts a chat: by default the queue's Runs on, whose model applies only to a task on its own provider)"
+            "description": "The tasks in order: each a prompt string, or { title, chatTitle, prompt, newChat, provider, model } (chatTitle: the short title of the chat a task starts, only on a task that starts a chat; title: the task's own short title, never a copy of chatTitle; newChat false continues the previous task's chat; provider \"claude\" or \"chatgpt\" and model, e.g. opus, sonnet, sol, only on a task that starts a chat: by default the queue's Runs on, whose model applies only to a task on its own provider)"
           },
           "project": {
             "type": "string",
@@ -138,11 +138,11 @@
       },
       {
         "id": "edit",
-        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, a stop line after them (stopAfter: the run pauses there so the user can release or check before the next block; it also works on the running task), whether they are parked (ideas kept in a pool at the end of the queue, never run), whether they continue the previous task's chat (newChat), where they are in the queue (moveTo), and who runs them (provider, model). runsOn and runsOnModel change the whole queue's provider and model (the default for new chats; a task with its own provider of the other kind runs on that provider's default model). Moves follow the Queue tab's rules: never above or between tasks that ran, and only parked tasks go into the parked pool at the end (park or unpark with parked); a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats, or with parked parks or unparks the whole chat together, its order and joins kept. A parked task may continue the parked task before it (a parked chat), but the first parked task always starts a chat, and nothing in the queue continues a parked chat. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue; to delete a queued task use addon_tasks_delete. addon_tasks_list gives the ids.",
+        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, a stop line after them (stopAfter: the run pauses there so the user can release or check before the next block; it also works on the running task), whether they are parked (ideas kept in a pool at the end of the queue, never run), whether they continue the previous task's chat (newChat), where they are in the queue (moveTo), and who runs them (provider, model). runsOn and runsOnModel change the whole queue's provider and model (the default for new chats; a task with its own provider of the other kind runs on that provider's default model). Moves follow the Queue tab's rules: never above or between tasks that ran, and only parked tasks go into the parked pool at the end (park or unpark with parked); a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats, or with parked parks or unparks the whole chat together, its order and joins kept. A parked task may continue the parked task before it (a parked chat), but the first parked task always starts a chat, and nothing in the queue continues a parked chat. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue; to delete a queued task use addon_tasks_delete. Tasks are named by their code (TQ-12; the old t12 works too), and addon_tasks_list gives them.",
         "params": {
           "tasks": {
             "type": "array",
-            "description": "One entry per task: { id, title?, prompt? (replaces it), append? (added on a new paragraph at the end), stopAfter? (true puts a stop line after the task, at the end of its chat since a line never splits a chat; false takes it away; not on a parked task; one line ends a block, Start runs a block and the line is used up), parked? (true parks it: to the end of the parked pool; false unparks it: to the end of the queue before the pool), newChat? (false continues the chat of the task before it, true starts a new one; the first task in the queue and the first parked task can't continue), moveTo? (\"top\", \"bottom\", { after: id } or { before: id }), wholeChat? (with moveTo: move every task of its chat; with parked: park or unpark every queued task of its chat together), provider? (\"claude\", \"chatgpt\", or \"default\" for the queue's choice; only on a task that starts a chat), model? (e.g. opus, sol; null for the default) }",
+            "description": "One entry per task: { id (its code, e.g. TQ-12), title?, chatTitle? (the title of the chat the task starts, written as \"<Area>: <what changes>\" in sentence case, about 60 characters at most, high-level (what the chat is about, not the first task's wording), no ids, build numbers, measurements or trailing detail; e.g. \"Tasks: clearer queue rows\" or \"Login: fix the expired-session redirect\"; null takes it away), prompt? (replaces it), append? (added on a new paragraph at the end), stopAfter? (true puts a stop line after the task, at the end of its chat since a line never splits a chat; false takes it away; not on a parked task; one line ends a block, Start runs a block and the line is used up), parked? (true parks it: to the end of the parked pool; false unparks it: to the end of the queue before the pool), newChat? (false continues the chat of the task before it, true starts a new one; the first task in the queue and the first parked task can't continue), moveTo? (\"top\", \"bottom\", { after: code } or { before: code }), wholeChat? (with moveTo: move every task of its chat; with parked: park or unpark every queued task of its chat together), provider? (\"claude\", \"chatgpt\", or \"default\" for the queue's choice; only on a task that starts a chat), model? (e.g. opus, sol; null for the default) }",
             "optional": true
           },
           "runsOn": {
@@ -166,11 +166,11 @@
       },
       {
         "id": "delete",
-        "description": "Deletes tasks that are still queued from the user's task queue, e.g. one queued by mistake or no longer needed: by id (addon_tasks_list gives them), several at once, all or nothing; a broken rule deletes nothing and says why. Running tasks, ones that need the user and finished ones are never deleted (finished ones stay as the queue's history). It follows the Queue tab's Remove: when the first task of a chat goes, the next task of that chat starts the chat. The user approves it on a card that names the tasks. Use it instead of leaving a task out or renaming it, and never jig_set_addon_data. It returns the queue.",
+        "description": "Deletes tasks that are still queued from the user's task queue, e.g. one queued by mistake or no longer needed: by code (TQ-12; addon_tasks_list gives them), several at once, all or nothing; a broken rule deletes nothing and says why. Running tasks, ones that need the user and finished ones are never deleted (finished ones stay as the queue's history). It follows the Queue tab's Remove: when the first task of a chat goes, the next task of that chat starts the chat. The user approves it on a card that names the tasks. Use it instead of leaving a task out or renaming it, and never jig_set_addon_data. It returns the queue.",
         "params": {
           "ids": {
             "type": "array",
-            "description": "The ids of the queued tasks to delete, e.g. [\"t3\", \"t4\"]"
+            "description": "The codes of the queued tasks to delete, e.g. [\"TQ-3\", \"TQ-4\"]"
           },
           "project": {
             "type": "string",
@@ -182,9 +182,9 @@
       },
       {
         "id": "mark_done",
-        "description": "Marks a task in the user's task queue as done by hand, only when the user asks for it (e.g. \"mark t33 done\"): for a task that ended in Error or without a report although its work was done (e.g. its chat hit its plan's usage limit before reporting), or Partly done, Failed or Blocked while the rest of its work got done elsewhere (e.g. in a follow-up task). The task becomes Done with the note as its summary, marked as set by the user, not reported by a chat; its chat's own report is kept in its details. Queued, running, skipped and already done tasks are refused. addon_tasks_list gives the ids.",
+        "description": "Marks a task in the user's task queue as done by hand, only when the user asks for it (e.g. \"mark TQ-33 done\"): for a task that ended in Error or without a report although its work was done (e.g. its chat hit its plan's usage limit before reporting), or Partly done, Failed or Blocked while the rest of its work got done elsewhere (e.g. in a follow-up task). The task becomes Done with the note as its summary, marked as set by the user, not reported by a chat; its chat's own report is kept in its details. Queued, running, skipped and already done tasks are refused. addon_tasks_list gives the codes.",
         "params": {
-          "taskId": { "type": "string", "description": "The task's id (e.g. t33)" },
+          "taskId": { "type": "string", "description": "The task's code (e.g. TQ-33)" },
           "note": {
             "type": "string",
             "description": "One line saved as the task's summary, e.g. what was done and where it was committed",
@@ -200,7 +200,7 @@
       },
       {
         "id": "list",
-        "description": "The user's task queue: each task's status and report summary, with a \"--- stop ---\" line where a stop line is (the run stops there; addon_tasks_edit's stopAfter places or removes one), and a first line saying who runs the queue's new chats (provider and model, its Runs on). By default this chat's project's queue; `project` names another project's (its name or id); `all` lists every project's queue compactly (project name and id, then each task's id, status and title), to find a task anywhere and then change it with addon_tasks_edit and its `project`.",
+        "description": "The user's task queue: each task's status and report summary, with a \"--- stop ---\" line where a stop line is (the run stops there; addon_tasks_edit's stopAfter places or removes one), and a first line saying who runs the queue's new chats (provider and model, its Runs on). By default this chat's project's queue; `project` names another project's (its name or id); `all` lists every project's queue compactly (project name and id, then each task's code (TQ-12), status and title), to find a task anywhere and then change it with addon_tasks_edit and its `project`.",
         "params": {
           "project": {
             "type": "string",
@@ -209,7 +209,7 @@
           },
           "all": {
             "type": "boolean",
-            "description": "Every project's queue, one short line per task (id, status, title)",
+            "description": "Every project's queue, one short line per task (code, status, title)",
             "optional": true
           }
         },

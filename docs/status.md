@@ -1,5 +1,16 @@
 # Status
 
+The Task queue reads calmer (2026-11-06, D-418, Jon): every task has a code, `TQ-195`, in its own
+column and wherever Jig names it (its list, reports, the chats' instructions, notifications; the old
+`t195` still works in every tool). A chat's header is a short chat title ("Checkout: rebuild the
+payment step"), which Jig writes in one style when it queues work and you set in Add tasks, Edit or the
+review card; older chats show their first task's title. Rows are one line: code, title and, where
+there's room, the outcome; the grey prompt lines are gone (the prompt is in the details), and a chat's
+only task no longer repeats its header. Narrow, the status is its icon and the detail columns wait for
+a wide view.
+**Check on your machine:** open Task queue in the sidebar, the bottom panel and a tab: codes line up,
+titles have room; ask Jig to queue two tasks and check the review card's chat title and the header.
+
 The Task queue works in the installed app again (2026-11-06, D-415, Jon): in 0.17.0 every Tasks view
 and tab was gone ("This tab needs addon.tasks.dashboard"; Settings → Add-ons showed `Could not
 resolve "../../apps/desktop/src/shared/openaiPrices"`), because D-414 imported two tooltip strings

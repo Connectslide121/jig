@@ -16,6 +16,7 @@ import {
   canReportLate,
   chatToContinue,
   checkProviderChoices,
+  cleanChatTitle,
   closeRun,
   compactListing,
   type DropSlot,
@@ -71,7 +72,9 @@ import {
   type Task,
   type TaskFile,
   type TaskProvider,
+  taskCode,
   taskContext,
+  taskIdOf,
   titleFor,
   unusedFiles,
 } from "./lib/tasks";
@@ -212,7 +215,7 @@ function settle(api: AddonHostApi, q: Queue, task: Task, chat: AddonChatInfo): Q
     next = { ...next, running: false };
     api.notify({
       title: `Task queue paused: ${STATUS_LABEL[done.status].toLowerCase()}`,
-      message: done.title,
+      message: `${taskCode(done.id)} ${done.title}`,
       tone: "warning",
       system: true,
       actions: OPEN,
@@ -318,7 +321,7 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
         ? undefined
         : await api.chats.create({
             projectId: task.projectId,
-            title: task.title,
+            title: task.chatTitle || task.title,
             permissionMode: task.permissionMode,
             provider: on.provider,
             ...(on.model ? { model: on.model } : {}),
@@ -635,6 +638,8 @@ export async function update(
     id: string;
     prompt?: string;
     title?: string;
+    /** The title of the chat it starts (D-418); empty or null takes it away. */
+    chatTitle?: string | null;
     newChat?: boolean;
     permissionMode?: PermissionMode;
     attachments?: TaskFile[];
@@ -655,8 +660,11 @@ export async function update(
       args.provider === undefined || args.provider === null
         ? args.provider
         : parseQueueProvider(args.provider);
+    const { chatTitle: _old, ...was } = task;
+    const chatTitle = args.chatTitle === undefined ? task.chatTitle : cleanChatTitle(args.chatTitle);
     const replaced = replace(q, {
-      ...setProviderChoice(task, provider, args.model),
+      ...setProviderChoice(was, provider, args.model),
+      ...(chatTitle ? { chatTitle } : {}),
       prompt,
       attachments: attachments.length ? attachments : undefined,
       title: args.title?.trim() || (args.prompt !== undefined ? titleFor(prompt, attachments) : task.title),
@@ -946,7 +954,7 @@ export async function chatChanged(
       const waitingFor = (await api.chats.get(sessionId).catch(() => undefined))?.waitingFor;
       api.notify({
         title: "A queued task needs you",
-        message: task.title,
+        message: `${taskCode(task.id)} ${task.title}`,
         tone: "warning",
         system: true,
         actions: OPEN,
@@ -963,7 +971,7 @@ export async function chatChanged(
       if (chat.limit.state === "ask" && task.waitingFor !== "limit")
         api.notify({
           title: `A queued task hit ${chat.limit.provider === "chatgpt" ? "ChatGPT" : "Claude"}'s limit`,
-          message: task.title,
+          message: `${taskCode(task.id)} ${task.title}`,
           tone: "warning",
           system: true,
           actions: OPEN,
@@ -1026,20 +1034,19 @@ export async function toolReport(
 ): Promise<string> {
   const sessionId = args.chat?.sessionId;
   const report = parseReport(args);
-  const taskId = typeof args.taskId === "string" && args.taskId.trim() ? args.taskId.trim() : undefined;
+  const taskId = typeof args.taskId === "string" && args.taskId.trim() ? taskIdOf(args.taskId) : undefined;
   await ready(api);
   const projectId = sessionId ? await projectOfChat(api, sessionId, args.chat?.projectId, true) : undefined;
   if (!sessionId || !projectId)
     throw new Error("This chat hasn't run a task from the task queue; there is nothing to report.");
   return change(api, projectId, (q) => {
     const task = reportTarget(q, sessionId, taskId);
-    const n = q.tasks.indexOf(task) + 1;
     const from = task.report?.outcome;
     const { queue, late, revised, pause } = applyReport(q, task, report);
     if (pause)
       api.notify({
-        title: `Task queue paused: task ${n} reported ${STATUS_LABEL[report.outcome].toLowerCase()}`,
-        message: task.title,
+        title: `Task queue paused: ${taskCode(task.id)} reported ${STATUS_LABEL[report.outcome].toLowerCase()}`,
+        message: `${taskCode(task.id)} ${task.title}`,
         tone: "warning",
         system: true,
         actions: OPEN,
@@ -1047,10 +1054,10 @@ export async function toolReport(
     return [
       queue,
       revised
-        ? `Revised the report of task ${n} ("${task.title}"): ${from} → ${report.outcome}.${pause ? " The queue is paused." : ""} The user sees it in the task queue.`
+        ? `Revised the report of task ${taskCode(task.id)} ("${task.title}"): ${from} → ${report.outcome}.${pause ? " The queue is paused." : ""} The user sees it in the task queue.`
         : late
-          ? `Reported task ${n} ("${task.title}") late: ${report.outcome}.${pause ? " The queue is paused." : ""} The user sees it in the task queue.`
-          : `Reported task ${n}: ${report.outcome}. The user sees it in the task queue.`,
+          ? `Reported task ${taskCode(task.id)} ("${task.title}") late: ${report.outcome}.${pause ? " The queue is paused." : ""} The user sees it in the task queue.`
+          : `Reported task ${taskCode(task.id)}: ${report.outcome}. The user sees it in the task queue.`,
     ];
   });
 }
@@ -1145,7 +1152,7 @@ export async function toolDelete(
   const fallback = await projectProvider(api, projectId);
   return change(api, projectId, (q) => {
     const next = removeTasks(q, ids, { queuedOnly: true });
-    const gone = q.tasks.filter((t) => ids.includes(t.id)).map((t) => `${t.id} "${t.title}"`);
+    const gone = q.tasks.filter((t) => ids.includes(t.id)).map((t) => `${taskCode(t.id)} "${t.title}"`);
     return [
       next,
       `Deleted ${gone.length === 1 ? "task" : `${gone.length} tasks`} ${gone.join(", ")}.\n${listing(next, fallback)}`,
@@ -1161,7 +1168,7 @@ export async function toolMarkDone(
   args: ChatArgs & { taskId?: unknown; note?: unknown; project?: string },
   api: AddonHostApi,
 ): Promise<string> {
-  const id = typeof args.taskId === "string" ? args.taskId.trim() : "";
+  const id = typeof args.taskId === "string" ? taskIdOf(args.taskId) : "";
   if (!id) throw new Error("Say which task to mark done (its id, from addon_tasks_list)");
   const projectId = await projectNamed(api, args.project, args.chat?.projectId);
   if (!projectId) throw new Error("Say which project's queue (this chat has none)");
@@ -1171,7 +1178,7 @@ export async function toolMarkDone(
     const task = next.tasks.find((t) => t.id === id)!;
     return [
       next,
-      `Marked task ${next.tasks.indexOf(task) + 1} ("${task.title}") as done: ${task.report!.summary} The user sees it in the task queue.`,
+      `Marked task ${taskCode(task.id)} ("${task.title}") as done: ${task.report!.summary} The user sees it in the task queue.`,
     ];
   });
 }

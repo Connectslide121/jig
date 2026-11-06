@@ -62,6 +62,11 @@ export interface Task {
   permissionMode?: PermissionMode;
   status: TaskStatus;
   sessionId?: string;
+  /**
+   * The chat's title (D-418). Queued, on a task that starts a chat: the short title it gets (written in
+   * `CHAT_TITLE_STYLE`; the chat card's header, and the chat's name once it starts). Once the chat ran: its
+   * real title, as it was when the task ended.
+   */
   chatTitle?: string;
   sentAt?: string;
   finishedAt?: string;
@@ -218,6 +223,40 @@ export function isFinished(task: Task): boolean {
   return !isActive(task) && task.status !== "queued";
 }
 
+/**
+ * A task's code as the user and Jig see it (D-418): `TQ-195` for the stored id `t195` (TQ = task queue).
+ * Ids stay stored as they are; only what the UI, the tools and the chats read is formatted.
+ */
+export function taskCode(id: string): string {
+  const n = /^t(\d+)$/.exec(id)?.[1];
+  return n ? `TQ-${n}` : id;
+}
+
+/**
+ * The stored id a tool was given: `TQ-195`, `tq195`, `TQ 195`, `#195`, the old `t195` and a bare `195`
+ * all name `t195`; anything else is kept as it is (so "There is no task …" names it).
+ */
+export function taskIdOf(value: string): string {
+  const s = value.trim();
+  const n = /^(?:tq[-_ ]?|t|#)?(\d+)$/i.exec(s)?.[1];
+  return n ? `t${Number(n)}` : s;
+}
+
+/**
+ * How a chat's title is written, every time (D-418): "<Area>: <what changes>", in sentence case, at most
+ * about 60 characters, high-level, without detail like ids, builds, numbers or measurements. Said to Jig in
+ * the add and edit tools, so the queue's chat headers read alike.
+ */
+export const CHAT_TITLE_STYLE =
+  '"<Area>: <what changes>" in sentence case, about 60 characters at most, high-level (what the chat is about, not the first task\'s wording), no ids, build numbers, measurements or trailing detail; e.g. "Tasks: clearer queue rows" or "Login: fix the expired-session redirect"';
+
+/** A chat title as given (tool or dialog): one line, trimmed, at most 80 characters; undefined when empty. */
+export function cleanChatTitle(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const line = value.trim().split("\n")[0]!.trim();
+  return line ? line.slice(0, 80) : undefined;
+}
+
 /** A short title from a prompt: its first line, cut at a word. */
 export function titleOf(prompt: string, max = 70): string {
   const line = prompt.trim().split("\n")[0]!.trim();
@@ -246,6 +285,8 @@ export interface NewTask {
   /** Goes into the parked pool instead of the queue. */
   parked?: boolean;
   title?: string;
+  /** The title of the chat it starts (D-418); ignored on a task that continues a chat. */
+  chatTitle?: string;
   newChat?: boolean;
   attachments?: TaskFile[];
   provider?: TaskProvider;
@@ -282,6 +323,7 @@ export function addTasks(
         id: `t${++seq}`,
         title: item.title?.trim() || titleFor(item.prompt, item.attachments),
         prompt: item.prompt.trim(),
+        ...(cleanChatTitle(item.chatTitle) ? { chatTitle: cleanChatTitle(item.chatTitle) } : {}),
         ...(item.attachments?.length ? { attachments: item.attachments } : {}),
         projectId: options.projectId,
         newChat: item.newChat ?? options.newChat,
@@ -328,10 +370,10 @@ export function setParked(queue: Queue, ids: string[], parked: boolean): Queue {
   if (!wanted.size) throw new Error("Give at least one task to park or unpark");
   for (const id of wanted) {
     const task = queue.tasks.find((t) => t.id === id);
-    if (!task) throw new Error(`There is no task ${id} in this queue`);
+    if (!task) throw new Error(`There is no task ${taskCode(id)} in this queue`);
     if (task.status !== "queued")
       throw new Error(
-        `Task ${id} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be ${parked ? "parked" : "unparked"}`,
+        `Task ${taskCode(id)} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be ${parked ? "parked" : "unparked"}`,
       );
   }
   const changing = queue.tasks.filter((t) => wanted.has(t.id) && !!t.parked !== parked);
@@ -414,12 +456,14 @@ export function normalizeQueue(queue: Queue): Queue {
  */
 export function setStop(queue: Queue, id: string, on: boolean): Queue {
   const task = queue.tasks.find((t) => t.id === id);
-  if (!task) throw new Error(`There is no task ${id} in this queue`);
+  if (!task) throw new Error(`There is no task ${taskCode(id)} in this queue`);
   if (task.parked)
-    throw new Error(`Task ${id} is parked, so it never runs: a stop line goes among the queued tasks`);
+    throw new Error(
+      `Task ${taskCode(id)} is parked, so it never runs: a stop line goes among the queued tasks`,
+    );
   if (!isReady(task) && !isActive(task))
     throw new Error(
-      `Task ${id} is ${STATUS_LABEL[task.status].toLowerCase()}; a stop line goes after a queued or running task`,
+      `Task ${taskCode(id)} is ${STATUS_LABEL[task.status].toLowerCase()}; a stop line goes after a queued or running task`,
     );
   const chat = chatOf(queue, id);
   const end = chat[chat.length - 1]!;
@@ -459,7 +503,7 @@ export function passStops(queue: Queue): { queue: Queue; hit: boolean } {
 export function resetTask(task: Task): Task {
   const {
     sessionId: _s,
-    chatTitle: _c,
+    chatTitle,
     sentAt: _sent,
     finishedAt: _f,
     costAtStart: _ca,
@@ -475,7 +519,8 @@ export function resetTask(task: Task): Task {
     limitResetsAt: _resets,
     ...rest
   } = task;
-  return { ...rest, status: "queued" };
+  // A task that starts its chat keeps the chat's title for when it runs again (D-418).
+  return { ...rest, ...(task.newChat && chatTitle ? { chatTitle } : {}), status: "queued" };
 }
 
 /**
@@ -590,30 +635,30 @@ export function afterTurn(task: Task, chat: ChatState, now = Date.now(), catchin
 export function resumeText(queue: Pick<Queue, "tasks">, task: Task): string {
   const n = queue.tasks.findIndex((t) => t.id === task.id) + 1;
   return [
-    `Jig restarted while you were working on task ${n} (taskId "${task.id}"), so your last turn was cut off.`,
+    `Jig restarted while you were working on task ${n} (taskId "${taskCode(task.id)}"), so your last turn was cut off.`,
     "Carry on where you left off (check what was already done first), then report with addon_tasks_report.",
   ].join(" ");
 }
 
 /** The line the chat's transcript shows for that message. */
-export function resumeFrom(queue: Pick<Queue, "tasks">, task: Task): string {
-  return `Task queue: Jig restarted, carry on with task ${queue.tasks.findIndex((t) => t.id === task.id) + 1}`;
+export function resumeFrom(_queue: Pick<Queue, "tasks">, task: Task): string {
+  return `Task queue: Jig restarted, carry on with task ${taskCode(task.id)}`;
 }
 
 /** The message that asks a chat for a task's report: only the report, never more work (D-318). */
 export function nudgeText(queue: Pick<Queue, "tasks">, task: Task): string {
   const n = queue.tasks.findIndex((t) => t.id === task.id) + 1;
   return [
-    `The task queue asks for the report of task ${n} ("${task.title}", taskId "${task.id}").`,
-    `If it's done, call addon_tasks_report with taskId "${task.id}".`,
+    `The task queue asks for the report of task ${n} ("${task.title}", taskId "${taskCode(task.id)}").`,
+    `If it's done, call addon_tasks_report with taskId "${taskCode(task.id)}".`,
     "If the work isn't finished, call it anyway with outcome partial or blocked and a one-line summary of where it stands.",
     "Don't continue the task's work unless the user asks.",
   ].join(" ");
 }
 
 /** The line the chat's transcript shows for that message. */
-export function nudgeFrom(queue: Pick<Queue, "tasks">, task: Task): string {
-  return `Task queue: asked for the report of task ${queue.tasks.findIndex((t) => t.id === task.id) + 1}`;
+export function nudgeFrom(_queue: Pick<Queue, "tasks">, task: Task): string {
+  return `Task queue: asked for the report of task ${taskCode(task.id)}`;
 }
 
 /** A task that ended without a report and can still get one: No report, or Interrupted by Jig closing. */
@@ -647,10 +692,10 @@ export const MARKED_DONE_SUMMARY = "Marked as done by you.";
  */
 export function markDone(queue: Queue, id: string, note = "", at = new Date().toISOString()): Queue {
   const task = queue.tasks.find((t) => t.id === id);
-  if (!task) throw new Error(`There is no task ${id} in this queue`);
+  if (!task) throw new Error(`There is no task ${taskCode(id)} in this queue`);
   if (!canMarkDone(task))
     throw new Error(
-      `Task ${id} is ${STATUS_LABEL[task.status].toLowerCase()}; only a task that ended in Error, without a report, Partly done, Failed or Blocked can be marked done`,
+      `Task ${taskCode(id)} is ${STATUS_LABEL[task.status].toLowerCase()}; only a task that ended in Error, without a report, Partly done, Failed or Blocked can be marked done`,
     );
   const { error, interrupted: _interrupted, waitingFor: _waiting, limitResetsAt: _reset, ...rest } = task;
   const summary = note.trim().split("\n")[0]!.trim().slice(0, 500) || MARKED_DONE_SUMMARY;
@@ -679,7 +724,7 @@ export function unreported(queue: Pick<Queue, "tasks">, sessionId: string): Task
 }
 
 const named = (queue: Pick<Queue, "tasks">, t: Task) =>
-  `task ${queue.tasks.indexOf(t) + 1} "${t.title}" (taskId "${t.id}")`;
+  `task ${queue.tasks.indexOf(t) + 1} "${t.title}" (taskId "${taskCode(t.id)}")`;
 
 /**
  * Which task a chat's `addon_tasks_report` is for (D-318, D-353). With `taskId`: that task, when this
@@ -692,12 +737,14 @@ export function reportTarget(queue: Pick<Queue, "tasks">, sessionId: string, tas
   const active = queue.tasks.find((t) => t.sessionId === sessionId && isActive(t));
   if (taskId) {
     const task = queue.tasks.find((t) => t.id === taskId);
-    if (!task) throw new Error(`There is no task ${taskId} in this chat's queue`);
+    if (!task) throw new Error(`There is no task ${taskCode(taskId)} in this chat's queue`);
     if (task.sessionId !== sessionId)
-      throw new Error(`Task ${taskId} didn't run in this chat; a chat can only report its own tasks`);
+      throw new Error(
+        `Task ${taskCode(taskId)} didn't run in this chat; a chat can only report its own tasks`,
+      );
     if (task === active || canReportLate(task) || canRevise(task)) return task;
     throw new Error(
-      `Task ${taskId} is ${STATUS_LABEL[task.status].toLowerCase()}; only a task that ran in this chat can be reported`,
+      `Task ${taskCode(taskId)} is ${STATUS_LABEL[task.status].toLowerCase()}; only a task that ran in this chat can be reported`,
     );
   }
   if (active && !active.report) return active;
@@ -870,6 +917,7 @@ export function parseNewTasks(value: unknown): NewTask[] {
       return {
         prompt,
         ...(typeof o.title === "string" && o.title.trim() ? { title: o.title.trim().slice(0, 120) } : {}),
+        ...(cleanChatTitle(o.chatTitle) ? { chatTitle: cleanChatTitle(o.chatTitle) } : {}),
         ...(typeof o.newChat === "boolean" ? { newChat: o.newChat } : {}),
         ...parseProviderChoice(o, `"${prompt.slice(0, 40)}"`),
       };
@@ -884,6 +932,8 @@ export function parseNewTasks(value: unknown): NewTask[] {
 export interface TaskEdit {
   id: string;
   title?: string;
+  /** The title of the chat it starts (D-418); null takes it away (the header shows the task's title). */
+  chatTitle?: string | null;
   /** Replaces the prompt. */
   prompt?: string;
   /** Added to the prompt as a new paragraph. */
@@ -916,10 +966,10 @@ export type MoveTo = "top" | "bottom" | { after: string } | { before: string };
 function parseMoveTo(value: unknown, id: string): MoveTo {
   if (value === "top" || value === "bottom") return value;
   const o = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
-  if (typeof o.after === "string" && o.after.trim()) return { after: o.after.trim() };
-  if (typeof o.before === "string" && o.before.trim()) return { before: o.before.trim() };
+  if (typeof o.after === "string" && o.after.trim()) return { after: taskIdOf(o.after) };
+  if (typeof o.before === "string" && o.before.trim()) return { before: taskIdOf(o.before) };
   throw new Error(
-    `moveTo for task ${id} must be "top", "bottom", { after: <task id> } or { before: <task id> }`,
+    `moveTo for task ${taskCode(id)} must be "top", "bottom", { after: <task id> } or { before: <task id> }`,
   );
 }
 
@@ -928,11 +978,14 @@ export function parseTaskEdits(value: unknown): TaskEdit[] {
   const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
   const edits = items.map((item): TaskEdit => {
     const o = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
-    const id = text(o.id);
-    if (!id) throw new Error("Each edit needs the task's id (addon_tasks_list shows them)");
+    const given = text(o.id);
+    if (!given) throw new Error("Each edit needs the task's id (addon_tasks_list shows them)");
+    const id = taskIdOf(given);
     const edit: TaskEdit = { id };
     const title = text(o.title);
     if (title) edit.title = title.slice(0, 120);
+    if (o.chatTitle === null || o.chatTitle === "") edit.chatTitle = null;
+    else if (cleanChatTitle(o.chatTitle)) edit.chatTitle = cleanChatTitle(o.chatTitle);
     const prompt = text(o.prompt);
     if (prompt) edit.prompt = prompt;
     const append = text(o.append);
@@ -943,19 +996,19 @@ export function parseTaskEdits(value: unknown): TaskEdit[] {
     if (o.moveTo !== undefined && o.moveTo !== null) edit.moveTo = parseMoveTo(o.moveTo, id);
     if (o.wholeChat === true) {
       if (!edit.moveTo && edit.parked === undefined)
-        throw new Error(`wholeChat for task ${id} needs a moveTo or parked`);
+        throw new Error(`wholeChat for task ${taskCode(id)} needs a moveTo or parked`);
       edit.wholeChat = true;
     }
     // "default" (or null) goes back to the queue's choice; a null model to the provider's default.
     const choice = parseProviderChoice(
       { provider: o.provider === "default" ? undefined : o.provider, model: o.model },
-      `task ${id}`,
+      `task ${taskCode(id)}`,
     );
     if (o.provider === null || o.provider === "default") edit.provider = null;
     else if (choice.provider) edit.provider = choice.provider;
     if (o.model === null || o.model === "") edit.model = null;
     else if (choice.model) edit.model = choice.model;
-    if (Object.keys(edit).length === 1) throw new Error(`Say what to change in task ${id}`);
+    if (Object.keys(edit).length === 1) throw new Error(`Say what to change in task ${taskCode(id)}`);
     return edit;
   });
   if (!edits.length) throw new Error("Give at least one task to change");
@@ -971,12 +1024,12 @@ export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
   const byId = new Map(queue.tasks.map((t) => [t.id, t]));
   for (const e of edits) {
     const task = byId.get(e.id);
-    if (!task) throw new Error(`There is no task ${e.id} in this queue`);
+    if (!task) throw new Error(`There is no task ${taskCode(e.id)} in this queue`);
     // A stop line may also go after the running task ("stop after t160").
     if (isActive(task) && Object.keys(e).every((k) => k === "id" || k === "stopAfter")) continue;
     if (task.status !== "queued")
       throw new Error(
-        `Task ${e.id} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be changed`,
+        `Task ${taskCode(e.id)} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be changed`,
       );
   }
   let next = queue;
@@ -987,8 +1040,10 @@ export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
         if (t.id !== e.id) return t;
         let prompt = e.prompt ?? t.prompt;
         if (e.append) prompt = prompt ? `${prompt}\n\n${e.append}` : e.append;
+        const { chatTitle: _old, ...rest } = t;
+        const chatTitle = e.chatTitle === undefined ? t.chatTitle : (e.chatTitle ?? undefined);
         return setProviderChoice(
-          { ...t, prompt, ...(e.title ? { title: e.title } : {}) },
+          { ...rest, prompt, ...(e.title ? { title: e.title } : {}), ...(chatTitle ? { chatTitle } : {}) },
           e.provider,
           e.model,
         );
@@ -1003,7 +1058,9 @@ export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
     }
     if (e.moveTo) next = moveTo(next, e.id, e.moveTo, { newChat: e.newChat, wholeChat: e.wholeChat });
     else if (e.wholeChat && e.newChat !== undefined)
-      throw new Error(`wholeChat for task ${e.id} can't change newChat: it only goes with parked or moveTo`);
+      throw new Error(
+        `wholeChat for task ${taskCode(e.id)} can't change newChat: it only goes with parked or moveTo`,
+      );
     else if (e.newChat !== undefined) next = setNewChat(next, e.id, e.newChat);
     if (e.stopAfter !== undefined) next = setStop(next, e.id, e.stopAfter);
   }
@@ -1023,14 +1080,17 @@ export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
 export function setNewChat(queue: Queue, id: string, newChat: boolean): Queue {
   const index = queue.tasks.findIndex((t) => t.id === id);
   const task = queue.tasks[index];
-  if (!task) throw new Error(`There is no task ${id} in this queue`);
-  if (task.status !== "queued") throw new Error(`Task ${id} has started; only queued tasks can be changed`);
+  if (!task) throw new Error(`There is no task ${taskCode(id)} in this queue`);
+  if (task.status !== "queued")
+    throw new Error(`Task ${taskCode(id)} has started; only queued tasks can be changed`);
   if (!newChat && task.parked && !queue.tasks[index - 1]?.parked)
     throw new Error(
-      `Task ${id} is the first parked task, so there is no parked chat before it to continue: a parked task never continues a chat of the queue`,
+      `Task ${taskCode(id)} is the first parked task, so there is no parked chat before it to continue: a parked task never continues a chat of the queue`,
     );
   if (!newChat && index === 0)
-    throw new Error(`Task ${id} is the first in the queue, so there is no chat before it to continue`);
+    throw new Error(
+      `Task ${taskCode(id)} is the first in the queue, so there is no chat before it to continue`,
+    );
   // A stop line before a task that now continues the chat above it moves to that chat's end.
   return normalizeQueue({ ...queue, tasks: queue.tasks.map((t) => (t.id === id ? { ...t, newChat } : t)) });
 }
@@ -1054,7 +1114,8 @@ export function moveTo(
   to: MoveTo,
   options: { newChat?: boolean; wholeChat?: boolean } = {},
 ): Queue {
-  if (!queue.tasks.some((t) => t.id === id)) throw new Error(`There is no task ${id} in this queue`);
+  if (!queue.tasks.some((t) => t.id === id))
+    throw new Error(`There is no task ${taskCode(id)} in this queue`);
   const ids = options.wholeChat ? chatOf(queue, id) : [id];
   if (options.wholeChat && options.newChat === false)
     throw new Error("A whole chat only moves between chats; it can't continue another chat");
@@ -1063,7 +1124,7 @@ export function moveTo(
   const slots = dropSlots(queue, ids).filter((s) => !!s.parked === parked);
   const join = options.newChat === false;
   const rest = withoutTasks(queue.tasks, new Set(ids));
-  const what = options.wholeChat ? `The chat of task ${id}` : `Task ${id}`;
+  const what = options.wholeChat ? `The chat of task ${taskCode(id)}` : `Task ${taskCode(id)}`;
   let slot: DropSlot | undefined;
   // The top continues a chat only right below the tasks that ran (the first slot), never further down.
   if (to === "top") slot = join ? (slots[0]?.join ? slots[0] : undefined) : slots.find((s) => !s.join);
@@ -1297,13 +1358,13 @@ export function stepTasks(queue: Queue, ids: string[], to: -1 | 1 | "top" | "bot
  * can, so finished tasks stay with their run.
  */
 function removeBlocked(task: Task | undefined, id: string, queuedOnly: boolean): string | undefined {
-  if (!task) return `There is no task ${id} in this queue`;
+  if (!task) return `There is no task ${taskCode(id)} in this queue`;
   if (isActive(task))
     return queuedOnly
-      ? `Task ${id} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be deleted`
+      ? `Task ${taskCode(id)} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be deleted`
       : "A running task can't be removed; skip it in its chat first";
   if (queuedOnly && task.status !== "queued")
-    return `Task ${id} has finished (${STATUS_LABEL[task.status].toLowerCase()}); only queued tasks can be deleted, finished ones stay as the queue's history`;
+    return `Task ${taskCode(id)} has finished (${STATUS_LABEL[task.status].toLowerCase()}); only queued tasks can be deleted, finished ones stay as the queue's history`;
   return undefined;
 }
 
@@ -1331,7 +1392,7 @@ export function parseTaskIds(value: unknown): string[] {
   const ids = [
     ...new Set(
       (Array.isArray(value) ? value : [value])
-        .map((v) => (typeof v === "string" ? v.trim() : ""))
+        .map((v) => (typeof v === "string" ? taskIdOf(v) : ""))
         .filter(Boolean),
     ),
   ];
@@ -1498,7 +1559,7 @@ export function taskContext(queue: Queue, sessionId: string): string {
     // A chat whose task ended keeps a short line, so a follow-up that changes the outcome is reported.
     const last = queue.tasks.filter((t) => t.sessionId === sessionId && canRevise(t)).pop();
     return last
-      ? `This chat ran ${named(queue, last)} in the user's task queue, reported ${STATUS_LABEL[last.status].toLowerCase()}. If the user follows up and its outcome changes, call addon_tasks_report again with taskId "${last.id}"; the new report replaces the old one.`
+      ? `This chat ran ${named(queue, last)} in the user's task queue, reported ${STATUS_LABEL[last.status].toLowerCase()}. If the user follows up and its outcome changes, call addon_tasks_report again with taskId "${taskCode(last.id)}"; the new report replaces the old one.`
       : "";
   }
   const n = queue.tasks.indexOf(task) + 1;
@@ -1507,7 +1568,7 @@ export function taskContext(queue: Queue, sessionId: string): string {
   const thisRun = new Set(runBlock(queue).map((t) => t.id));
   const missing = unreported(queue, sessionId);
   return [
-    `This chat is running task ${n} of ${queue.tasks.length} in the user's task queue: "${task.title}" (taskId "${task.id}").`,
+    `This chat is running task ${n} of ${queue.tasks.length} in the user's task queue: "${task.title}" (taskId "${taskCode(task.id)}").`,
     "Do the task fully without stopping to ask unless you really must. When you are done, or can't go on,",
     "call the addon_tasks_report tool once: outcome (done, partial, failed or blocked), a short summary of",
     "what you did, notes the user should know (decisions, risks, anything surprising), and follow-up",
@@ -1578,9 +1639,20 @@ export interface ChatGroup {
   tasks: Array<{ task: Task; index: number }>;
   /** The chat once it started (the first task with one). */
   sessionId?: string;
+  /** Its title (D-418): the chat's real one once it started, else the one its first task gives it. */
   chatTitle?: string;
   projectId?: string;
 }
+
+/** A chat card's header (D-418): the chat's title, else (older tasks, the Add dialog left empty) its first task's. */
+export const groupTitle = (group: ChatGroup): string => group.chatTitle || group.tasks[0]?.task.title || "";
+
+/**
+ * Whether a task's row would repeat its chat card's header (D-418): the chat's only task, titled like the
+ * chat. Its row then shows its code and its outcome, not the title a second time.
+ */
+export const repeatsHeader = (group: ChatGroup, task: Task): boolean =>
+  group.tasks.length === 1 && groupTitle(group).trim().toLowerCase() === task.title.trim().toLowerCase();
 
 /**
  * The queue as chats: a task that starts its own chat (or comes first, or is in another project than
@@ -1593,6 +1665,7 @@ export function chatGroups(queue: Pick<Queue, "tasks">): ChatGroup[] {
     if (!last || task.newChat || last.projectId !== task.projectId)
       groups.push({ tasks: [], projectId: task.projectId });
     const group = groups[groups.length - 1]!;
+    if (!group.tasks.length && task.chatTitle) group.chatTitle = task.chatTitle;
     group.tasks.push({ task, index });
     if (!group.sessionId && task.sessionId) {
       group.sessionId = task.sessionId;
@@ -1654,7 +1727,7 @@ export const STOP_LINE_TEXT = "--- stop ---";
 export function listing(queue: Queue, projectDefault: TaskProvider = "claude"): string {
   if (!queue.tasks.length) return `The task queue is empty. ${queueRunsOn(queue)}`;
   const lines = queue.tasks.flatMap((t, i) => [
-    `${i + 1}. [${STATUS_LABEL[t.status]}${stateText(t)}${t.reportedLate ? ", reported late" : ""}${t.markedDone ? `, marked done by the user (was ${STATUS_LABEL[t.markedDone.was].toLowerCase()})` : ""}${t.revised ? `, revised from ${STATUS_LABEL[t.revised.from.outcome].toLowerCase()}` : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
+    `${i + 1}. [${STATUS_LABEL[t.status]}${stateText(t)}${t.reportedLate ? ", reported late" : ""}${t.markedDone ? `, marked done by the user (was ${STATUS_LABEL[t.markedDone.was].toLowerCase()})` : ""}${t.revised ? `, revised from ${STATUS_LABEL[t.revised.from.outcome].toLowerCase()}` : ""}] ${t.title} (id ${taskCode(t.id)}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
       (t.report ? ` — ${t.report.summary}` : ""),
     ...(hasStopLine(t) ? [STOP_LINE_TEXT] : []),
   ]);
@@ -1666,7 +1739,7 @@ export function listing(queue: Queue, projectDefault: TaskProvider = "claude"): 
 /** One short line per task (id, status, title), for listing every project's queue at once. */
 export function compactListing(queue: Queue): string {
   const lines = queue.tasks.flatMap((t) => [
-    `- ${t.id} [${STATUS_LABEL[t.status]}${stateText(t)}] ${t.title}`,
+    `- ${taskCode(t.id)} [${STATUS_LABEL[t.status]}${stateText(t)}] ${t.title}`,
     ...(hasStopLine(t) ? [`- ${STOP_LINE_TEXT}`] : []),
   ]);
   return [
@@ -1682,6 +1755,7 @@ function rerunOf(task: Task): NewTask {
   return {
     prompt: task.prompt,
     title: task.title,
+    ...(task.newChat && task.chatTitle ? { chatTitle: task.chatTitle } : {}),
     attachments: task.attachments,
     ...(task.provider ? { provider: task.provider } : {}),
     ...(task.model ? { model: task.model } : {}),
@@ -1851,7 +1925,7 @@ export function checkProviderChoices(queue: Pick<Queue, "tasks">, ids: string[])
     if (!ids.includes(task.id) || (!task.provider && !task.model) || task.status !== "queued") continue;
     if (continuesChat(queue, task))
       throw new Error(
-        `Task ${task.id} continues the chat before it, so it runs on that chat's provider: leave provider and model out, or start a new chat (newChat true)`,
+        `Task ${taskCode(task.id)} continues the chat before it, so it runs on that chat's provider: leave provider and model out, or start a new chat (newChat true)`,
       );
   }
 }

@@ -64,7 +64,7 @@ it("marks an errored or partly done task done by hand, from the menu or a chat's
     { taskId: "t2", project: "Shop", chat: { sessionId: "other" } } as never,
     api,
   );
-  expect(said).toContain('Marked task 2 ("Task t2") as done');
+  expect(said).toContain('Marked task TQ-2 ("Task t2") as done');
   expect(saved().tasks[1]!.status).toBe("done");
   await expect(toolMarkDone({ taskId: "t3", project: "Shop" } as never, api)).rejects.toThrow(
     "only a task that ended in Error",

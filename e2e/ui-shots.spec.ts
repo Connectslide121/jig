@@ -24,16 +24,20 @@ test("Tasks queue with every kind of row and a parked pool, at all three widths"
   const projectId = projects.value.projects[0]!.id;
   await hostCall(page, "projects.setActive", { id: projectId });
 
-  // The state: done, failed, running (held by the fake engine), up next, one after a stop line and two parked ideas.
+  // The state: done, failed, running (held by the fake engine) in a chat of two, one after a stop line and
+  // parked ideas. Chats with a title of their own (D-418) and ones without (the header shows the task's title once).
   const tasks = (method: string, args: Record<string, unknown> = {}) =>
     hostCall(page, "addons.call", { id: "tasks", method, args: { projectId, ...args } });
   await tasks("add", {
     prompts: [
-      "update the readme",
+      { prompt: "update the readme", chatTitle: "Docs: refresh the readme" },
       "fail this task please",
-      "hold until released while the checkout is rebuilt",
-      "write the changelog",
-      "tidy the styles",
+      {
+        prompt: "hold until released while the checkout is rebuilt",
+        chatTitle: "Checkout: rebuild the payment step",
+      },
+      { prompt: "add the tests for the checkout", newChat: false },
+      { prompt: "tidy the styles", chatTitle: "Styles: tidy the theme" },
     ],
     newChat: true,
   });
@@ -72,6 +76,16 @@ test("Tasks queue with every kind of row and a parked pool, at all three widths"
   const pool = join(SHOTS_DIR, "tasks-queue-pool-tab.png");
   await page.screenshot({ path: pool });
   console.log(pool);
+
+  // History: the open run's page, at all three widths.
+  const history = await shootView(page, "addon.tasks.tasks", "tasks-history", {
+    ready: async (panel) => {
+      await panel.getByText("History", { exact: true }).click();
+      await panel.getByTestId("tasks-run-0").click();
+      await expect(panel.getByTestId("task-status-t3")).toContainText("Running");
+    },
+  });
+  console.log(history.join("\n"));
 
   // Let the held turn finish, so the app closes without a turn in progress.
   expect(await hostCall(page, "fake.release", { match: "hold until released" })).toEqual({

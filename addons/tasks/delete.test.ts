@@ -46,7 +46,7 @@ it("deletes queued tasks from a chat, all or nothing, like the Queue tab's Remov
   expect(saved().tasks).toHaveLength(4);
   // The first task of a chat goes: the next one starts that chat.
   const said = await toolDelete({ ids: ["t2"], chat: { sessionId: "s1", projectId: "shop" } } as never, api);
-  expect(said).toContain('Deleted task t2 "Task t2".');
+  expect(said).toContain('Deleted task TQ-2 "Task t2".');
   expect(saved().tasks.map((t) => [t.id, t.newChat])).toEqual([
     ["t1", true],
     ["t3", true],
