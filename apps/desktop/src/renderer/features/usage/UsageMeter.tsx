@@ -154,15 +154,15 @@ export function UsageCard() {
 }
 
 /**
- * Quiet in the status bar: the number and bar take the bar's own text colour until a window is near
- * its limit, then amber from 60 % and red from 85 %. On any status bar background, imported themes too.
+ * In the status bar the bar is green while there is room, amber from 60 % and red from 85 %, like the
+ * card; the number keeps the bar's own text colour until a window is near its limit.
  */
 const MINI_TEXT = {
   ok: undefined,
   warning: "font-medium text-warning",
   danger: "font-medium text-danger",
 } as const;
-const MINI_BAR = { ok: "bg-current opacity-50", warning: "bg-warning", danger: "bg-danger" } as const;
+const MINI_BAR = { ok: "bg-success", warning: "bg-warning", danger: "bg-danger" } as const;
 
 /**
  * One window in the status bar: its short name, a bar and the share used, each in a fixed slot with

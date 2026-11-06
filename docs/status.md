@@ -1,5 +1,19 @@
 # Status
 
+ChatGPT completes code too (2026-11-06, D-401, Jon): the editor's status-bar menu (click who
+completes) and **Settings → Editor → Code completion** now choose between **GitHub Copilot**,
+**Claude** and **ChatGPT (uses your ChatGPT plan)**; ChatGPT is greyed out with "sign in first" until
+Codex is signed in. Settings → Editor has a model row for each, in aligned columns: Claude (Haiku by
+default) and ChatGPT (Luna by default, the same family/version picker as AI features). The old "Code
+completion with Claude" switch became this choice (a config with it on now completes with Claude).
+ChatGPT runs on one warm `codex app-server`, never a process per suggestion. Measured on the same
+file: Claude (haiku) median 3.2 s, ChatGPT (luna) median 3.8 s per suggestion, so ChatGPT is a little
+slower than Claude and well behind Copilot. The same warm completer is ready for caption translation
+(`getEngine("codex").completer`, docs/reference/engine.md). Unit tests (a scripted app-server) and
+`editor.spec.ts` cover it.
+**Check on your machine:** pick ChatGPT in the editor menu, type in a file and take a suggestion with
+Tab; change the model in Settings → Editor and type again.
+
 Pinned tabs (2026-11-06, D-400, Jon): right-click a main-area tab → Pin tab, or use the pin button that
 appears on hover. Pinned tabs sit first, in pin order, show an accent pin instead of the x and can't be
 closed (x, middle-click, Ctrl+W, Close, Close others, Close all) until unpinned; they stay pinned after a
@@ -811,8 +825,8 @@ Dark and Jig Light, with and without add-on items.
 Calmer usage footer (2026-11-04): the status bar no longer shows when each limit resets (the hover
 card still does, for every window of both plans). Every meter is a fixed-width label, bar and
 percentage with tabular numbers, 12 px apart within and between providers, with a faint divider
-between Claude and ChatGPT. Bars and numbers stay in the status bar's own text colour and turn amber
-from 60 % and red from 85 % only. Checked in Jig Dark and Jig Light, narrow and wide.
+between Claude and ChatGPT. Bars are green while there is room and turn amber from 60 % and red
+from 85 %; the numbers stay in the status bar's own text colour until then. Checked in Jig Dark and Jig Light, narrow and wide.
 
 ChatGPT usage in the footer (2026-11-03, D-298): the status bar shows Claude's plan usage, then
 ChatGPT's after a thin divider, each behind its own mark (an icon and the name, in its own colour).
