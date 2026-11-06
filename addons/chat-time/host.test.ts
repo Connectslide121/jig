@@ -1,52 +1,78 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { AddonHostApi } from "@jig/sdk";
+import type { AddonChatListItem, AddonChatTimelineEntry, AddonHostApi } from "@jig/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
-import { chat, summary, toolBreakdown, toolChats } from "./host";
+import { chat, overview, summary, toolBreakdown, toolChats } from "./host";
 
-const home = mkdtempSync(join(tmpdir(), "jig-chat-time-"));
 const projects = [
   { id: "p-shop", name: "Shop" },
   { id: "p-contoso", name: "Contoso" },
 ];
+const chats = new Map<string, { item: AddonChatListItem; timeline: AddonChatTimelineEntry[] }>();
 const api = {
-  addon: { id: "chat-time", dir: "", dataDir: join(home, "addon-data", "chat-time") },
+  addon: { id: "chat-time", dir: "", dataDir: "" },
   projects: async () => projects,
+  chats: {
+    list: async (filter?: { projectId?: string; since?: number }) =>
+      [...chats.values()]
+        .map((c) => c.item)
+        .filter((c) => filter?.since === undefined || Date.parse(c.updatedAt) >= filter.since),
+    timeline: async (sessionId: string) => {
+      const c = chats.get(sessionId);
+      if (!c) throw new Error("Session not found");
+      return c.timeline;
+    },
+  },
 } as unknown as AddonHostApi;
 
 const NOW = Date.now();
+const iso = (ms: number) => new Date(ms).toISOString();
 
-/** A chat with one turn of `seconds` that ended `endAgo` seconds ago, running `command` from its start. */
-function writeChat(
+/**
+ * A chat with one turn of `seconds` that ended `endAgo` seconds ago, running `command` from its start.
+ * `toolSeconds`: when the call's end was recorded (D-423); left out, it's estimated from the next step.
+ */
+function addChat(
   id: string,
   projectId: string,
   title: string,
   endAgo: number,
   seconds: number,
   command: string,
+  toolSeconds?: number,
 ) {
   const end = NOW - endAgo * 1000;
   const start = end - seconds * 1000;
-  const iso = (ms: number) => new Date(ms).toISOString();
-  const session = {
-    meta: { id, title, projectId, provider: "claude", updatedAt: iso(end) },
-    items: [
-      { kind: "user", id: `${id}-u`, at: iso(start) },
-      { kind: "tool", id: `${id}-t`, at: iso(start), name: "Bash", input: { command } },
-      { kind: "assistant", id: `${id}-a`, at: iso(start + (seconds - 10) * 1000) },
-      { kind: "result", id: `${id}-r`, at: iso(end), durationMs: seconds * 1000 },
+  chats.set(id, {
+    item: {
+      sessionId: id,
+      title,
+      projectId,
+      provider: toolSeconds === undefined ? "claude" : "chatgpt",
+      createdAt: iso(start),
+      updatedAt: iso(end),
+      turns: 1,
+    },
+    timeline: [
+      { kind: "step", id: `${id}-u`, at: iso(start), what: "user" },
+      {
+        kind: "tool",
+        id: `${id}-t`,
+        at: iso(start),
+        name: "Bash",
+        input: { command },
+        status: "done",
+        ...(toolSeconds === undefined
+          ? {}
+          : { endedAt: iso(start + toolSeconds * 1000), durationMs: toolSeconds * 1000 }),
+      },
+      { kind: "step", id: `${id}-a`, at: iso(start + (seconds - 10) * 1000), what: "assistant" },
+      { kind: "turn", id: `${id}-r`, at: iso(end), durationMs: seconds * 1000, ok: true },
     ],
-  };
-  writeFileSync(join(home, "sessions", `${id}.json`), JSON.stringify(session));
+  });
 }
 
 beforeAll(() => {
-  mkdirSync(join(home, "sessions"), { recursive: true });
-  mkdirSync(api.addon.dataDir, { recursive: true });
-  process.env.CLAUDE_CONFIG_DIR = join(home, "no-claude");
   // Two Shop chats that overlap for 60 s, and a Contoso chat working at the same time as both.
-  writeChat(
+  addChat(
     "shop-tests",
     "p-shop",
     "Faster checkout tests",
@@ -54,8 +80,10 @@ beforeAll(() => {
     120,
     "npx playwright test e2e/checkout.spec.ts",
   );
-  writeChat("shop-docs", "p-shop", "Docs for the cart", 0, 120, "git log --oneline");
-  writeChat("contoso-1", "p-contoso", "Contoso invoices", 0, 180, "npm run build");
+  addChat("shop-docs", "p-shop", "Docs for the cart", 0, 120, "git log --oneline");
+  addChat("contoso-1", "p-contoso", "Contoso invoices", 0, 180, "npm run build");
+  // A ChatGPT chat from long ago whose call's end was recorded: exact, no estimate.
+  addChat("fabrikam", "p-contoso", "Fabrikam export", 30 * 86_400, 100, "npm test", 42);
 });
 
 describe("summary", () => {
@@ -87,6 +115,13 @@ describe("chat", () => {
     expect(c).toMatchObject({ title: "Docs for the cart", turns: 1, workingMs: 120_000, estimated: true });
     expect(c?.overlap).toMatchObject({ ownMs: 120_000, othersMs: 180_000, sharedMs: 120_000 });
     expect(await chat({ sessionId: "../escape" }, api)).toBeNull();
+  });
+
+  it("uses the recorded end of a call: exact, also for ChatGPT chats (D-423)", async () => {
+    const c = await overview({ sessionId: "fabrikam" }, api);
+    expect(c).toMatchObject({ provider: "chatgpt", estimated: false, workingMs: 100_000 });
+    expect(c?.totals.tests).toBe(42_000);
+    expect(c?.slowest[0]).toMatchObject({ ms: 42_000, estimated: false });
   });
 });
 

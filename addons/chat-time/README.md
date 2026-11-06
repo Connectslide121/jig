@@ -16,6 +16,10 @@ Read-only, built in since D-419 (it started as an in-app build).
   (click one for its own tab); the slowest calls (click one to open its chat).
 - **A chat's tab:** the same breakdown over all its turns, its turns, others at once, the share of
   its time shared with another chat, the slowest calls and **Open chat**.
+- **In the chat overview** (slot `chat.overview`, D-423): every chat's overview card has a section
+  **Where the time went**: the bar, its biggest categories and its three slowest calls, in a fixed
+  height; **More in Chat time** opens the chat's tab. It reads again when a turn finishes.
+  Each tool call's own time is drawn by Jig on its card (Show times), not by this add-on.
 - **Colours:** one hue per category: model `accent`, tests & builds `magenta` (D-419: a token of its
   own, so they no longer look like the model's orange), browser `info`, subagents `success`, other
   shell `muted`, other tools `line-strong`, waiting `danger`.
@@ -45,10 +49,9 @@ Read-only, built in since D-419 (it started as an in-app build).
   hours. **Others at once** says how crowded that time was: the other chats' working time inside it,
   divided by its own (any project counts, also for a single project's view). "Wall clock" is the time
   when at least one of the chats in view worked.
-- A tool call starts when Jig shows it. Claude chats take its end from the tool result's time in
-  Claude Code's transcript (`~/.claude/projects/…/<session>.jsonl`), so they are exact. ChatGPT
-  chats, and Claude chats without a transcript, only know the start: their end is when the chat's
-  next step began, marked ≈.
+- A tool call starts when Jig shows it and ends when its result came back, as Jig records it (D-423,
+  Claude and ChatGPT chats alike), so it is exact. Calls from before Jig recorded ends only know the
+  start: their end is when the chat's next step began, marked ≈.
 - **Nothing counts twice:** calls that ran in parallel count once (the overlap goes to the first of
   waiting, tests, browser, subagents, shell, other tools); a call counts only inside its turn (a
   `run_in_background` command's call ends when it was started, a call still running after the turn
@@ -70,10 +73,6 @@ Read-only, compact text, so a chat can check where time goes or whether a change
 
 ## Data
 
-Read-only, from Jig's chat files (`<JIG_HOME>/sessions`) and Claude Code's transcripts. Nothing is
-written or sent anywhere. Results are cached per chat until its file changes; the first load of a
-long period reads every chat changed in it (a few seconds for a week of busy use).
-
-Not yet: a duration next to each tool call in the transcript and a section in Jig's own chat overview
-need Jig to record when a tool call ends; that is a separate change (tool-call durations and a
-`chatOverview` slot), after which this add-on can read them instead of the transcripts.
+Read-only, through Jig's chat read API (`api.chats.list` and `api.chats.timeline`, permission
+`chat:read`, D-423): no files are read, nothing is written or sent anywhere. Results are cached per
+chat until it changes; the first load of a long period reads every chat changed in it.

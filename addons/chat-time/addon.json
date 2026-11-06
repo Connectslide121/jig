@@ -5,7 +5,7 @@
   "description": "Where chats' working time goes: model thinking and writing, tests and builds, browser checks, subagents, other shell commands, other tools and waiting for you, with the slowest calls and how many other chats worked at the same time. Per project or across all projects for today or the last 7, 30 or 90 days, and per chat.",
   "version": "1.0.0",
   "icon": "hourglass",
-  "permissions": ["fs:read"],
+  "permissions": ["chat:read"],
   "storage": { "scope": "global" },
   "contributes": {
     "views": [
@@ -19,6 +19,7 @@
       }
     ],
     "tabs": [{ "type": "chat", "title": "Chat time", "icon": "hourglass", "component": "ChatTimeTab" }],
+    "chatOverview": [{ "id": "breakdown", "title": "Where the time went", "component": "OverviewBreakdown" }],
     "actions": [
       {
         "id": "show",

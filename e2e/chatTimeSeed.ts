@@ -1,9 +1,12 @@
 /**
- * Chats with measured turns for the Chat time add-on (D-419), written straight into JIG_HOME/sessions:
- * the add-on reads those files, so the view has a week of realistic data without running turns.
+ * Chats with measured turns for the Chat time add-on (D-419), written straight into JIG_HOME/sessions
+ * before Jig starts (it reads the chats once, at start; the add-on reads them through `api.chats`,
+ * D-423), so the view has a week of realistic data without running turns.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { ElectronApplication, Page } from "@playwright/test";
+import { hostCall, launchJig } from "./fixtures";
 
 type Step = [tool: string, input: Record<string, unknown>, seconds: number];
 
@@ -71,8 +74,18 @@ export async function seedChatTime(
         items.push({ kind: "user", id: `${id}-u${d}`, at: iso(t), text: recipe.title });
         t += 8_000;
         recipe.steps.forEach(([name, input, seconds], i) => {
-          items.push({ kind: "tool", id: `${id}-t${d}-${i}`, at: iso(t), name, input, status: "done" });
+          const start = t;
           t += seconds * 1000;
+          items.push({
+            kind: "tool",
+            id: `${id}-t${d}-${i}`,
+            at: iso(start),
+            endedAt: iso(t),
+            durationMs: t - start,
+            name,
+            input,
+            status: "done",
+          });
           items.push({ kind: "assistant", id: `${id}-a${d}-${i}`, at: iso(t), text: "…" });
           t += 12_000 + ((n * 7 + d * 3 + i) % 5) * 9_000;
         });
@@ -88,6 +101,13 @@ export async function seedChatTime(
           cwd: jigHome,
           createdAt: items[0]?.at ?? iso(now),
           updatedAt: items.at(-1)?.at ?? iso(now),
+          model: "",
+          permissionMode: "default",
+          status: "idle",
+          authSource: "subscription",
+          costUsd: 0,
+          usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          turns: items.filter((i) => i.kind === "result").length,
         },
         items,
       };
@@ -100,4 +120,28 @@ export async function seedChatTime(
 
 function iso(ms: number): string {
   return new Date(ms).toISOString();
+}
+
+/**
+ * Jig with a project "shop" (active) and chats seeded by `seed(projectId)`: Jig starts once to add the
+ * project, closes, the chats are written, and Jig starts again and reads them.
+ */
+export async function launchWithChats(
+  jigHome: string,
+  seed: (projectId: string) => Promise<unknown>,
+): Promise<{ app: ElectronApplication; page: Page; projectId: string }> {
+  await mkdir(join(jigHome, "shop"), { recursive: true });
+  let app = await launchJig(jigHome);
+  let page = await app.firstWindow();
+  await page.waitForSelector("[data-testid=app-root] [data-testid=main-area]");
+  await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
+  const projects = (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } };
+  const projectId = projects.value.projects[0]!.id;
+  await hostCall(page, "projects.setActive", { id: projectId });
+  await app.close();
+  await seed(projectId);
+  app = await launchJig(jigHome);
+  page = await app.firstWindow();
+  await page.waitForSelector("[data-testid=app-root] [data-testid=main-area]");
+  return { app, page, projectId };
 }

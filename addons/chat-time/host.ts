@@ -1,7 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import type { AddonHostApi } from "@jig/sdk";
+import type { AddonChatListItem, AddonChatTimelineEntry, AddonHostApi } from "@jig/sdk";
 import {
   addOverlap,
   addTotals,
@@ -16,129 +13,82 @@ import {
   emptyOverlap,
   emptyTotals,
   type Interval,
+  type Item,
   type Overlap,
   shortName,
   type Totals,
 } from "./lib/analyze";
 
 /**
- * Reads Jig's chats (<JIG_HOME>/sessions/<id>.json) and, for Claude chats, Claude Code's transcript
- * (~/.claude/projects/<folder>/<engine session>.jsonl) for the exact time each tool result came back.
- * Read-only; results are cached per chat file until it changes.
+ * Reads the chats through Jig's read API (`api.chats.list` / `api.chats.timeline`, the `chat:read`
+ * permission, D-423): every tool call has its start and, since D-423, the time its result came back.
+ * Read-only; results are cached per chat until it changes.
  */
 
 const SLOWEST = 15;
 
-const cache = new Map<string, { mtimeMs: number; analysis: ChatAnalysis }>();
+const cache = new Map<string, { updatedAt: string; analysis: ChatAnalysis }>();
 
-/** Jig's home: the add-on's data folder is <JIG_HOME>/addon-data/<id>. */
-function sessionsDir(api: AddonHostApi): string {
-  return join(api.addon.dataDir, "..", "..", "sessions");
-}
-
-function claudeProjects(): string {
-  return join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects");
-}
-
-async function exists(path: string): Promise<boolean> {
-  try {
-    await stat(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function claudeTranscript(meta: Record<string, unknown>): Promise<string | undefined> {
-  const id = meta.engineSessionId;
-  if (typeof id !== "string" || !/^[\w-]+$/.test(id)) return undefined;
-  const file = `${id}.jsonl`;
-  const root = claudeProjects();
-  if (typeof meta.cwd === "string") {
-    const guess = join(root, meta.cwd.replace(/[^a-zA-Z0-9]/g, "-"), file);
-    if (await exists(guess)) return guess;
-  }
-  try {
-    for (const dir of await readdir(root)) {
-      const path = join(root, dir, file);
-      if (await exists(path)) return path;
-    }
-  } catch {
-    /* no Claude Code projects folder */
-  }
-  return undefined;
-}
-
-/** tool_use id → when its tool_result was written. */
-async function toolEnds(meta: Record<string, unknown>): Promise<Map<string, number>> {
+/** A timeline as the items `analyze` reads. */
+export function timelineItems(timeline: AddonChatTimelineEntry[]): {
+  items: Item[];
+  ends: Map<string, number>;
+} {
+  const items: Item[] = [];
   const ends = new Map<string, number>();
-  if (meta.provider === "codex") return ends;
-  const path = await claudeTranscript(meta);
-  if (!path) return ends;
-  let text: string;
-  try {
-    text = await readFile(path, "utf8");
-  } catch {
-    return ends;
-  }
-  for (const line of text.split("\n")) {
-    if (!line.includes('"tool_result"')) continue;
-    try {
-      const entry = JSON.parse(line) as { timestamp?: string; message?: { content?: unknown } };
-      const at = entry.timestamp ? Date.parse(entry.timestamp) : Number.NaN;
-      if (!Number.isFinite(at) || !Array.isArray(entry.message?.content)) continue;
-      for (const block of entry.message.content as Array<{ type?: string; tool_use_id?: string }>) {
-        if (block.type === "tool_result" && block.tool_use_id && !ends.has(block.tool_use_id)) {
-          ends.set(block.tool_use_id, at);
-        }
-      }
-    } catch {
-      /* a partial line while Claude writes */
+  for (const e of timeline) {
+    if (e.kind === "turn") items.push({ kind: "result", id: e.id, at: e.at, durationMs: e.durationMs });
+    else if (e.kind === "step") items.push({ kind: e.what, id: e.id, at: e.at, parentId: e.parentId });
+    else {
+      if (e.askedPermission)
+        items.push({ kind: "permission", id: `permission:${e.id}`, at: e.at, request: { requestId: e.id } });
+      items.push({
+        kind: "tool",
+        id: e.id,
+        at: e.at,
+        name: e.name,
+        input: e.input,
+        output: e.outputStart,
+        parentId: e.parentId,
+        status: e.status,
+      });
+      const end = e.endedAt ? Date.parse(e.endedAt) : Number.NaN;
+      if (Number.isFinite(end)) ends.set(e.id, end);
     }
   }
-  return ends;
+  return { items, ends };
 }
 
-async function load(
-  api: AddonHostApi,
-  sessionId: string,
-  mtimeMs?: number,
-): Promise<ChatAnalysis | undefined> {
-  if (!/^[\w-]+$/.test(sessionId)) return undefined;
-  const path = join(sessionsDir(api), `${sessionId}.json`);
+async function load(api: AddonHostApi, chat: AddonChatListItem): Promise<ChatAnalysis | undefined> {
+  const hit = cache.get(chat.sessionId);
+  if (hit && hit.updatedAt === chat.updatedAt) return hit.analysis;
   try {
-    const mtime = mtimeMs ?? (await stat(path)).mtimeMs;
-    const hit = cache.get(sessionId);
-    if (hit && hit.mtimeMs === mtime) return hit.analysis;
-    const session = JSON.parse(await readFile(path, "utf8"));
-    if (!session?.meta || !Array.isArray(session.items)) return undefined;
-    const analysis = analyze(session, await toolEnds(session.meta));
-    cache.set(sessionId, { mtimeMs: mtime, analysis });
+    const { items, ends } = timelineItems(await api.chats.timeline(chat.sessionId));
+    const meta = {
+      id: chat.sessionId,
+      title: chat.title,
+      projectId: chat.projectId,
+      provider: chat.provider,
+      updatedAt: chat.updatedAt,
+    };
+    const analysis = analyze({ meta, items }, ends);
+    cache.set(chat.sessionId, { updatedAt: chat.updatedAt, analysis });
     return analysis;
   } catch {
     return undefined;
   }
 }
 
-/** Every chat whose file changed since `since` (older ones can't have turns after it). */
+async function loadOne(api: AddonHostApi, sessionId: string): Promise<ChatAnalysis | undefined> {
+  const chat = (await api.chats.list()).find((c) => c.sessionId === sessionId);
+  return chat ? load(api, chat) : undefined;
+}
+
+/** Every chat changed since `since` (older ones can't have turns after it). */
 async function loadSince(api: AddonHostApi, since: number): Promise<ChatAnalysis[]> {
-  const dir = sessionsDir(api);
-  let names: string[] = [];
-  try {
-    names = (await readdir(dir)).filter((n) => n.endsWith(".json"));
-  } catch {
-    return [];
-  }
   const out: ChatAnalysis[] = [];
-  for (const name of names) {
-    let mtimeMs: number;
-    try {
-      mtimeMs = (await stat(join(dir, name))).mtimeMs;
-    } catch {
-      continue;
-    }
-    if (mtimeMs < since) continue;
-    const a = await load(api, name.slice(0, -5), mtimeMs);
+  for (const chat of await api.chats.list({ since })) {
+    const a = await load(api, chat);
     if (a) out.push(a);
   }
   return out;
@@ -185,7 +135,7 @@ export interface Breakdown {
   workingMs: number;
   totals: Totals;
   counts: Record<Category, number>;
-  /** Some ends were estimated (ChatGPT, or no transcript). */
+  /** Some ends were estimated (calls from before Jig recorded their end, D-423). */
   estimated: boolean;
   slowest: SlowCall[];
   /** Other chats working at the same time. */
@@ -200,22 +150,14 @@ export interface ChatBreakdown extends Breakdown {
   turns: number;
 }
 
-/** One chat's breakdown over all its turns. */
-export async function chat(args: { sessionId: string }, api: AddonHostApi): Promise<ChatBreakdown | null> {
-  const a = await load(api, String(args?.sessionId ?? ""));
-  if (!a) return null;
+/** One chat's numbers over all its turns, without the overlap with other chats. */
+function ownBreakdown(a: ChatAnalysis, slowest: number): Omit<ChatBreakdown, "overlap"> {
   const totals = emptyTotals();
   let workingMs = 0;
   for (const t of a.turns) {
     addTotals(totals, t.totals);
     workingMs += t.workingMs;
   }
-  const first = a.turns.length ? Math.min(...a.turns.map((t) => t.start)) : Date.now();
-  const others = (await loadSince(api, first)).filter((o) => o.sessionId !== a.sessionId);
-  const { perChat } = concurrency([
-    { id: a.sessionId, intervals: intervals(a, first), inScope: true },
-    ...others.map((o) => ({ id: o.sessionId, intervals: intervals(o, first), inScope: false })),
-  ]);
   return {
     sessionId: a.sessionId,
     title: a.title,
@@ -228,10 +170,31 @@ export async function chat(args: { sessionId: string }, api: AddonHostApi): Prom
     estimated: a.calls.some((c) => c.estimated),
     slowest: [...a.calls]
       .sort((x, y) => y.ms - x.ms)
-      .slice(0, SLOWEST)
+      .slice(0, slowest)
       .map((c) => ({ ...c, sessionId: a.sessionId, chat: a.title })),
-    overlap: perChat.get(a.sessionId) ?? emptyOverlap(),
   };
+}
+
+/** One chat's breakdown over all its turns. */
+export async function chat(args: { sessionId: string }, api: AddonHostApi): Promise<ChatBreakdown | null> {
+  const a = await loadOne(api, String(args?.sessionId ?? ""));
+  if (!a) return null;
+  const first = a.turns.length ? Math.min(...a.turns.map((t) => t.start)) : Date.now();
+  const others = (await loadSince(api, first)).filter((o) => o.sessionId !== a.sessionId);
+  const { perChat } = concurrency([
+    { id: a.sessionId, intervals: intervals(a, first), inScope: true },
+    ...others.map((o) => ({ id: o.sessionId, intervals: intervals(o, first), inScope: false })),
+  ]);
+  return { ...ownBreakdown(a, SLOWEST), overlap: perChat.get(a.sessionId) ?? emptyOverlap() };
+}
+
+/** The chat overview's section (D-423): one chat's breakdown and its 3 slowest calls, nothing else read. */
+export async function overview(
+  args: { sessionId: string },
+  api: AddonHostApi,
+): Promise<Omit<ChatBreakdown, "overlap"> | null> {
+  const a = await loadOne(api, String(args?.sessionId ?? ""));
+  return a ? ownBreakdown(a, 3) : null;
 }
 
 export interface ChatRow {
@@ -410,7 +373,7 @@ function breakdownLines(b: Breakdown, top: number): string[] {
       );
     }
   }
-  if (b.estimated) lines.push("", "~ = estimated end (ChatGPT chats or no Claude Code transcript).");
+  if (b.estimated) lines.push("", "~ = estimated end (a call from before Jig recorded when tool calls end).");
   return lines;
 }
 

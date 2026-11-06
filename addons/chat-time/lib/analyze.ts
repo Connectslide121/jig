@@ -23,6 +23,17 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   waiting: "Waiting for you",
 };
 
+/** Short names, for narrow places (the chat overview's section). */
+export const CATEGORY_SHORT: Record<Category, string> = {
+  model: "Model",
+  tests: "Tests & builds",
+  browser: "Browser checks",
+  subagents: "Subagents",
+  shell: "Shell commands",
+  tools: "Other tools",
+  waiting: "Waiting for you",
+};
+
 export const CATEGORY_HINT: Record<Category, string> = {
   model: "Working time no tool call covers: the model reading, thinking and writing",
   tests:

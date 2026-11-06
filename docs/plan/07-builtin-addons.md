@@ -62,7 +62,8 @@ window.** Rebase, graph and blame are out of scope.
 - [x] Other chats working at the same time, per chat and per day (wall-clock times are inflated by
   parallel chats); a `magenta` token so tests and the model's time no longer look alike
 - [x] Tools `addon_chat_time_breakdown` and `addon_chat_time_chats`; unit tests and `e2e/chat-time.spec.ts`
-- [ ] Read tool-call durations from Jig and add a chat overview section once Jig records them (t171)
+- [x] Reads chats through `api.chats.list`/`timeline` (`chat:read`) with Jig's recorded tool-call ends,
+  exact for ChatGPT chats too; a "Where the time went" section in the chat overview (D-423)
 
 ## Notes
 

@@ -1,4 +1,10 @@
-import type { AddonComponentProps, AddonTabProps, AddonUiContext, MenuInput } from "@jig/sdk";
+import type {
+  AddonChatOverviewProps,
+  AddonComponentProps,
+  AddonTabProps,
+  AddonUiContext,
+  MenuInput,
+} from "@jig/sdk";
 import {
   Button,
   Empty,
@@ -12,12 +18,14 @@ import {
   useProjectList,
   useStorage,
 } from "@jig/sdk/ui";
-import { ChevronDown, Hourglass, Layers, MessageSquare, RefreshCw } from "lucide-react";
-import type { Breakdown, ChatBreakdown, Summary } from "./host";
+import { ChevronDown, Hourglass, Layers, Maximize2, MessageSquare, RefreshCw } from "lucide-react";
+import { useEffect, useRef } from "react";
+import type { Breakdown, ChatBreakdown, overview, Summary } from "./host";
 import {
   CATEGORIES,
   CATEGORY_HINT,
   CATEGORY_LABEL,
+  CATEGORY_SHORT,
   type Category,
   crowd,
   type Overlap,
@@ -338,7 +346,7 @@ export function ChatTimeTab({ ctx, params }: AddonTabProps) {
                 {
                   label: "Turns",
                   value: String(data.turns),
-                  hint: data.provider === "codex" ? "ChatGPT" : "Claude",
+                  hint: data.provider === "chatgpt" ? "ChatGPT" : "Claude",
                 },
                 {
                   label: "Others at once",
@@ -358,6 +366,111 @@ export function ChatTimeTab({ ctx, params }: AddonTabProps) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ---------- The chat overview's section (chat.overview, D-423) ---------- */
+
+type OverviewData = NonNullable<Awaited<ReturnType<typeof overview>>>;
+
+/** Category rows the section shows: the biggest ones, always this many rows (empty ones keep their place). */
+const OVERVIEW_ROWS = 4;
+const OVERVIEW_CALLS = 3;
+
+/**
+ * Where this chat's time went, in its overview card: the bar, the biggest categories and the slowest
+ * calls, in a fixed height so nothing moves while it loads; More opens the chat's Chat time tab.
+ */
+export function OverviewBreakdown({ ctx, sessionId, turns }: AddonChatOverviewProps) {
+  const data = useHostCall<OverviewData | null>("overview", { sessionId });
+  // A finished turn: read it again, keeping what's shown until the new numbers are in.
+  const seen = useRef(turns);
+  const { reload } = data;
+  useEffect(() => {
+    if (seen.current === turns) return;
+    seen.current = turns;
+    void reload();
+  }, [turns, reload]);
+  const d = data.data;
+  const rows = d
+    ? CATEGORIES.filter((c) => d.totals[c] > 0)
+        .sort((a, b) => d.totals[b] - d.totals[a])
+        .slice(0, OVERVIEW_ROWS)
+    : [];
+  return (
+    <div className="flex h-60 flex-col" data-testid="chat-time-overview">
+      {data.error ? (
+        <p className="py-2 text-xs text-muted">Couldn't read this chat: {String(data.error)}</p>
+      ) : d === undefined ? (
+        <Spinner center />
+      ) : !d?.workingMs ? (
+        <p className="py-2 text-xs text-muted">Nothing measured yet: this shows once a turn has finished.</p>
+      ) : (
+        <>
+          <div className="flex h-5 items-center">
+            <StackBar totals={d.totals} total={d.workingMs} thin />
+          </div>
+          <div className="flex flex-col" data-testid="chat-time-overview-categories">
+            {Array.from({ length: OVERVIEW_ROWS }, (_, i) => {
+              const c = rows[i];
+              return (
+                <div
+                  key={c ?? `empty-${i}`}
+                  className="flex h-6 items-center gap-1.5 text-xs"
+                  title={
+                    c
+                      ? `${CATEGORY_LABEL[c]}: ${percent(d.totals[c], d.workingMs)}\n${CATEGORY_HINT[c]}`
+                      : undefined
+                  }
+                >
+                  <span className="min-w-0 flex-1 truncate text-muted">{c ? CATEGORY_SHORT[c] : ""}</span>
+                  <span className="w-14 shrink-0 text-right tabular-nums text-fg">
+                    {c ? duration(d.totals[c]) : ""}
+                  </span>
+                  <span className={`size-2 shrink-0 rounded-xs ${c ? COLOR[c] : ""}`} aria-hidden />
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex h-6 items-end pb-1 text-2xs text-hint uppercase">Slowest calls</div>
+          <div className="flex flex-col">
+            {Array.from({ length: OVERVIEW_CALLS }, (_, i) => {
+              const c = d.slowest[i];
+              return (
+                <div
+                  key={c?.id ?? `empty-${i}`}
+                  className="flex h-6 items-center gap-1.5 text-xs"
+                  title={
+                    c
+                      ? `${CATEGORY_LABEL[c.category]} · ${c.name}${c.label ? `\n${c.label}` : ""}`
+                      : undefined
+                  }
+                  data-testid={c ? "chat-time-overview-call" : undefined}
+                >
+                  <span className="min-w-0 flex-1 truncate text-muted">{c ? shortName(c.name) : ""}</span>
+                  <span className="w-14 shrink-0 text-right tabular-nums text-fg">
+                    {c ? `${c.estimated ? "≈ " : ""}${duration(c.ms)}` : ""}
+                  </span>
+                  <span className={`size-2 shrink-0 rounded-xs ${c ? COLOR[c.category] : ""}`} aria-hidden />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-auto">
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={Maximize2}
+              className="w-full justify-center"
+              onClick={() => openChatTime(ctx, sessionId, d.title)}
+              data-testid="chat-time-overview-more"
+            >
+              More in Chat time
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -538,7 +651,7 @@ function Footnote({ estimated }: { estimated: boolean }) {
       same time each count it, so "Others at once" says how crowded that time was. Calls that ran in parallel
       within a chat count once.
       {estimated
-        ? " ≈ marks an estimate: for ChatGPT chats (and Claude chats without a Claude Code transcript) a call's end is when the chat's next step began."
+        ? " ≈ marks an estimate: for calls from before Jig recorded when a tool call ends, the end is when the chat's next step began."
         : ""}
     </p>
   );
