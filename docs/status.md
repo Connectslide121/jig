@@ -1097,7 +1097,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.17.1 being prepared (2026-11-06): 0.17.1 brings the Task queue back in the installed app, shows one status mark per chat everywhere, and keeps screenshots visible under folded steps. Publication not yet verified.
+Jig 0.17.1 published (2026-11-06): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.17.1),
+source/tag `97398bde6eea73fa4b93e171942fa938f014a496`. Installer: 389,266,257 bytes;
+SHA-256 `9141c50aa7bf9bc0c0d13908e8c01794b4d975b8f1d9fa0fe6c06f28ffa5869d`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.17.1 with its feed and installer. In 0.17.1: 0.17.1 brings the Task queue back in the installed app, shows one status mark per chat everywhere, and keeps screenshots visible under folded steps.
 
 Jig 0.17.0 published (2026-11-06): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.17.0),
 source/tag `d9e02c2eb3bd6b5eb2c4b20e10bbb5836dc75e72`. Installer: 389,264,460 bytes;
