@@ -1,5 +1,10 @@
 # Status
 
+Pinned tabs (2026-11-06, D-400, Jon): right-click a main-area tab → Pin tab, or use the pin button that
+appears on hover. Pinned tabs sit first, in pin order, show an accent pin instead of the x and can't be
+closed (x, middle-click, Ctrl+W, Close, Close others, Close all) until unpinned; they stay pinned after a
+restart. Unit tests and `tab-pin.spec.ts` cover it.
+
 Task queue survives Jig restarting (2026-11-06, D-394, D-395, Jon): when Jig closes in the middle of
 a task (an update's restart, a quit, a crash), the queue no longer asks that chat only for its report
 after the restart: it tells it once "Task queue: Jig restarted, carry on with task N", and the chat

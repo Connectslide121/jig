@@ -182,7 +182,7 @@ Chat tabs report it from the chat's status and the turns seen while the tab show
 Every view has a `⋯` menu (and a right-click menu on its tab): Move to left sidebar / right sidebar /
 bottom panel, Hide. In the bottom panel it starts with **Panel width**, the four shapes of `bottomSpan`. **Drag a view's tab** to reorder it, or onto another sidebar's (or the bottom
 panel's) tabs to move it there, before the tab you drop it on (`dropView`); the menus work as before. The top bar's View menu toggles regions and shows views. Main-area tabs:
-middle-click or `×` closes; right-click → Close, Close others, Close all; drag to reorder.
+middle-click or `×` closes; right-click → Pin tab / Unpin tab, Close, Close others, Close all; drag to reorder. Pinned tabs (D-400) stay first in pin order, can't be dragged across the unpinned ones, and no close path closes them until unpinned; `pinned` is saved in the layout.
 
 | Shortcut | Action (also in the grouped menus) |
 |---|---|

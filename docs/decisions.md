@@ -6857,3 +6857,17 @@ stopped for good.
 - **Safety:** a save queued before the switch finishes first, under the old channel's kind; `persist()`
   captures its kind and channel and writes nothing once they changed; a place being made on the old
   channel is not recorded into the new one.
+
+## D-400: Pinned tabs in the main area
+
+- Status: accepted.
+- **Who:** Jon (task queue), built by Claude.
+- **Decision:** a main-area tab can be pinned (context menu, or the pin button on the tab). `LayoutTab.pinned`
+  already existed in the saved layout, so it persists with it. Pinned tabs sit first in `main.tabs` in pin
+  order; pinning moves a tab to the end of the pinned group, unpinning to the start of the unpinned group;
+  `moveTab` stays inside the tab's group; new tabs open after the pinned group. `closeTab` and
+  `closeTabsWhere` leave pinned tabs alone (x, middle-click, Ctrl+W, Close, Close others, Close all). Only
+  `force` closes one, when its content is gone (deleted chat, removed project, an unsaved chat) or the view
+  moved to a sidebar.
+- **UI:** a pinned tab shows an accent pin button (unpins) instead of the x and is narrower (max-w-40); an
+  unpinned tab has a pin slot beside the x, both fixed 20 px slots, so hovering never moves the title.
