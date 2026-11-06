@@ -168,14 +168,14 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 
 ## Tab status
 
-A tab type can report a status with `useStatus(params)`, shown as a dot on the tab:
-- `working` (pulsing blue);
-- `attention` (amber, needs you);
-- `error` (red);
-- `unread` (accent: a chat finished a turn you haven't looked at).
+A tab type can report a status with `useStatus(params)`, shown in place of the tab's icon (same
+slot, so the title never moves, D-416):
+- `working`: three dots bouncing in turn, in the icon's colour (`.jig-typing`);
+- `attention` (needs you): a bell in the warning colour that rings briefly every few seconds (`.jig-ring`);
+- `error`: an alert icon in the danger colour.
 
-Chat tabs report it from the chat's status and the turns seen while the tab showed
-(`useSeenTurns`, in memory).
+No status (idle, finished) shows the plain icon. Reduced motion keeps the marks still. Chat tabs
+report it from the chat's status.
 
 A tab type can also colour its icon with `useIconClass(params)` (extra classes, token utilities only).
 Chat tabs fill their speech bubble in the chat's project colour (`projectFillClass`); a chat with no

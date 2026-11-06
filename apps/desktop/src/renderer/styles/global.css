@@ -310,6 +310,55 @@ html[data-platform="darwin"] .topbar-insets {
   }
 }
 
+/* A tab whose chat is working: three dots bounce in turn, like someone typing. */
+@keyframes jig-typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+.jig-typing > span {
+  animation: jig-typing 1.2s ease-in-out infinite;
+}
+.jig-typing > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.jig-typing > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+/* A tab whose chat needs you: its bell rings briefly now and then. */
+@keyframes jig-ring {
+  0%,
+  20%,
+  100% {
+    transform: rotate(0);
+  }
+  4%,
+  12% {
+    transform: rotate(14deg);
+  }
+  8%,
+  16% {
+    transform: rotate(-14deg);
+  }
+}
+.jig-ring {
+  transform-origin: 50% 10%;
+  animation: jig-ring 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jig-typing > span,
+  .jig-ring {
+    animation: none;
+  }
+}
+
 /* Shared interaction motion: never animate arbitrary loading/layout changes. */
 .jig-collapse {
   display: grid;

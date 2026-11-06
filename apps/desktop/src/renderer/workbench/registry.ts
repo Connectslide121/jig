@@ -42,7 +42,7 @@ export interface TabProps {
   focused?: boolean;
 }
 
-export type TabStatus = "working" | "attention" | "error" | "unread";
+export type TabStatus = "working" | "attention" | "error";
 
 export interface TabTypeDef {
   type: string;
@@ -54,7 +54,7 @@ export interface TabTypeDef {
   iconFor?: (params: Record<string, unknown>) => LucideIcon | undefined;
   /** Hook: extra classes for the tab's icon (a chat's icon filled in its project's colour). */
   useIconClass?: (params: Record<string, unknown>) => string | undefined;
-  /** A state worth seeing from the tab bar (a chat that works, needs you or finished unseen). */
+  /** A state worth seeing from the tab bar (a chat that works or needs you), shown in the icon's place (D-416). */
   useStatus?: (params: Record<string, unknown>) => TabStatus | undefined;
   /** A file the tab shows: its icon comes from the file icon theme (wins over `icon`). */
   filePath?: (params: Record<string, unknown>) => string | undefined;

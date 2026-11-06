@@ -343,6 +343,10 @@ Chat tabs in the project's colour (2026-11-06, Jon): a chat tab's speech-bubble 
 project's colour, so tabs from different projects tell apart at a glance; moving a chat to another
 project recolours it. Chats with no project keep the outline icon. Checked in Jig Dark with three
 projects (yellow, blue, green) and the fake engine.
+No status dots on tabs (2026-11-06, D-416, Jon): while a chat works, three dots bounce in its icon's
+place (in the project colour); when it needs you, a bell rings there now and then; after an error, an
+alert icon. Idle and finished chats show just the icon (the orange "finished, not seen" dot is gone;
+the Chats board still has a Finished column). The title never moves.
 
 No provider in the chat header (2026-11-04, D-340, Jon): the chat tab's top bar no longer shows
 Claude or ChatGPT; the composer's provider picker already says who runs the chat. The header's

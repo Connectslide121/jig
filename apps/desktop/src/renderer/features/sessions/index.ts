@@ -16,7 +16,7 @@ import { ChatsBoard } from "./ChatsBoard";
 import { ChatTab } from "./ChatTab";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { SessionsHeaderActions, SessionsView, sessionsHeaderMenu } from "./SessionsView";
-import { applySessionUpdates, loadSessions, useSeenTurns, useSessions } from "./store";
+import { applySessionUpdates, loadSessions, useSessions } from "./store";
 
 export function registerSessions(): void {
   registerAction({
@@ -49,13 +49,11 @@ export function registerSessions(): void {
     },
     useStatus: (params) => {
       const id = String(params.sessionId);
-      const meta = useSessions((s) => s.metas[id]);
-      const seen = useSeenTurns((s) => s[id]);
-      if (!meta) return undefined;
-      if (meta.status === "needs_you") return "attention";
-      if (meta.status === "working" || meta.status === "starting") return "working";
-      if (meta.status === "error") return "error";
-      return seen !== undefined && meta.turns > seen ? "unread" : undefined;
+      const status = useSessions((s) => s.metas[id]?.status);
+      if (status === "needs_you") return "attention";
+      if (status === "working" || status === "starting") return "working";
+      if (status === "error") return "error";
+      return undefined;
     },
     component: ChatTab,
     owner: "core",

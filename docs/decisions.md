@@ -7263,3 +7263,18 @@ own**.
   the same (`addons/shared/costNotes.ts` + `costNotes.test.ts`). `npm run check:addon-imports`
   (`scripts/check-addon-imports.ts`, rules in `scripts/addon-imports-lib.ts`) enforces it and runs
   in `verify` and `check`, so a release can't ship it again.
+
+## D-416: Chat tabs show status in the icon's place, no dots
+
+- Status: accepted.
+- **Who:**
+  Jon (2026-11-06): no blue dot for "working" and no orange one for "done"; something subtle and
+  animated while working, something else when it needs you, nothing when idle. The marks are
+  Claude, on my own.
+- **What:** a tab's status replaces its icon in the same 14 px slot (`TabIcon` in
+  `workbench/MainArea.tsx`), so the title never moves: three dots bouncing in turn while it works
+  (in the icon's colour, a chat's project colour), a bell that rings briefly every few seconds
+  (warning colour) when it needs you, an alert icon (danger) after an error. Idle and finished show
+  the plain icon. Reduced motion keeps the marks still.
+- **Dropped:** the tab's "unread" status (a finished turn not seen yet). The Chats board's Finished
+  column still tracks it (`useSeenTurns`).
