@@ -7924,7 +7924,8 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   and everything after it waits again. Session 3's Inbox reuses the same host calls.
 - **Questions** a stage asks (`factory_questions`, `factory_ask`) are kept on the run and the
   stage shows "needs you"; until the Interview tab (session 3) you answer them in the stage's chat
-  (Open chat in the stage's sheet).
+  (Open chat in the stage's sheet). As built: a `factory_ask` question is answered in the stage's
+  sheet itself (a text box and Send answer, host `answer` with `reply`).
 
 ## D-453: Motion: a built-in add-on for videos made from HTML, planned inside phase 28
 

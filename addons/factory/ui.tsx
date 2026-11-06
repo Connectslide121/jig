@@ -14,11 +14,12 @@ import {
   Tooltip,
   useActiveProject,
   useAddon,
+  useAddonEvent,
   useHostCall,
   useProjectList,
 } from "@jig/sdk/ui";
-import { Factory, Inbox, LayoutGrid, MoreHorizontal } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { Factory, Inbox, LayoutGrid, MoreHorizontal, Play } from "lucide-react";
+import { type ReactNode, useState, useSyncExternalStore } from "react";
 import {
   duration,
   type GraphBox,
@@ -42,7 +43,7 @@ import {
   waitsForMe,
 } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
-import { type Output, type Run, timeline } from "./lib/run";
+import { type GateId, type Output, type Run, timeline } from "./lib/run";
 import { isSample } from "./lib/samples";
 import {
   clock,
@@ -56,6 +57,7 @@ import {
   useNow,
   useRuns,
 } from "./parts";
+import { GateSheet, InspectorDialog, StageActionDialog, StageSheet, StartDialog } from "./sheets";
 import newIdea from "./tracks/new-idea.json";
 
 /**
@@ -113,16 +115,23 @@ function LoadSamples({ projectId }: { projectId: string }) {
   );
 }
 
-function NoRuns({ projectId }: { projectId: string }) {
+function NoRuns({ projectId, onStart }: { projectId: string; onStart: () => void }) {
   return (
     <Empty
       icon={Factory}
       title="No runs yet"
       className="h-full"
-      actions={<LoadSamples projectId={projectId} />}
+      actions={
+        <>
+          <Button size="sm" variant="primary" icon={Play} data-testid="factory-start-open" onClick={onStart}>
+            Start from a brief…
+          </Button>
+          <LoadSamples projectId={projectId} />
+        </>
+      }
     >
-      Jig factory turns an idea into an interview, a demo and a pack of documents. Starting a run comes in a
-      later version; load the sample runs to see how it works.
+      Jig factory turns an idea into an interview, a demo and a pack of documents. Start a run from a brief,
+      or load the sample runs to see how it works.
     </Empty>
   );
 }
@@ -159,6 +168,16 @@ export function FactoryButton({ ctx }: { ctx: AddonUiContext }) {
               onSelect: () => openInbox(ctx),
             },
             { label: "Runs", icon: "list", onSelect: () => ctx.showView("factory") },
+            ...(active
+              ? [
+                  {
+                    label: "Start from a brief…",
+                    icon: "play",
+                    testId: "factory-menu-start",
+                    onSelect: () => startFromBrief(ctx),
+                  },
+                ]
+              : []),
             { separator: true },
             ...sampleItems(ctx, active?.id, hasSamples),
           ],
@@ -182,6 +201,30 @@ export function openInbox(ctx: AddonUiContext) {
   ctx.openTab("inbox", {});
 }
 
+// The start modal's open state lives here, not in the tab's params (they are the tab's identity), so
+// the action and the menus open it on the one Floor tab.
+let startOpen = false;
+const startListeners = new Set<() => void>();
+function setStartOpen(open: boolean) {
+  startOpen = open;
+  for (const l of startListeners) l();
+}
+function useStartOpen(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      startListeners.add(l);
+      return () => startListeners.delete(l);
+    },
+    () => startOpen,
+  );
+}
+
+/** Opens the Floor with the Start from a brief modal (the manifest's action and the menus). */
+export function startFromBrief(ctx: AddonUiContext) {
+  ctx.openTab("floor", {});
+  setStartOpen(true);
+}
+
 // ─── Floor ──────────────────────────────────────────────────────────────────────────────────────
 
 /** Every run of the active project as cards in lanes, with the KPI strip above (ui.md → Floor). */
@@ -189,9 +232,19 @@ export function FloorTab({ ctx }: AddonTabProps) {
   const project = useActiveProject();
   const { data, error } = useRuns(project?.id);
   const now = useNow();
+  const starting = useStartOpen();
+  const start = starting && project && (
+    <StartDialog ctx={ctx} projectId={project.id} onClose={() => setStartOpen(false)} />
+  );
   if (!project) return <Empty icon={Factory} title="No project" className="h-full" />;
   if (!data) return error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
-  if (!data.length) return <NoRuns projectId={project.id} />;
+  if (!data.length)
+    return (
+      <>
+        <NoRuns projectId={project.id} onStart={() => setStartOpen(true)} />
+        {start}
+      </>
+    );
   const byLane = (lane: Lane) => data.filter((r) => laneOf(r) === lane);
   return (
     <div className="@container flex h-full min-h-0 flex-col" data-testid="factory-floor">
@@ -200,6 +253,9 @@ export function FloorTab({ ctx }: AddonTabProps) {
         <span className="min-w-0 truncate text-sm font-semibold text-fg">{project.name}</span>
         <span className="text-sm text-hint">· Floor</span>
         <span className="flex-1" />
+        <Button size="sm" icon={Play} data-testid="factory-start-open" onClick={() => setStartOpen(true)}>
+          Start from a brief…
+        </Button>
         <IconButton
           icon={Inbox}
           size="sm"
@@ -255,6 +311,7 @@ export function FloorTab({ ctx }: AddonTabProps) {
           </section>
         ))}
       </div>
+      {start}
     </div>
   );
 }
@@ -335,10 +392,25 @@ function RunCard({ run, color, now, onOpen }: { run: Run; color?: string; now: n
 export function RunTab({ ctx, params }: AddonTabProps) {
   const projectId = typeof params.projectId === "string" ? params.projectId : "";
   const runId = typeof params.runId === "string" ? params.runId : "";
-  const { data: run, error, loading } = useHostCall<Run | null>("run", { projectId, runId });
-  const { data: files } = useHostCall<Record<string, string>>("outputFiles", { projectId, runId });
+  const { data: run, error, loading, reload } = useHostCall<Run | null>("run", { projectId, runId });
+  const { data: files, reload: reloadFiles } = useHostCall<Record<string, string>>("outputFiles", {
+    projectId,
+    runId,
+  });
+  useAddonEvent("changed", (p) => {
+    const e = p as { runId?: string } | undefined;
+    if (!e?.runId || e.runId === runId) {
+      void reload();
+      void reloadFiles();
+    }
+  });
   const projects = useProjectList();
   const now = useNow();
+  const [sheet, setSheet] = useState<{ kind: "stage" | "gate"; id: string }>();
+  const [action, setAction] = useState<{ mode: "rerun" | "fork"; stageId?: string }>();
+  const [inspecting, setInspecting] = useState(false);
+  // A modal closes after its animation: clear only the sheet it was, not one opened since.
+  const closeSheet = (id: string) => setSheet((s) => (s?.id === id ? undefined : s));
   if (run === undefined || (loading && !run))
     return error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
   if (!run) return <Empty icon={Factory} title="This run is gone" className="h-full" />;
@@ -357,8 +429,60 @@ export function RunTab({ ctx, params }: AddonTabProps) {
         </span>
         <span className="flex-1" />
         {isSample(run.id) && <Badge tone="neutral">Sample</Badge>}
+        <IconButton
+          icon={MoreHorizontal}
+          size="sm"
+          label="More"
+          data-testid="factory-run-more"
+          onClick={(e) =>
+            ctx.menu(
+              [
+                {
+                  label: "Inspector",
+                  icon: "scan-search",
+                  testId: "factory-run-inspector",
+                  onSelect: () => setInspecting(true),
+                },
+                {
+                  label: "Re-run a stage…",
+                  icon: "rotate-ccw",
+                  testId: "factory-run-rerun",
+                  onSelect: () => setAction({ mode: "rerun" }),
+                },
+                {
+                  label: "Fork from a stage…",
+                  icon: "git-fork",
+                  testId: "factory-run-fork",
+                  onSelect: () => setAction({ mode: "fork" }),
+                },
+                { separator: true },
+                {
+                  label: "Stop the run",
+                  icon: "square",
+                  testId: "factory-run-stop",
+                  disabled: run.state === "done" || run.state === "stopped",
+                  onSelect: async () => {
+                    if (
+                      await ctx.confirm({
+                        title: "Stop this run?",
+                        message: "Its stages stop being started. Its files, chats and branch stay.",
+                        confirmLabel: "Stop",
+                        danger: true,
+                      })
+                    )
+                      void ctx.host.call("stop", { projectId, runId });
+                  },
+                },
+              ],
+              e.currentTarget,
+            )
+          }
+        />
       </div>
-      <StageGraph boxes={graphBoxes(run, TRACK)} />
+      <StageGraph
+        boxes={graphBoxes(run, TRACK)}
+        onOpen={(b) => setSheet({ kind: b.kind === "gate" ? "gate" : "stage", id: b.id })}
+      />
       <div className="@max-3xl:flex-col @3xl:flex-row flex min-h-0 flex-1 overflow-y-auto">
         <section className="@container flex min-w-0 flex-1 flex-col gap-2 p-4">
           <div className="flex h-5 items-center gap-2">
@@ -403,8 +527,64 @@ export function RunTab({ ctx, params }: AddonTabProps) {
               </li>
             ))}
           </ol>
+          <SectionTitle>Chats</SectionTitle>
+          <ul className="flex flex-col" data-testid="factory-chats">
+            {run.stages
+              .filter((s) => s.chatId)
+              .map((s) => (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    className="flex h-7 w-full items-center gap-2 px-3 text-left text-xs hover:bg-hover"
+                    onClick={() => void ctx.openChat({ sessionId: s.chatId })}
+                  >
+                    <span className="w-16 shrink-0 text-right text-hint tabular-nums">{s.id}</span>
+                    <span className="min-w-0 flex-1 truncate text-muted">{stageTitle(s.id)}</span>
+                    <span className="w-14 shrink-0 text-right text-2xs text-hint tabular-nums">
+                      {(s.chats?.length ?? 1) > 1 ? `${s.chats?.length} chats` : ""}
+                    </span>
+                  </button>
+                </li>
+              ))}
+          </ul>
         </aside>
       </div>
+      {sheet?.kind === "stage" && (
+        <StageSheet
+          ctx={ctx}
+          run={run}
+          boxId={sheet.id}
+          title={stageTitle}
+          files={files}
+          now={now}
+          onClose={() => closeSheet(sheet.id)}
+          onAction={(mode, stageId) => {
+            setSheet(undefined);
+            setAction({ mode, stageId });
+          }}
+        />
+      )}
+      {sheet?.kind === "gate" && (
+        <GateSheet
+          ctx={ctx}
+          run={run}
+          gateId={sheet.id as GateId}
+          files={files}
+          onClose={() => closeSheet(sheet.id)}
+        />
+      )}
+      {action && (
+        <StageActionDialog
+          ctx={ctx}
+          run={run}
+          mode={action.mode}
+          stageId={action.stageId}
+          title={stageTitle}
+          onClose={() => setAction(undefined)}
+          onForked={(r) => openRun(ctx, r)}
+        />
+      )}
+      {inspecting && <InspectorDialog run={run} now={now} onClose={() => setInspecting(false)} />}
     </div>
   );
 }
@@ -439,7 +619,7 @@ const BOX_MARK: Record<GraphBox["status"], string> = {
 };
 
 /** The fixed stage-graph row: dots for stages, diamonds for gates, joined by lines. */
-function StageGraph({ boxes }: { boxes: GraphBox[] }) {
+function StageGraph({ boxes, onOpen }: { boxes: GraphBox[]; onOpen: (box: GraphBox) => void }) {
   return (
     <div
       className="flex h-12 shrink-0 items-center overflow-x-auto border-b border-line px-4"
@@ -449,8 +629,10 @@ function StageGraph({ boxes }: { boxes: GraphBox[] }) {
         <span key={b.id} className="flex shrink-0 items-center">
           {i > 0 && <span className="mx-1.5 h-px w-3 bg-line" />}
           <Tooltip content={`${b.title} · ${BOX_WORDS[b.status]}`}>
-            <span
-              className="flex h-6 items-center gap-1.5 rounded-md px-1.5"
+            <button
+              type="button"
+              onClick={() => onOpen(b)}
+              className="flex h-6 items-center gap-1.5 rounded-md px-1.5 hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus"
               data-testid={`factory-node-${b.id}`}
               data-status={b.status}
             >
@@ -471,7 +653,7 @@ function StageGraph({ boxes }: { boxes: GraphBox[] }) {
                 {b.id}
               </span>
               {b.detail && <span className="text-2xs text-muted tabular-nums">{b.detail}</span>}
-            </span>
+            </button>
           </Tooltip>
         </span>
       ))}
@@ -658,7 +840,7 @@ export function FactoryView({ ctx }: { ctx: AddonUiContext }) {
   );
   let body: ReactNode;
   if (!data) body = error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
-  else if (!data.length) body = <NoRuns projectId={project.id} />;
+  else if (!data.length) body = <NoRuns projectId={project.id} onStart={() => startFromBrief(ctx)} />;
   else {
     const mine = data.filter((r) => waitsForMe(r));
     const running = data.filter((r) => !mine.includes(r) && r.state !== "done" && r.state !== "stopped");

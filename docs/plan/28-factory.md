@@ -110,10 +110,11 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 2, the add-on core (Conductor and stage runner) — in progress.
+- **Current session:** 3, New idea and the interview — not started.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
-  `factory.demoKitPath` setting, skills that can start off (D-443).
+  `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
+  runner, tools, Run tab sheets and Inspector (D-449…D-452, D-459).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -126,11 +127,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 2: the Conductor (`host.ts`), recipes, tools, host tests, the
-  fake engine's factory roles (`engine/fakeFactory.ts`, markers `[fail|noreport|hold|ask <recipe>]`)
-  and e2e runs (golden brief end to end, restart mid-stage, interview, ask/reply) are in and pass.
-  Next: the Run tab live (gate and stage sheets, Inspector, Start from a brief…), its e2e
-  click-through and the docs. Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session 2 is done (see its notes). Next: session 3, from its first
+  item (the New idea modal). Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -209,7 +207,7 @@ Skills: `web-artifacts`, `theme-factory`, `webapp-testing`, `web-design-guidelin
 copy of the guidelines) and the Jig-authored critic `demo-quality` (`references/rubric.md`), all off
 by default (`defaultEnabled: false`).
 
-### 2. The add-on core: Conductor and stage runner — in progress
+### 2. The add-on core: Conductor and stage runner — done
 
 - [x] Conductor in `host.ts`: run state machine, graph scheduling with fan-out, retries (1 per
       stage), caps (3 revisions per gate), resume after restart, a watcher tick (1 min).
@@ -226,12 +224,28 @@ by default (`defaultEnabled: false`).
       for each. A recipe's provider and model come from `addons/shared/providers.ts` (D-412).
 - [x] Output files with front-matter status in `docs/factory/<run>/` on branch `factory/<slug>` (D-429),
       committed by the stage chat; the Conductor reads them back.
-- [ ] Run tab live (stage graph, outputs grid, timeline, chats), Inspector (state, prompts,
+- [x] Run tab live (stage graph, outputs grid, timeline, chats), Inspector (state, prompts,
       reports, timings), re-run a stage, fork a run from a stage.
-- [ ] e2e: a whole fixture run through every stage with the fake engine in under a minute.
+- [x] e2e: a whole fixture run through every stage with the fake engine in under a minute.
 
 **Done when:** a run walks through all stages with fake roles, in parallel where the graph allows,
 and survives a Jig restart.
+
+Session 2 notes: runs start from **Start from a brief…** (factory button, Floor, search action
+`start-brief`; D-452) with a golden brief or a pasted one; `startRun` is not exported to other
+add-ons. Reference: [docs/reference/factory.md](../reference/factory.md); recipe guide:
+[docs/guides/factory-recipes.md](../guides/factory-recipes.md). Things found on the way: an add-on chat
+whose first message comes from the add-on (`chats.send`) stayed a draft and was never saved; the
+session manager's `notify` now clears `draft` (unit test in `manager.test.ts`). A turn cut off by
+Jig closing is resumed with "carry on"; a commit that fails (no git identity) is logged in the
+Inspector, never fatal. A stage's `factory_ask` question is answered in its sheet (`answer` with
+`reply`). The fake engine plays every role (`engine/fakeFactory.ts`, markers `[fail|noreport|hold|ask
+<recipe>]` in a brief; rows in `docs/guides/testing.md`). The golden run (every stage and gate,
+critic fails v1 once) takes ~30 s in `e2e/factory.spec.ts`; the click-through test starts a run from
+the top bar, answers the scout, approves G0, opens the Inspector and stops the run. Impeccable's
+design playbooks are bundled for the design, demo and critique recipes (D-459, `skills:` in a
+recipe). Not done here (later sessions' items): Merge branch in ⋯ (session 4/5 with the build),
+the Pause button of the mockup (Stop covers it for now).
 
 ### 3. New idea and the interview — not started
 

@@ -1,5 +1,19 @@
 # Status
 
+Jig factory runs (2026-11-08, phase 28 session 2, D-449…D-452): a run now really runs. **Start from a
+brief…** (factory button, the Floor, or search) starts one from a sample brief or one you paste: each
+stage is a chat of its own ("Factory · <run> · <stage>") in a git worktree on branch
+`factory/<name>`, at most three at a time (`factory.concurrency`), following a recipe; its files are
+committed on that branch. A run stops at each gate: click the gate's diamond on the run's page to
+**Approve**, **Ask for changes** (with a note; at most 3 rounds) or **Reject**. A stage's dot opens
+its sheet: its chat, report, outputs, a question it asked you (answer it there), **Re-run…** and
+**Fork from here…**. ⋯ → **Inspector** shows every prompt, report and decision. Runs carry on after
+Jig restarts. **Check on your machine:** with a real model, start the "Shift swap" sample brief in a
+git project (Accept edits), watch the stage chats, approve the gates; things to look at: how long
+stages take, whether chats report, how the worktree and commits look. Known gaps: the New idea
+modal, the interview tab and the Plan step are session 3; demo review and the pack's inbox
+actions come later.
+
 Jig factory's demo kit (2026-11-07, phase 28 session 1, D-443): the kit demos are built with lives on
 branch `demo-kit` (to become its own `jig-demo-kit` repository); `npm run check -- <demo>` there is
 the quality gate (offline, four widths and dark, accessibility, layout shift, alignment, real-data

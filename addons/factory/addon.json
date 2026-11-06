@@ -55,6 +55,13 @@
         "run": "openFloor"
       },
       {
+        "id": "start-brief",
+        "title": "Jig factory: start from a brief…",
+        "group": "Jig factory",
+        "icon": "play",
+        "run": "startFromBrief"
+      },
+      {
         "id": "open-inbox",
         "title": "Jig factory inbox",
         "group": "Jig factory",

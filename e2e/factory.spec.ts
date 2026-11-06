@@ -289,6 +289,18 @@ test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS
         path: join(SHOTS_DIR, `factory-run-${label}-${theme}.png`),
         animations: "disabled",
       });
+      if (label === "wide") {
+        // The run's modals: a stage's sheet and a gate's sheet.
+        for (const node of ["S2", "G1"]) {
+          await main.getByTestId(`factory-node-${node}`).click();
+          const sheet = page.getByRole("dialog");
+          await expect(sheet).toBeVisible();
+          await page.waitForTimeout(1500);
+          await page.screenshot({ path: join(SHOTS_DIR, `factory-sheet-${node}-${theme}.png`) });
+          await sheet.getByRole("button", { name: "Close" }).first().click();
+          await expect(sheet).toBeHidden();
+        }
+      }
       await tab("factory-menu-inbox", "factory-inbox", `inbox-${label}`);
     }
   }
@@ -310,4 +322,68 @@ test("Jig factory: a stage that asks waits for your reply, then carries on", asy
   await factory(page, "answer", { projectId, runId: id, stageId: "S2", reply: "Day and night" });
   await expect.poll(async () => (await stage())?.status, { timeout: 20000 }).toBe("done");
   expect((await stage())?.question).toBeUndefined();
+});
+
+test("Jig factory: start from a brief, answer a stage, approve a gate and inspect, all by clicking", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(60_000);
+  const projectId = await shop(page, jigHome);
+  const brief =
+    (await readFile(
+      fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
+      "utf8",
+    )) + "\n[ask scout]\n";
+
+  // Start from the top bar: a modal with a pasted brief; the run's page opens.
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-start").click();
+  const start = page.getByTestId("factory-start");
+  await expect(start).toBeVisible();
+  await start.getByTestId("factory-start-text").fill(brief);
+  await start.getByTestId("factory-start-go").click();
+  const run = page.getByTestId("factory-run");
+  await expect(run.getByTestId("factory-run-title")).toHaveText("Shift swap");
+
+  // The scout asks: its node waits for you; its sheet takes the answer.
+  const scout = run.getByTestId("factory-node-S2");
+  await expect(scout).toHaveAttribute("data-status", "needs-you", { timeout: 20000 });
+  await scout.click();
+  const sheet = page.getByTestId("factory-stage-sheet");
+  await expect(sheet.getByTestId("factory-stage-question")).toHaveText(
+    "Which shift types should scout cover?",
+  );
+  await sheet.getByTestId("factory-stage-reply").fill("Day and night");
+  await sheet.getByTestId("factory-stage-send").click();
+  await expect(scout).toHaveAttribute("data-status", "done", { timeout: 20000 });
+  await expect(sheet.getByTestId("factory-stage-report")).not.toBeEmpty();
+  await sheet.getByRole("button", { name: "Close" }).first().click();
+  await expect(sheet).toBeHidden();
+
+  // G0 waits for you: approve it from its sheet; the run goes on.
+  const g0 = run.getByTestId("factory-node-G0");
+  await expect(g0).toHaveAttribute("data-status", "waiting", { timeout: 20000 });
+  await g0.click();
+  const gate = page.getByTestId("factory-gate-sheet");
+  await expect(gate.getByTestId("factory-sheet-output").first()).toBeVisible();
+  await gate.getByTestId("factory-gate-approve").click();
+  await expect(gate).toBeHidden();
+  await expect(g0).toHaveAttribute("data-status", "done", { timeout: 10000 });
+
+  // The Inspector lists the prompts sent and the decisions.
+  await run.getByTestId("factory-run-more").click();
+  await page.getByTestId("factory-run-inspector").click();
+  const inspector = page.getByTestId("factory-inspector");
+  await expect(inspector.getByTestId("factory-inspector-log")).toContainText("Go / no-go: approve");
+  await inspector.getByRole("button", { name: "Close" }).click();
+  await expect(inspector).toBeHidden();
+
+  // Stop the run from ⋯, after confirming.
+  await run.getByTestId("factory-run-more").click();
+  await page.getByTestId("factory-run-stop").click();
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect
+    .poll(async () => ((await factory(page, "runs", { projectId })) as { value: RunLike[] }).value[0]?.state)
+    .toBe("stopped");
 });
