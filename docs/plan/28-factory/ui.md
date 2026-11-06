@@ -153,7 +153,7 @@ cap). Footer: permissions (Accept edits / Don't ask), **Start run**.
 Rows grouped by gate across runs: product square, run, output, waited for, owner, status pill at the
 right edge. A row opens the output in a review sheet: rendered Markdown (or the demo), **Approve**,
 **Edit** (opens the file in Preview's editor), **Reject** (modal with a reason). The deck and the
-one-pager show their two forms side by side (HTML/PDF and ChatGPT's image version, D-443), each
+one-pager show their two forms side by side (HTML/PDF and ChatGPT's image version, D-445), each
 with its own Approve, so you share one or both. The top bar count
 equals the rows owned by "me".
 

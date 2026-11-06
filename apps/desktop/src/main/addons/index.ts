@@ -265,7 +265,7 @@ export async function startAddons(): Promise<void> {
         const { topic, payload } = args as { topic: string; payload: unknown };
         emit("addons.event", { id: addonId, topic, payload });
       } else if (op === "config") {
-        // A built-in add-on's own namespace of Jig's settings (D-448); nothing for any other add-on.
+        // A built-in add-on's own namespace of Jig's settings (D-450); nothing for any other add-on.
         if (service?.list().find((a) => a.id === addonId)?.source !== "builtin")
           throw new Error("Only built-in add-ons read Jig's settings.");
         return (getConfig() as Record<string, unknown>)[addonId];

@@ -1,7 +1,7 @@
 /**
  * Jig factory's host code: the runs a project keeps (storage `runs` + `run:<id>`, D-116), the sample
- * runs (D-440), and the Conductor (architecture.md → The Conductor, The stage runner): it starts runs
- * in their own git worktree (D-449), moves them through their track, starts each stage's chat from its
+ * runs (D-442), and the Conductor (architecture.md → The Conductor, The stage runner): it starts runs
+ * in their own git worktree (D-451), moves them through their track, starts each stage's chat from its
  * recipe, follows the chats it started (`chatChanged`, and the `tick` watcher after a restart),
  * collects what a stage reported, opens gates, and runs stages again for "Ask for changes", Re-run and
  * Fork. The decisions are pure, in `lib/conductor.ts`; this file reads and writes.
@@ -96,16 +96,16 @@ export async function allRuns(_args: unknown, api: AddonHostApi): Promise<Run[]>
 const sampleFolder = (api: AddonHostApi, projectId: string, slug: string) =>
   join(api.addon.dataDir, "samples", projectId, slug);
 
-/** Where a run works: its worktree (D-449), else the repository itself. */
+/** Where a run works: its worktree (D-451), else the repository itself. */
 const workDir = (r: Run): string | undefined => (r.worktree ?? r.repo) || undefined;
 
-/** The run's folder, absolute: `docs/factory/<slug>` where it works (D-427). */
+/** The run's folder, absolute: `docs/factory/<slug>` where it works (D-429). */
 const runFolder = (r: Run): string | undefined => {
   const dir = workDir(r);
   return dir ? join(dir, folderOf(r.slug)) : undefined;
 };
 
-/** Where a run's output file is: the sample folder for sample runs, else the run's folder (D-427, D-449). */
+/** Where a run's output file is: the sample folder for sample runs, else the run's folder (D-429, D-451). */
 function outputPath(api: AddonHostApi, r: Run, path: string): string | undefined {
   if (isSample(r.id)) return join(sampleFolder(api, r.projectId, r.slug), path);
   const folder = runFolder(r);
@@ -297,7 +297,7 @@ function repoOf(p: AddonProject): string {
 }
 
 /**
- * A worktree on a new branch for a run (D-449): `<dataDir>/worktrees/<runId>` on `factory/<slug>`
+ * A worktree on a new branch for a run (D-451): `<dataDir>/worktrees/<runId>` on `factory/<slug>`
  * from `from` (HEAD, or the forked run's branch). Null when the repository has no commits yet (the
  * run works in the repository itself). The slug changes when its branch is taken.
  */
@@ -370,7 +370,7 @@ export interface StartArgs {
   outputs?: string[];
   productExists?: boolean;
   build?: boolean;
-  /** "bypassPermissions" only when you picked Don't ask in the start dialog (D-447). */
+  /** "bypassPermissions" only when you picked Don't ask in the start dialog (D-449). */
   permissionMode?: RunPlan["permissionMode"];
 }
 
@@ -407,8 +407,8 @@ const asList = (v: unknown): string[] | undefined =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : undefined;
 
 /**
- * Starts a run: a worktree on its own branch (D-449), its folder with what came in, and either the
- * interview (from an idea's text) or, with a brief, straight on to the scout (D-450).
+ * Starts a run: a worktree on its own branch (D-451), its folder with what came in, and either the
+ * interview (from an idea's text) or, with a brief, straight on to the scout (D-452).
  */
 export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
   if (!a?.projectId) throw new Error("No project");
@@ -837,7 +837,7 @@ async function inputsOf(r: Run, recipe: Recipe, cwd: string): Promise<Array<{ na
 
 type RunArgs = { projectId: string; runId: string };
 
-/** A gate's decision (D-450): Approve approves its drafts, Ask for changes runs its stage again, Reject stops the run. */
+/** A gate's decision (D-452): Approve approves its drafts, Ask for changes runs its stage again, Reject stops the run. */
 export async function decide(
   a: RunArgs & { gateId: GateId; kind: "approve" | "changes" | "reject"; note?: string },
   api: AddonHostApi,
@@ -954,7 +954,7 @@ async function copyTree(from: string, to: string): Promise<void> {
   }
 }
 
-/** Stops a run: nothing new starts; its stage chats and its worktree are left as they are (D-449). */
+/** Stops a run: nothing new starts; its stage chats and its worktree are left as they are (D-451). */
 export async function stop(a: RunArgs, api: AddonHostApi): Promise<Run> {
   return serial(async () => {
     const r: Run = {

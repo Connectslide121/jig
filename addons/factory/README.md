@@ -3,7 +3,7 @@
 Turns an idea into an interview, a polished demo and a full pack of documents and material (phase 28,
 [docs/plan/28-factory.md](../../docs/plan/28-factory.md)). This version (session 0) has the views and
 the data model; starting runs comes in later sessions. Until then, **sample runs** show how it works
-(D-440).
+(D-442).
 
 - **Open it:** the **factory** button in the top bar (its count is what waits for you, in every
   project) → Floor, Inbox or Runs; or View → Views → **Jig factory** for the compact runs list.
@@ -28,7 +28,7 @@ the data model; starting runs comes in later sessions. Until then, **sample runs
 - `lib/graph.ts`: the track as a graph and what can run next (`nextSteps`).
 - `lib/gates.ts`: gates, owners and caps, the inbox, trust numbers, output names.
 - `lib/floor.ts`: lanes, the card's progress, the KPI strip and the stage-graph boxes.
-- `lib/samples.ts`: the sample runs (D-440).
+- `lib/samples.ts`: the sample runs (D-442).
 - `tracks/new-idea.json`: the "new idea" track.
 - `host.ts`: runs in project storage (`runs`, `run:<id>`), output files, sample runs.
 - `ui.tsx`, `parts.tsx`: the views.

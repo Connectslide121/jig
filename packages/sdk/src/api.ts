@@ -472,7 +472,7 @@ export interface AddonChatSend {
   /**
    * For a new chat. Default: the project's (or Jig's) default. "bypassPermissions" (Don't ask) is
    * refused except for the built-in Tasks and Jig factory add-ons, which pass it only for a task or run
-   * you set to Don't ask yourself (D-363, D-447).
+   * you set to Don't ask yourself (D-363, D-449).
    */
   permissionMode?: "default" | "acceptEdits" | "plan" | "bypassPermissions";
   /**
@@ -654,7 +654,7 @@ export interface AddonHostApi {
   /** Sends an event to this add-on's UI (`ctx.on(topic, …)`). */
   emit(topic: string, payload?: unknown): void;
   /**
-   * Built-in add-ons only (D-448): the add-on's own namespace of Jig's settings (`getConfig()[addonId]`,
+   * Built-in add-ons only (D-450): the add-on's own namespace of Jig's settings (`getConfig()[addonId]`,
    * e.g. `factory.*` for Jig factory), or `undefined` when Jig has none. Fails for any other add-on.
    */
   config<T = unknown>(): Promise<T | undefined>;

@@ -169,7 +169,7 @@ describe("addonChats", () => {
     );
   });
 
-  it("starts a Don't ask chat only for the built-in Tasks and Jig factory add-ons (D-363, D-447)", async () => {
+  it("starts a Don't ask chat only for the built-in Tasks and Jig factory add-ons (D-363, D-449)", async () => {
     const { chats, deps } = setup();
     await chats.send("tasks", { text: "x", permissionMode: "bypassPermissions" });
     expect(deps.create).toHaveBeenLastCalledWith(

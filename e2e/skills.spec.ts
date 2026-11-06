@@ -22,7 +22,7 @@ test("Skills library: topbar access, stable details, global switches and project
   await openLibrary();
   const library = page.getByTestId("skills-library");
   await expect(library.getByRole("switch")).toHaveCount(14);
-  // Jig factory's skills start off (D-441); the others start on.
+  // Jig factory's skills start off (D-443); the others start on.
   const factorySkills = [
     "web-artifacts",
     "theme-factory",

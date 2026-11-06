@@ -3,7 +3,7 @@
 Open **Chats → Skills library** or search for Skills library. The single page lists fourteen bundled
 skills with a clickable name (instructions/source/version/licence in a modal), category, Projects
 picker and global switch. All are enabled by default except Jig factory's five (below), which a
-catalog entry marks `"defaultEnabled": false` (D-441): they start off until you switch them on, and
+catalog entry marks `"defaultEnabled": false` (D-443): they start off until you switch them on, and
 Jig factory's stage chats ask for them by name. An override's `enabled` missing = the catalog's
 default. The searchable project picker uses checkboxes
 and Apply/Cancel; new projects are included automatically. Global off wins while preserving project
@@ -14,7 +14,7 @@ choices. Personal and repository Claude Code skills are independent.
 `skills/catalog.json` is Jig's curated catalog, not a replacement for Claude Code's runtime skill
 or command discovery. Eight pinned snapshots retain their reference files and licences: Anthropic
 frontend-design, Vercel React best practices, Angular developer and .NET Web API, and for Jig
-factory (D-430, off by default) Anthropic web-artifacts-builder, theme-factory and webapp-testing
+factory (D-432, off by default) Anthropic web-artifacts-builder, theme-factory and webapp-testing
 (their scripts and PDF are not bundled; the demo kit does their jobs) and Vercel
 web-design-guidelines with a pinned copy of the Web Interface Guidelines as a reference file. Six
 Jig-authored skills cover UI/UX review, backend architecture, application security, browser

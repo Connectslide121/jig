@@ -42,7 +42,7 @@ export interface Run {
   /** What the run makes and how its chats ask (the Plan step; session 2: the start modal). */
   plan?: RunPlan;
   /**
-   * Where the run works (D-449): its git worktree on `factory/<slug>`, or `null` when it works in the
+   * Where the run works (D-451): its git worktree on `factory/<slug>`, or `null` when it works in the
    * repository itself (a repository without commits). Unset on sample runs.
    */
   worktree?: string | null;
@@ -57,7 +57,7 @@ export interface RunPlan {
   outputs: string[];
   /** Whether S8 builds the product after the docs gate. */
   build: boolean;
-  /** How stage chats ask: Accept edits, or Don't ask when you picked it (D-447). */
+  /** How stage chats ask: Accept edits, or Don't ask when you picked it (D-449). */
   permissionMode: "acceptEdits" | "bypassPermissions";
   /** An existing product (its kit is extracted) or a new one (three directions). */
   productExists: boolean;

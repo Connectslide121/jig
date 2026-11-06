@@ -21,7 +21,7 @@ the decisions, and what AI can't do (posting on LinkedIn, conferences, webinars,
 | S1 | Interview | AI + you | Interviewer reads the context, asks question cards with suggested answers until the brief is covered | `brief.md` (draft) |
 | S2 | Scout | AI | Overlap with existing products and modules, what to reuse, risks, level suggestion with reasons | `scout.md` |
 | G0 | Go / no-go | you | Confirm the brief, the level, the languages | gate |
-| S3 | Plan | you | The run's stages, outputs (pre-ticked per track), gate owners per gate (D-431), Start | `plan.json` |
+| S3 | Plan | you | The run's stages, outputs (pre-ticked per track), gate owners per gate (D-433), Start | `plan.json` |
 | S4 | Art direction | AI | Existing product: its product kit. New product: 3 directions (name/logo as given or invented on request, palette, type, mood) | `kit/`, `directions/` |
 | GD | Pick a direction | you | New brands only: one click on a direction card | gate |
 | S5 | Build the demo | AI | L1 click-through from the demo kit / L2 prototype in the product repo / L3 full build | `demo/v<N>/` or branch |
@@ -30,7 +30,7 @@ the decisions, and what AI can't do (posting on LinkedIn, conferences, webinars,
 | S7 | Pack | AI | The outputs ticked in the plan, in parallel, all from the approved demo | `spec.md`, `stories.md`, `tests.md`, `sales/`, `learning/`, `marketing/`… |
 | G2–G4 | Reviews | owners | Each output in the inbox: approve / edit / reject | statuses |
 | S8 | Build | AI + you | L1/L2 → production when the owner says so: branch, tests, PR-ready | code |
-| G5 | Publish | you | Share the demo, send the letter, post: human clicks; where and for how long asked every time (D-436) | — |
+| G5 | Publish | you | Share the demo, send the letter, post: human clicks; where and for how long asked every time (D-438) | — |
 | S9 | Retro | AI | Durations, critic scores, edit rates → the factory report and the recipes | `retro.md` |
 
 A stage that fails its own checks gets **one automatic retry**, then waits for you. Each gate allows
@@ -61,14 +61,14 @@ is complete, or when you press "Good enough".
 |---|---|---|
 | What and why | the problem, who has it, the value for the customer in one sentence | transcript, ticket |
 | Where | which product, or a new one; overlap, reuse ("avoid two products for one need") | repositories, modules, board |
-| A new product | create a repository? name, where (D-428); the name and logo, or "invent them" (D-435) | — |
+| A new product | create a repository? name, where (D-430); the name and logo, or "invent them" (D-437) | — |
 | Users and flow | roles, the main flow, the 3–5 key screens or moments | existing screens, e-learning |
 | Scope | what the demo must show, what comes later, what's out | — |
 | Data and integrations | entities, sources, systems it talks to | data model |
 | Audience | an internal decision, a customer, sales | — |
 | Level | L1 / L2 / L3, with reasons | fit with the code |
 | Outputs | the pack, pre-ticked for the track | track defaults |
-| Languages | per output group; English by default (D-437) | — |
+| Languages | per output group; English by default (D-439) | — |
 | Rules | brand, legal points (GDPR, the EU AI Act), names, glossary terms | glossary, kit |
 | Dates | a deadline, a meeting it's for | — |
 
@@ -113,21 +113,21 @@ A role is a **recipe**: a reviewed prompt file with front-matter (format in
 | Interviewer | `interview` | question cards, the brief, coverage | you (G0) |
 | Scout | `scout` | overlap, reuse, risks, level suggestion | you (G0) |
 | Product strategist | `value` | value proposition, success measures, pitch line | strategy owner |
-| Design director | `kit-extract`, `directions` | product kit from a repo; 3 directions for a new brand, each with a `DESIGN.md` reference (D-442) | you (GD) |
+| Design director | `kit-extract`, `directions` | product kit from a repo; 3 directions for a new brand, each with a `DESIGN.md` reference (D-444) | you (GD) |
 | Demo builder | `demo-l1` | the L1 demo from the demo kit | critic, then G1 |
 | Product engineer | `demo-l2`, `build` | L2 prototype and L3/S8 builds in the product repo | you (G3) |
-| Design critic | `critique` | scores screenshots on the rubric, writes the fix list; on ChatGPT when signed in (D-434) | — |
+| Design critic | `critique` | scores screenshots on the rubric, writes the fix list; on ChatGPT when signed in (D-436) | — |
 | QA engineer | `tests`, `demo-flow-test` | test cases; a Playwright flow for the demo | product owner |
 | Tech writer | `spec`, `stories`, `release-notes`, `customer-letter`, `glossary-delta` | product documents; stories also as board cards | product owner |
-| Learning designer | `course-sales`, `course-customer` | courses on the user's e-learning platform through its MCP server, as unpublished drafts; Markdown when not set up (D-445) | sales owner |
-| Sales enablement | `pitch`, `deck`, `one-pager`, `objections` | sales material, including "what they'll ask next" (security, hosting, licences); deck and one-pager in two forms, HTML→PDF and ChatGPT images (D-443) | sales owner |
-| Marketing | `marketing-plan`, `article`, `linkedin`, `newsletter` | marketing drafts, images by ChatGPT (D-444) | marketing owner |
-| Film maker | `teaser` | a 35–50 s teaser: storyboard + demo kit template, rendered with HyperFrames (D-446) | marketing owner |
+| Learning designer | `course-sales`, `course-customer` | courses on the user's e-learning platform through its MCP server, as unpublished drafts; Markdown when not set up (D-447) | sales owner |
+| Sales enablement | `pitch`, `deck`, `one-pager`, `objections` | sales material, including "what they'll ask next" (security, hosting, licences); deck and one-pager in two forms, HTML→PDF and ChatGPT images (D-445) | sales owner |
+| Marketing | `marketing-plan`, `article`, `linkedin`, `newsletter` | marketing drafts, images by ChatGPT (D-446) | marketing owner |
+| Film maker | `teaser` | a 35–50 s teaser: storyboard + demo kit template, rendered with HyperFrames (D-448) | marketing owner |
 | Change-request intake | `cr-intake`, `quote` | track change-request | support |
 | Tender analyst | `tender-matrix`, `tender-gaps` | track tender | tender owner |
 
-Owners are picked per run on the Plan step (D-431): "me", or a person (name, and their board for
-approvals, D-433).
+Owners are picked per run on the Plan step (D-433): "me", or a person (name, and their board for
+approvals, D-435).
 
 ## Rules every stage follows
 

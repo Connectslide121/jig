@@ -152,7 +152,7 @@ export const ConfigSchema = z.object({
         .record(
           z.string(),
           z.object({
-            /** Missing = the catalog's default (on, unless the skill says otherwise, D-441). */
+            /** Missing = the catalog's default (on, unless the skill says otherwise, D-443). */
             enabled: z.boolean().optional(),
             excludedProjects: z.array(z.string()).default([]),
           }),
@@ -346,11 +346,11 @@ export const ConfigSchema = z.object({
   factory: z
     .object({
       /**
-       * The demo kit's folder (D-429, D-441): demos are built and checked with its `npm run` scripts.
+       * The demo kit's folder (D-431, D-443): demos are built and checked with its `npm run` scripts.
        * Empty = not set: Jig factory asks for it before its first demo.
        */
       demoKitPath: z.string().default(""),
-      /** How many stage chats Jig factory runs at once, across all runs (D-448). */
+      /** How many stage chats Jig factory runs at once, across all runs (D-450). */
       concurrency: z.number().int().min(1).max(6).default(3),
     })
     .prefault({}),
@@ -441,7 +441,7 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
  * program runs as Claude Code, the credentials programs run with (the Azure tenant, D-282), shell
  * commands Jig runs (updates), where add-on code comes from (the gallery's sources), and what leaves
  * this computer for your phone (D-350),
- * and the demo kit Jig factory runs npm in (D-441). D-077.
+ * and the demo kit Jig factory runs npm in (D-443). D-077.
  */
 export const PROTECTED_SETTINGS = [
   "ai",

@@ -518,7 +518,7 @@ export function TerminalSettings() {
   );
 }
 
-/** Jig factory's own settings (D-441); the rest of the factory's settings join here in later sessions. */
+/** Jig factory's own settings (D-443); the rest of the factory's settings join here in later sessions. */
 export function FactorySettings() {
   const config = useConfig((s) => s.config);
   if (!config) return <Spinner center />;

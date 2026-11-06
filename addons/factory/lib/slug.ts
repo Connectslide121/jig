@@ -1,5 +1,5 @@
 /**
- * Run ids, slugs, branches and folders (architecture.md → Data model, D-427, D-449). Pure.
+ * Run ids, slugs, branches and folders (architecture.md → Data model, D-429, D-451). Pure.
  */
 
 /** A slug from a title: lower-case ASCII words joined by dashes, 40 characters at most. */
@@ -29,10 +29,10 @@ export function newRunId(now = Date.now(), random = Math.random): string {
   return `fx-${now.toString(36)}${tail}`;
 }
 
-/** The run's branch (D-427). */
+/** The run's branch (D-429). */
 export const branchOf = (slug: string): string => `factory/${slug}`;
 
-/** The run's folder, relative to the repository (D-427). */
+/** The run's folder, relative to the repository (D-429). */
 export const folderOf = (slug: string): string => `docs/factory/${slug}`;
 
 /** A run's title from what came in: its first line, cut at a word to 60 characters. */

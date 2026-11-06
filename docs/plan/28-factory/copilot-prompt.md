@@ -10,7 +10,7 @@ that turns an idea into an interview, a polished demo, and a full pack of docume
 0. Work on the git branch `factory` (`git fetch && git checkout factory && git pull`; create it
    from main only if it doesn't exist). Commit there and **push `factory` after every commit**
    (`git push`), so nothing is lost if the session ends; never force-push, no tags. The demo kit
-   (D-429) is on branch `demo-kit`; clone it beside this repo as "Where we are" says, and push its
+   (D-431) is on branch `demo-kit`; clone it beside this repo as "Where we are" says, and push its
    commits back to that branch (`git push origin HEAD:demo-kit` from the kit's folder).
 
 1. Find where the work stopped, before reading anything else:
@@ -25,7 +25,7 @@ that turns an idea into an interview, a polished demo, and a full pack of docume
 
 2. Read, in this order, and follow strictly:
    - AGENTS.md (binding rules: architecture, UI and design rules, testing, commits, docs).
-   - docs/plan/28-factory.md (decisions D-424…D-439 and later ones, the sessions, their notes).
+   - docs/plan/28-factory.md (decisions D-426…D-441 and later ones, the sessions, their notes).
    - The detail docs your session needs: docs/plan/28-factory/architecture.md, pipeline.md, ui.md,
      demo-quality.md, testing.md, and docs/plan/28-factory/mockup.html for how screens look.
    - docs/reference/addon-api.md, docs/reference/slots.md, and addons/factory (the add-on so far;

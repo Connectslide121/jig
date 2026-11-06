@@ -1,6 +1,6 @@
 /**
  * Sample runs: what the Floor, a run's page and the inbox look like before runs can be started
- * (D-440). Neutral names, times relative to `now`, ids prefixed `fx-sample-` so they can be told
+ * (D-442). Neutral names, times relative to `now`, ids prefixed `fx-sample-` so they can be told
  * apart and removed. Also the unit tests' fixtures.
  */
 import type { GateState, Output, OutputHistoryEntry, Run, StageRun } from "./run";

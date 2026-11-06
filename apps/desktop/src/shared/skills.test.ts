@@ -30,7 +30,7 @@ describe("library skill controls", () => {
   });
 });
 
-describe("skills off by default (D-441)", () => {
+describe("skills off by default (D-443)", () => {
   it("stays off until switched on, and follows the switch", () => {
     const off = { skills: { overrides: {} } };
     expect(skillEnabled(off, "x", undefined, false)).toBe(false);

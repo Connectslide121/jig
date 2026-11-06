@@ -47,7 +47,7 @@ export interface ChatsDeps {
 
 const MODES = new Set(["default", "acceptEdits", "plan"]);
 /**
- * The add-ons that may start a chat in "Don't ask" (bypassPermissions, D-363, D-447): only the built-in
+ * The add-ons that may start a chat in "Don't ask" (bypassPermissions, D-363, D-449): only the built-in
  * Tasks add-on, for a task you set to Don't ask yourself in its dialog, and the built-in Jig factory, for
  * a run you started in Don't ask. Any other add-on, and one of yours that takes one of these ids, is
  * refused: a chat that asks nothing runs whatever its prompt says.

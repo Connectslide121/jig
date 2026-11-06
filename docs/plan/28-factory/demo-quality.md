@@ -59,15 +59,15 @@ own kit).
 ## The critic loop (S6)
 
 1. The demo builder finishes v<N> and runs `npm run check`.
-2. The critic (on ChatGPT when signed in, D-434) gets the screenshots, `check.json`, the brief and
+2. The critic (on ChatGPT when signed in, D-436) gets the screenshots, `check.json`, the brief and
    the kit, and returns the scorecard and a **fix list** (concrete: screen, element, what to change).
 3. Failing checks or a failing score → the builder fixes the list → back to 1. At most 3 rounds,
    then the run shows the best version with its scorecard and "needs you".
 4. Only a passing version reaches G1. The scorecard shows on the Demo review tab.
 
-## The demo kit (its own repository, D-429)
+## The demo kit (its own repository, D-431)
 
-- **Stack (D-426):** Vite, React, TypeScript, Tailwind v4, shadcn/ui (Radix or Base UI primitives),
+- **Stack (D-428):** Vite, React, TypeScript, Tailwind v4, shadcn/ui (Radix or Base UI primitives),
   Lucide, Motion for animation, TanStack Table, charts with shadcn's chart components (Recharts) and
   Tremor blocks (MIT) for dashboards. Hash routes, relative base, one static folder.
 - **Shells:** sidebar app, top-nav app, phone frame, tablet frame, landing page.
@@ -96,10 +96,10 @@ and screenshots. A **drift check** (a recipe on a schedule, or before each run) 
 with the product's current tokens.
 
 **New brands** (no product kit): the `directions` recipe makes 3 direction boards (name and logo as
-you gave them, or invented when you said so (D-435), palette, type pairing, a sample screen in the
+you gave them, or invented when you said so (D-437), palette, type pairing, a sample screen in the
 kit's shell); your pick at GD becomes the run's kit.
 
-**Design inspiration (D-442):** the setting `factory.designSources` lists libraries of `DESIGN.md`
+**Design inspiration (D-444):** the setting `factory.designSources` lists libraries of `DESIGN.md`
 files (Google Stitch's format), for example github.com/VoltAgent/awesome-design-md. Only the
 addresses are kept; `directions` reads them when it runs. Each direction names its reference ("in
 the spirit of …") and borrows mood, rhythm and rules, never another brand's colours, logo or name.
@@ -109,7 +109,7 @@ against the reference's do's and don'ts. A product kit always wins over a refere
 ## Skills and resources
 
 Vendored into `skills/` like the existing catalogue (pinned, licences kept, reviewed text only, no
-upstream scripts; D-430). Their scripts' jobs are done by the demo kit.
+upstream scripts; D-432). Their scripts' jobs are done by the demo kit.
 
 | Resource | Use in Jig factory | How |
 |---|---|---|
@@ -124,8 +124,8 @@ upstream scripts; D-430). Their scripts' jobs are done by the demo kit.
 | DTCG 2025.10, Style Dictionary v5 | tokens as the contract between products and demos | npm in the kit |
 | Storybook, Playwright `toHaveScreenshot`, `@axe-core/playwright` | the kit's catalogue and its checks | npm in the kit |
 | Community design skills (e.g. "UI/UX Pro Max") | evaluate only: mine for rules, don't install blindly | review first |
-| `DESIGN.md` libraries (e.g. VoltAgent `awesome-design-md`, MIT) | references for new brands' directions and the critic (D-442) | addresses in `factory.designSources`, read at run time |
-| HyperFrames (Apache-2.0) | renders teasers from HTML to MP4, frame by frame (D-446) | npm in the kit (`npm run teaser`) |
+| `DESIGN.md` libraries (e.g. VoltAgent `awesome-design-md`, MIT) | references for new brands' directions and the critic (D-444) | addresses in `factory.designSources`, read at run time |
+| HyperFrames (Apache-2.0) | renders teasers from HTML to MP4, frame by frame (D-448) | npm in the kit (`npm run teaser`) |
 
 Sources checked 2026-11-06: [DTCG first stable version](https://www.w3.org/community/design-tokens/2025/10/28/design-tokens-specification-reaches-first-stable-version/),
 [Tremor joins Vercel, blocks MIT](https://vercel.com/blog/vercel-acquires-tremor),

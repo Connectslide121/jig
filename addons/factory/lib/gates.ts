@@ -1,5 +1,5 @@
 /**
- * Gates and who decides them (docs/plan/28-factory/pipeline.md → Gates; D-431, D-433): labels, owners,
+ * Gates and who decides them (docs/plan/28-factory/pipeline.md → Gates; D-433, D-435): labels, owners,
  * caps, what waits for a person (the inbox) and the trust numbers (approved without edits, time to
  * review). Pure.
  */
@@ -53,7 +53,7 @@ export function reviewerOf(kind: string): GateId {
   return REVIEWER[kind] ?? "G2";
 }
 
-/** A gate's owner: set per run on the Plan step (D-431); you when nobody was picked. */
+/** A gate's owner: set per run on the Plan step (D-433); you when nobody was picked. */
 export function ownerOf(run: Run, gate: GateId): Owner {
   return run.owners[gate] ?? { kind: "me" };
 }
