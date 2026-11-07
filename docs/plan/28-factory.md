@@ -25,6 +25,7 @@ names in examples").
 | [28-factory/architecture.md](28-factory/architecture.md) | the add-on's files, data model, Conductor, stage runner, tools, core additions (phone buttons), file layout in product repos |
 | [28-factory/ui.md](28-factory/ui.md) | **how you use it** (a walkthrough) and every screen, with wireframes |
 | [28-factory/mockup.html](28-factory/mockup.html) | a static visual mockup of the screens (open it in a browser) |
+| [28-factory/showcase.html](28-factory/showcase.html) | screenshots of the finished add-on, a walkthrough from idea to pack (fake engine, sample data; open it in a browser) |
 | [28-factory/demo-quality.md](28-factory/demo-quality.md) | the demo quality bar, the demo kit, product kits, design system, skills and resources |
 | [28-factory/testing.md](28-factory/testing.md) | testing the factory itself, and DevX |
 | [28-factory/motion.md](28-factory/motion.md) | **Motion**, the video add-on (sessions M1–M3): how it works, screens, look settings, architecture |
