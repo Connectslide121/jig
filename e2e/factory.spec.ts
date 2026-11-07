@@ -384,11 +384,11 @@ test("Factory: a stage Jig closed in the middle of carries on after the restart"
 }) => {
   test.setTimeout(90_000);
   const projectId = await shop(page, jigHome);
-  const brief =
-    (await readFile(
-      fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
-      "utf8",
-    )) + "\n[hold scout]\n";
+  const source = await readFile(
+    fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
+    "utf8",
+  );
+  const brief = `${source}\n[hold scout]\n`;
   const started = (await factory(page, "startRun", { projectId, briefText: brief })) as { value: RunLike };
   const id = started.value.id;
   const chatId = started.value.stages.find((s) => s.id === "S2")?.chatId;
