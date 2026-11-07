@@ -146,6 +146,7 @@ A new state file is documented here in the same commit that adds it.
 | `setup.firstRunDone` | `false` | Get started was closed (an installed Jig opens it until then) |
 | `factory.demoKitPath` | `""` | the demo kit's folder Jig factory builds and checks demos with (`npm run build`/`check` in it, D-431, D-443); empty = not set (Jig factory asks for it before its first demo). Protected (it runs programs) |
 | `factory.designSources` | `[]` | `DESIGN.md` libraries (repository addresses or folders) new brands' directions are made "in the spirit of", offered as "Feels like?" in the interview and read by the critic (D-444, D-462); addresses only |
+| `factory.elearning` | `{ server: "", tools: "" }` | the e-learning platform's MCP server (its name in Claude Code's MCP list) and the tools the course stages use to create unpublished courses; empty = the courses stay Markdown (D-467) |
 | `factory.concurrency` | `3` | how many stage chats Jig factory runs at once, across all runs (1–6); the Conductor reads it through `api.config()` (D-450) |
 | `motion.ffmpegPath` | `""` | the folder of the FFmpeg Motion renders with; empty = look on PATH, else offer to install a pinned build into Motion's data folder (D-454, D-463). Protected (it runs programs) |
 | `motion.musicFolder` | `""` | the folder of music tracks Motion's videos may use (M2, D-456) |

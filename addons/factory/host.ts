@@ -6,6 +6,7 @@
  * collects what a stage reported, opens gates, and runs stages again for "Ask for changes", Re-run and
  * Fork. The decisions are pure, in `lib/conductor.ts`; this file reads and writes.
  */
+import { createHash } from "node:crypto";
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { AddonChatInfo, AddonHostApi, AddonProject } from "@jig/sdk";
@@ -26,7 +27,7 @@ import {
   settle,
 } from "./lib/conductor";
 import { parseFrontMatter, setStatus, updateFrontMatter, writeFrontMatter } from "./lib/frontmatter";
-import { GATES } from "./lib/gates";
+import { filesOf, GATES, isFile, reviewerOf } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
 import { outputPaths, parseRecipe, type Recipe, resolveRecipes, stagePrompt } from "./lib/recipes";
 import {
@@ -47,7 +48,10 @@ import {
   type Level,
   ME,
   moveOutput,
+  OUTPUT_MOVES,
+  type Output,
   type Owner,
+  outputName,
   PENDING_IDEA,
   type PendingIdea,
   type Pin,
@@ -58,6 +62,7 @@ import {
   resumeStage,
   type StageReport,
   type StageRun,
+  setStageStatus,
   stageNeedsYou,
   startStage,
 } from "./lib/run";
@@ -873,7 +878,7 @@ async function follow(api: AddonHostApi, input: Run, catchingUp: boolean): Promi
       } else if (cur.report && chat?.status === "idle") r = await collect(api, track, r, cur);
       continue;
     }
-    const note = chat ? chatNote(chat) : undefined;
+    const note = cur.video?.rendering ? cur.chatNote : chat ? chatNote(chat) : undefined;
     if (note !== cur.chatNote) r = patchStage(r, s.id, { chatNote: note }, r.updatedAt);
     const open = (r.questions ?? []).filter((q) => q.stage === s.id && !q.answer).length;
     const next = chat ? afterTurn(cur, chat, { catchingUp, openQuestions: open }) : "error";
@@ -883,7 +888,11 @@ async function follow(api: AddonHostApi, input: Run, catchingUp: boolean): Promi
       stage: s.id,
       text: `After its turn: ${next}${chat?.error ? ` (${chat.error})` : ""}`,
     });
-    if (next === "finish") r = await collect(api, track, r, cur);
+    if (next === "finish" && cur.report && !cur.report.failed && isTeaser(r, cur)) {
+      const t = await teaserStep(api, r, cur);
+      r = t.run;
+      if (t.ready) r = await collect(api, track, r, r.stages.find((x) => x.id === s.id) ?? cur);
+    } else if (next === "finish") r = await collect(api, track, r, cur);
     else if (next === "fail" || next === "error")
       r = failStage(r, s.id, { retries: track.caps.retriesPerStage });
     else if (next === "ask") {
@@ -920,6 +929,105 @@ async function follow(api: AddonHostApi, input: Run, catchingUp: boolean): Promi
   announceGates(api, r, moved.opened);
   if (r !== input) await save(api, r);
   return r;
+}
+
+function isTeaser(r: Run, s: StageRun): boolean {
+  return s.recipe === "teaser" && !!runFolder(r);
+}
+
+/**
+ * The teaser (D-458): the stage's storyboard becomes a Motion video (`createVideo`), Motion renders
+ * it, and the stage finishes once the MP4 and its poster are copied into `teaser/`. Without Motion's
+ * renderer, or when the render fails, it finishes with the storyboard and says why.
+ */
+async function teaserStep(api: AddonHostApi, input: Run, s: StageRun): Promise<{ run: Run; ready: boolean }> {
+  let r = input;
+  const folder = runFolder(r) ?? "";
+  const note = async (text: string, video?: StageRun["video"]) => {
+    await log(api, r, { kind: "decision", stage: s.id, text });
+    r = patchStage(r, s.id, { video: { ...(video ?? s.video ?? { id: "" }), note: text } });
+    return { run: r, ready: true };
+  };
+  if (!s.video) {
+    const board = (s.report?.outputs ?? [])
+      .map((p) => relPath(folder, p, r.slug))
+      .find((p) => p?.endsWith(".json"));
+    if (!board) return { run: r, ready: true };
+    let made: { id: string };
+    try {
+      const sb = JSON.parse(await readFile(join(folder, board), "utf8")) as Record<string, unknown>;
+      const scenes: Array<Record<string, unknown>> = [];
+      for (const x of Array.isArray(sb.scenes) ? sb.scenes : []) {
+        if (!x || typeof x !== "object") continue;
+        const { media, ...scene } = x as Record<string, unknown>;
+        const file =
+          typeof media === "string" && media ? (isAbsolute(media) ? media : join(folder, media)) : "";
+        scenes.push(file && (await exists(file)) ? { ...scene, media: file } : scene);
+      }
+      made = await api.addons.call<{ id: string }>("motion", "createVideo", {
+        projectId: r.projectId,
+        kind: "teaser",
+        title: typeof sb.title === "string" ? sb.title : `${r.title} teaser`,
+        brief: `The teaser of Jig factory's run "${r.title}"`,
+        language: typeof sb.language === "string" ? sb.language : (r.languages.marketing ?? r.languages.all),
+        scenes,
+        ...(sb.style && typeof sb.style === "object" ? { ownStyle: sb.style } : {}),
+      });
+    } catch (e) {
+      return note(
+        `The teaser stays a storyboard: Motion couldn't make it (${e instanceof Error ? e.message : String(e)})`,
+      );
+    }
+    const queued = await api.addons
+      .call<{ queued?: boolean; needs?: unknown }>("motion", "render", {
+        projectId: r.projectId,
+        id: made.id,
+      })
+      .catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) }));
+    if (!("queued" in queued) || !queued.queued)
+      return note(
+        "error" in queued
+          ? `Motion couldn't render the teaser (${queued.error}); it is in Motion as a draft`
+          : "Motion needs its renderer: open the teaser in Motion, install it there and render",
+        { id: made.id },
+      );
+    await log(api, r, { kind: "decision", stage: s.id, text: "Motion is rendering the teaser" });
+    r = patchStage(r, s.id, {
+      video: { id: made.id, rendering: true },
+      chatNote: "Motion is rendering the teaser",
+    });
+    return { run: r, ready: false };
+  }
+  if (!s.video.rendering) return { run: r, ready: true };
+  const v = await api.addons
+    .call<{ status: string; dir: string; renders: Array<{ n: number }>; error?: string }>("motion", "get", {
+      projectId: r.projectId,
+      id: s.video.id,
+    })
+    .catch(() => undefined);
+  if (!v) return note("The teaser's video is gone from Motion", { id: s.video.id });
+  if (v.status === "failed")
+    return note(`Motion's render failed: ${v.error ?? "see Motion"}`, { id: s.video.id });
+  const last = v.renders[v.renders.length - 1];
+  if (v.status !== "rendered" || !last) return { run: r, ready: false };
+  const out = ["teaser/teaser.mp4", "teaser/poster.png"];
+  try {
+    await mkdir(join(folder, "teaser"), { recursive: true });
+    await copyFile(join(v.dir, "renders", String(last.n), "video.mp4"), join(folder, out[0] ?? ""));
+    await copyFile(join(v.dir, "renders", String(last.n), "poster.png"), join(folder, out[1] ?? "")).catch(
+      () => out.pop(),
+    );
+  } catch (e) {
+    return note(`Couldn't copy the teaser from Motion: ${e instanceof Error ? e.message : String(e)}`, {
+      id: s.video.id,
+    });
+  }
+  r = patchStage(r, s.id, {
+    video: { id: s.video.id },
+    chatNote: undefined,
+    report: s.report ? { ...s.report, outputs: [...s.report.outputs, ...out] } : s.report,
+  });
+  return { run: r, ready: true };
 }
 
 /** Turns what a stage reported into the run's outputs: each file must be there; Markdown gets its front-matter. */
@@ -995,25 +1103,49 @@ async function collect(api: AddonHostApi, track: Track, input: Run, stage: Stage
         quality = { pass: false };
       }
     }
-    const extra =
-      i === 0
-        ? ""
-        : `-${p
-            .replace(/^.*[\\/]/, "")
-            .replace(/\.[^.]+$/, "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")}`;
+    const id = `${stage.id.includes(":") ? stage.id.split(":")[1] : kind}-v${version}`;
     r = addOutput(
       r,
       {
-        id: `${stage.id.includes(":") ? stage.id.split(":")[1] : kind}-v${version}${extra}`,
+        id: i === 0 ? id : `${id}-${fileSlug(p)}`,
         kind: i === 0 ? kind : `${kind}-file`,
         stage: stage.id,
         path: p,
         version,
+        hash: await hashOf(file),
       },
       at,
     );
+    // Other forms (D-467): an HTML output printed to PDF, a file beside it.
+    const format = p.endsWith(".html") ? recipe?.formats[0] : undefined;
+    if (format) {
+      const pdf = p.replace(/\.html$/, ".pdf");
+      try {
+        await api.capture.pdf({
+          file,
+          out: join(folder, pdf),
+          page: format === "pdf-slides" ? "slides" : "a4",
+        });
+        r = addOutput(
+          r,
+          {
+            id: `${id}-${fileSlug(pdf)}`,
+            kind: `${kind}-file`,
+            stage: stage.id,
+            path: pdf,
+            version,
+            hash: await hashOf(join(folder, pdf)),
+          },
+          at,
+        );
+      } catch (e) {
+        await log(api, r, {
+          kind: "error",
+          stage: stage.id,
+          text: `Couldn't print ${p} to PDF: ${e instanceof Error ? e.message : String(e)}`,
+        });
+      }
+    }
   }
   r = finishStage(r, stage.id, { ...report, outputs: paths, ...(quality ? { quality } : {}) }, at);
   await commitFolder(api, r, `factory ${r.id}: ${stageTitle(track, stage)} v${version}`);
@@ -1023,6 +1155,21 @@ async function collect(api: AddonHostApi, track: Track, input: Run, stage: Stage
     text: `Done: ${report.summary}${quality ? ` (quality ${quality.pass ? "passed" : "failed"}${quality.score !== undefined ? `, ${quality.score}` : ""})` : ""}`,
   });
   return r;
+}
+
+/** A file's part of an output id: `sales/deck.pdf` → `deck-pdf`. */
+function fileSlug(p: string): string {
+  return p
+    .replace(/^.*[\\/]/, "")
+    .toLowerCase()
+    .replace(/\.md$/, "")
+    .replace(/[^a-z0-9]+/g, "-");
+}
+
+/** A file's content hash, so a review knows whether a person edited it (D-467). */
+async function hashOf(file: string): Promise<string | undefined> {
+  const data = await readFile(file).catch(() => undefined);
+  return data ? createHash("sha1").update(data).digest("hex") : undefined;
 }
 
 /** A reported path relative to the run's folder, or undefined when it points outside it. */
@@ -1079,6 +1226,8 @@ async function startChat(api: AddonHostApi, input: Run, s: StageRun): Promise<Ru
       nudgedAt: undefined,
       resumedAt: undefined,
       chatNote: undefined,
+      skipReason: undefined,
+      video: undefined,
     });
     // Saved before the prompt goes, so its tool calls find the stage.
     await save(api, r);
@@ -1091,6 +1240,17 @@ async function startChat(api: AddonHostApi, input: Run, s: StageRun): Promise<Ru
     r = patchStage(r, s.id, { sentAt: sent.sentAt });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    if (recipe.provider === "chatgpt" && /ChatGPT isn't signed in/i.test(message)) {
+      // Image outputs need ChatGPT (D-446): without it they're skipped, and say why.
+      const why = "Skipped: ChatGPT isn't signed in (sign in on Get started → ChatGPT, then re-run it)";
+      await log(api, r, { kind: "decision", stage: s.id, text: why });
+      r = patchStage(setStageStatus(r, s.id, "skipped"), s.id, { skipReason: why });
+      const moved = advance(track, r);
+      r = moved.run;
+      announceGates(api, r, moved.opened);
+      await save(api, r);
+      return r;
+    }
     await log(api, r, { kind: "error", stage: s.id, text: `Couldn't start its chat: ${message}` });
     const cur = r.stages.find((x) => x.id === s.id);
     if (cur?.status === "ready") r = startStage(r, s.id);
@@ -1165,15 +1325,7 @@ export async function decide(
     if (a.kind === "approve")
       for (const o of drafts) {
         if (o.status === "approved" || o.status === "published") continue;
-        const at = new Date().toISOString();
-        r = moveOutput(r, o.id, "approved", { by: ME, at });
-        const file = outputPath(api, r, o.path);
-        if (file && o.path.endsWith(".md") && (await exists(file)))
-          await writeFile(
-            file,
-            setStatus(await readFile(file, "utf8"), { status: "approved", by: ME, at, edited: false }),
-            "utf8",
-          );
+        r = await moveOne(api, r, o, "approved");
       }
     else if (a.kind === "changes" && r.state !== "stuck")
       r = resetFrom(track, r, changesAt(track, r, a.gateId), { feedback: note, keepGate: a.gateId });
@@ -1187,6 +1339,75 @@ export async function decide(
       kind: "decision",
       text: `${GATES[a.gateId].label}: ${a.kind}${note ? ` (${note})` : ""}`,
     });
+    return r;
+  });
+  await step(api);
+  return r;
+}
+
+/**
+ * A person approves or rejects one output (D-467): whether they edited it comes from its file's hash,
+ * and its Markdown front-matter says the new status.
+ */
+async function moveOne(
+  api: AddonHostApi,
+  r: Run,
+  o: Output,
+  to: "approved" | "rejected" | "reviewed",
+  note?: string,
+): Promise<Run> {
+  const at = new Date().toISOString();
+  const file = outputPath(api, r, o.path);
+  const now = file ? await hashOf(file) : undefined;
+  const edited = !!(o.hash && now && now !== o.hash);
+  const moved = moveOutput(r, o.id, to, { by: ME, at, edited, note });
+  if (file && o.path.endsWith(".md") && (await exists(file)))
+    await writeFile(
+      file,
+      setStatus(await readFile(file, "utf8"), { status: to, by: ME, at, edited }),
+      "utf8",
+    );
+  return moved;
+}
+
+/**
+ * The inbox's review of one output (D-467): Approve or Reject (with why) it and its files (the PDF,
+ * the HTML form). Once nothing of its gate waits and something was approved, the gate is approved.
+ */
+export async function decideOutput(
+  a: RunArgs & { outputId: string; kind: "approve" | "reject"; note?: string },
+  api: AddonHostApi,
+): Promise<Run> {
+  const r = await serial(async () => {
+    let r = await loadRun(api, a.projectId, a.runId);
+    const track = await trackOf(api, r.track);
+    const o = r.outputs.find((x) => x.id === a.outputId);
+    if (!o) throw new Error(`There is no output ${a.outputId}`);
+    const note = a.note?.trim() || undefined;
+    if (a.kind === "reject" && !note) throw new Error("Say why it's rejected");
+    const to = a.kind === "approve" ? "approved" : "rejected";
+    for (const x of [o, ...filesOf(r, o)])
+      if (OUTPUT_MOVES[x.status].includes(to)) r = await moveOne(api, r, x, to, x === o ? note : undefined);
+    await log(api, r, { kind: "decision", text: `${outputName(o)}: ${to}${note ? ` (${note})` : ""}` });
+    const gateId = reviewerOf(o.kind);
+    const gate = r.gates.find((g) => g.id === gateId);
+    const mine = gateOutputs(r, gateId).filter((x) => !isFile(x));
+    if (
+      gate?.status === "waiting" &&
+      !mine.some((x) => x.status === "draft" || x.status === "reviewed") &&
+      mine.some((x) => x.status === "approved")
+    ) {
+      r = decideGate(r, gateId, { kind: "approve", by: ME, note: "Every output reviewed" });
+      const moved = advance(track, r);
+      r = moved.run;
+      announceGates(api, r, moved.opened);
+      await log(api, r, {
+        kind: "decision",
+        text: `${GATES[gateId].label}: approved (every output reviewed)`,
+      });
+    }
+    await commitFolder(api, r, `factory ${r.id}: ${outputName(o)} ${to}`);
+    await save(api, r);
     return r;
   });
   await step(api);
@@ -1371,7 +1592,38 @@ export async function context(args: ChatArgs, api: AddonHostApi): Promise<string
   ].join("\n");
 }
 
-const DESIGN_KINDS = new Set(["brief", "demo", "directions", "quality", "kit"]);
+const DESIGN_KINDS = new Set([
+  "brief",
+  "demo",
+  "directions",
+  "quality",
+  "kit",
+  "deck",
+  "deck-images",
+  "one-pager",
+  "one-pager-images",
+  "letter",
+  "newsletter",
+  "marketing-images",
+  "teaser",
+]);
+
+/**
+ * The e-learning connector (D-447) for the course stages: the user's own MCP server, as Claude Code
+ * knows it, and which of its tools make a course. Without it the course is Markdown.
+ */
+async function elearningLines(api: AddonHostApi): Promise<string[]> {
+  const c = await api.config<{ elearning?: { server?: string; tools?: string } }>().catch(() => undefined);
+  const server = c?.elearning?.server?.trim();
+  const tools = c?.elearning?.tools?.trim();
+  return [
+    "",
+    "## E-learning connector",
+    server
+      ? `- MCP server: ${server}${tools ? `\n- Its tools: ${tools}` : ""}\n- Create the course unpublished, put its link in the Markdown file; never publish`
+      : "- none set: the Markdown file in learning/ is the course",
+  ];
+}
 
 /**
  * What the design stages build from (D-444, D-462): the product kit, a picked direction, the demo
@@ -1422,6 +1674,7 @@ export async function toolBrief(args: ChatArgs, api: AddonHostApi): Promise<stri
       : ["- none"]),
     ...(stage.feedback ? ["", "## Changes asked", stage.feedback] : []),
     ...(recipe && DESIGN_KINDS.has(recipe.kind) ? await designLines(api, r) : []),
+    ...(recipe?.kind.startsWith("course") ? await elearningLines(api) : []),
     "",
     "## The brief",
     briefText || "(not written yet)",

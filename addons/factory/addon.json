@@ -5,7 +5,7 @@
   "description": "Turns an idea into an interview, a polished demo and a full pack of documents and material: each run goes through its stages in chats of its own, in a worktree on its own branch, stopping at gates for you. Runs on a floor in lanes (Interview, Demo, Review, Pack, Launch, Done), each run's stages, outputs and timeline, and an inbox of everything waiting for a person across projects. Sample runs show how it works.",
   "version": "0.2.0",
   "icon": "factory",
-  "permissions": ["chat", "ai", "exec", "fs:read", "fs:write", "meetings:read"],
+  "permissions": ["chat", "ai", "exec", "fs:read", "fs:write", "meetings:read", "capture"],
   "storage": {
     "scope": "project"
   },

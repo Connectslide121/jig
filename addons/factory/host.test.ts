@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -105,6 +105,13 @@ beforeEach(async () => {
         return c;
       },
     },
+    capture: {
+      pdf: vi.fn(async ({ out }: { out: string }) => {
+        writeFileSync(out, "%PDF-1.7\n");
+        return { path: out, bytes: 9 };
+      }),
+    },
+    addons: { call: vi.fn(async () => ({ id: "v1" })) },
     emit: vi.fn(),
     notify: vi.fn(),
     log: vi.fn(),
@@ -242,6 +249,105 @@ describe("Jig factory's Conductor", () => {
     expect(
       (await host.inspect({ projectId: "shop", runId: r.id }, api)).some((e) => e.kind === "prompt"),
     ).toBe(true);
+  });
+
+  /** A run of `outputs` taken to its approved demo (G1): the pack's stages are running. */
+  async function toPack(outputs: string[]): Promise<Run> {
+    let r = await host.startRun({ projectId: "shop", brief: "gift-cards", outputs }, api);
+    await play(r, "S2");
+    await host.decide({ projectId: "shop", runId: r.id, gateId: "G0", kind: "approve" }, api);
+    r = await load(r.id);
+    await play(r, "S4");
+    r = await load(r.id);
+    await play(r, "S5");
+    r = await load(r.id);
+    await play(r, "S6", { quality: { pass: true, score: 90 } });
+    await host.decide({ projectId: "shop", runId: r.id, gateId: "G1", kind: "approve" }, api);
+    return load(r.id);
+  }
+
+  it("prints a one-pager to PDF with it, and approves its gate once every output is reviewed (D-467)", async () => {
+    let r = await toPack(["spec", "one-pager"]);
+    await play(r, "S7:one-pager");
+    r = await load(r.id);
+    const pdf = r.outputs.find((o) => o.kind === "one-pager-file");
+    expect(pdf).toMatchObject({ status: "draft", path: expect.stringMatching(/\.pdf$/) });
+    expect(api.capture.pdf).toHaveBeenCalledWith(expect.objectContaining({ page: "a4" }));
+    const page = r.outputs.find((o) => o.kind === "one-pager");
+    expect(page?.hash).toMatch(/^[0-9a-f]{40}$/);
+    await expect(
+      host.decideOutput({ projectId: "shop", runId: r.id, outputId: page?.id ?? "", kind: "reject" }, api),
+    ).rejects.toThrow(/why/);
+    // You changed the page before approving it: the approval says it was edited.
+    await writeFile(join(folder(r), page?.path ?? ""), "<html><body>Edited</body></html>");
+    r = await host.decideOutput(
+      { projectId: "shop", runId: r.id, outputId: page?.id ?? "", kind: "approve" },
+      api,
+    );
+    const approved = r.outputs.find((o) => o.id === page?.id);
+    expect(approved?.status).toBe("approved");
+    expect(approved?.history.at(-1)).toMatchObject({ status: "approved", edited: true });
+    expect(r.outputs.find((o) => o.id === pdf?.id)?.status).toBe("approved");
+    expect(r.gates.find((g) => g.id === "G4")?.status).toBe("approved");
+  });
+
+  it("skips a ChatGPT output when ChatGPT isn't signed in, saying why", async () => {
+    const create = api.chats.create;
+    api.chats.create = (async (input: Parameters<typeof create>[0]) => {
+      if (input.provider === "chatgpt") throw new Error("ChatGPT isn't signed in: sign in from Settings");
+      return create(input);
+    }) as typeof create;
+    const r = await toPack(["one-pager-images"]);
+    expect(stage(r, "S7:one-pager-images")).toMatchObject({
+      status: "skipped",
+      skipReason: expect.stringContaining("ChatGPT isn't signed in"),
+    });
+  });
+
+  it("makes the teaser's storyboard a Motion video and waits for its render (D-458)", async () => {
+    const call = vi.fn(async (_addon: string, method: string) => {
+      if (method === "createVideo") return { id: "v1" };
+      if (method === "render") return { queued: true };
+      return { status: rendered ? "rendered" : "rendering", dir: motionDir, renders: [{ n: 1 }] };
+    });
+    let rendered = false;
+    const motionDir = join(tmp, "motion", "v1");
+    mkdirSync(join(motionDir, "renders", "1"), { recursive: true });
+    writeFileSync(join(motionDir, "renders", "1", "video.mp4"), "mp4");
+    writeFileSync(join(motionDir, "renders", "1", "poster.png"), "png");
+    api.addons.call = call as unknown as AddonHostApi["addons"]["call"];
+    let r = await toPack(["teaser"]);
+    const c = chatOf(r, "S7:teaser");
+    await mkdir(join(folder(r), "teaser"), { recursive: true });
+    await writeFile(
+      join(folder(r), "teaser", "storyboard.json"),
+      JSON.stringify({
+        title: "Gift cards",
+        scenes: [{ type: "title", title: "Gift cards", media: "nope.png" }],
+      }),
+    );
+    await host.toolReport(
+      {
+        chat: { sessionId: c.id, projectId: "shop" },
+        summary: "storyboard",
+        outputs: ["teaser/storyboard.json"],
+      },
+      api,
+    );
+    await endTurn(c);
+    r = await load(r.id);
+    expect(call).toHaveBeenCalledWith(
+      "motion",
+      "createVideo",
+      expect.objectContaining({ kind: "teaser", scenes: [{ type: "title", title: "Gift cards" }] }),
+    );
+    expect(stage(r, "S7:teaser")).toMatchObject({ status: "running", video: { id: "v1", rendering: true } });
+    rendered = true;
+    await host.tick({}, api);
+    r = await load(r.id);
+    expect(stage(r, "S7:teaser")?.status).toBe("done");
+    expect(readFileSync(join(folder(r), "teaser", "teaser.mp4"), "utf8")).toBe("mp4");
+    expect(r.outputs.map((o) => o.kind)).toEqual(expect.arrayContaining(["teaser", "teaser-file"]));
   });
 
   it("asks for changes at the demo gate: the demo runs again with your note", async () => {

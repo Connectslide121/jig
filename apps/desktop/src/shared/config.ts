@@ -360,6 +360,11 @@ export const ConfigSchema = z.object({
        * are made "in the spirit of" (D-444); only the addresses are kept, read when a stage runs.
        */
       designSources: z.array(z.string()).default([]),
+      /**
+       * The e-learning platform's MCP server the course stages create courses through (D-467): its
+       * name in Claude Code's MCP list, and the tools to use; empty = the course stays Markdown.
+       */
+      elearning: z.object({ server: z.string().default(""), tools: z.string().default("") }).prefault({}),
     })
     .prefault({}),
   /** Motion, videos made from HTML (D-453, D-454). */

@@ -32,9 +32,35 @@
     },
     { "gate": "G1", "after": ["S6"], "changes": "S5" },
     { "fanout": "S7", "title": "Pack", "after": ["G1"], "outputs": "plan.outputs" },
-    { "gate": "G2", "after": ["S7:spec", "S7:stories", "S7:tests"] },
-    { "gate": "G4", "after": ["S7:pitch", "S7:deck", "S7:course-sales"] },
-    { "gate": "G4m", "after": ["S7:marketing"] },
+    {
+      "gate": "G2",
+      "after": ["S7:spec", "S7:stories", "S7:tests", "S7:release-notes", "S7:glossary"]
+    },
+    {
+      "gate": "G4",
+      "after": [
+        "S7:pitch",
+        "S7:deck",
+        "S7:deck-images",
+        "S7:one-pager",
+        "S7:one-pager-images",
+        "S7:objections",
+        "S7:letter",
+        "S7:course-sales",
+        "S7:course-customer"
+      ]
+    },
+    {
+      "gate": "G4m",
+      "after": [
+        "S7:marketing",
+        "S7:article",
+        "S7:linkedin",
+        "S7:newsletter",
+        "S7:marketing-images",
+        "S7:teaser"
+      ]
+    },
     { "id": "S8", "recipe": "build", "title": "Build", "after": ["G2"], "when": "build.requested" },
     { "gate": "G3", "after": ["S8"] },
     { "gate": "G5", "after": ["G4|G4m"] }

@@ -114,6 +114,10 @@ export interface StageRun {
   chatNote?: string;
   /** A gate's "Ask for changes" note this version must address. */
   feedback?: string;
+  /** Why the stage was skipped, when it says (no ChatGPT sign-in for an image stage, D-446). */
+  skipReason?: string;
+  /** The teaser's Motion video (D-458): rendering until its MP4 is in, and what went wrong. */
+  video?: { id: string; rendering?: boolean; note?: string };
 }
 
 export interface OutputHistoryEntry {
@@ -133,6 +137,8 @@ export interface Output {
   version: number;
   status: OutputStatus;
   history: OutputHistoryEntry[];
+  /** The file's content hash when Jig wrote it: a review compares it to see whether a person edited it. */
+  hash?: string;
 }
 
 export interface Owner {
@@ -475,10 +481,21 @@ const KIND_LABEL: Record<string, string> = {
   spec: "Spec",
   stories: "User stories",
   tests: "Test cases",
-  "release-notes": "Release notes",
   pitch: "Pitch",
   deck: "Deck",
-  "course-sales": "Course sales page",
+  "release-notes": "Release notes",
+  glossary: "Glossary changes",
+  "deck-images": "Deck images",
+  "one-pager": "One-pager",
+  "one-pager-images": "One-pager image",
+  objections: "Objection handling",
+  letter: "Customer letter",
+  "course-sales": "Sales course",
+  "course-customer": "Customer course",
+  article: "Article",
+  linkedin: "LinkedIn drafts",
+  "marketing-images": "Marketing images",
+  teaser: "Teaser",
   "sales-letter": "Sales letter",
   marketing: "Marketing",
   newsletter: "Newsletter",

@@ -184,13 +184,25 @@ async function report(
   await hooks.say(out.startsWith("Error") ? out : "Reported.");
 }
 
-async function write(folder: string, path: string, content: string): Promise<void> {
+async function write(folder: string, path: string, content: string | Buffer): Promise<void> {
   const file = join(folder, path);
   await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, content, "utf8");
+  await writeFile(file, content);
 }
 
-async function contentOf(recipe: string, path: string, version: number, fails: boolean): Promise<string> {
+/** A 1×1 PNG: what the fake ChatGPT "draws" for image outputs. */
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+async function contentOf(
+  recipe: string,
+  path: string,
+  version: number,
+  fails: boolean,
+): Promise<string | Buffer> {
+  if (path.endsWith(".png")) return TINY_PNG;
   if (path.endsWith("index.html")) {
     const dir = builtinAddonsDir();
     const demo = dir
@@ -198,6 +210,20 @@ async function contentOf(recipe: string, path: string, version: number, fails: b
       : "";
     return demo || "<!doctype html><title>Demo</title><p>PROTOTYPE · sample data</p>";
   }
+  if (path.endsWith(".html"))
+    return `<!doctype html><html><head><title>${recipe}</title></head><body><h1>${recipe}</h1><p>Written by the fake ${recipe} (version ${version}).</p></body></html>`;
+  if (recipe === "teaser")
+    return JSON.stringify(
+      {
+        title: "The teaser",
+        scenes: [
+          { type: "title", title: "Two taps", voice: "Swap a shift in two taps." },
+          { type: "outro", title: "Try it", voice: "Try it today." },
+        ],
+      },
+      null,
+      2,
+    );
   if (path.endsWith(".json"))
     return recipe === "critique"
       ? JSON.stringify(fakeScorecard(fails), null, 2)

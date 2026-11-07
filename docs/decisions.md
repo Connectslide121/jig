@@ -8277,5 +8277,39 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
 ## D-467: Jig factory's pack: recipes, two forms, images, courses, the teaser, reviews per output
 
 - Status: accepted.
-- **Who:** Claude, on my own (session 5 of phase 28, Jon asleep with full autonomy). Filled in as
-  session 5 is built.
+- **Who:** Claude, on my own (session 5 of phase 28, Jon asleep with full autonomy), within
+  D-445…D-448 and D-458.
+- **Recipes:** one per plan output (`PLAN_OUTPUTS` in `lib/brief.ts`, 20 of them, in four groups):
+  spec, stories, tests, release notes, glossary (G2); pitch, deck, deck as images, one-pager,
+  one-pager as images, objections, customer letter, sales and customer courses (G4); marketing
+  plan with its calendar, article, LinkedIn drafts, newsletter, marketing images, teaser (G4m).
+  A test keeps the list, the recipes, their reviewer and the track's gates in step.
+- **Two forms (D-445):** a recipe's `formats: [pdf | pdf-slides]` makes Jig print its `.html`
+  output to PDF with `capture.pdf` (D-466) when the stage finishes; the deck at 16:9, the rest on
+  A4. Pages start from the demo kit's `templates/print/` (deck, one-pager, letter). The image form
+  is its own output (`deck-images`, `one-pager-images`) named as its `pair`: the Plan offers it
+  beside, the review shows both side by side, each approved on its own, so you share one or both.
+- **Files go with their output:** a stage's first file is the output (kind = recipe kind), its
+  other files (`pdf`, e-mail HTML, extra images, the teaser's MP4) are `<kind>-file` outputs of the
+  same stage and version; a review moves them with it, the inbox lists only the main one.
+- **Images (D-446):** image recipes run on ChatGPT. When ChatGPT isn't signed in, the stage is
+  skipped with its reason (`skipReason`), logged, and the run goes on: images never block a pack.
+- **Courses (D-447):** `factory.elearning { server, tools }`; set, the course stages create an
+  unpublished course through that MCP server and put its link in the Markdown; empty, the course
+  is the Markdown in `learning/`. Never published by a stage.
+- **Teaser (D-458):** the stage writes `teaser/storyboard.json`; Jig makes it a Motion video
+  (`createVideo`, media resolved in the run's folder, missing files dropped), asks Motion to render,
+  holds the stage in `running` ("Motion is rendering the teaser") and polls; when rendered, it copies
+  `teaser.mp4` and `poster.png` into `teaser/` as drafts. No renderer or a failed render: the
+  storyboard alone is the output, with the reason on the stage.
+- **Reviews per output:** the inbox's review approves or rejects (with why) one output and its
+  files (`decideOutput`); whether you edited it comes from its file's SHA-1, taken when Jig wrote it.
+  When nothing of a gate waits and something was approved, the gate is approved by itself; the gate
+  buttons still approve all at once.
+- **Trust per kind:** the inbox shows, per output kind, how many were approved without edits and the
+  median time from draft to review, from the outputs' history (no new state).
+- **Stories as board cards:** a user action in the stories review ("Add as board cards…", a modal
+  picking the board) creates one card per story through the Boards add-on; Jig never creates
+  cards by itself.
+- **Why:** each output is reviewed by the person who owns its group, and a pack is many files; one
+  review per output keeps the gate meaningful without a click per file.

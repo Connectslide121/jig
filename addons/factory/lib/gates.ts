@@ -39,18 +39,47 @@ const REVIEWER: Record<string, GateId> = {
   stories: "G2",
   tests: "G2",
   "release-notes": "G2",
+  glossary: "G2",
   code: "G3",
   pitch: "G4",
   deck: "G4",
+  "deck-images": "G4",
+  "one-pager": "G4",
+  "one-pager-images": "G4",
+  objections: "G4",
+  letter: "G4",
   "course-sales": "G4",
+  "course-customer": "G4",
   "sales-letter": "G4",
   marketing: "G4m",
+  article: "G4m",
+  linkedin: "G4m",
   newsletter: "G4m",
+  "marketing-images": "G4m",
+  teaser: "G4m",
   post: "G4m",
 };
 
+/** The gate that reviews an output kind; a stage's other files (`deck-file`) go with its main output. */
 export function reviewerOf(kind: string): GateId {
-  return REVIEWER[kind] ?? "G2";
+  return REVIEWER[mainKind(kind)] ?? "G2";
+}
+
+/** The main output's kind of a stage's other file: `deck-file` → `deck`. */
+export function mainKind(kind: string): string {
+  return kind.endsWith("-file") ? kind.slice(0, -5) : kind;
+}
+
+/** Whether an output is a stage's other file (a PDF, the HTML form, an image), reviewed with its main output. */
+export function isFile(o: { kind: string }): boolean {
+  return o.kind.endsWith("-file");
+}
+
+/** A main output's other files: the same stage and version, kind `<kind>-file`. */
+export function filesOf(run: Run, o: Output): Output[] {
+  return run.outputs.filter(
+    (x) => x.id !== o.id && isFile(x) && x.stage === o.stage && x.version === o.version,
+  );
 }
 
 /** A gate's owner: set per run on the Plan step (D-433); you when nobody was picked. */
@@ -101,7 +130,7 @@ export interface InboxItem {
 const PENDING: OutputStatus[] = ["draft", "reviewed"];
 
 function pendingOutputs(run: Run, gate: GateId): Output[] {
-  return run.outputs.filter((o) => reviewerOf(o.kind) === gate && PENDING.includes(o.status));
+  return run.outputs.filter((o) => !isFile(o) && reviewerOf(o.kind) === gate && PENDING.includes(o.status));
 }
 
 /**
@@ -257,3 +286,13 @@ export const GATE_STATUS: Record<
 };
 
 export { ME, outputName };
+
+/** Trust per output kind (D-467): the kinds with decisions, most decided first; a stage's files count with it. */
+export function trustByKind(outputs: Output[]): Array<Trust & { kind: string }> {
+  const kinds = new Map<string, Output[]>();
+  for (const o of outputs) if (!isFile(o)) kinds.set(o.kind, [...(kinds.get(o.kind) ?? []), o]);
+  return [...kinds]
+    .map(([kind, list]) => ({ kind, ...trust(list) }))
+    .filter((t) => t.decided > 0)
+    .sort((a, b) => b.decided - a.decided || a.kind.localeCompare(b.kind));
+}

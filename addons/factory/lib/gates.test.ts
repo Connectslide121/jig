@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  filesOf,
   groupLabel,
   inbox,
   isMine,
+  mainKind,
   median,
   mineCount,
   outputName,
@@ -12,6 +14,7 @@ import {
   reviewerOf,
   revisionsLeft,
   trust,
+  trustByKind,
   waitsForMe,
 } from "./gates";
 import type { Output, Run } from "./run";
@@ -28,6 +31,9 @@ describe("owners and caps", () => {
     expect(reviewerOf("pitch")).toBe("G4");
     expect(reviewerOf("newsletter")).toBe("G4m");
     expect(reviewerOf("something-new")).toBe("G2");
+    expect(reviewerOf("deck-file")).toBe("G4");
+    expect(reviewerOf("demo-file")).toBe("G1");
+    expect(mainKind("teaser-file")).toBe("teaser");
   });
 
   it("makes you the owner unless the plan picked someone", () => {
@@ -58,7 +64,7 @@ describe("inbox", () => {
       "G1 Invoice reminders Demo v2",
       "G1 Route planner Demo v1",
       "G4 Sales course pack Pitch v1",
-      "G4 Sales course pack Course sales page v1",
+      "G4 Sales course pack Sales course v1",
     ]);
   });
 
@@ -137,6 +143,25 @@ describe("trust", () => {
     expect(trust([])).toEqual({ decided: 0, approvedAsIs: 0, rate: undefined, reviewMinutes: undefined });
   });
 
+  it("counts per kind, most decided first, a stage's files with their output (D-467)", () => {
+    const spec = o([
+      ["draft", 0],
+      ["approved", 10],
+    ]);
+    const deck = {
+      ...spec,
+      id: "d",
+      kind: "deck",
+      history: [...spec.history.slice(0, 1), { ...spec.history[1]!, edited: true }],
+    };
+    const file = { ...spec, id: "f", kind: "deck-file" };
+    const rows = trustByKind([spec, { ...spec, id: "s2" }, deck, file, o([["draft", 0]])]);
+    expect(rows.map((r) => [r.kind, r.decided, r.approvedAsIs])).toEqual([
+      ["spec", 2, 2],
+      ["deck", 1, 0],
+    ]);
+  });
+
   it("takes the median of odd and even lists", () => {
     expect(median([])).toBeUndefined();
     expect(median([5, 1, 3])).toBe(3);
@@ -144,10 +169,34 @@ describe("trust", () => {
   });
 });
 
+describe("a stage's files", () => {
+  it("go with their main output: not their own inbox rows, found by stage and version", () => {
+    const base = byTitle(samples[0]!.title);
+    const out = (id: string, kind: string, version = 1): Output => ({
+      id,
+      kind,
+      stage: "S7:deck",
+      path: `${id}.md`,
+      version,
+      status: "draft",
+      history: [{ status: "draft", by: "jig", at: new Date(NOW).toISOString(), edited: false }],
+    });
+    const run: Run = {
+      ...base,
+      state: "waiting",
+      gates: [{ id: "G4", status: "waiting", at: new Date(NOW).toISOString(), history: [] } as never],
+      outputs: [out("deck-v1", "deck"), out("deck-v1-pdf", "deck-file"), out("deck-v0-pdf", "deck-file", 0)],
+      stages: [],
+    };
+    expect(inbox([run]).map((i) => i.outputId)).toEqual(["deck-v1"]);
+    expect(filesOf(run, run.outputs[0]!).map((f) => f.id)).toEqual(["deck-v1-pdf"]);
+  });
+});
+
 describe("outputName", () => {
   it("names an output by its kind and version, and keeps an unknown kind readable", () => {
     expect(outputName({ kind: "demo", version: 2 })).toBe("Demo v2");
-    expect(outputName({ kind: "course-sales", version: 1 })).toBe("Course sales page v1");
+    expect(outputName({ kind: "course-sales", version: 1 })).toBe("Sales course v1");
     expect(outputName({ kind: "faq", version: 3 })).toBe("Faq v3");
   });
 });

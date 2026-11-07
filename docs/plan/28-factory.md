@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 5, The pack — not started.
+- **Current session:** 5, The pack — in progress (D-466, D-467).
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -132,8 +132,10 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session M3 is done (see its notes). Next: session 5, from its first
-  item (recipes). Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session 5: recipes, formats (PDF through `capture.pdf`), ChatGPT
+  images with the skip, the e-learning setting, the teaser through Motion and `decideOutput` are
+  built and unit-tested (host). Next: the inbox review sheet (per output, side-by-side pairs,
+  Approve / Edit / Reject, stories as board cards), trust per kind, the pack e2e, docs. Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -400,22 +402,22 @@ product kit tokens, own styles from a chat, `DESIGN.md` from the factory's local
 guarantees contrast. Exports `createVideo`, `render`, `get`. e2e: `motion.spec.ts` → "a chat makes
 and changes a video…". Not done: "from a release" (waits for Releases).
 
-### 5. The pack — not started
+### 5. The pack — in progress
 
-- [ ] Recipes: spec, user stories (as board cards), test cases, release notes, customer letter,
+- [x] Recipes: spec, user stories (as board cards), test cases, release notes, customer letter,
       glossary delta; pitch, presentation, one-pager, objection handling; e-learning for sales and
       for customers; marketing plan, articles, LinkedIn drafts, newsletter; teaser film.
-- [ ] Formats (D-445): documents in Markdown; customer letter also PDF; deck and one-pager in two
+- [x] Formats (D-445): documents in Markdown; customer letter also PDF; deck and one-pager in two
       forms, HTML from the demo kit → PDF and an image version by ChatGPT, the review lets you pick
       one or both to share; newsletter also as e-mail HTML.
-- [ ] Images (D-446): image recipes run on ChatGPT; core: `codexNormalize.ts` shows Codex's
+- [x] Images (D-446): image recipes run on ChatGPT; core: `codexNormalize.ts` shows Codex's
       `imageGeneration` items as image cards and passes `usageLimitExceeded` on as a limit; no
       ChatGPT sign-in = image outputs skipped with a reason; fake-engine row.
-- [ ] E-learning connector (D-447): setting `factory.elearning` (MCP server name, which tools
+- [x] E-learning connector (D-447): setting `factory.elearning` (MCP server name, which tools
       create a course / add pages / publish), `course-*` recipes create an unpublished course and
       report its link; without the setting, the course as Markdown in `learning/`. Jon fills the
       setting in his workspace.
-- [ ] Teaser (D-458): the `teaser` recipe calls Motion's `createVideo` with the approved demo's
+- [x] Teaser (D-458): the `teaser` recipe calls Motion's `createVideo` with the approved demo's
       screens or captures, the product kit's style, voice and captions in the run's language;
       Motion renders; MP4 + poster in `teaser/` as a draft. Needs sessions M1–M3.
 - [ ] Inbox: everything waiting for a person, grouped by gate; approve / edit / reject; statuses

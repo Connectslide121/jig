@@ -25,6 +25,11 @@ export interface Recipe {
   reviewer?: GateId;
   checks: string[];
   languageGroup?: string;
+  /**
+   * Other forms Jig makes of its outputs (D-467): `pdf` prints each `.html` output to an A4 PDF,
+   * `pdf-slides` to a PDF of 16:9 slides (`api.capture.pdf`, D-466).
+   */
+  formats: RecipeFormat[];
   /** Bundled skills the stage should use when they are on (Settings → Skills), by id. */
   skills: string[];
   /** The prompt. */
@@ -32,6 +37,9 @@ export interface Recipe {
   source: "built-in" | "repository";
   file: string;
 }
+
+export const RECIPE_FORMATS = ["pdf", "pdf-slides"] as const;
+export type RecipeFormat = (typeof RECIPE_FORMATS)[number];
 
 /** Inputs a recipe may name besides other recipes' kinds. */
 const EXTRA_INPUTS = new Set([
@@ -68,6 +76,9 @@ export function parseRecipe(text: string, file: string, source: Recipe["source"]
     checks: strings(data.checks),
     languageGroup: typeof data.languageGroup === "string" ? data.languageGroup : undefined,
     skills: strings(data.skills),
+    formats: strings(data.formats).filter((f): f is RecipeFormat =>
+      (RECIPE_FORMATS as readonly string[]).includes(f),
+    ),
     body: body.trim(),
     source,
     file,
@@ -91,6 +102,8 @@ export function validateRecipe(recipe: Recipe, kinds: Iterable<string>): string[
   if (recipe.reviewer && !GATE_ORDER.includes(recipe.reviewer))
     errors.push(`reviewer "${recipe.reviewer}" isn't a gate`);
   if (!recipe.body) errors.push("no prompt");
+  if (recipe.formats.length && !recipe.outputs.some((o) => o.endsWith(".html")))
+    errors.push("formats need an .html output");
   return errors.map((e) => `${recipe.file}: ${e}`);
 }
 

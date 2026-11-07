@@ -148,20 +148,46 @@ export function planLanguages(
 
 /** The output group a pack output (a fan-out recipe) belongs to, for its language. */
 export function groupOf(output: string): LanguageGroup {
-  if (output.startsWith("course") || output === "elearning") return "learning";
-  if (output === "marketing" || output === "teaser" || output === "newsletter") return "marketing";
-  if (output === "pitch" || output === "deck" || output === "one-pager" || output === "letter")
-    return "sales";
-  return "docs";
+  return (
+    PLAN_OUTPUTS.find((o) => o.id === output)?.group ?? (output.startsWith("course") ? "learning" : "docs")
+  );
 }
 
-/** The pack's outputs the Plan step offers (D-460), each in its language group; the default ones ticked. */
-export const PLAN_OUTPUTS: Array<{ id: string; label: string; group: LanguageGroup; ticked: boolean }> = [
+/**
+ * The pack's outputs the Plan step offers (D-460, D-467), each in its language group; the default ones
+ * ticked. `pair` is the other form of the same thing (D-445): the review shows them side by side.
+ */
+export const PLAN_OUTPUTS: Array<{
+  id: string;
+  label: string;
+  group: LanguageGroup;
+  ticked: boolean;
+  pair?: string;
+}> = [
   { id: "spec", label: "Spec", group: "docs", ticked: true },
   { id: "stories", label: "User stories", group: "docs", ticked: true },
   { id: "tests", label: "Test cases", group: "docs", ticked: true },
+  { id: "release-notes", label: "Release notes", group: "docs", ticked: false },
+  { id: "glossary", label: "Glossary changes", group: "docs", ticked: false },
   { id: "pitch", label: "Pitch", group: "sales", ticked: true },
-  { id: "deck", label: "Deck", group: "sales", ticked: true },
+  { id: "deck", label: "Deck", group: "sales", ticked: true, pair: "deck-images" },
+  { id: "deck-images", label: "Deck as images (ChatGPT)", group: "sales", ticked: false, pair: "deck" },
+  { id: "one-pager", label: "One-pager", group: "sales", ticked: true, pair: "one-pager-images" },
+  {
+    id: "one-pager-images",
+    label: "One-pager as an image (ChatGPT)",
+    group: "sales",
+    ticked: false,
+    pair: "one-pager",
+  },
+  { id: "objections", label: "Objection handling", group: "sales", ticked: false },
+  { id: "letter", label: "Customer letter", group: "sales", ticked: false },
   { id: "course-sales", label: "Sales course", group: "learning", ticked: false },
-  { id: "marketing", label: "Marketing kit", group: "marketing", ticked: true },
+  { id: "course-customer", label: "Customer course", group: "learning", ticked: false },
+  { id: "marketing", label: "Marketing plan", group: "marketing", ticked: true },
+  { id: "article", label: "Article", group: "marketing", ticked: false },
+  { id: "linkedin", label: "LinkedIn drafts", group: "marketing", ticked: false },
+  { id: "newsletter", label: "Newsletter", group: "marketing", ticked: false },
+  { id: "marketing-images", label: "Marketing images (ChatGPT)", group: "marketing", ticked: false },
+  { id: "teaser", label: "Teaser film", group: "marketing", ticked: false },
 ];

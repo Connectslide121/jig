@@ -548,6 +548,20 @@ export function FactorySettings() {
           })
         }
       />
+      <TextSetting
+        label="E-learning server"
+        description="The MCP server of your e-learning platform (its name in Claude Code's MCP list): the course outputs are created there, unpublished. Empty: courses stay Markdown files."
+        value={config.factory.elearning.server}
+        placeholder="(none)"
+        onSave={(server) => void updateConfig({ factory: { elearning: { server } } })}
+      />
+      <TextSetting
+        label="E-learning tools"
+        description="The server's tools a course stage uses (names or a short how-to)."
+        value={config.factory.elearning.tools}
+        placeholder="(any)"
+        onSave={(tools) => void updateConfig({ factory: { elearning: { tools } } })}
+      />
       <SettingRow
         label="Stage chats at once"
         description="How many stage chats run at the same time, across all runs. More stages wait until one finishes."
