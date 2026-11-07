@@ -869,11 +869,11 @@ test("Factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)"
 test("Factory: a stage that asks waits for your reply, then carries on", async ({ page, jigHome }) => {
   test.setTimeout(60_000);
   const projectId = await shop(page, jigHome);
-  const brief =
-    (await readFile(
-      fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
-      "utf8",
-    )) + "\n[ask scout]\n";
+  const source = await readFile(
+    fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
+    "utf8",
+  );
+  const brief = `${source}\n[ask scout]\n`;
   const started = (await factory(page, "startRun", { projectId, briefText: brief })) as { value: RunLike };
   const id = started.value.id;
   const stage = async () => (await runOf(page, projectId, id)).stages.find((s) => s.id === "S2");
@@ -890,11 +890,11 @@ test("Factory: start from a brief, answer a stage, approve a gate and inspect, a
 }) => {
   test.setTimeout(60_000);
   const projectId = await shop(page, jigHome);
-  const brief =
-    (await readFile(
-      fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
-      "utf8",
-    )) + "\n[ask scout]\n";
+  const source = await readFile(
+    fileURLToPath(new URL("../addons/factory/fixtures/briefs/shift-swap.md", import.meta.url)),
+    "utf8",
+  );
+  const brief = `${source}\n[ask scout]\n`;
 
   // Start from the top bar: a modal with a pasted brief; the run's page opens.
   await page.getByTestId("factory-topbar").click();
