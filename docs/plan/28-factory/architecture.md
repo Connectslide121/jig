@@ -267,6 +267,16 @@ moved to the board's resolved column = approved; a comment starting "changes:" =
 The board's column roles come from the Boards add-on's data. The board is picked once per run on the Plan step
 (`RunPlan.approvals`, D-469), not per owner; GD stays in Jig.
 
+## Publishing a demo (D-438, D-470)
+
+⋯ → Publish demo… on an approved demo version: where (this computer, or a `factory.publishTargets`
+Azure Static Web Apps site), 7/30/90 days, an optional customer confirm bar (answers by e-mail). The
+pure `lib/publish.ts` scans the demo for real-looking data (the kit's rules) and writes the page with
+its end date in it; the host copies the version folder (`published/<run>-v<n>/`, or the site's
+mirror `publish/<target>/<run>/v<n>/` deployed with `npx @azure/static-web-apps-cli deploy` and the
+user's az), records `Run.published` and moves the demo output to `published`. Take down removes the
+copy and redeploys.
+
 ## Settings (`settings.page`, `ConfigSchema`)
 
 `factory.demoKitPath`, `factory.concurrency` (1–6, default 3), `factory.critic` (provider:

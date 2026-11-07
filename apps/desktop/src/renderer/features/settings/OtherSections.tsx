@@ -25,6 +25,7 @@ import {
   Button,
   cn,
   confirmDialog,
+  Dialog,
   IconButton,
   Input,
   MenuButton,
@@ -583,7 +584,147 @@ export function FactorySettings() {
           <ChevronDown className="size-4 shrink-0 text-muted" />
         </MenuButton>
       </SettingRow>
+      <PublishTargets targets={config.factory.publishTargets} />
     </SettingsSection>
+  );
+}
+
+type PublishTarget = { name: string; app: string; resourceGroup: string; subscription?: string; url: string };
+
+/** Azure Static Web Apps sites a demo can be published to (D-470): a row each, added in a dialog. */
+function PublishTargets({ targets }: { targets: PublishTarget[] }) {
+  const [adding, setAdding] = useState(false);
+  const save = (publishTargets: PublishTarget[]) => void updateConfig({ factory: { publishTargets } });
+  return (
+    <>
+      <SettingRow
+        label="Publish targets"
+        description="Azure Static Web Apps sites you made, where Publish can put a demo. Jig deploys with your az sign-in and never keeps the site's deployment token."
+      >
+        <Button size="sm" onClick={() => setAdding(true)} data-testid="settings-factory-add-target">
+          Add target…
+        </Button>
+      </SettingRow>
+      {targets.map((t) => (
+        <div
+          key={t.name}
+          className="flex h-10 items-center gap-3 px-4 text-sm"
+          data-testid="settings-factory-target"
+        >
+          <span className="w-32 shrink-0 truncate font-medium text-fg">{t.name}</span>
+          <span className="min-w-0 flex-1 truncate text-xs text-muted">
+            {t.app} · {t.resourceGroup}
+          </span>
+          <span className="w-56 shrink-0 truncate text-right font-mono text-xs text-hint">{t.url}</span>
+          <IconButton
+            icon={Trash2}
+            size="sm"
+            label={`Remove ${t.name}`}
+            onClick={() => save(targets.filter((x) => x.name !== t.name))}
+          />
+        </div>
+      ))}
+      <PublishTargetDialog
+        open={adding}
+        taken={targets.map((t) => t.name)}
+        onClose={() => setAdding(false)}
+        onAdd={(t) => {
+          save([...targets, t]);
+          setAdding(false);
+        }}
+      />
+    </>
+  );
+}
+
+function PublishTargetDialog({
+  open,
+  taken,
+  onClose,
+  onAdd,
+}: {
+  open: boolean;
+  taken: string[];
+  onClose: () => void;
+  onAdd: (t: PublishTarget) => void;
+}) {
+  const [t, setT] = useState<PublishTarget>({
+    name: "",
+    app: "",
+    resourceGroup: "",
+    subscription: "",
+    url: "",
+  });
+  useEffect(() => {
+    if (open) setT({ name: "", app: "", resourceGroup: "", subscription: "", url: "" });
+  }, [open]);
+  const name = t.name.trim();
+  const problem = !name
+    ? "Give it a name"
+    : name === "local" || taken.includes(name)
+      ? "That name is taken"
+      : !t.app.trim() || !t.resourceGroup.trim()
+        ? "Fill in the app and its resource group"
+        : !/^https:\/\/[^\s/]+/.test(t.url.trim())
+          ? "The address starts with https://"
+          : "";
+  const field = (key: keyof PublishTarget, label: string, placeholder: string, hint?: string) => (
+    // biome-ignore lint/a11y/noLabelWithoutControl: the control is the Input inside.
+    <label className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-muted">{label}</span>
+      <Input
+        value={t[key] ?? ""}
+        placeholder={placeholder}
+        onChange={(e) => setT({ ...t, [key]: e.target.value })}
+        data-testid={`settings-factory-target-${key}`}
+      />
+      {hint && <span className="text-xs text-hint">{hint}</span>}
+    </label>
+  );
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Add a publish target"
+      testId="settings-factory-target-dialog"
+      footer={
+        <>
+          <span className="min-w-0 flex-1 truncate text-xs text-hint">{problem}</span>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabled={Boolean(problem)}
+            data-testid="settings-factory-target-add"
+            onClick={() =>
+              onAdd({
+                name,
+                app: t.app.trim(),
+                resourceGroup: t.resourceGroup.trim(),
+                ...(t.subscription?.trim() ? { subscription: t.subscription.trim() } : {}),
+                url: t.url.trim().replace(/\/+$/, ""),
+              })
+            }
+          >
+            Add
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {field("name", "Name", "Demos", "How Publish lists it.")}
+        {field("app", "Static web app", "contoso-demos")}
+        {field("resourceGroup", "Resource group", "rg-demos")}
+        {field("subscription", "Subscription (optional)", "Your az default")}
+        {field(
+          "url",
+          "Address",
+          "https://contoso-demos.azurestaticapps.net",
+          "Each demo goes at <run>/v<n>/ under it.",
+        )}
+      </div>
+    </Dialog>
   );
 }
 

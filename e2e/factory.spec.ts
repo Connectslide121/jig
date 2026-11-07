@@ -239,7 +239,7 @@ test("Jig factory: pick a direction at GD, then review the demo in its frames, p
   page,
   jigHome,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const projectId = await shop(page, jigHome);
   const started = (await factory(page, "startRun", { projectId, brief: "shift-swap" })) as { value: RunLike };
   const id = started.value.id;
@@ -316,10 +316,6 @@ test("Jig factory: pick a direction at GD, then review the demo in its frames, p
   await expect(review.getByTestId("factory-review-versions").getByRole("button")).toHaveCount(3);
   // ⋯ → Show in Pages keeps the version picked (v3) as a page.
   await review.getByRole("button", { name: "v3" }).click();
-  console.log(
-    "DBG",
-    JSON.stringify(await factory(page, "showInPages", { projectId, runId: id, version: 3 })),
-  );
   await review.getByTestId("factory-review-open").click();
   await page.getByTestId("factory-review-pages").click();
   await expect(page.getByText("Demo v3 is in Pages")).toBeVisible({ timeout: 10000 });
@@ -328,6 +324,34 @@ test("Jig factory: pick a direction at GD, then review the demo in its frames, p
   await expect
     .poll(async () => (await runOf(page, projectId, id)).gates.find((g) => g.id === "G1")?.status)
     .toBe("approved");
+
+  // ⋯ → Publish demo… (D-470): the scan passes, a copy on this computer with the confirm bar; Take down.
+  await page.getByRole("tab", { name: "Shift swap Pin", exact: false }).first().click();
+  await run.getByTestId("factory-run-more").click();
+  await page.getByTestId("factory-run-publish").click();
+  const pub = page.getByTestId("factory-publish");
+  await expect(pub.getByTestId("factory-publish-scan")).toContainText("No real-looking");
+  await expect(pub.getByTestId("factory-publish-version")).toHaveValue("3");
+  await expect(pub.getByTestId("factory-publish-to")).toBeDisabled();
+  await pub.getByRole("switch", { name: "The customer confirms it" }).click();
+  await expect(pub.getByTestId("factory-publish-go")).toBeDisabled();
+  await pub.getByTestId("factory-publish-to").fill("pm@contoso.com");
+  if (process.env.JIG_UI_SHOTS) {
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: join(SHOTS_DIR, "factory-publish.png") });
+  }
+  await pub.getByTestId("factory-publish-go").click();
+  await expect(pub).toBeHidden();
+  const published = run.getByTestId("factory-published");
+  await expect(published).toContainText("This computer");
+  const r = (await runOf(page, projectId, id)) as RunLike & {
+    published?: Array<{ path?: string; confirmTo?: string }>;
+  };
+  expect(r.published?.[0]?.confirmTo).toBe("pm@contoso.com");
+  expect(await readFile(r.published?.[0]?.path ?? "", "utf8")).toContain("Is this what you wanted?");
+  await published.getByTestId("factory-published-down").click();
+  await page.getByRole("dialog").getByRole("button", { name: "Take down" }).click();
+  await expect(published).toBeHidden();
 });
 
 test("Jig factory: a stage Jig closed in the middle of carries on after the restart", async ({
@@ -788,4 +812,38 @@ test("Jig factory: approve a gate and ask for changes from the phone (D-468)", a
     await app.close();
     await telegram.close();
   }
+});
+
+test("Settings → Jig factory: add a publish target in its dialog, remove it from its row (D-470)", async ({
+  page,
+}) => {
+  await page.keyboard.press("Control+Comma");
+  await page.getByTestId("settings-nav-factory").click();
+  await page.getByTestId("settings-factory-add-target").click();
+  const dialog = page.getByTestId("settings-factory-target-dialog");
+  const add = dialog.getByTestId("settings-factory-target-add");
+  await expect(add).toBeDisabled();
+  await dialog.getByTestId("settings-factory-target-name").fill("Demos");
+  await dialog.getByTestId("settings-factory-target-app").fill("contoso-demos");
+  await dialog.getByTestId("settings-factory-target-resourceGroup").fill("rg-demos");
+  await dialog.getByTestId("settings-factory-target-url").fill("http://demos.contoso.com");
+  await expect(dialog).toContainText("The address starts with https://");
+  await dialog.getByTestId("settings-factory-target-url").fill("https://demos.contoso.com/");
+  if (process.env.JIG_UI_SHOTS) {
+    await page.waitForTimeout(400);
+    await dialog.screenshot({ path: join(SHOTS_DIR, "factory-target-dialog.png") });
+  }
+  await add.click();
+  await expect(dialog).toBeHidden();
+  const row = page.getByTestId("settings-factory-target");
+  await expect(row).toContainText("https://demos.contoso.com");
+  const config = (await hostCall(page, "config.get")) as {
+    value: { factory: { publishTargets: unknown[] } };
+  };
+  expect(config.value.factory.publishTargets).toEqual([
+    { name: "Demos", app: "contoso-demos", resourceGroup: "rg-demos", url: "https://demos.contoso.com" },
+  ]);
+  if (process.env.JIG_UI_SHOTS) await page.screenshot({ path: join(SHOTS_DIR, "factory-targets.png") });
+  await row.getByRole("button", { name: "Remove Demos" }).click();
+  await expect(row).toHaveCount(0);
 });

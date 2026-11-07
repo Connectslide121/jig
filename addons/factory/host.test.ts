@@ -464,6 +464,89 @@ describe("Jig factory's Conductor", () => {
     await host.phoneAction({ messageId: "unknown", buttonId: "approve" }, api);
   });
 
+  it("publishes an approved demo on this computer or a site, scans it first and takes it down (D-470)", async () => {
+    let r = await host.startRun({ projectId: "shop", brief: "gift-cards" }, api);
+    r = await load(r.id);
+    const page = join(folder(r), "demo", "v1", "index.html");
+    await mkdir(dirname(page), { recursive: true });
+    await writeFile(page, "<html><head></head><body><p>Mail ada@shop.example</p></body></html>");
+    await writeFile(join(dirname(page), "app.js"), 'const x = "hello";');
+    const demo = {
+      id: "o-demo",
+      kind: "demo",
+      path: "demo/v1/index.html",
+      version: 1,
+      status: "approved" as const,
+      history: [{ status: "draft" as const, by: "jig", at: later() }],
+    };
+    await api.storage.set(
+      `run:${r.id}`,
+      { ...r, outputs: [...r.outputs, demo] },
+      { scope: "project", id: "shop" },
+    );
+    const target = {
+      name: "Demos",
+      app: "contoso-demos",
+      resourceGroup: "rg",
+      url: "https://demos.contoso.com",
+    };
+    api.config = (async () => ({ publishTargets: [target] })) as AddonHostApi["config"];
+    const deploys: string[][] = [];
+    const exec = api.exec;
+    api.exec = (async (command: string, args: string[], opts?: unknown) => {
+      if (command !== "npx") return exec(command, args, opts as never);
+      deploys.push(args);
+      return { code: 0, stdout: "", stderr: "" };
+    }) as AddonHostApi["exec"];
+    const args = { projectId: "shop", runId: r.id };
+
+    expect(await host.publishInfo(args, api)).toMatchObject({ targets: [{ name: "Demos" }], versions: [1] });
+    expect((await host.publishScan({ ...args, version: 1 }, api)).hits).toEqual([]);
+    await expect(host.publish({ ...args, version: 2, where: "local", days: 30 }, api)).rejects.toThrow(
+      "isn't approved",
+    );
+    await expect(host.publish({ ...args, version: 1, where: "local", days: 5 }, api)).rejects.toThrow(
+      "7, 30 or 90",
+    );
+
+    const local = await host.publish(
+      { ...args, version: 1, where: "local", days: 7, confirmTo: "pm@contoso.com" },
+      api,
+    );
+    expect(local.path && readFileSync(local.path, "utf8")).toContain('data-jig-factory="confirm"');
+    expect(existsSync(join(dirname(local.path ?? ""), "app.js"))).toBe(true);
+    r = await load(r.id);
+    expect(r.outputs.find((o) => o.id === "o-demo")?.status).toBe("published");
+
+    const site = await host.publish({ ...args, version: 1, where: "Demos", days: 30 }, api);
+    expect(site.url).toBe(`https://demos.contoso.com/${r.id}/v1/`);
+    expect(deploys[0]).toEqual(
+      expect.arrayContaining(["deploy", "--app-name", "contoso-demos", "--env", "production"]),
+    );
+    const mirror = deploys[0]?.[3] ?? "";
+    expect(readFileSync(join(mirror, r.id, "v1", "index.html"), "utf8")).toContain(
+      'data-jig-factory="expiry"',
+    );
+
+    await host.takeDown({ ...args, id: site.id }, api);
+    expect(existsSync(join(mirror, r.id, "v1"))).toBe(false);
+    expect(deploys).toHaveLength(2);
+    await host.takeDown({ ...args, id: local.id }, api);
+    expect(existsSync(local.path ?? "")).toBe(false);
+    r = await load(r.id);
+    expect(r.published?.every((p) => p.takenDown)).toBe(true);
+
+    // Real-looking data blocks publishing.
+    await writeFile(page, "<html><body>Call +46 70 123 45 67, ada@realcorp.io</body></html>");
+    expect((await host.publishScan({ ...args, version: 1 }, api)).hits.map((h) => h.kind)).toEqual([
+      "email",
+      "phone",
+    ]);
+    await expect(host.publish({ ...args, version: 1, where: "local", days: 30 }, api)).rejects.toThrow(
+      "real-looking",
+    );
+  });
+
   it("gives a gate a person owns a card on the run's board, and decides it from there (D-469)", async () => {
     let comments: Array<{ by: string; at: string; text: string }> = [];
     let done = false;

@@ -8,7 +8,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { AddonChatInfo, AddonHostApi, AddonProject } from "@jig/sdk";
@@ -43,6 +43,21 @@ import { parseFrontMatter, setStatus, updateFrontMatter, writeFrontMatter } from
 import { filesOf, GATES, isFile, ownerOf, reviewerOf } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
 import { settledText, tapOf, wantedCards } from "./lib/phone";
+import {
+  demoText,
+  deployArgs,
+  LOCAL,
+  PUBLISH_DAYS,
+  type Published,
+  type PublishTarget,
+  parseNames,
+  publishHtml,
+  type RealDataHit,
+  scanRealData,
+  sitePath,
+  targetsOf,
+  untilOf,
+} from "./lib/publish";
 import { outputPaths, parseRecipe, type Recipe, resolveRecipes, stagePrompt } from "./lib/recipes";
 import {
   changesNote,
@@ -787,6 +802,198 @@ export async function showInPages(a: RunArgs & { version: number }, api: AddonHo
       await save(api, { ...now, demoPage: page });
     });
   return page ?? "";
+}
+
+/** Publish (D-438, D-470): where a demo can go, which versions may, and the copies out there. */
+export async function publishInfo(
+  a: RunArgs,
+  api: AddonHostApi,
+): Promise<{ targets: Array<{ name: string; url: string }>; versions: number[]; published: Published[] }> {
+  const r = await loadRun(api, a.projectId, a.runId);
+  const c = await api.config<{ publishTargets?: unknown }>().catch(() => undefined);
+  return {
+    targets: targetsOf(c?.publishTargets).map((t) => ({ name: t.name, url: t.url })),
+    // Only a demo G1 approved goes out (D-438).
+    versions: isSample(r.id)
+      ? []
+      : demoVersions(r)
+          .filter((v) => v.status === "approved" || v.status === "published")
+          .map((v) => v.version),
+    published: r.published ?? [],
+  };
+}
+
+async function demoFolderOf(
+  api: AddonHostApi,
+  r: Run,
+  version: number,
+): Promise<{ dir: string; entry: string }> {
+  const v = demoVersions(r).find((d) => d.version === version);
+  const file = v ? outputPath(api, r, v.path) : undefined;
+  if (!v || !file || !(await exists(file))) throw new Error(`There is no demo v${version}`);
+  return { dir: dirname(file), entry: basename(file) };
+}
+
+async function textFiles(dir: string, max = 200): Promise<string[]> {
+  const out: string[] = [];
+  const walk = async (d: string) => {
+    for (const e of await readdir(d, { withFileTypes: true }).catch(() => [])) {
+      if (out.length >= max) return;
+      const p = join(d, e.name);
+      if (e.isDirectory()) await walk(p);
+      else if (/\.(html?|js|mjs|json|txt|svg)$/i.test(e.name)) out.push(p);
+    }
+  };
+  await walk(dir);
+  return out;
+}
+
+/**
+ * The pre-publish scan (D-470): real-looking e-mail addresses, phone numbers and the product's real
+ * names (`.jig/factory/kit/real-names.txt`) in the demo version's files. Any finding blocks Publish.
+ */
+export async function publishScan(
+  a: RunArgs & { version: number },
+  api: AddonHostApi,
+): Promise<{ hits: RealDataHit[]; files: number; names: number }> {
+  const r = await loadRun(api, a.projectId, a.runId);
+  const { dir } = await demoFolderOf(api, r, a.version);
+  const lists = [
+    r.repo && join(r.repo, ".jig", "factory", "kit", "real-names.txt"),
+    runFolder(r) && join(runFolder(r) as string, "kit", "real-names.txt"),
+  ].filter((x): x is string => !!x);
+  const realNames = [
+    ...new Set(
+      (await Promise.all(lists.map((f) => readFile(f, "utf8").catch(() => "")))).flatMap((t) =>
+        parseNames(t),
+      ),
+    ),
+  ];
+  const files = await textFiles(dir);
+  const hits: RealDataHit[] = [];
+  for (const f of files) {
+    const raw = await readFile(f, "utf8").catch(() => "");
+    const text = /\.html?$/i.test(f) ? demoText(raw) : raw;
+    for (const h of scanRealData(text, { realNames }))
+      if (!hits.some((x) => x.kind === h.kind && x.value === h.value)) hits.push(h);
+  }
+  return { hits, files: files.length, names: realNames.length };
+}
+
+/** A site's mirror (D-470): every demo on it, deployed together. */
+const mirrorOf = (api: AddonHostApi, target: string) =>
+  join(api.addon.dataDir, "publish", target.replace(/[^\w.-]+/g, "-"));
+
+async function deploy(api: AddonHostApi, t: PublishTarget): Promise<void> {
+  const res = await api.exec("npx", deployArgs(mirrorOf(api, t.name), t), { timeoutMs: 15 * 60_000 });
+  if (res.code !== 0)
+    throw new Error(
+      `Couldn't deploy to ${t.name}: ${(res.stderr || res.stdout).trim().split("\n").slice(-3).join(" ") || `exit ${res.code}`}`,
+    );
+}
+
+/**
+ * Publish a demo version (D-438, D-470): a person's click, after the scan found nothing. A copy on
+ * this computer, or on an Azure Static Web Apps target from settings; the page ends itself after
+ * `days`, and can carry a bar for the customer to confirm by e-mail.
+ */
+export async function publish(
+  a: RunArgs & { version: number; where: string; days: number; confirmTo?: string },
+  api: AddonHostApi,
+): Promise<Published> {
+  const r0 = await loadRun(api, a.projectId, a.runId);
+  if (isSample(r0.id)) throw new Error("A sample run's demo can't be published");
+  const info = await publishInfo(a, api);
+  if (!info.versions.includes(a.version)) throw new Error(`Demo v${a.version} isn't approved (G1) yet`);
+  if (!PUBLISH_DAYS.includes(a.days as (typeof PUBLISH_DAYS)[number]))
+    throw new Error("Pick 7, 30 or 90 days");
+  const confirmTo = a.confirmTo?.trim() || undefined;
+  if (confirmTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(confirmTo))
+    throw new Error("That e-mail address doesn't look right");
+  const scan = await publishScan(a, api);
+  if (scan.hits.length)
+    throw new Error(`The demo has real-looking data (${scan.hits.map((h) => h.value).join(", ")})`);
+  const c = await api.config<{ publishTargets?: unknown }>().catch(() => undefined);
+  const target = a.where === LOCAL ? undefined : targetsOf(c?.publishTargets).find((t) => t.name === a.where);
+  if (a.where !== LOCAL && !target) throw new Error(`There is no publish target "${a.where}"`);
+  const { dir, entry } = await demoFolderOf(api, r0, a.version);
+  const at = new Date().toISOString();
+  const until = untilOf(a.days, Date.parse(at));
+  const dest = target
+    ? join(mirrorOf(api, target.name), sitePath(r0.id, a.version))
+    : join(api.addon.dataDir, "published", `${r0.id}-v${a.version}`);
+  await rm(dest, { recursive: true, force: true });
+  await mkdir(dirname(dest), { recursive: true });
+  await cp(dir, dest, { recursive: true });
+  const page = join(dest, entry);
+  await writeFile(
+    page,
+    publishHtml(await readFile(page, "utf8"), {
+      title: `${r0.title} · demo v${a.version}`,
+      until,
+      confirmTo,
+    }),
+    "utf8",
+  );
+  if (target) await deploy(api, target);
+  const out: Published = {
+    id: `p${Date.now().toString(36)}`,
+    version: a.version,
+    where: target ? target.name : LOCAL,
+    ...(target
+      ? { url: `${target.url}/${sitePath(r0.id, a.version)}/${entry === "index.html" ? "" : entry}` }
+      : { path: page }),
+    at,
+    until,
+    ...(confirmTo ? { confirmTo } : {}),
+  };
+  await serial(async () => {
+    let r = await loadRun(api, a.projectId, a.runId);
+    const demo = r.outputs.find(
+      (o) =>
+        o.kind === "demo" &&
+        o.status === "approved" &&
+        demoVersions({ outputs: [o] })[0]?.version === a.version,
+    );
+    if (demo) r = moveOutput(r, demo.id, "published", { by: ME, at, note: out.url ?? "this computer" });
+    await save(api, { ...r, published: [...(r.published ?? []), out] });
+  });
+  await log(api, r0, {
+    kind: "decision",
+    text: `Demo v${a.version} published ${target ? `to ${out.url}` : `on this computer (${page})`} until ${until.slice(0, 10)}${confirmTo ? `, answers to ${confirmTo}` : ""}`,
+  });
+  return out;
+}
+
+/** Take a published copy down (D-470): the file goes, a site is deployed without it. A person's click. */
+export async function takeDown(a: RunArgs & { id: string }, api: AddonHostApi): Promise<Run> {
+  const r0 = await loadRun(api, a.projectId, a.runId);
+  const p = r0.published?.find((x) => x.id === a.id);
+  if (!p || p.takenDown) throw new Error("That copy isn't published");
+  if (p.where === LOCAL) {
+    if (p.path) await rm(dirname(p.path), { recursive: true, force: true });
+  } else {
+    const c = await api.config<{ publishTargets?: unknown }>().catch(() => undefined);
+    const t = targetsOf(c?.publishTargets).find((x) => x.name === p.where);
+    if (!t) throw new Error(`The publish target "${p.where}" is gone from Settings: take it down in Azure`);
+    await rm(join(mirrorOf(api, t.name), sitePath(r0.id, p.version)), { recursive: true, force: true });
+    await deploy(api, t);
+  }
+  const at = new Date().toISOString();
+  const r = await serial(async () => {
+    const r = await loadRun(api, a.projectId, a.runId);
+    const next = {
+      ...r,
+      published: (r.published ?? []).map((x) => (x.id === a.id ? { ...x, takenDown: at } : x)),
+    };
+    await save(api, next);
+    return next;
+  });
+  await log(api, r0, {
+    kind: "decision",
+    text: `Demo v${p.version} taken down from ${p.url ?? "this computer"}`,
+  });
+  return r;
 }
 
 /** A new brand's direction boards for GD (D-462), with their files. */

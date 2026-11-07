@@ -31,6 +31,10 @@ data (D-442).
   screenshot for Demo review) with **Approve**, **Ask for changes** (write what to change as the
   reply) and **Open in Jig**; a stage's question with **Answer**; a stuck or finished run too. Once
   decided anywhere, the card says how and loses its buttons (D-468).
+- **Publish demo** (⋯ on a run, once G1 approved a demo): on this computer, or an Azure Static Web
+  Apps site from Settings → Jig factory → Publish targets; for 7, 30 or 90 days (the page ends itself
+  after); optionally with a bar where the customer confirms by e-mail. Real-looking e-mail addresses,
+  phone numbers or listed real names block it. The run's **Published** list takes a copy down (D-470).
 - **Sample runs:** ⋯ → Load sample runs (on the Floor, the Runs view or the top bar's menu) adds six
   sample runs to the active project, one or more in every lane; ⋯ → Remove sample runs takes them
   away. Their files live in the add-on's data folder, never in a repository.

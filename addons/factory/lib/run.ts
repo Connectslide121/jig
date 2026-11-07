@@ -1,3 +1,4 @@
+import type { Published } from "./publish";
 /**
  * Jig factory's data model and its transitions (docs/plan/28-factory/architecture.md → Data model).
  * Every change to a run is a pure function here, so the Conductor (host.ts) stays a thin loop and the
@@ -56,6 +57,8 @@ export interface Run {
   demoPage?: string;
   /** Its cards on your phone (D-468, `lib/phone.ts`): card key (`gate:G1`, `ask:<stage>`…) → message id. */
   phone?: Record<string, string>;
+  /** Copies of the demo published outside Jig (D-470, `lib/publish.ts`), taken down ones included. */
+  published?: Published[];
 }
 
 export interface RunPlan {
@@ -485,6 +488,12 @@ export function timeline(run: Run, label: (stage: StageRun) => string = (s) => s
   for (const o of run.outputs) {
     for (const h of o.history.slice(1))
       events.push({ at: h.at, kind: "output", text: `${outputName(o)} ${h.status} by ${who(h.by)}` });
+  }
+  for (const p of run.published ?? []) {
+    const where = p.url ?? "this computer";
+    events.push({ at: p.at, kind: "output", text: `Demo v${p.version} published to ${where}` });
+    if (p.takenDown)
+      events.push({ at: p.takenDown, kind: "output", text: `Demo v${p.version} taken down from ${where}` });
   }
   return events.sort((a, b) => a.at.localeCompare(b.at));
 }

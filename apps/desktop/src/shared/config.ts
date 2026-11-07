@@ -365,6 +365,21 @@ export const ConfigSchema = z.object({
        * name in Claude Code's MCP list, and the tools to use; empty = the course stays Markdown.
        */
       elearning: z.object({ server: z.string().default(""), tools: z.string().default("") }).prefault({}),
+      /**
+       * Azure Static Web Apps sites a demo can be published to (D-470): Jig deploys to them with the
+       * Static Web Apps CLI and the user's az login. Runs a program, so it's protected.
+       */
+      publishTargets: z
+        .array(
+          z.object({
+            name: z.string(),
+            app: z.string(),
+            resourceGroup: z.string(),
+            subscription: z.string().optional(),
+            url: z.string(),
+          }),
+        )
+        .default([]),
     })
     .prefault({}),
   /** Motion, videos made from HTML (D-453, D-454). */
@@ -467,7 +482,8 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
  * program runs as Claude Code, the credentials programs run with (the Azure tenant, D-282), shell
  * commands Jig runs (updates), where add-on code comes from (the gallery's sources), and what leaves
  * this computer for your phone (D-350),
- * the demo kit Jig factory runs npm in (D-443), and the FFmpeg Motion runs (D-454). D-077.
+ * the demo kit Jig factory runs npm in (D-443) and the sites it deploys demos to (D-470), and the FFmpeg
+ * Motion runs (D-454). D-077.
  */
 export const PROTECTED_SETTINGS = [
   "ai",
@@ -494,6 +510,7 @@ export const PROTECTED_SETTINGS = [
   "updates",
   "addonGallery",
   "factory.demoKitPath",
+  "factory.publishTargets",
   "motion.ffmpegPath",
 ] as const;
 

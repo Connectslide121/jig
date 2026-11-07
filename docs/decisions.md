@@ -8358,3 +8358,37 @@ D-435 says what: a card per gate a person owns on the product's board, polled. T
   the run forgets the card. GD (picking one of three directions) stays in Jig: no card.
 - **Failures:** the Boards add-on missing, az signed out or another tenant: the run's timeline says so
   and the run's cards are tried again after five minutes.
+
+## D-470: Publish a demo: a local copy or an Azure Static Web Apps site, an expiry in the page, blocked by real data
+
+- Status: accepted.
+- **Who:** Claude, on my own (phase 28 session 6, Jon away; D-438 decided that Publish asks where and for how long every time).
+
+How Publish (D-438) works:
+
+- **Where:** "This computer only" copies the demo version's folder to `published/<run>-v<n>/` in the
+  factory's data folder and shows it in its folder, for you to send yourself. Or a **publish target**
+  from `factory.publishTargets` (Settings → Jig factory): an Azure Static Web Apps site you made
+  (name, app, resource group, optional subscription, address). Jig keeps a mirror of each site in the
+  data folder (`publish/<target>/`), adds the version at `<run>/v<n>/` and deploys the whole mirror
+  with the Static Web Apps CLI (`npx @azure/static-web-apps-cli@<pinned> deploy … --env production`),
+  which signs in through your `az` login. Jig never reads or stores the site's deployment token, and
+  never creates or deletes Azure resources. The setting is protected (it runs deploys).
+- **For how long:** 7, 30 or 90 days (30 by default). The end date is written into the page: after it,
+  the page replaces itself with "this demo … has ended", so a copy stops showing even where Jig can't
+  take it down. **Take down** (a person's click in the run) removes the copy (and redeploys the site).
+- **Customer confirm page:** optional; an e-mail address to answer to. The page gets a bar at the
+  bottom, "Is this what you wanted?", with "Yes, this is it" / "Not quite…" that open an e-mail to
+  that address. No server, no data collected by Jig.
+- **The pre-publish scan** mirrors the demo kit's real-data check (`scripts/lib/checks.ts`):
+  real-looking e-mail addresses (anything but RFC 2606 names and the invented companies), phone
+  numbers (9–15 digits) and the names in the product's `.jig/factory/kit/real-names.txt`, in the
+  demo's visible text, attributes and script strings. Any finding disables Publish; the fix is a
+  change request to the demo, not an override.
+- Publishing records `Run.published` (version, where, address or file, when, until, confirm address,
+  taken down) and moves the version's demo output to `published` (only after G1 approved it). The run
+  goes on: G5 is still the gate for launching the built product.
+
+Why: D-438 left the mechanism open; Static Web Apps is the simplest static host on the user's own
+Azure (their `az`, as the Boards and Teams relay do), and a page that ends itself is the only expiry
+that holds once a link has been sent.

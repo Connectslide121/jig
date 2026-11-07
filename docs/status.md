@@ -1,3 +1,13 @@
+Publishing a Jig factory demo (2026-11-13, phase 28 session 6, D-470): once G1 approved a demo, a
+run's ⋯ → **Publish demo…** asks where (**This computer only**, or a site from **Settings → Jig
+factory → Publish targets**: an Azure Static Web Apps app you made), for how long (7/30/90 days: the
+page says it has ended after that) and whether the customer confirms it (a bar "Is this what you
+wanted?" that e-mails you the answer). Real-looking e-mail addresses, phone numbers or names from the
+product's `.jig/factory/kit/real-names.txt` keep Publish disabled. The run's **Published** list opens
+a copy or takes it down. Gate cards also come to your phone (Settings → Phone) and to a colleague's
+Azure DevOps board (the Plan step's "Their cards on"). Needs a real machine: a real Static Web Apps
+deploy (`npx @azure/static-web-apps-cli` with your az sign-in), a real board, a real phone.
+
 Jig factory's pack (2026-11-12, phase 28 session 5, D-466, D-467): once a demo is approved, the run
 writes the pack you ticked in its plan: spec, user stories, test cases, release notes, a customer
 letter (also PDF), pitch, deck and one-pager (HTML from the demo kit printed to PDF, and an image

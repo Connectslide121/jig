@@ -54,6 +54,16 @@ One loop, serialised (`serial`), driven by the `tick` watcher (every minute and 
   rest is the note, decided by `board:<name>`), the card in the board's done column approves. Waiting
   again after changes comments on the same card; decided in Jig or stopped comments and forgets it
   (`GateState.card`). GD stays in Jig. Errors: in the timeline, tried again after five minutes.
+- **Publish** (D-438, D-470, `lib/publish.ts`, `publish.tsx`): ⋯ → Publish demo… on a demo version
+  G1 approved. Where: this computer (a copy of the version's folder in `published/<run>-v<n>/` in the
+  data folder) or a `factory.publishTargets` site (the site's mirror in `publish/<target>/`, the version
+  at `<run>/v<n>/`, the whole mirror deployed with the pinned Static Web Apps CLI through `npx` and the
+  user's az; no deployment token is read). For 7, 30 or 90 days: the page carries a script that
+  replaces it with "has ended" after that date. Optionally a fixed bar "Is this what you wanted?" with
+  e-mail links to the address given. The pre-publish scan (e-mail, phone, the names in
+  `.jig/factory/kit/real-names.txt`, in the demo's text, attributes and script strings) disables
+  Publish on any finding. `Run.published` keeps each copy; the Run tab's **Published** list opens it
+  and takes it down (removes it, redeploys the site).
 
 ## Host methods
 
@@ -79,6 +89,10 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `storyCards` | `{projectId, runId, outputId, boardId, type?}` | one card per `## ` story of a stories output, through the Boards add-on's `createCard`; only on your click |
 | `review` | `{projectId, runId}` | the demo's versions for Demo review: entry file (absolute), change log, scorecard (`pass`, `score`, eight axes, fixes) |
 | `directions` | `{projectId, runId}` | GD's direction boards: `{id, name, file}` |
+| `publishInfo` | `{projectId, runId}` | the publish targets (name, address), the versions that may go out (G1 approved) and `published` |
+| `publishScan` | `{projectId, runId, version}` | `{hits: [{kind: "email" \| "phone" \| "name", value}], files, names}`: the pre-publish scan |
+| `publish` | `{projectId, runId, version, where: "local" \| <target>, days: 7 \| 30 \| 90, confirmTo?}` | publishes (scan again first; refuses on findings), records `Run.published`, moves the demo output to `published` |
+| `takeDown` | `{projectId, runId, id}` | removes a published copy (and redeploys its site); marks it `takenDown` |
 | `showInPages` | `{projectId, runId, version}` | publishes that demo version through the Pages add-on's `publish` export; the run keeps one page (`demoPage`) and each version updates it |
 | `answer` | `{projectId, runId, stageId, answers? \| reply?}` | answers the interview's question cards, or a stage's `factory_ask` |
 | `rerun` | `{projectId, runId, stageId, note?}` | the stage again as its next version; what follows waits again |

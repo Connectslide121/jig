@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 6, Reach — in progress (phone API, the factory's phone cards, approvals by others done, D-468, D-469; next: Publish).
+- **Current session:** 7, Tracks 2 and 3 — not started (session 6 done: phone API and cards, approvals by others, Publish, D-468…D-470).
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -120,6 +120,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   add-on, storyboard to MP4 through a pinned HyperFrames (D-463). Session M2: voice, captions, music,
   captures with marks (D-464). Session M3: chat tools, Write with Jig, style sources,
   exports (D-465). Session 5: the pack, its formats, review per output, trust (D-466, D-467).
+  Session 6: phone cards, approvals on boards, Publish (D-468…D-470).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -132,8 +133,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 6: the core phone API for add-ons first, then the factory's
-  phone cards, approvals by others through Boards, Publish. Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session 7: change requests (track 2), then tenders (track 3). Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -434,7 +434,7 @@ files, Edit / Reject… / Approve; stories become board cards only on **Add as b
 per kind under the inbox. e2e: `factory.spec.ts` → "the pack in the inbox…". Not done: none; the
 demo kit's print templates are on `demo-kit` (08e73fa6).
 
-### 6. Reach: phone buttons, other people, publishing — in progress
+### 6. Reach: phone buttons, other people, publishing — done
 
 - [x] Core: phone API for add-ons (D-434, D-468, [architecture.md](28-factory/architecture.md) → Phone
       buttons): `phone` permission, `api.phone.send/update`, `phone.action` events, Telegram and
@@ -447,11 +447,25 @@ demo kit's print templates are on `demo-kit` (08e73fa6).
       add-on, picked on the Plan step), polled every two minutes: done column approves, a "changes:"
       comment asks for changes; Boards exports `cardStatus`, `commentCard`. Unit-tested with a fake
       Boards add-on; not yet tried on a real Azure DevOps board.
-- [ ] Publish (D-438): asks where (local only / Azure Static Web Apps target from settings) and for
-      how long, runs the pre-publish scan, then the human-confirmed deploy; a customer confirm page.
+- [x] Publish (D-438, D-470): asks where (local only / Azure Static Web Apps target from settings) and for
+      how long, runs the pre-publish scan, then the human-confirmed deploy; a customer confirm page
+      (a bar on the published page, answers by e-mail). `lib/publish.ts`, `publish.tsx`,
+      `factory.publishTargets`; not yet deployed to a real Static Web Apps site.
 
 **Done when:** you approve a demo from your phone; a colleague approves the sales material from
 their board.
+
+**Session 6 notes (2026-11-13).** Core `api.phone` for add-ons (D-468: `phone` permission,
+`send`/`update`, `phone.action`, Telegram and Teams, reply-with-text buttons). The factory sends gate,
+question, stuck and done cards (`lib/phone.ts`), settled when decided anywhere. Approvals by others
+(D-469): a card per person-owned gate on the run's approvals board through the Boards add-on's new
+`cardStatus`/`commentCard` exports, polled every two minutes from `tick`. Publish (D-470): ⋯ →
+Publish demo…, local copy or Static Web Apps site through the pinned SWA CLI and the user's az, an
+end date in the page, a customer confirm bar, blocked by the real-data scan; Take down in the Run
+tab's Published list. e2e: `factory.spec.ts` → "approve a gate and ask for changes from the phone",
+"pick a direction at GD…" (publishes v3 locally and takes it down), "Settings → Jig factory: add a
+publish target…". Needs a real machine: Telegram/Teams cards on a phone, a real Azure DevOps board,
+a real Static Web Apps deploy.
 
 ### 7. Tracks 2 and 3: change requests and tenders — not started
 

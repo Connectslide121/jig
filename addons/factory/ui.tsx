@@ -65,6 +65,7 @@ import {
   useRuns,
 } from "./parts";
 import { PlanDialog } from "./plan";
+import { PublishDialog, PublishedList } from "./publish";
 import { GateSheet, InspectorDialog, StageActionDialog, StageSheet, StartDialog } from "./sheets";
 import newIdea from "./tracks/new-idea.json";
 
@@ -459,6 +460,7 @@ export function RunTab({ ctx, params }: AddonTabProps) {
   const [action, setAction] = useState<{ mode: "rerun" | "fork"; stageId?: string }>();
   const [inspecting, setInspecting] = useState(false);
   const [planning, setPlanning] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const { data: brief } = useHostCall<BriefDoc | null>("briefDoc", { projectId, runId }, { skip: !planning });
   // A modal closes after its animation: clear only the sheet it was, not one opened since.
   const closeSheet = (id: string) => setSheet((s) => (s?.id === id ? undefined : s));
@@ -526,6 +528,15 @@ export function RunTab({ ctx, params }: AddonTabProps) {
                   icon: "git-fork",
                   testId: "factory-run-fork",
                   onSelect: () => setAction({ mode: "fork" }),
+                },
+                {
+                  label: "Publish demo…",
+                  icon: "upload",
+                  testId: "factory-run-publish",
+                  disabled:
+                    isSample(run.id) ||
+                    !demoVersions(run).some((v) => v.status === "approved" || v.status === "published"),
+                  onSelect: () => setPublishing(true),
                 },
                 { separator: true },
                 {
@@ -599,6 +610,7 @@ export function RunTab({ ctx, params }: AddonTabProps) {
               </li>
             ))}
           </ol>
+          <PublishedList ctx={ctx} run={run} />
           <SectionTitle>Chats</SectionTitle>
           <ul className="flex flex-col" data-testid="factory-chats">
             {run.stages
@@ -660,6 +672,7 @@ export function RunTab({ ctx, params }: AddonTabProps) {
       {planning && (
         <PlanDialog ctx={ctx} run={run} brief={brief ?? null} onClose={() => setPlanning(false)} />
       )}
+      {publishing && <PublishDialog ctx={ctx} run={run} onClose={() => setPublishing(false)} />}
     </div>
   );
 }
