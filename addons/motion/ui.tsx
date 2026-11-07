@@ -1,4 +1,4 @@
-import type { AddonTabProps, AddonUiContext } from "@jig/sdk";
+import type { AddonCaptureStep, AddonTabProps, AddonUiContext } from "@jig/sdk";
 import {
   Badge,
   Button,
@@ -31,6 +31,7 @@ import {
   Play,
   Plus,
   Quote,
+  Search,
   Type,
   X,
 } from "lucide-react";
@@ -44,11 +45,18 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { MotionStatus, VideoDetail, VideoStatus, VideoSummary } from "./host";
+import type { MotionStatus, Take, VideoDetail, VideoStatus, VideoSummary } from "./host";
+import { musicFile } from "./lib/audio";
 import type { MotionStyle } from "./lib/compose";
+import { captureScene } from "./lib/marks";
+import { STEP_DO, STEP_HINT, type StepDo, type StepRow, stepNames, toSteps } from "./lib/steps";
 import {
   ASPECTS,
   clock,
+  freshVoice,
+  LIMITS,
+  MARK_KINDS,
+  type Mark,
   MOTIONS,
   RESOLUTIONS,
   SCENE_TYPES,
@@ -61,6 +69,7 @@ import {
   type VideoSettings,
 } from "./lib/storyboard";
 import type { Template } from "./lib/templates";
+import { LANGUAGE_LABEL, VOICES } from "./lib/voices";
 
 // ── shared bits ──────────────────────────────────────────────────────────────
 
@@ -460,11 +469,12 @@ export function VideoTab({ ctx, params, tabId }: AddonTabProps) {
   const { data: video, error, reload } = useHostCall<VideoDetail>("get", { projectId, id });
   const [installNeeds, setInstallNeeds] = useState<MotionStatus>();
   const [editing, setEditing] = useState<number>();
+  const [capturing, setCapturing] = useState(false);
   const [pane, setPane] = useState<"storyboard" | "settings">("storyboard");
   const [failure, setFailure] = useState<string>();
   const frame = useRef<{ seek: (t: number) => void } | null>(null);
   const [root, width] = useWidth();
-  const wide = width >= 900;
+  const wide = width >= 960;
   useProgressFeed();
   useAddonEvent("changed", (p) => {
     if ((p as { id?: string }).id === id) void reload();
@@ -512,6 +522,7 @@ export function VideoTab({ ctx, params, tabId }: AddonTabProps) {
         setEditing(i);
         frame.current?.seek((slots[i]?.start ?? 0) + 0.8);
       }}
+      onCapture={() => setCapturing(true)}
       onChange={(storyboard) => void save({ storyboard })}
     />
   );
@@ -533,7 +544,7 @@ export function VideoTab({ ctx, params, tabId }: AddonTabProps) {
         <div className="flex min-h-0 flex-1 border-t border-line">
           <div className="flex w-64 shrink-0 flex-col border-r border-line">{storyboard}</div>
           {center}
-          <div className="w-72 shrink-0 overflow-y-auto border-l border-line">{settings}</div>
+          <div className="w-80 shrink-0 overflow-y-auto border-l border-line">{settings}</div>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line">
@@ -564,6 +575,21 @@ export function VideoTab({ ctx, params, tabId }: AddonTabProps) {
           onSave={async (storyboard) => {
             await save({ storyboard });
             setEditing(undefined);
+          }}
+        />
+      )}
+      {capturing && (
+        <CaptureDialog
+          ctx={ctx}
+          video={video}
+          onClose={() => setCapturing(false)}
+          onNeeds={(needs) => {
+            setCapturing(false);
+            setInstallNeeds(needs);
+          }}
+          onKeep={async (scene) => {
+            await save({ storyboard: { ...video.storyboard, scenes: [...video.storyboard.scenes, scene] } });
+            setCapturing(false);
           }}
         />
       )}
@@ -677,10 +703,12 @@ const slug = (s: string) =>
 function StoryboardList({
   video,
   onOpen,
+  onCapture,
   onChange,
 }: {
   video: VideoDetail;
   onOpen: (index: number) => void;
+  onCapture: () => void;
   onChange: (storyboard: Storyboard) => void;
 }) {
   const ctx = useAddon();
@@ -764,7 +792,11 @@ function StoryboardList({
           disabled={scenes.length >= 40}
           onClick={(e) =>
             ctx.menu(
-              SCENE_TYPES.map((t) => ({ label: SCENE_LABEL[t], onSelect: () => add(t) })),
+              [
+                ...SCENE_TYPES.map((t) => ({ label: SCENE_LABEL[t], onSelect: () => add(t) })),
+                { separator: true as const },
+                { label: "Record a capture…", icon: "circle-dot", onSelect: onCapture },
+              ],
               e.currentTarget,
             )
           }
@@ -779,7 +811,7 @@ function StoryboardList({
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex h-8 items-center gap-2 text-sm">
-      <span className="w-20 shrink-0 text-muted">{label}</span>
+      <span className="w-24 shrink-0 truncate text-muted">{label}</span>
       <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
     </div>
   );
@@ -887,6 +919,29 @@ function SettingsPanel({
           <option value="top">Top</option>
         </Select>
       </Row>
+      <Row label="Caption size">
+        <Select
+          className="min-w-0 flex-1"
+          value={s.captions.size}
+          disabled={!s.captions.on}
+          data-testid="motion-caption-size"
+          onChange={(e) =>
+            onChange({
+              captions: { ...s.captions, size: e.target.value as VideoSettings["captions"]["size"] },
+            })
+          }
+        >
+          <option value="small">Small</option>
+          <option value="medium">Medium</option>
+          <option value="large">Large</option>
+        </Select>
+        <Switch
+          checked={s.captions.background}
+          label="Caption background"
+          disabled={!s.captions.on}
+          onChange={(background) => onChange({ captions: { ...s.captions, background } })}
+        />
+      </Row>
       <Row label="Logo">
         <Select
           className="min-w-0 flex-1"
@@ -909,7 +964,177 @@ function SettingsPanel({
           onBlur={() => endText !== s.brand.endText && onChange({ brand: { ...s.brand, endText } })}
         />
       </Row>
+      <SoundSettings video={video} onChange={onChange} />
     </div>
+  );
+}
+
+/** Voice and music (M2): a natural voice spoken on this computer, and a track mixed under it. */
+function SoundSettings({
+  video,
+  onChange,
+}: {
+  video: VideoDetail;
+  onChange: (s: Partial<VideoSettings>) => void;
+}) {
+  const ctx = useAddon();
+  const s = video.settings;
+  const { data: library } = useHostCall<{ folder: string; tracks: Array<{ name: string; path: string }> }>(
+    "tracks",
+  );
+  const [speaking, setSpeaking] = useState<{ done: number; total: number }>();
+  const [failure, setFailure] = useState<string>();
+  const [source, setSource] = useState(s.music.source);
+  useEffect(() => setSource(s.music.source), [s.music.source]);
+  useAddonEvent("speaking", (p) => {
+    const e = p as { id: string; done: number; total: number };
+    if (e.id === video.id) setSpeaking(e.done < e.total ? { done: e.done, total: e.total } : undefined);
+  });
+  const scripted = video.storyboard.scenes.filter((sc) => sc.voice?.trim());
+  const unspoken = s.voice ? scripted.filter((sc) => !freshVoice(sc, s)).length : 0;
+  const speak = async () => {
+    setFailure(undefined);
+    setSpeaking({ done: 0, total: unspoken });
+    try {
+      await ctx.host.call("speak", { projectId: video.projectId, id: video.id });
+    } catch (e) {
+      setFailure(message(e));
+    } finally {
+      setSpeaking(undefined);
+    }
+  };
+  const music = async (path: string, src?: string) => {
+    setFailure(undefined);
+    try {
+      await ctx.host.call("setMusic", { projectId: video.projectId, id: video.id, path, source: src });
+    } catch (e) {
+      setFailure(message(e));
+    }
+  };
+  const fromLibrary = library?.tracks.find((t) => musicFile(t.path) === s.music.track);
+  const ownTrack = !!s.music.track && !fromLibrary;
+  return (
+    <>
+      <div className="mt-3">
+        <SectionTitle>Sound</SectionTitle>
+      </div>
+      <Row label="Voice">
+        <Select
+          className="min-w-0 flex-1"
+          value={s.voice}
+          data-testid="motion-voice"
+          onChange={(e) => onChange({ voice: e.target.value })}
+        >
+          <option value="">No voice</option>
+          {Object.entries(LANGUAGE_LABEL).map(([code, label]) => (
+            <optgroup key={code} label={label}>
+              {VOICES.filter((v) => v.language === code).map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </Select>
+      </Row>
+      <Row label="Speed">
+        <Select
+          className="min-w-0 flex-1"
+          value={String(s.voiceSpeed)}
+          disabled={!s.voice}
+          aria-label="Voice speed"
+          onChange={(e) => onChange({ voiceSpeed: Number(e.target.value) })}
+        >
+          {[0.8, 0.9, 1, 1.1, 1.2].map((x) => (
+            <option key={x} value={String(x)}>
+              {x === 1 ? "Normal" : `${x}×`}
+            </option>
+          ))}
+        </Select>
+      </Row>
+      <Row label="">
+        <span
+          className="min-w-0 flex-1 truncate text-xs text-muted tabular-nums"
+          data-testid="motion-voice-state"
+        >
+          {speaking
+            ? `Speaking ${speaking.done + 1} of ${speaking.total}…`
+            : !s.voice
+              ? "No voice chosen"
+              : !scripted.length
+                ? "No scripts yet"
+                : unspoken
+                  ? `${unspoken} of ${scripted.length} not spoken`
+                  : `All ${scripted.length} spoken`}
+        </span>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={!unspoken || !!speaking}
+          data-testid="motion-speak"
+          onClick={() => void speak()}
+        >
+          Speak
+        </Button>
+      </Row>
+      <Row label="Music">
+        <Select
+          className="min-w-0 flex-1"
+          value={ownTrack ? "own" : (fromLibrary?.path ?? "")}
+          data-testid="motion-music"
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "pick")
+              void ctx.attachments
+                .pick({ title: "A music track" })
+                .then((files) => files[0] && music(files[0].path));
+            else if (v !== "own") void music(v);
+          }}
+        >
+          <option value="">No music</option>
+          {library?.tracks.map((t) => (
+            <option key={t.path} value={t.path}>
+              {t.name}
+            </option>
+          ))}
+          {ownTrack && <option value="own">{s.music.track.replace(/^media\/music-/, "")}</option>}
+          <option value="pick">Choose a file…</option>
+        </Select>
+        <IconButton
+          icon={Search}
+          label="Find music (Pixabay, free to use)"
+          size="sm"
+          onClick={() => ctx.openExternal("https://pixabay.com/music/")}
+        />
+      </Row>
+      <Row label="Volume">
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={s.music.volume}
+          disabled={!s.music.track}
+          aria-label="Music volume"
+          className="min-w-0 flex-1 accent-accent"
+          onChange={(e) => onChange({ music: { ...s.music, volume: Number(e.target.value) } })}
+        />
+        <span className="w-9 shrink-0 text-right text-xs text-muted tabular-nums">
+          {Math.round(s.music.volume * 100)}%
+        </span>
+      </Row>
+      <Row label="Source">
+        <Input
+          className="min-w-0 flex-1"
+          value={source}
+          disabled={!s.music.track}
+          placeholder="Where the track is from (its licence)"
+          onChange={(e) => setSource(e.target.value)}
+          onBlur={() => source !== s.music.source && onChange({ music: { ...s.music, source } })}
+        />
+      </Row>
+      <div className="h-5 truncate text-xs text-danger">{failure}</div>
+    </>
   );
 }
 
@@ -1091,6 +1316,7 @@ function SceneSheet({
     if (!clean.text) delete clean.text;
     if (!clean.voice) delete clean.voice;
     if (!clean.bullets?.length) delete clean.bullets;
+    if (!clean.marks?.length) delete clean.marks;
     scenes[index] = clean;
     try {
       await onSave({ ...video.storyboard, scenes });
@@ -1173,7 +1399,349 @@ function SceneSheet({
           placeholder="Auto"
           onChange={(e) => set({ duration: e.target.value ? Number(e.target.value) : undefined })}
         />
+        <span className="pt-1 text-muted">Marks</span>
+        <MarksEditor scene={scene} onChange={(marks) => set({ marks })} />
       </div>
+    </Dialog>
+  );
+}
+
+const MARK_LABEL: Record<Mark["kind"], string> = { zoom: "Zoom", highlight: "Highlight", arrow: "Arrow" };
+
+/** A scene's zooms, highlights and arrows (M2): kind, when, and a label; where comes from a capture. */
+function MarksEditor({ scene, onChange }: { scene: Scene; onChange: (marks: Mark[]) => void }) {
+  const marks = scene.marks ?? [];
+  const put = (i: number, change: Partial<Mark>) =>
+    onChange(marks.map((m, j) => (j === i ? { ...m, ...change } : m)));
+  if (!scene.media)
+    return <p className="flex h-7 items-center text-xs text-muted">Marks need a picture or a recording.</p>;
+  return (
+    <div className="flex flex-col gap-1" data-testid="motion-marks">
+      {marks.map((m, i) => (
+        <div key={`${i}-${m.kind}`} className="flex h-7 items-center gap-2" data-testid="motion-mark">
+          <Select
+            className="w-28"
+            value={m.kind}
+            aria-label="Kind of mark"
+            onChange={(e) => put(i, { kind: e.target.value as Mark["kind"] })}
+          >
+            {MARK_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {MARK_LABEL[k]}
+              </option>
+            ))}
+          </Select>
+          <Input
+            type="number"
+            className="w-20"
+            min={0}
+            step={0.1}
+            value={m.at}
+            aria-label="At (seconds)"
+            onChange={(e) => put(i, { at: Math.max(0, Number(e.target.value) || 0) })}
+          />
+          <Input
+            className="min-w-0 flex-1"
+            value={m.label ?? ""}
+            maxLength={80}
+            disabled={m.kind === "zoom"}
+            placeholder={m.kind === "zoom" ? "" : "Label (optional)"}
+            aria-label="Label"
+            onChange={(e) => put(i, { label: e.target.value || undefined })}
+          />
+          <IconButton
+            icon={X}
+            label="Remove mark"
+            size="sm"
+            onClick={() => onChange(marks.filter((_, j) => j !== i))}
+          />
+        </div>
+      ))}
+      <div className="flex h-7 items-center gap-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Plus}
+          disabled={marks.length >= LIMITS.marks}
+          data-testid="motion-mark-add"
+          onClick={() =>
+            onChange([...marks, { kind: "highlight", at: 0.5, hold: 1.6, x: 0.35, y: 0.35, w: 0.3, h: 0.3 }])
+          }
+        >
+          Mark
+        </Button>
+        <span className="text-xs text-muted">
+          Seconds from the scene's start; a capture places them where it acted.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const STEP_LABEL: Record<StepDo, string> = {
+  click: "Click",
+  type: "Type",
+  hover: "Hover",
+  highlight: "Highlight",
+  scroll: "Scroll",
+  wait: "Wait",
+  go: "Go to",
+};
+
+/**
+ * Record a capture (M2, D-464): a page and the steps to take on it, recorded on this computer without
+ * AI. You watch the take, are warned about real-looking data, and keep it as a capture scene or drop it.
+ */
+function CaptureDialog({
+  ctx,
+  video,
+  onClose,
+  onNeeds,
+  onKeep,
+}: {
+  ctx: AddonUiContext;
+  video: VideoDetail;
+  onClose: () => void;
+  onNeeds: (needs: MotionStatus) => void;
+  onKeep: (scene: Scene) => Promise<void>;
+}) {
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("Capture");
+  const [rows, setRows] = useState<StepRow[]>([{ do: "click", target: "", text: "" }]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const [take, setTake] = useState<Take & { steps: AddonCaptureStep[] }>();
+  const [accepted, setAccepted] = useState(false);
+  const takeUrl = useFrameUrl(take ? `${video.dir}/${take.path}` : undefined, take?.path);
+  const put = (i: number, change: Partial<StepRow>) =>
+    setRows((r) => r.map((row, j) => (j === i ? { ...row, ...change } : row)));
+  const drop = () => {
+    if (take)
+      void ctx.host.call("discardMedia", { projectId: video.projectId, id: video.id, path: take.path });
+  };
+  const record = async () => {
+    setError(undefined);
+    if (!/^(https?|file):/i.test(url.trim()))
+      return setError("The address starts with http://, https:// or file://");
+    const parsed = toSteps(rows.filter((r) => r.target.trim() || r.text.trim()));
+    if ("error" in parsed) return setError(parsed.error);
+    setBusy(true);
+    try {
+      const r = await ctx.host.call<Take | { needs: MotionStatus }>("record", {
+        projectId: video.projectId,
+        id: video.id,
+        url: url.trim(),
+        steps: parsed.steps,
+      });
+      if ("needs" in r) onNeeds(r.needs);
+      else {
+        setTake({ ...r, steps: parsed.steps });
+        setAccepted(false);
+      }
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const keep = async () => {
+    if (!take) return;
+    setBusy(true);
+    try {
+      await onKeep(
+        captureScene(
+          take,
+          title.trim() || "Capture",
+          video.storyboard.scenes.map((s) => s.id),
+          stepNames(take.steps),
+        ),
+      );
+    } catch (e) {
+      setError(message(e));
+      setBusy(false);
+    }
+  };
+  const close = () => {
+    drop();
+    onClose();
+  };
+  return (
+    <Dialog
+      open
+      width="lg"
+      onClose={() => !busy && close()}
+      title={take ? "Your capture" : "Record a capture"}
+      testId="motion-capture"
+      footer={
+        take ? (
+          <>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              data-testid="motion-capture-discard"
+              onClick={() => {
+                drop();
+                setTake(undefined);
+              }}
+            >
+              Discard
+            </Button>
+            <Button
+              variant="primary"
+              busy={busy}
+              disabled={take.findings.length > 0 && !accepted}
+              data-testid="motion-capture-keep"
+              onClick={() => void keep()}
+            >
+              Keep as a scene
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" disabled={busy} onClick={close}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              busy={busy}
+              data-testid="motion-capture-record"
+              onClick={() => void record()}
+            >
+              Record
+            </Button>
+          </>
+        )
+      }
+    >
+      {take ? (
+        <div className="flex flex-col gap-3 text-sm">
+          <div className="grid aspect-video w-full place-items-center overflow-hidden rounded-md bg-sunken">
+            {takeUrl ? (
+              // biome-ignore lint/a11y/useMediaCaption: a silent screen recording
+              <video
+                src={takeUrl}
+                controls
+                autoPlay
+                className="h-full w-full"
+                data-testid="motion-capture-video"
+              />
+            ) : (
+              <Spinner center />
+            )}
+          </div>
+          <div className="flex h-5 items-center gap-2 text-xs text-muted tabular-nums">
+            <span className="min-w-0 flex-1 truncate">
+              {clock(take.seconds)} recorded · {take.events.filter((e) => e.box).length} marks from its steps
+            </span>
+            {take.cut && <Badge tone="warning">Cut at the time limit</Badge>}
+          </div>
+          <div className="grid grid-cols-4 *:even:col-span-3 items-center gap-x-3 gap-y-2">
+            <span className="text-muted">Scene title</span>
+            <Input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          {take.findings.length > 0 && (
+            <div
+              className="flex flex-col gap-2 rounded-md border border-warning p-2"
+              data-testid="motion-capture-findings"
+            >
+              <p className="text-fg">This recording seems to show real data:</p>
+              <ul className="flex flex-col gap-0.5 text-xs text-muted">
+                {take.findings.slice(0, 6).map((f) => (
+                  <li key={`${f.kind}-${f.text}`} className="truncate">
+                    {f.kind === "email" ? "Email" : f.kind === "phone" ? "Phone number" : "Name"}: {f.text}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-center gap-2 text-xs">
+                <Switch
+                  checked={accepted}
+                  label="It's made-up sample data, keep it anyway"
+                  onChange={setAccepted}
+                />
+                <span>It's made-up sample data, keep it anyway</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 text-sm">
+          <div className="grid grid-cols-4 *:even:col-span-3 items-center gap-x-3 gap-y-2">
+            <span className="text-muted">Address</span>
+            <Input
+              value={url}
+              placeholder="https://… or file://…"
+              onChange={(e) => setUrl(e.target.value)}
+              data-testid="motion-capture-url"
+            />
+            <span className="text-muted">Scene title</span>
+            <Input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-muted">Steps</span>
+            {rows.map((r, i) => (
+              <div
+                key={`${i}-${rows.length}`}
+                className="flex h-7 items-center gap-2"
+                data-testid="motion-capture-step"
+              >
+                <span className="w-4 shrink-0 text-right text-xs text-hint tabular-nums">{i + 1}</span>
+                <Select
+                  className="w-28"
+                  value={r.do}
+                  aria-label="What to do"
+                  onChange={(e) => put(i, { do: e.target.value as StepDo })}
+                >
+                  {STEP_DO.map((d) => (
+                    <option key={d} value={d}>
+                      {STEP_LABEL[d]}
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  className="min-w-0 flex-1"
+                  value={r.target}
+                  placeholder={STEP_HINT[r.do].target}
+                  aria-label="On what"
+                  onChange={(e) => put(i, { target: e.target.value })}
+                />
+                <Input
+                  className="w-40"
+                  value={r.text}
+                  disabled={!STEP_HINT[r.do].text}
+                  placeholder={STEP_HINT[r.do].text}
+                  aria-label="Text"
+                  onChange={(e) => put(i, { text: e.target.value })}
+                />
+                <IconButton
+                  icon={X}
+                  label="Remove step"
+                  size="sm"
+                  disabled={rows.length === 1}
+                  onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
+                />
+              </div>
+            ))}
+            <div className="flex h-7 items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={Plus}
+                disabled={rows.length >= 40}
+                data-testid="motion-capture-add-step"
+                onClick={() => setRows((r) => [...r, { do: "click", target: "", text: "" }])}
+              >
+                Step
+              </Button>
+              <span className="text-xs text-muted">
+                Recorded on this computer in a hidden window, with a cursor; at most 60 seconds.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+      <p className="mt-2 h-4 truncate text-xs text-danger" data-testid="motion-capture-error">
+        {busy && !take ? <span className="text-muted">Recording…</span> : error}
+      </p>
     </Dialog>
   );
 }

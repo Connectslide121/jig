@@ -1,3 +1,16 @@
+Motion's voice, captions, music and captures (2026-11-11, phase 28 session M2, D-464): in a video's
+tab, Settings → **Sound**: pick a **Voice** (spoken on this computer, the voices of Read aloud) and
+a speed; a scene's **Voice script** is spoken by **Speak** or the next Render, and the scene lasts as
+long as its voice. Captions are burned in (bottom or top, three sizes, with or without a
+background) and every render gets `captions.srt` and `.vtt`. **Music**: a track from the music
+folder or a file, its volume and source; 🔍 opens Pixabay Music; the render ducks it under the voice
+and fades it. **+ Scene → Record a capture…**: an address and steps (click, type, hover, highlight,
+scroll, wait), recorded in a hidden window; watch the take, then **Keep as a scene** (zooms where it
+clicked, highlights where it highlighted) or **Discard**. A take that seems to show real emails,
+phone numbers or names asks you to confirm it's sample data first. A scene's sheet lists its
+**Marks**. Settings → Motion: the voice new videos start with. **Check on your machine:** a real
+voice, a capture of your own app, and a render with voice and music on Windows.
+
 Motion (2026-11-10, phase 28 session M1, D-463): the **clapperboard** in the top bar → **New
 video…** asks a name, a template (Teaser, What's new, Walkthrough) and a format, and opens the
 video's tab: a live preview with play and a scrubber, the storyboard (a scene's row opens its sheet)
@@ -5,7 +18,7 @@ and the settings. **Render** asks once to install HyperFrames (a fixed version) 
 isn't found, into Motion's data folder, then renders one video at a time with progress and Cancel;
 each render is a version with its MP4 and poster. Videos are listed in View → Views → Motion.
 **Settings → Motion**: the FFmpeg folder, the music folder, the format new videos start in. Gaps:
-no voice, captions, music or captures yet (M2), no chat tools (M3). To test on a real machine: a
+no chat tools yet (M3). To test on a real machine: a
 render on Windows (the install from the modal, then Render), and how long it takes.
 
 # Status

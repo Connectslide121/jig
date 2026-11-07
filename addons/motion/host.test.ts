@@ -7,14 +7,18 @@ import {
   addMedia,
   cancel,
   create,
+  discardMedia,
   get,
   install,
   list,
   preview,
   type Renderer,
+  record,
   remove,
   render,
+  setMusic,
   setRenderer,
+  speak,
   status,
   templates,
   update,
@@ -219,5 +223,100 @@ describe("render queue", () => {
     const a = await create({ projectId: P, template: "teaser" }, api);
     await remove({ projectId: P, id: a.id }, api);
     expect(await list({ projectId: P }, api)).toEqual([]);
+  });
+});
+
+describe("voice, music and captures (M2)", () => {
+  const withVoice = async () => {
+    const video = await create({ projectId: P, template: "teaser" }, api);
+    const scenes = video.storyboard.scenes.map((s, i) =>
+      i === 0 ? { ...s, voice: "Swap shifts in one tap." } : s,
+    );
+    return update(
+      {
+        projectId: P,
+        id: video.id,
+        storyboard: { ...video.storyboard, scenes },
+        settings: { voice: "af_heart" },
+      },
+      api,
+    );
+  };
+
+  it("speaks each script once, keeps the measured length, and speaks again after an edit", async () => {
+    const wav = join(root, "say.wav");
+    await writeFile(wav, "RIFF");
+    const say = vi.fn(async () => ({ path: wav, seconds: 1.234 }));
+    (api as unknown as { speech: unknown }).speech = { say };
+    const video = await withVoice();
+    const spoken = await speak({ projectId: P, id: video.id }, api);
+    const first = spoken.storyboard.scenes[0]!;
+    expect(first).toMatchObject({ voiceSeconds: 1.23, voiceFile: expect.stringMatching(/^media\/voice-/) });
+    expect(await readFile(join(spoken.dir, first.voiceFile!), "utf8")).toBe("RIFF");
+    await speak({ projectId: P, id: video.id }, api);
+    expect(say).toHaveBeenCalledTimes(1);
+    const scenes = spoken.storyboard.scenes.map((s, i) =>
+      i === 0 ? { ...s, voice: "Now in two taps." } : s,
+    );
+    const edited = await update(
+      { projectId: P, id: video.id, storyboard: { ...spoken.storyboard, scenes } },
+      api,
+    );
+    expect(edited.storyboard.scenes[0]!.voiceFile).toBeUndefined();
+    await speak({ projectId: P, id: video.id }, api);
+    expect(say).toHaveBeenCalledTimes(2);
+  });
+
+  it("copies a music track into the video and clears it again", async () => {
+    const video = await create({ projectId: P, template: "teaser" }, api);
+    const track = join(root, "Calm Morning.mp3");
+    await writeFile(track, "ID3");
+    const withMusic = await setMusic(
+      { projectId: P, id: video.id, path: track, source: "https://example.com/t" },
+      api,
+    );
+    expect(withMusic.settings.music).toMatchObject({
+      track: "media/music-calm-morning.mp3",
+      source: "https://example.com/t",
+    });
+    await expect(setMusic({ projectId: P, id: video.id, path: join(root, "x.exe") }, api)).rejects.toThrow(
+      /MP3/,
+    );
+    expect((await setMusic({ projectId: P, id: video.id, path: "" }, api)).settings.music.track).toBe("");
+  });
+
+  it("records a take, flags real-looking data, and discards a take nobody kept", async () => {
+    const frames = join(root, "frames");
+    await import("node:fs/promises").then((fs) => fs.mkdir(frames));
+    (api as unknown as { capture: unknown }).capture = {
+      record: async () => ({
+        dir: frames,
+        frames: 3,
+        fps: 30,
+        width: 1280,
+        height: 720,
+        seconds: 4.04,
+        cut: false,
+        texts: ["Write to jane.doe@gmail.com", "sam@contoso.com", "Signed by Ada Lindqvist"],
+        events: [{ step: 0, do: "click", at: 1, box: { x: 0.1, y: 0.1, w: 0.2, h: 0.1 } }],
+      }),
+    };
+    (api as unknown as { projects: unknown }).projects = async () => [{ id: P, path: root }];
+    await import("node:fs/promises").then((fs) =>
+      fs.mkdir(join(root, ".jig", "factory", "kit"), { recursive: true }),
+    );
+    await writeFile(join(root, ".jig", "factory", "kit", "real-names.txt"), "Ada Lindqvist\n");
+    const video = await create({ projectId: P, template: "walkthrough" }, api);
+    const take = await record({ projectId: P, id: video.id, url: "https://example.com", steps: [] }, api);
+    if ("needs" in take) throw new Error("needs");
+    expect(take).toMatchObject({ path: "media/capture-1.mp4", seconds: 4, events: [{ do: "click" }] });
+    expect(take.findings).toEqual([
+      { kind: "email", text: "jane.doe@gmail.com" },
+      { kind: "name", text: "Ada Lindqvist" },
+    ]);
+    await expect(readFile(join(frames, "x"))).rejects.toThrow();
+    await discardMedia({ projectId: P, id: video.id, path: take.path }, api);
+    await expect(readFile(join(video.dir, take.path))).rejects.toThrow();
+    await expect(discardMedia({ projectId: P, id: video.id, path: "../meta.json" }, api)).rejects.toThrow();
   });
 });

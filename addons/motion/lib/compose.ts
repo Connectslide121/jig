@@ -202,6 +202,11 @@ function css(input: ComposeInput, width: number, height: number): string {
   const portrait = height > width;
   const u = short / 1080;
   const px = (n: number) => `${Math.round(n * u)}px`;
+  // Captions get a band of their own, so they never sit on a scene's text or label.
+  const capRoom =
+    settings.captions.on && input.board.scenes.some((sc) => sc.voice?.trim())
+      ? CAPTION_SIZE[settings.captions.size] * 2.6 + (portrait ? 90 : 20)
+      : 0;
   const head = Math.round(short * HEADLINE[settings.type.headline]);
   return `
 @font-face{font-family:"Inter Variable";src:url("${fontUrl(input.font)}") format("woff2");font-weight:100 900;font-display:block}
@@ -211,7 +216,7 @@ html,body{background:var(--bg);overflow:hidden}
 #root{position:relative;width:${width}px;height:${height}px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:${cssValue(style.fonts.body)};-webkit-font-smoothing:antialiased}
 #root::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 85% 10%,color-mix(in oklab,var(--accent) 18%,transparent),transparent 70%);z-index:0}
 .clip{position:absolute;inset:0;z-index:1}
-.scene{display:flex;align-items:center;justify-content:center;padding:${px(portrait ? 90 : 110)}}
+.scene{display:flex;align-items:center;justify-content:center;padding:${px(portrait ? 90 : 110)}${capRoom ? `;padding-${settings.captions.position}:${px((portrait ? 90 : 110) + capRoom)}` : ""}}
 h1,h2,.statement{font-family:${cssValue(style.fonts.headline)};font-weight:${style.headlineWeight ?? 700};letter-spacing:-0.02em;line-height:1.08;text-wrap:balance}
 .headline{font-size:${head}px}
 .title{font-size:${Math.round(head * 0.62)}px}

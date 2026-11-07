@@ -76,3 +76,17 @@ export function mixArgs(input: MixInput): string[] | undefined {
   );
   return args;
 }
+
+/** The copy of a music track in a video's folder: `media/music-<name>.<ext>` (lowercase, dashes). */
+export function musicFile(path: string): string {
+  const base = path.split(/[\\/]/).pop() ?? "";
+  const dot = base.lastIndexOf(".");
+  const ext = dot > 0 ? base.slice(dot).toLowerCase() : "";
+  const stem =
+    (dot > 0 ? base.slice(0, dot) : base)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "track";
+  return `media/music-${stem}${ext}`;
+}

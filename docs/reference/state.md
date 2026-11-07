@@ -150,7 +150,7 @@ A new state file is documented here in the same commit that adds it.
 | `motion.ffmpegPath` | `""` | the folder of the FFmpeg Motion renders with; empty = look on PATH, else offer to install a pinned build into Motion's data folder (D-454, D-463). Protected (it runs programs) |
 | `motion.musicFolder` | `""` | the folder of music tracks Motion's videos may use (M2, D-456) |
 | `motion.defaultAspect` | `"16:9"` | the format a new video starts in: `16:9`, `9:16` or `1:1` |
-| `motion.defaultVoice` | `""` | the voice new videos speak with (M2, D-455); empty = Read aloud's voice |
+| `motion.defaultVoice` | `""` | the natural voice new videos speak their scripts with (M2, D-455); empty = no voice |
 | `updates.sourcePath` | `""` | Jig's git clone for "Pull, build and restart"; empty = the repo Jig runs from |
 | `updates.buildCommand` / `installCommand` | `npm run build` / `npm install` | commands an update runs (`docs/reference/setup.md`) |
 | `addonGallery.sources` | `[]` | add-on gallery sources: git URLs (https/ssh) or folders (D-179); protected, Settings and the gallery only |

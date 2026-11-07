@@ -123,12 +123,15 @@ describe("compose", () => {
       style,
     });
     expect(top).toContain('class="clip cap top"');
+    expect(html).toMatch(/\.scene\{[^}]*;padding-bottom:\d+px\}/);
+    expect(top).toMatch(/\.scene\{[^}]*;padding-top:\d+px\}/);
     const off = compose({
       board: voiced,
       settings: { ...DEFAULT_SETTINGS, captions: { ...DEFAULT_SETTINGS.captions, on: false } },
       style,
     });
     expect(off).not.toContain("clip cap");
+    expect(off).not.toMatch(/\.scene\{[^}]*;padding-bottom/);
   });
 
   it("plays the spoken voice and the music in the preview only", () => {

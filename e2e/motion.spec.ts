@@ -1,5 +1,6 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { Page } from "@playwright/test";
 import { expect, hostCall, test } from "./fixtures";
 import { SHOTS_DIR, shootView } from "./shots";
@@ -88,6 +89,65 @@ test("Motion: a render can be cancelled, and a cancelled one leaves no version",
   await expect(tab.getByTestId("motion-render-row")).toHaveCount(0);
 });
 
+test("Motion: speak the scripts, then record a capture of a page and keep it as a scene with marks", async ({
+  page,
+  jigHome,
+}) => {
+  const projectId = await shop(page, jigHome);
+  const made = (await motion(page, "create", { projectId, template: "teaser", title: "Checkout" })) as {
+    value: { id: string; storyboard: { scenes: Array<Record<string, unknown>> } };
+  };
+  const scenes = made.value.storyboard.scenes.map((sc, i) =>
+    i === 0 ? { ...sc, voice: "Checkout in one tap." } : sc,
+  );
+  await motion(page, "update", {
+    projectId,
+    id: made.value.id,
+    storyboard: { ...(made.value.storyboard as object), scenes },
+  });
+  const page1 = join(jigHome, "checkout.html");
+  await writeFile(
+    page1,
+    '<html><body style="font:24px sans-serif;padding:40px"><h1>Shop</h1><p>Contact: jane.doe@gmail.com</p>' +
+      '<button id="buy" style="font-size:24px">Buy now</button></body></html>',
+  );
+  await page.getByTestId("motion-topbar").click();
+  await page.getByTestId("motion-menu-videos").click();
+  await page.getByTestId("motion-video-card").filter({ hasText: "Checkout" }).click();
+  const tab = page.getByTestId("motion-video-tab");
+  await expect(tab).toBeVisible();
+  const count = await tab.getByTestId("motion-scene").count();
+
+  // Sound: pick a voice, one scene isn't spoken yet; Speak speaks it on this computer.
+  await tab.getByTestId("motion-voice").selectOption({ index: 1 });
+  await expect(tab.getByTestId("motion-voice-state")).toHaveText("1 of 1 not spoken");
+  await tab.getByTestId("motion-speak").click();
+  await expect(tab.getByTestId("motion-voice-state")).toHaveText("All 1 spoken", { timeout: 15000 });
+
+  // + Scene → Record a capture…: the page, one click step, Record.
+  await tab.getByTestId("motion-add-scene").click();
+  await page.getByRole("menuitem", { name: "Record a capture…" }).click();
+  const dialog = page.getByTestId("motion-capture");
+  await dialog.getByTestId("motion-capture-url").fill(pathToFileURL(page1).href);
+  await dialog.getByTestId("motion-capture-step").first().getByLabel("On what").fill("#buy");
+  await dialog.getByTestId("motion-capture-record").click();
+  await expect(dialog.getByTestId("motion-capture-video")).toBeVisible({ timeout: 30000 });
+
+  // The page shows a real-looking email: Keep waits until you say it's sample data.
+  await expect(dialog.getByTestId("motion-capture-findings")).toContainText("jane.doe@gmail.com");
+  await expect(dialog.getByTestId("motion-capture-keep")).toBeDisabled();
+  await dialog.getByRole("switch").click();
+  await dialog.getByTestId("motion-capture-keep").click();
+  await expect(dialog).toBeHidden();
+  await expect(tab.getByTestId("motion-scene")).toHaveCount(count + 1);
+
+  // The new capture scene zooms where the click happened.
+  await tab.getByTestId("motion-scene").last().click();
+  const sheet = page.getByTestId("motion-scene-sheet");
+  await expect(sheet.getByTestId("motion-mark")).toHaveCount(1);
+  await expect(sheet.getByTestId("motion-mark").getByLabel("Kind of mark")).toHaveValue("zoom");
+});
+
 test("Motion at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({
   page,
   app,
@@ -142,5 +202,16 @@ test("Motion at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)",
     await expect(page.getByTestId("motion-scene-sheet")).toBeVisible();
     await page.screenshot({ path: join(SHOTS_DIR, `motion-scene-${theme}.png`) });
     await page.keyboard.press("Escape");
+    await expect(page.getByTestId("motion-scene-sheet")).toBeHidden();
+    await main.getByTestId("motion-add-scene").click();
+    await page.getByRole("menuitem", { name: "Record a capture…" }).click();
+    const capture = page.getByTestId("motion-capture");
+    await capture.getByTestId("motion-capture-url").fill("https://shop.example.com");
+    await capture.getByTestId("motion-capture-add-step").click();
+    await capture.getByTestId("motion-capture-step").nth(1).getByLabel("What to do").selectOption("type");
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: join(SHOTS_DIR, `motion-capture-${theme}.png`) });
+    await page.keyboard.press("Escape");
+    await expect(capture).toBeHidden();
   }
 });

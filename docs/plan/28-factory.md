@@ -110,14 +110,15 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** M2, Motion: voice, captions, music, captures — in progress (core `api.speech.say` and `api.capture.record` written, D-464).
+- **Current session:** M3, Motion: AI and other add-ons — not started.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
   runner, tools, Run tab sheets and Inspector (D-449…D-452, D-459). Session 3: New idea, the
   Interview tab, the Plan step, meetings and dictation for add-ons (D-460, D-461). Session 4: the
   Demo review tab, GD direction cards, design sources, Show in Pages (D-462). Session M1: the Motion
-  add-on, storyboard to MP4 through a pinned HyperFrames (D-463).
+  add-on, storyboard to MP4 through a pinned HyperFrames (D-463). Session M2: voice, captions, music,
+  captures with marks (D-464).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -130,8 +131,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session M1 is done (see its notes; a real render on Windows is for
-  Jon). Next: session M2, from its first item (`api.speech.say`). Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session M2 is done (see its notes; a real voice and a render with
+  sound on Windows are for Jon). Next: session M3, from its first item (the `motion_*` chat tools). Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -343,22 +344,36 @@ a real render on Windows (Jon), and HyperFrames' own blocks (none fitted the thr
 better than plain scenes; revisit with captures in M2). e2e: `motion.spec.ts` (create, preview,
 install, render, cancel, the widths shots).
 
-### M2. Motion: voice, captions, music, captures — in progress
+### M2. Motion: voice, captions, music, captures — done
 
 - [x] Core `api.speech.say` (D-455, D-464): permission `speech`, the Kokoro process Read aloud uses, WAV in
       the add-on's data folder; `addon-api.md`; host test.
-- [ ] Voice per scene: scene length follows the speech; burned-in captions; `.srt` and `.vtt`
+- [x] Voice per scene: scene length follows the speech; burned-in captions; `.srt` and `.vtt`
       (`lib/captions.ts`, tested).
-- [ ] Music (D-456): `motion.musicFolder`, track picker, ducking under the voice, fades; **Find
+- [x] Music (D-456): `motion.musicFolder`, track picker, ducking under the voice, fades; **Find
       music** opens Pixabay Music in the browser; source address kept with the track.
-- [~] Core `api.capture.record` (D-457, D-464: frames, not a video file): permission `capture`, hidden window at the video's size,
+- [x] Core `api.capture.record` (D-457, D-464: frames, not a video file): permission `capture`, hidden window at the video's size,
       steps (go to, click, type, scroll, wait, highlight), max length, a failing step named;
       `addon-api.md`, `validate.ts` schema, e2e on a local page.
-- [ ] Record capture modal (steps list, record, play back, keep); captures as scenes with zooms,
+- [x] Record capture modal (steps list, record, play back, keep); captures as scenes with zooms,
       arrows and highlights; the real-data scan on captures.
 
 **Done when:** a walkthrough of the sample demo with live captures, a natural voice, captions and
 music renders on your machine.
+
+**Session M2 notes (2026-11-11).** Core: `api.speech.say` (fake silence with `JIG_ENGINE=fake`) and
+`api.capture.record`, which returns JPEG frames, the visible texts and **events** (when each step
+acted and its element's box), so Motion can place marks; Motion encodes the frames with its FFmpeg
+(D-464). Motion: Sound in the settings (voice, speed, **Speak** with progress, music from the folder
+or a file, volume, source, 🔍 Find music), caption size and background, **+ Scene → Record a
+capture…** (address, a steps editor, Record, the take played back, the real-data warning that Keep
+waits on, Keep as a scene or Discard), a Marks list in the scene sheet. Render speaks unspoken
+scenes first, writes `captions.srt`/`.vtt`, and mixes voice and music with FFmpeg (`aloop`, not
+`-stream_loop`, which hung FFmpeg 6 on an MP3; `-nostdin` everywhere). Captions get a band of their
+own so they never sit on a scene's label. Checked with a real HyperFrames render here (captions, a
+zoom and a labelled highlight over a clip) and a real mix (h264 + aac). Not checked here: a real
+Kokoro voice and a render with sound on Windows (Jon). e2e: `motion.spec.ts` → "speak the scripts,
+then record a capture…" (a local `file://` page, the email warning, the zoom mark).
 
 ### M3. Motion: AI and other add-ons — not started
 

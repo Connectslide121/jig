@@ -20,8 +20,23 @@ pinned HyperFrames with FFmpeg. Rendering uses no AI and costs nothing.
   HyperFrames (npm, a fixed version checked against its integrity) and FFmpeg when it isn't found
   (`motion.ffmpegPath`, then PATH; a fixed build checked by its SHA-256). Both go into Motion's data
   folder.
-- **Settings → Motion:** the FFmpeg folder (protected: it runs programs), the music folder and the
-  format new videos start in.
+- **Voice (M2, D-455, D-464):** a scene's **Voice script** is spoken by a natural voice on this
+  computer (`api.speech.say`, the voices of Read aloud); Sound → **Voice** and **Speed**, **Speak**
+  speaks the scenes not spoken yet (Render speaks them first). A scene lasts its voice plus a pause;
+  the spoken file is named after the voice, speed and text, so an edit speaks it again.
+- **Captions:** the scripts as burned-in captions (bottom or top, three sizes, a background or not),
+  and `captions.srt` / `captions.vtt` beside every render (`lib/captions.ts`).
+- **Music (D-456):** a track from the music folder or **Choose a file…**, copied into the video;
+  volume, the source address you keep with it, and 🔍 **Find music** (Pixabay Music in your browser).
+  The render mixes it under the voice with FFmpeg: ducking, fades in and out (`lib/audio.ts`).
+- **Record a capture (D-457, D-464):** + Scene → **Record a capture…**: an address and steps (click,
+  type, hover, highlight, scroll, wait, go to), recorded in a hidden window at the video's shape,
+  with a cursor, at most 60 s (`api.capture.record`). Watch the take; when the page seems to show
+  real data (emails, phone numbers, names in the kit's `real-names.txt`), Keep waits until you say
+  it's sample data. **Keep as a scene** adds a capture scene with marks where the steps acted: a zoom
+  on clicks and typing, a highlight, an arrow on hovers (`lib/marks.ts`); a scene's sheet edits them.
+- **Settings → Motion:** the FFmpeg folder (protected: it runs programs), the music folder, the
+  format and the voice new videos start with.
 - **Templates** live in `templates/<id>/template.json` (scene types, inputs, default lengths,
   licence); **styles** in `styles/<id>.json` (colours, fonts, motion). Inter is bundled
   (`fonts/inter.woff2`, SIL Open Font License, `fonts/LICENSE-Inter.txt`) and embedded in the

@@ -3,7 +3,7 @@ import { chmod, copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile 
 import { basename, extname, join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import type { AddonCaptureStep, AddonHostApi } from "@jig/sdk";
-import { mixArgs } from "./lib/audio";
+import { mixArgs, musicFile } from "./lib/audio";
 import { cues, srt, vtt } from "./lib/captions";
 import { compose, FONT_FILE, type MotionStyle } from "./lib/compose";
 import { TINY_MP4, TINY_PNG } from "./lib/fake";
@@ -477,7 +477,7 @@ export async function tracks(
   _args: unknown,
   api: AddonHostApi,
 ): Promise<{ folder: string; tracks: Track[] }> {
-  const folder = ((await api.config<Config>().catch(() => undefined)) ?? {}).musicFolder ?? "";
+  const folder = (await api.config<Config>().catch(() => undefined))?.musicFolder ?? "";
   if (!folder) return { folder, tracks: [] };
   const out: Track[] = [];
   for (const name of await readdir(folder).catch(() => [] as string[])) {
@@ -505,13 +505,7 @@ export async function setMusic(
     );
   const ext = extname(args.path).toLowerCase();
   if (!MUSIC_EXT.has(ext)) throw new Error("Music is an MP3, M4A, AAC, WAV, OGG or FLAC file");
-  const stem =
-    basename(args.path, extname(args.path))
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 40) || "track";
-  const name = `music-${stem}${ext}`;
+  const name = musicFile(args.path).slice("media/".length);
   await mkdir(join(video.dir, "media"), { recursive: true });
   await copyFile(args.path, join(video.dir, "media", name));
   const old = video.settings.music.track;

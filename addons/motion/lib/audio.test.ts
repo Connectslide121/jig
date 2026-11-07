@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mixArgs } from "./audio";
+import { mixArgs, musicFile } from "./audio";
 
 const graph = (args: string[]) => args[args.indexOf("-filter_complex") + 1] ?? "";
 
@@ -54,5 +54,12 @@ describe("audio mix", () => {
     );
     expect(g).toContain("[1:a]");
     expect(g).not.toContain("sidechaincompress");
+  });
+});
+
+describe("musicFile", () => {
+  it("names a track's copy the same way on every system", () => {
+    expect(musicFile("C:\\Music\\Calm Morning (Loop).MP3")).toBe("media/music-calm-morning-loop.mp3");
+    expect(musicFile("/home/a/!!!.wav")).toBe("media/music-track.wav");
   });
 });
