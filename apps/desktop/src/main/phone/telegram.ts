@@ -312,6 +312,25 @@ export class TelegramChannel implements PhoneChannel<TelegramUpdate> {
         ...(message.buttons?.length ? { reply_markup: keyboard(message.buttons) } : {}),
       });
     } catch (error) {
+      const said = String((error as Error).message);
+      // A card sent with a picture (an add-on's, D-468) has a caption, not text.
+      if (/no text in the message/i.test(said)) return this.editCaption(to, ref, message);
+      if (/not modified/i.test(said))
+        throw new ChannelError("unchanged", "The message is already like this.");
+      throw error;
+    }
+  }
+
+  private async editCaption(to: Address, ref: MessageRef, message: OutMessage): Promise<void> {
+    try {
+      await this.api.call("editMessageCaption", {
+        chat_id: to.chat,
+        message_id: ref,
+        caption: message.text.slice(0, CAPTION_MAX),
+        parse_mode: "HTML",
+        ...(message.buttons?.length ? { reply_markup: keyboard(message.buttons) } : {}),
+      });
+    } catch (error) {
       if (/not modified/i.test(String((error as Error).message)))
         throw new ChannelError("unchanged", "The message is already like this.");
       throw error;

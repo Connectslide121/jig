@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { expect, hostCall, launchJig, test } from "./fixtures";
 import { SHOTS_DIR, shootView } from "./shots";
+import { fakeTelegram, TOKEN } from "./telegram";
 
 /** A project ("shop") made active, as Jig factory works on the active project. */
 async function shop(page: Page, jigHome: string): Promise<string> {
@@ -713,4 +714,72 @@ test("Jig factory: start from a brief, answer a stage, approve a gate and inspec
   await expect
     .poll(async () => ((await factory(page, "runs", { projectId })) as { value: RunLike[] }).value[0]?.state)
     .toBe("stopped");
+});
+
+test("Jig factory: approve a gate and ask for changes from the phone (D-468)", async ({ jigHome }) => {
+  test.setTimeout(90_000);
+  const telegram = await fakeTelegram();
+  const app = await launchJig(jigHome, { JIG_TELEGRAM_API: telegram.url });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    const connected = (await hostCall(page, "phone.connect", { token: TOKEN })) as {
+      value: { code: string };
+    };
+    telegram.write(connected.value.code);
+    await expect
+      .poll(
+        async () => ((await hostCall(page, "phone.state")) as { value: { status: string } }).value.status,
+        {
+          timeout: 15_000,
+        },
+      )
+      .toBe("connected");
+    const projectId = await gitShop(page, jigHome);
+    const id = ((await factory(page, "startRun", { projectId, brief: "shift-swap" })) as { value: RunLike })
+      .value.id;
+    const card = (text: string) => telegram.sent.find((m) => String(m.text).includes(text));
+    const button = (text: string, i: number) =>
+      (
+        card(text)?.reply_markup as { inline_keyboard: Array<Array<{ callback_data: string }>> } | undefined
+      )?.inline_keyboard.flat()[i]?.callback_data ?? "";
+
+    // The go / no-go waits: its card has Approve, Ask for changes and Open; Approve approves it.
+    await expect
+      .poll(() => telegram.texts().join("\n"), { timeout: 30_000 })
+      .toContain("Go / no-go waits for you");
+    telegram.tap(button("Go / no-go waits", 0));
+    await expect
+      .poll(async () => (await runOf(page, projectId, id)).gates.find((g) => g.id === "G0")?.status, {
+        timeout: 15_000,
+      })
+      .toBe("approved");
+    await expect.poll(() => telegram.edits.map((e) => String(e.text)).join("\n")).toContain("✅ Approved");
+
+    // A direction is picked in Jig; then the demo's card (with its screenshot) asks for changes.
+    await expect.poll(() => telegram.texts().join("\n"), { timeout: 30_000 }).toContain("Pick a direction");
+    await factory(page, "decide", {
+      projectId,
+      runId: id,
+      gateId: "GD",
+      kind: "approve",
+      direction: "2-bold",
+    });
+    await expect.poll(() => telegram.texts().join("\n"), { timeout: 45_000 }).toContain("is ready");
+    expect(card("is ready")?.photo).toBe(true);
+    telegram.tap(button("is ready", 1));
+    await expect.poll(() => telegram.texts().join("\n"), { timeout: 15_000 }).toContain("write your answer");
+    telegram.write("Make the offer button bigger");
+    await expect
+      .poll(async () => (await runOf(page, projectId, id)).stages.find((s) => s.id === "S5")?.version, {
+        timeout: 15_000,
+      })
+      .toBe(3);
+    await expect
+      .poll(() => telegram.edits.map((e) => String(e.text)).join("\n"))
+      .toContain("Changes asked: Make the offer button bigger");
+  } finally {
+    await app.close();
+    await telegram.close();
+  }
 });

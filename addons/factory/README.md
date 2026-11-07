@@ -27,6 +27,10 @@ data (D-442).
   row opens its review sheet (the output beside its other form, its files, Edit, Reject…, Approve;
   stories: Add as board cards…), a gate's row the run. **Trust per output** under it: reviewed,
   approved as written, review time per kind (D-467).
+- **On your phone** (Settings → Phone paired): a gate of yours waiting arrives as a card (the demo's
+  screenshot for Demo review) with **Approve**, **Ask for changes** (write what to change as the
+  reply) and **Open in Jig**; a stage's question with **Answer**; a stuck or finished run too. Once
+  decided anywhere, the card says how and loses its buttons (D-468).
 - **Sample runs:** ⋯ → Load sample runs (on the Floor, the Runs view or the top bar's menu) adds six
   sample runs to the active project, one or more in every lane; ⋯ → Remove sample runs takes them
   away. Their files live in the add-on's data folder, never in a repository.

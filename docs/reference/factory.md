@@ -36,6 +36,16 @@ One loop, serialised (`serial`), driven by the `tick` watcher (every minute and 
 - Every stage's files are committed on the run's branch (`factory <run>: <stage> v<n>`); a failing
   commit (no git identity) is logged, never fatal.
 - Restart: running stages are picked up from their chats' state.
+- **Phone cards** (D-434, D-468, `lib/phone.ts`): after every step, each run's cards are brought in
+  line with `api.phone`: a gate of yours waiting ("<run> · Demo v2 is ready" with the demo's
+  screenshot, or "<gate> waits for you" with the outputs to review: Approve · Ask for changes ·
+  Open in Jig; GD only Open), a stage that needs you (its one question: Answer · Open; several: Open),
+  "is stuck" and, within 30 minutes of finishing, "is done". The run keeps the message ids
+  (`Run.phone`, keys `gate:<id>`, `ask:<stage>`, `stuck`, `done`); a card whose subject was settled
+  anywhere is edited to say how ("✅ Approved", "✏️ Changes asked: …", "✅ Answered") without
+  buttons. The screenshot is the demo kit's first `check/screenshots/` file, else one frame of the
+  page through `capture.record`, kept in the add-on's data folder. Not paired or off: tried again
+  after a minute. Gates someone else owns don't get phone cards (their board card instead).
 
 ## Host methods
 
@@ -70,6 +80,7 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `briefs` | – | the golden briefs |
 | `loadSamples` / `clearSamples` | `{projectId}` | the sample runs |
 | `tick` | – | one Conductor step (the watcher) |
+| `phoneAction` | `{messageId, buttonId, text?}` | the `phone.action` event: a tap on one of its cards; Approve or Ask for changes (the reply's text is the note) on a gate, Answer (the reply answers the stage's one question or its `factory_ask`), Open (a toast on the computer that opens the run) |
 
 Events: `changed` `{projectId, runId}` after every save (the views reload), `storage`.
 

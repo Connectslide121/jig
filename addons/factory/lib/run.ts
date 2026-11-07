@@ -54,6 +54,8 @@ export interface Run {
   direction?: string;
   /** The Pages page the demo is shown as (Show in Pages, D-462): each version updates it. */
   demoPage?: string;
+  /** Its cards on your phone (D-468, `lib/phone.ts`): card key (`gate:G1`, `ask:<stage>`…) → message id. */
+  phone?: Record<string, string>;
 }
 
 export interface RunPlan {

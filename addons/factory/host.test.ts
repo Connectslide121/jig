@@ -422,6 +422,58 @@ describe("Jig factory's Conductor", () => {
     expect(r.gates.find((g) => g.id === "G1")).toMatchObject({ status: "closed", revisions: 1 });
   });
 
+  it("sends your gates to your phone, acts on its taps, and settles the cards (D-468)", async () => {
+    let n = 0;
+    const send = vi.fn(async () => ({ messageId: `m${++n}` }));
+    const update = vi.fn(async () => ({ ok: true }));
+    (api as { phone: unknown }).phone = { send, update };
+    let r = await host.startRun({ projectId: "shop", brief: "gift-cards" }, api);
+    await play(r, "S2");
+    r = await load(r.id);
+    expect(r.phone).toEqual({ "gate:G0": "m1" });
+    expect(send).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        projectId: "shop",
+        buttons: [
+          expect.objectContaining({ id: "approve" }),
+          expect.objectContaining({ id: "changes", reply: true }),
+          expect.objectContaining({ id: "open" }),
+        ],
+      }),
+    );
+    await host.phoneAction({ messageId: "m1", buttonId: "approve" }, api);
+    r = await load(r.id);
+    expect(r.gates.find((g) => g.id === "G0")?.status).toBe("approved");
+    expect(update).toHaveBeenCalledWith("m1", { text: expect.stringContaining("✅ Approved") });
+    expect(r.phone?.["gate:G0"]).toBeUndefined();
+    await play(r, "S4");
+    r = await load(r.id);
+    await play(r, "S5");
+    r = await load(r.id);
+    await play(r, "S6", { quality: { pass: true, score: 90 } });
+    r = await load(r.id);
+    const g1 = r.phone?.["gate:G1"];
+    expect(g1).toBeDefined();
+    expect(send).toHaveBeenLastCalledWith(
+      expect.objectContaining({ text: expect.stringContaining("The demo is ready") }),
+    );
+    await host.phoneAction({ messageId: g1 ?? "", buttonId: "changes", text: "Bigger buttons" }, api);
+    r = await load(r.id);
+    expect(chatOf(r, "S5").sent[0]).toContain("## Changes asked at the gate\nBigger buttons");
+    expect(update).toHaveBeenLastCalledWith(g1, { text: expect.stringContaining("Changes asked") });
+    await host.phoneAction({ messageId: "unknown", buttonId: "approve" }, api);
+  });
+
+  it("waits a minute when the phone isn't paired", async () => {
+    const send = vi.fn(async () => ({ error: "not_paired" }));
+    (api as { phone: unknown }).phone = { send, update: vi.fn() };
+    const r = await host.startRun({ projectId: "shop", brief: "gift-cards" }, api);
+    await play(r, "S2");
+    await host.tick(undefined, api);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((await load(r.id)).phone).toBeUndefined();
+  });
+
   it("picks a direction at GD, lists the demo's versions with scorecards, and sends pins as changes (D-462)", async () => {
     api.config = (async () => ({ designSources: ["/refs/calm-saas"] })) as AddonHostApi["config"];
     let r = await host.startRun({ projectId: "shop", brief: "shift-swap" }, api);

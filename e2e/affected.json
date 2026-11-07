@@ -443,6 +443,14 @@
     },
     {
       "files": [
+        "e2e/telegram.ts",
+        "apps/desktop/src/main/phone/service.ts",
+        "apps/desktop/src/main/phone/telegram.ts"
+      ],
+      "specs": ["phone.spec.ts", "factory.spec.ts"]
+    },
+    {
+      "files": [
         "apps/desktop/src/main/phone/**",
         "apps/desktop/src/renderer/features/phone/**",
         "apps/desktop/src/shared/phone.ts",

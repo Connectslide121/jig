@@ -9,6 +9,7 @@
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { AddonChatInfo, AddonHostApi, AddonProject } from "@jig/sdk";
 import { type BriefDoc, PLAN_OUTPUTS, parseBrief } from "./lib/brief";
 import {
@@ -29,6 +30,7 @@ import {
 import { parseFrontMatter, setStatus, updateFrontMatter, writeFrontMatter } from "./lib/frontmatter";
 import { filesOf, GATES, isFile, reviewerOf } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
+import { settledText, tapOf, wantedCards } from "./lib/phone";
 import { outputPaths, parseRecipe, type Recipe, resolveRecipes, stagePrompt } from "./lib/recipes";
 import {
   changesNote,
@@ -950,7 +952,130 @@ export function step(api: AddonHostApi, catchingUp = false): Promise<void> {
         free--;
       }
     }
+    for (const r of all) await phoneCards(api, await loadRun(api, r.projectId, r.id).catch(() => r));
   });
+}
+
+// Cards on your phone (D-434, D-468).
+
+/** Until when the phone isn't tried again: it isn't paired or is off (a minute, the next tick). */
+let phoneQuietUntil = 0;
+
+/**
+ * A run's phone cards: sends the ones it should have now (`wantedCards`: your waiting gates, a stage
+ * that needs you, stuck, just done) and settles the ones whose subject is decided elsewhere ("✅
+ * Approved"), without buttons. Saves the run when its cards changed.
+ */
+async function phoneCards(api: AddonHostApi, r: Run): Promise<Run> {
+  if (!api.phone || Date.now() < phoneQuietUntil) return r;
+  const track = await trackOf(api, r.track);
+  const wanted = wantedCards(r, (s) => stageTitle(track, s));
+  const have = { ...(r.phone ?? {}) };
+  let changed = false;
+  for (const card of wanted) {
+    if (have[card.key]) continue;
+    const image = card.demo ? await demoShot(api, r, card.demo) : undefined;
+    const sent = await api.phone
+      .send({ text: card.text, buttons: card.buttons, projectId: r.projectId, image })
+      .catch(() => ({ error: "failed" as const }));
+    if ("error" in sent) {
+      if (sent.error !== "failed") phoneQuietUntil = Date.now() + 55_000;
+      break;
+    }
+    have[card.key] = sent.messageId;
+    changed = true;
+    await log(api, r, { kind: "message", text: `On your phone: ${card.text.split("\n")[0]}` });
+  }
+  const keys = new Set(wanted.map((c) => c.key));
+  for (const [key, messageId] of Object.entries(have)) {
+    if (keys.has(key) || key === "done") continue;
+    const text = settledText(r, key, (id) => stageTitle(track, { id }));
+    await api.phone.update(messageId, { text }).catch(() => undefined);
+    delete have[key];
+    changed = true;
+  }
+  if (!changed) return r;
+  const next = { ...r, phone: have };
+  await save(api, next);
+  return next;
+}
+
+/**
+ * The demo's picture for its phone card: the demo kit's first screenshot of that version when it
+ * wrote one (`check/screenshots/`), else one frame of the page in a hidden window (`capture`), kept in
+ * the add-on's data folder. None when neither works: the card goes without.
+ */
+async function demoShot(api: AddonHostApi, r: Run, version: number): Promise<string | undefined> {
+  const v = demoVersions(r).find((d) => d.version === version);
+  const file = v ? outputPath(api, r, v.path) : undefined;
+  if (!file || !(await exists(file))) return undefined;
+  const shots = join(dirname(file), "check", "screenshots");
+  const kit = (await readdir(shots).catch(() => [] as string[]))
+    .filter((f) => /\.(png|jpe?g)$/i.test(f))
+    .sort();
+  if (kit[0]) return join(shots, kit[0]);
+  const out = join(api.addon.dataDir, "phone", `${r.id}-v${version}.jpg`);
+  if (await exists(out)) return out;
+  try {
+    const shot = await api.capture.record({
+      url: pathToFileURL(file).href,
+      steps: [{ do: "wait", ms: 300 }],
+      width: 1280,
+      height: 800,
+      maxSeconds: 1,
+      fps: 24,
+    });
+    const frames = (await readdir(shot.dir)).filter((f) => f.endsWith(".jpg")).sort();
+    const last = frames.at(-1);
+    if (last) {
+      await mkdir(dirname(out), { recursive: true });
+      await copyFile(join(shot.dir, last), out);
+    }
+    await rm(shot.dir, { recursive: true, force: true });
+    return last ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A tap on one of the factory's phone cards (D-468, the `phone.action` event): Approve or Ask for
+ * changes on a gate, an answer to a stage's question, or Open (the run, on the computer).
+ */
+export async function phoneAction(
+  a: { messageId: string; buttonId: string; text?: string },
+  api: AddonHostApi,
+): Promise<void> {
+  for (const p of await api.projects())
+    for (const r of await load(api, p.id)) {
+      const key = Object.entries(r.phone ?? {}).find(([, id]) => id === a.messageId)?.[0];
+      if (!key) continue;
+      const tap = tapOf(key, a.buttonId, a.text);
+      const args = { projectId: r.projectId, runId: r.id };
+      try {
+        if (tap?.kind === "decide")
+          await decide({ ...args, gateId: tap.gate, kind: tap.decision, note: tap.note }, api);
+        else if (tap?.kind === "answer") {
+          const s = r.stages.find((x) => x.id === tap.stage);
+          const open = (r.questions ?? []).filter((q) => q.stage === tap.stage && !q.answer);
+          await answer(
+            open.length === 1
+              ? { ...args, stageId: tap.stage, answers: [{ id: open[0]!.id, answer: tap.text }] }
+              : { ...args, stageId: tap.stage, reply: s?.question ? tap.text : undefined },
+            api,
+          );
+        } else if (tap?.kind === "open")
+          api.notify({
+            title: "Jig factory",
+            message: `"${r.title}" from your phone`,
+            system: true,
+            actions: openRunAction(r),
+          });
+      } catch (e) {
+        api.log("factory: a phone tap failed", { key, error: String(e) });
+      }
+      return;
+    }
 }
 
 /** One run: each running stage's chat after its turn, then the graph. Saves when something changed. */

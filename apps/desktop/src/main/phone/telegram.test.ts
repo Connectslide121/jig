@@ -27,6 +27,20 @@ function fake(fail?: Error) {
 }
 
 describe("TelegramChannel", () => {
+  it("edits a card sent with a picture through its caption (D-468)", async () => {
+    const calls: string[] = [];
+    const api = {
+      async call(method: string) {
+        calls.push(method);
+        if (method === "editMessageText")
+          throw new TelegramError("Bad Request: there is no text in the message to edit", 400);
+        return true;
+      },
+    } as unknown as TelegramApi;
+    await new TelegramChannel(api).edit({ chat: 42 }, 9, { text: "✅ Approved" });
+    expect(calls).toEqual(["editMessageText", "editMessageCaption"]);
+  });
+
   it("reads messages and taps in Jig's words", () => {
     const { channel } = fake();
     const message = {

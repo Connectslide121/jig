@@ -1,122 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { createServer, type Server } from "node:http";
-import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { ElectronApplication, Page } from "@playwright/test";
 import { expect, hostCall, launchJig, test } from "./fixtures";
-
-const TOKEN = `123456789:${"A".repeat(35)}`;
-const ME = 42;
-
-/** A Telegram Bot API on 127.0.0.1: records what Jig sends, hands it what "the phone" writes. */
-async function fakeTelegram(opts: { topics?: boolean } = {}) {
-  let nextTopic = 900;
-  const sent: Array<Record<string, unknown>> = [];
-  const edits: Array<Record<string, unknown>> = [];
-  const queue: Array<Record<string, unknown>> = [];
-  const photos: number[] = [];
-  const topics: Array<Record<string, unknown>> = [];
-  const deleted: number[] = [];
-  const voices: string[] = [];
-  let nextUpdate = 1;
-  let nextMessage = 1;
-  const server: Server = createServer((req, res) => {
-    let body = "";
-    req.on("data", (c) => (body += c));
-    req.on("end", async () => {
-      const method = req.url?.split("/").pop();
-      if (req.url?.startsWith(`/file/bot${TOKEN}/`)) return res.end(Buffer.from("OggS fake voice"));
-      if (method === "sendVoice" && req.url?.startsWith(`/bot${TOKEN}/`)) {
-        voices.push(body);
-        return res.end(JSON.stringify({ ok: true, result: { message_id: nextMessage++ } }));
-      }
-      if (method === "sendPhoto" && req.url?.startsWith(`/bot${TOKEN}/`)) {
-        photos.push(body.length);
-        return res.end(JSON.stringify({ ok: true, result: { message_id: nextMessage++ } }));
-      }
-      const params = body ? JSON.parse(body) : {};
-      const reply = (result: unknown) => res.end(JSON.stringify({ ok: true, result }));
-      if (!req.url?.startsWith(`/bot${TOKEN}/`)) {
-        res.statusCode = 401;
-        return res.end(JSON.stringify({ ok: false, description: "Unauthorized" }));
-      }
-      if (method === "getMe")
-        return reply({
-          id: 1,
-          is_bot: true,
-          first_name: "Shop",
-          username: "shop_bot",
-          has_topics_enabled: opts.topics ?? false,
-        });
-      if (method === "getFile") return reply({ file_id: params.file_id, file_path: "voice/file_1.oga" });
-      if (method === "createForumTopic") {
-        topics.push(params);
-        return reply({ message_thread_id: nextTopic++, name: params.name });
-      }
-      if (method === "deleteForumTopic") {
-        deleted.push(params.message_thread_id);
-        return reply(true);
-      }
-      if (method === "sendMessage") {
-        sent.push(params);
-        return reply({ message_id: nextMessage++ });
-      }
-      if (method === "editMessageText") {
-        edits.push(params);
-        return reply(true);
-      }
-      if (method === "getUpdates") {
-        const ready = () => queue.filter((u) => (u.update_id as number) >= (params.offset ?? 0));
-        for (let i = 0; i < 10 && !ready().length; i++) await new Promise((r) => setTimeout(r, 100));
-        return reply(ready());
-      }
-      return reply(true);
-    });
-  });
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const now = () => Math.floor(Date.now() / 1000);
-  const from = { id: ME, is_bot: false, first_name: "Alex" };
-  return {
-    url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
-    sent,
-    edits,
-    photos,
-    topics,
-    deleted,
-    voices,
-    say: () =>
-      queue.push({
-        update_id: nextUpdate++,
-        message: {
-          message_id: 1000 + nextUpdate,
-          date: now(),
-          chat: { id: ME, type: "private" },
-          from,
-          voice: { file_id: "v1", duration: 2, mime_type: "audio/ogg" },
-        },
-      }),
-    inThread: (thread: number) =>
-      sent.filter((m) => m.message_thread_id === thread).map((m) => String(m.text)),
-    texts: () => sent.map((m) => String(m.text)),
-    write: (text: string, replyTo?: number, thread?: number) =>
-      queue.push({
-        update_id: nextUpdate++,
-        message: {
-          message_id: 1000 + nextUpdate,
-          date: now(),
-          chat: { id: ME, type: "private" },
-          from,
-          text,
-          ...(thread ? { message_thread_id: thread, is_topic_message: true } : {}),
-          ...(replyTo
-            ? { reply_to_message: { message_id: replyTo, date: now(), chat: { id: ME, type: "private" } } }
-            : {}),
-        },
-      }),
-    tap: (data: string) => queue.push({ update_id: nextUpdate++, callback_query: { id: "cb", from, data } }),
-    close: () => new Promise((r) => server.close(r)),
-  };
-}
+import { fakeTelegram, ME, TOKEN } from "./telegram";
 
 let app: ElectronApplication | undefined;
 test.afterEach(async () => {
@@ -182,7 +68,7 @@ test("phone: pair a Telegram bot, then answer a chat from the phone", async ({ j
     await expect.poll(() => telegram.texts().join("\n"), { timeout: 15000 }).toContain("Finished");
 
     // A reply to its message from the phone goes to that chat.
-    const finished = telegram.sent.findIndex((m) => String(m.text).includes("Finished")) + 1;
+    const finished = Number(telegram.sent.find((m) => String(m.text).includes("Finished"))?.message_id);
     telegram.write("hello from the phone", finished);
     await expect(page.getByTestId("user-message-text").last()).toHaveText("hello from the phone", {
       timeout: 15000,
@@ -214,7 +100,7 @@ test("phone: Claude texts the phone and the reply comes back to the chat", async
     await page.keyboard.press("Enter");
     await expect(page.getByText("I sent it to your phone.")).toBeVisible({ timeout: 15000 });
     await expect.poll(() => telegram.texts().join("\n")).toContain("Shall I deploy it?");
-    const asked = telegram.sent.findIndex((m) => String(m.text).includes("Shall I deploy")) + 1;
+    const asked = Number(telegram.sent.find((m) => String(m.text).includes("Shall I deploy"))?.message_id);
 
     telegram.write("yes, deploy", asked);
     await expect(page.getByTestId("user-message-text").last()).toHaveText("yes, deploy", { timeout: 15000 });
