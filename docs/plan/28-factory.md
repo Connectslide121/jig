@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 7, Tracks 2 and 3 — in progress (D-471): the tracks, recipes, libs (`estimates`, `tenders`, `package`), host methods, Releases' `stagePackage` and the fake roles are in and unit-tested; next the UI (Track picker in New idea, Plan per track with Critical, the matrix in the Run tab, Floor → Release package… and Recurring gaps…), e2e and docs.
+- **Current session:** 8, Measure and tune — not started.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -120,7 +120,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   add-on, storyboard to MP4 through a pinned HyperFrames (D-463). Session M2: voice, captions, music,
   captures with marks (D-464). Session M3: chat tools, Write with Jig, style sources,
   exports (D-465). Session 5: the pack, its formats, review per output, trust (D-466, D-467).
-  Session 6: phone cards, approvals on boards, Publish (D-468…D-470).
+  Session 6: phone cards, approvals on boards, Publish (D-468…D-470). Session 7: change-request and
+  tender tracks, quotes, the release package through Releases (D-471).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -133,7 +134,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 7's UI, e2e and docs (see Current session), then session 8. Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session 8 (the factory report, calibrated estimates, recipe evals). Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -467,13 +468,31 @@ tab's Published list. e2e: `factory.spec.ts` → "approve a gate and ask for cha
 publish target…". Needs a real machine: Telegram/Teams cards on a phone, a real Azure DevOps board,
 a real Static Web Apps deploy.
 
-### 7. Tracks 2 and 3: change requests and tenders — in progress
+### 7. Tracks 2 and 3: change requests and tenders — done
 
-- [ ] Change requests: intake from a support ticket, CR template, demo, quote draft with calibrated
+- [x] Change requests: intake from a support ticket, CR template, demo, quote draft with calibrated
       estimates, release-package day with the Releases add-on; critical bugs skip the batch.
-- [ ] Tenders: requirement matrix from the tender documents, company-must-be checks
+- [x] Tenders: requirement matrix from the tender documents, company-must-be checks
       (certifications, turnover, references), "may not lawfully be required" flags, recurring-gap
       report, no sales/marketing stages.
+
+**Done when:** a support ticket becomes a CR, a demo, a quote and a line in a release package that
+Releases ships; two tenders' documents become matrices and a recurring-gap report.
+
+**Session 7 notes (2026-11-14, D-471).** Tracks are data: `change-request.json` and `tender.json`
+beside `new-idea.json`, with `offers`/`defaults` for the Plan step and `&` in `when`. New recipes
+`cr-intake`, `quote`, `tender-matrix`, `tender-gaps`; `build.md` knows a critical fix. A critical CR
+(`critical` fact) skips kit, demo and G1 and goes to S8c, then the pack and G3. Estimates
+(`lib/estimates.ts`) are medians of measured stage times over finished runs, "TO FILL IN" below
+three; the AI only words the quote around them. Tenders: `tender/matrix.json` (statuses met, not
+met, unknown, may not be required; a stable `key` per requirement) read by `lib/tenders.ts` for the
+Run tab's Requirements and the Floor's Recurring gaps; the company profile is
+`.jig/factory/company.md`. The release package (`lib/package.ts`): CRs whose G2 (and G3 when built)
+is approved, written to `docs/factory/releases/<day>/` uncommitted, then staged in the Releases add-on
+(new `stagePackage` export, **Use the release package** on its Release tab). The Run tab now draws
+each run's own track. e2e: `factory.spec.ts` → "a change request from its ticket to the release
+package", "two tenders, their requirement matrix and the recurring gaps". Needs a real machine: real
+tender PDFs through real models, and a release made from a package.
 
 ### 8. Measure and tune — not started
 

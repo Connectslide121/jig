@@ -46,7 +46,11 @@ data (D-442).
 - `lib/gates.ts`: gates, owners and caps, the inbox, trust numbers, output names.
 - `lib/floor.ts`: lanes, the card's progress, the KPI strip and the stage-graph boxes.
 - `lib/samples.ts`: the sample runs (D-442).
-- `tracks/new-idea.json`: the "new idea" track.
+- `tracks/new-idea.json`, `change-request.json`, `tender.json`: the tracks (D-471).
+- `lib/estimates.ts`: a quote's estimates from measured stage times.
+- `lib/tenders.ts`: the requirement matrix, its counts and the recurring gaps.
+- `lib/package.ts`: which change requests can go into a release package, and its files.
+- `tender.tsx`: the Requirements box, Recurring gaps and Release package modals.
 - `lib/conductor.ts`: the Conductor's pure steps (advance, settle, reset, fork, after a turn).
 - `lib/recipes.ts`, `recipes/*.md`: recipes ([guide](../../docs/guides/factory-recipes.md)).
 - `lib/frontmatter.ts`, `lib/slug.ts`: output files' status, run names.

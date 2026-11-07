@@ -1,3 +1,15 @@
+Jig factory's change requests and tenders (2026-11-14, phase 28 session 7, D-471): **New idea** has a
+**Track**: *Change request* (paste the ticket; Jig asks two or three questions and writes the CR,
+builds a demo for the customer to confirm, then tests, release notes, a quote with estimates from
+your measured run times, "TO FILL IN" until three runs are measured, and the customer letter; write
+`[critical]`, or switch **A critical bug** on in the Plan step, to skip the demo and fix it at once) and
+*Tender* (add the documents; the run's page shows the **Requirements** with their status, a filter and
+why, checked against `.jig/factory/company.md` in the repository). Floor ⋯ → **Release package…**
+writes the ready change requests' notes, tests and letters into `docs/factory/releases/<day>/`
+(uncommitted) and offers them in **Releases → Use the release package**; Floor ⋯ → **Recurring
+gaps…** lists what you failed in two or more tenders. Needs a real machine: real tender documents
+(PDFs) through real models, a real release with the package.
+
 Publishing a Jig factory demo (2026-11-13, phase 28 session 6, D-470): once G1 approved a demo, a
 run's ⋯ → **Publish demo…** asks where (**This computer only**, or a site from **Settings → Jig
 factory → Publish targets**: an Azure Static Web Apps app you made), for how long (7/30/90 days: the

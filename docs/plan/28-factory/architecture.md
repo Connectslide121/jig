@@ -146,6 +146,15 @@ loop and the rules are unit-tested.
 `lib/graph.ts` answers "what may start now" from a track and a run's state: joins, fan-out over the
 plan's outputs, `when` conditions, loops with a cap.
 
+**Built (D-471):** `new-idea.json`, `change-request.json` and `tender.json` (existing-product stays the
+new-idea track with `product.exists`). A `when` joins facts with `&` (`build.requested&!critical`); a
+track may give `description` (New idea's picker), `offers` and `defaults` (the Plan step's outputs and
+those ticked) and `productExists`. Facts: `product.exists`, `build.requested`, `quality.pass`,
+`critical` (a change request the Plan step or its CR marks critical: S3 → S8c Fix now → the pack →
+G3, no kit, demo or G1). The tender track has no interview (T1 matrix, T2 gaps, G0 the bid decision).
+What Jig computes rather than the AI: the quote's estimates (`lib/estimates.ts`, medians of measured
+stage times), the recurring gaps (`lib/tenders.ts`), the release package's files (`lib/package.ts`).
+
 ## Recipes (`recipes/*.md`)
 
 ```markdown

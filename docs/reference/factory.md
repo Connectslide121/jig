@@ -12,7 +12,9 @@ files on the run's branch and reports back; each gate waits for a person. Design
 | A run's state | the add-on's project storage: `runs` (the ids), `run:<id>`, `inspect:<id>` (the Inspector's log, last 300 entries) |
 | A run's files | `docs/factory/<slug>/` in the run's git worktree on branch `factory/<slug>` (D-429, D-451); in the repository itself when it has no commits yet (`worktree: null`) |
 | Sample runs | ids `fx-sample-*`, files in the add-on's data folder, never in a repository (D-442) |
-| Tracks | `addons/factory/tracks/*.json` (graph: stages, gates, `after`, `when`, loops, fan-out) |
+| Tracks | `addons/factory/tracks/*.json` (graph: stages, gates, `after`, `when` with `!` and `&`, loops, fan-out; a track's `offers`, `defaults` and `productExists`, D-471): `new-idea`, `change-request`, `tender` |
+| A company's profile | `<repo>/.jig/factory/company.md` (certifications, turnover, references): what the tender analyst checks requirements against |
+| A release package | `docs/factory/releases/<day>/` in the repository: README, `release-notes.md`, `tests/<cr>.md`, `letters/<cr>.md`, written uncommitted (D-471) |
 | Recipes | `addons/factory/recipes/*.md`; a repository overrides one in `<repo>/.jig/factory/recipes/<id>.md` ([guide](../guides/factory-recipes.md)) |
 | Golden briefs | `addons/factory/fixtures/briefs/*.md` (tests, evals and **Start from a brief…**) |
 
@@ -54,6 +56,19 @@ One loop, serialised (`serial`), driven by the `tick` watcher (every minute and 
   rest is the note, decided by `board:<name>`), the card in the board's done column approves. Waiting
   again after changes comments on the same card; decided in Jig or stopped comments and forgets it
   (`GateState.card`). GD stays in Jig. Errors: in the timeline, tried again after five minutes.
+- **Tracks** (D-471): a run's `track` picks its graph. **Change request**: S1 is the intake
+  (`cr-intake`, a CR from a support ticket), the product is the project's, the pack offers spec, tests,
+  release notes, quote and letter (the last four ticked); the quote's estimates come from
+  `lib/estimates.ts` (medians of measured stage times, never the AI's guess; "TO FILL IN" below three
+  measured runs). A **critical** one (the Plan step's switch, or `critical: true` in the CR) skips the
+  kit, demo and G1 and goes S3 → **S8c Fix now** → the pack → G3. **Tender**: no interview; T1 builds
+  the requirement matrix (`tender/matrix.json` + `.md`) from the documents and `.jig/factory/company.md`,
+  flagging "may not be required"; T2 the gap report with the earlier tenders' gaps; G0 is the bid
+  decision. No sales or marketing stages.
+- **Release package** (D-471, `lib/package.ts`): Floor → ⋯ → Release package… lists change requests
+  whose plan is done, not critical, not packaged: ready once G2 is approved (and G3 when they build).
+  It writes the package uncommitted, marks the runs `packaged`, and hands the notes to the Releases
+  add-on (`stagePackage`) when it is on: its Release tab offers **Use the release package**.
 - **Publish** (D-438, D-470, `lib/publish.ts`, `publish.tsx`): ⋯ → Publish demo… on a demo version
   G1 approved. Where: this computer (a copy of the version's folder in `published/<run>-v<n>/` in the
   data folder) or a `factory.publishTargets` site (the site's mirror in `publish/<target>/`, the version
@@ -75,13 +90,14 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `runs` / `allRuns` | `{projectId}` / – | the project's runs / every project's |
 | `run` | `{projectId, runId}` | one run, or `null` |
 | `outputFiles` | `{projectId, runId}` | output id → absolute path |
-| `startRun` | `{projectId, brief? \| briefText? \| text?, title?, permissionMode?, outputs?, build?, productExists?, level?}` | a new run (in a worktree when the project is a git repository with commits) |
+| `startRun` | `{projectId, brief? \| briefText? \| text?, title?, permissionMode?, outputs?, build?, productExists?, level?, track?, critical?, attachments?}` | a new run (in a worktree when the project is a git repository with commits); a tender needs its documents or a text |
+| `tracks` | – | the tracks New idea offers: `{id, title, description, interviews, offers, defaults}` |
 | `meetings` | – | your recent ended meetings for New idea's picker (`api.meetings.recent`, permission `meetings:read`) |
 | `ideaFrom` | `{text, title?, source?}` | leaves a pending idea and opens New idea with it (a meeting's or a message's ⋯) |
 | `briefDoc` | `{projectId, runId}` | the run's brief parsed: sections, coverage, gaps, level, languages (D-461) |
 | `enough` | `{projectId, runId}` | Good enough: the interviewer writes the brief from what there is and ends |
 | `track` | `{projectId, runId}` | the run's track and plan for the Plan dialog |
-| `plan` | `{projectId, runId, outputs, languages, owners, level, build, productExists, permissionMode, approvals?}` | confirms the Plan step (`plan.confirmed`), the run goes on |
+| `plan` | `{projectId, runId, outputs, languages, owners, level, build, productExists, permissionMode, approvals?, critical?}` | confirms the Plan step (`plan.confirmed`), the run goes on |
 | `decide` | `{projectId, runId, gateId, kind: "approve" \| "changes" \| "reject", note?, pins?, direction?}` | a gate decision; on G1 Ask for changes the Demo review's pins join the note as numbered lines (at most 30), on GD Approve `direction` picks a board (D-462) |
 | `decideOutput` | `{projectId, runId, outputId, kind: "approve" \| "reject", note?}` | one pack output and its files (a reason is needed to reject); an edit since Jig wrote it is noticed by its hash and counts against trust; the gate is approved by itself once nothing of it waits and something was approved (D-467) |
 | `reviewOf` | `{projectId, runId, outputId}` | the review sheet: the output and the newest version of its other form (deck ↔ deck images, one-pager ↔ its images), each with its file, its Markdown text and its files (PDF, HTML, images) |
@@ -94,6 +110,10 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `publish` | `{projectId, runId, version, where: "local" \| <target>, days: 7 \| 30 \| 90, confirmTo?}` | publishes (scan again first; refuses on findings), records `Run.published`, moves the demo output to `published` |
 | `takeDown` | `{projectId, runId, id}` | removes a published copy (and redeploys its site); marks it `takenDown` |
 | `showInPages` | `{projectId, runId, version}` | publishes that demo version through the Pages add-on's `publish` export; the run keeps one page (`demoPage`) and each version updates it |
+| `tenderMatrix` | `{projectId, runId}` | a tender run's requirement matrix, or `null` |
+| `tenderGaps` | `{projectId}` | `{tenders, gaps}`: requirements not met or unknown under the same key in two or more tenders |
+| `packageCandidates` | `{projectId}` | change requests for a release package: `{runId, title, slug, waiting, why}` |
+| `makePackage` | `{projectId, runIds, day}` | writes the release package of the ready ones (refuses an existing folder), marks them `packaged`, stages it in Releases; `{folder, files, staged}` |
 | `answer` | `{projectId, runId, stageId, answers? \| reply?}` | answers the interview's question cards, or a stage's `factory_ask` |
 | `rerun` | `{projectId, runId, stageId, note?}` | the stage again as its next version; what follows waits again |
 | `fork` | `{projectId, runId, stageId, note?}` | a new run from that stage on a branch of its own |
@@ -123,16 +143,22 @@ chat that runs a stage (the Conductor knows its chat id).
 
 ## Views
 
-- **New idea** (modal, D-460): the idea typed, dictated or pasted, files, a meeting from your
-  history, the project and whether it's for its product or a new one; **Start interview**.
+- **New idea** (modal, D-460): the track (New idea, Change request, Tender, D-471), the idea typed,
+  dictated or pasted, files, a meeting from your history, the project and whether it's for its product
+  or a new one; **Start interview** / **Start intake** / **Read the tender** (a tender opens its Run tab).
 - **Interview** (tab, D-461): question cards with suggested answers (one click, edit or dictate),
   **Good enough**, the brief building beside them with its coverage, level, languages and open
   points; **Looks right** approves G0 and opens the Plan dialog.
-- **Plan** (modal, the person stage S3): stages (struck through when skipped), outputs ticked per
-  track with a language per group, an owner per gate, level and how chats ask; **Start run**. A run
+- **Plan** (modal, the person stage S3): stages (struck through when skipped, as the Conductor
+  would), the track's outputs with a language per group, a change request's **critical** switch, an owner per gate, level and how chats ask; **Start run**. A run
   started from a brief is planned in its start dialog (`plan.confirmed`), so S3 passes by itself.
-- **Floor** (tab): lanes of run cards, the KPI strip, **New idea…**, **Start from a brief…**, ⋯ sample runs.
-- **Run** (tab): the stage graph (each node opens its sheet), outputs, timeline and the run's chats.
+- **Floor** (tab): lanes of run cards, the KPI strip, **New idea…**, **Start from a brief…**, ⋯
+  **Release package…** (modal: whole-row ticks of the ready change requests, why the others wait, the
+  day), **Recurring gaps…** (modal: per key, its tenders and status) and the sample runs.
+- **Run** (tab): the stage graph of the run's own track (each node opens its sheet), outputs,
+  timeline and the run's chats; a tender's **Requirements** above the outputs (a fixed box: id, text,
+  category, must/should and the status at the right; a status filter and a search; a row opens its
+  source and why).
   A **stage sheet** shows status, recipe, version, times, its chats, a question to answer, the report
   and the stage's outputs, with **Open chat**, **Re-run…** and **Fork from here…**. A **gate sheet**
   shows its owner, revisions left and what it reviews, with **Approve**, **Ask for changes** (with a
