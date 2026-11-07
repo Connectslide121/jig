@@ -110,7 +110,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 8, Measure and tune — not started.
+- **Current session:** none: every session of the phase is done (2026-11-15). What is left is
+  trying it on a real machine (each session's notes list what) and merging `factory` into main.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -121,7 +122,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   captures with marks (D-464). Session M3: chat tools, Write with Jig, style sources,
   exports (D-465). Session 5: the pack, its formats, review per output, trust (D-466, D-467).
   Session 6: phone cards, approvals on boards, Publish (D-468…D-470). Session 7: change-request and
-  tender tracks, quotes, the release package through Releases (D-471).
+  tender tracks, quotes, the release package through Releases (D-471). Session 8: the factory
+  report in Pages, measured estimates in the Plan step, recipe evals (D-472).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -134,7 +136,10 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 8 (the factory report, calibrated estimates, recipe evals). Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** nothing half done. Next: Jon tries the phase on a real machine (real
+  models, phones, boards, a Static Web Apps deploy, tender PDFs, evals on real models), then merges
+  `factory` into main (fetch main first: its decisions may have moved past D-472). Built-in add-ons
+  read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -494,13 +499,32 @@ each run's own track. e2e: `factory.spec.ts` → "a change request from its tick
 package", "two tenders, their requirement matrix and the recurring gaps". Needs a real machine: real
 tender PDFs through real models, and a release made from a package.
 
-### 8. Measure and tune — not started
+### 8. Measure and tune — done
 
-- [ ] Factory report (a Page): runs, durations per stage, critic scores, edit rates, gates loosened
+- [x] Factory report (a Page): runs, durations per stage, critic scores, edit rates, gates loosened
       on evidence.
-- [ ] Calibrated estimates from measured stage durations (never the AI's own guess).
-- [ ] Recipe evals: golden briefs on real models from a button, scored by the critic, trend per
+- [x] Calibrated estimates from measured stage durations (never the AI's own guess).
+- [x] Recipe evals: golden briefs on real models from a button, scored by the critic, trend per
       recipe version.
+
+**Done when:** the Floor's ⋯ makes a factory report page in Pages from a project's runs, the Plan
+step shows measured times per stage (or says they aren't measured yet), and Recipe evals runs the
+golden briefs to their quality gate and compares the critic's numbers per recipe version.
+
+**Session 8 notes (2026-11-15, D-472).** `lib/report.ts` (pure): runs by track and state, each
+recipe's median and p80, the critic's first passes, scores and demo versions, approved-as-written per
+kind, and suggestions (never applied) for lighter gates (≥5 decisions, ≥90% as written) or recipes
+that need work (<50%). Host `factoryReport` publishes it through Pages' `publish` (one page per
+project, its id in project storage); the page uses CSS system colours, so no tokens are needed and it
+follows light or dark. `stageTimes`/`planStageTime`/`planTotal` in `lib/estimates.ts` give the Plan
+step's column and total (host `stageEstimates`, over all projects, the run itself left out). Recipe
+evals (`lib/evals.ts`, host `runEvals`, `evals`, `evalSteps` after each step): eval runs carry
+`Run.eval` (brief, recipe hashes); Jig approves G0/GD itself, records the result at G1 and stops the
+run; they stay out of notifications, phone cards, KPIs, estimates and the report. Evals are in the
+Floor's ⋯ rather than Settings (Settings is core code without the add-on's host). e2e:
+`factory.spec.ts` → "recipe evals run golden briefs to their quality gate, and the factory report
+goes to Pages", and the Plan-step test checks the "not measured yet" line. Needs a real machine:
+evals on real models (they use plan usage) and a report over real runs.
 
 ## Left out (for now)
 

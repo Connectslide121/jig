@@ -35,6 +35,10 @@ data (D-442).
   Apps site from Settings → Jig factory → Publish targets; for 7, 30 or 90 days (the page ends itself
   after); optionally with a bar where the customer confirms by e-mail. Real-looking e-mail addresses,
   phone numbers or listed real names block it. The run's **Published** list takes a copy down (D-470).
+- **Measure and tune** (D-472): Floor ⋯ → **Factory report** puts the project's runs, stage times,
+  critic scores and trust per output in a Pages page, with suggestions for lighter gates; Floor ⋯ →
+  **Recipe evals…** runs the golden briefs to their quality gate and compares recipe versions. The
+  Plan step shows each stage's measured time.
 - **Sample runs:** ⋯ → Load sample runs (on the Floor, the Runs view or the top bar's menu) adds six
   sample runs to the active project, one or more in every lane; ⋯ → Remove sample runs takes them
   away. Their files live in the add-on's data folder, never in a repository.
@@ -47,7 +51,10 @@ data (D-442).
 - `lib/floor.ts`: lanes, the card's progress, the KPI strip and the stage-graph boxes.
 - `lib/samples.ts`: the sample runs (D-442).
 - `tracks/new-idea.json`, `change-request.json`, `tender.json`: the tracks (D-471).
-- `lib/estimates.ts`: a quote's estimates from measured stage times.
+- `lib/estimates.ts`: a quote's estimates and the Plan step's times, from measured stage times.
+- `lib/report.ts`: the factory report and its page (D-472).
+- `lib/evals.ts`: recipe evals: when an eval run is done, its result, the table per recipe version.
+- `evals.tsx`: the Recipe evals modal.
 - `lib/tenders.ts`: the requirement matrix, its counts and the recurring gaps.
 - `lib/package.ts`: which change requests can go into a release package, and its files.
 - `tender.tsx`: the Requirements box, Recurring gaps and Release package modals.

@@ -17,6 +17,8 @@ files on the run's branch and reports back; each gate waits for a person. Design
 | A release package | `docs/factory/releases/<day>/` in the repository: README, `release-notes.md`, `tests/<cr>.md`, `letters/<cr>.md`, written uncommitted (D-471) |
 | Recipes | `addons/factory/recipes/*.md`; a repository overrides one in `<repo>/.jig/factory/recipes/<id>.md` ([guide](../guides/factory-recipes.md)) |
 | Golden briefs | `addons/factory/fixtures/briefs/*.md` (tests, evals and **Start from a brief…**) |
+| Eval results | the add-on's global storage `evals` (newest 200): brief, recipe hashes, score, pass, demo versions (D-472) |
+| The factory report's page | project storage `reportPage`: the Pages page it updates (D-472) |
 
 ## The Conductor (`host.ts`)
 
@@ -69,6 +71,17 @@ One loop, serialised (`serial`), driven by the `tick` watcher (every minute and 
   whose plan is done, not critical, not packaged: ready once G2 is approved (and G3 when they build).
   It writes the package uncommitted, marks the runs `packaged`, and hands the notes to the Releases
   add-on (`stagePackage`) when it is on: its Release tab offers **Use the release package**.
+- **Measure and tune** (D-472): times come only from finished stages of real runs (`measurements`;
+  samples and eval runs left out). The **factory report** (`lib/report.ts`) is a self-contained page
+  in Pages (system colours, no scripts): runs by track and state, each recipe's median and p80, the
+  critic's first passes, scores and demo versions, approved-as-written per kind, and suggestions
+  (never applied) for lighter gates (≥5 decisions, ≥90% as written) or recipes to fix (<50%). The
+  **Plan step's estimates** (`stageTimes`, `planStageTime`, `planTotal`): each recipe over all
+  projects, the build per level, a fan-out as its slowest output; nothing below three measurements.
+  **Recipe evals** (`lib/evals.ts`): a run per golden brief marked `Run.eval` (the brief and the
+  short hashes of `demo-<level>` and `critique`, overrides included); `evalSteps` after each step
+  approves its G0 and GD (first direction) by `eval`, then at G1 (or a stage needing a person)
+  records the result and stops the run. Eval runs send no notifications or phone cards.
 - **Publish** (D-438, D-470, `lib/publish.ts`, `publish.tsx`): ⋯ → Publish demo… on a demo version
   G1 approved. Where: this computer (a copy of the version's folder in `published/<run>-v<n>/` in the
   data folder) or a `factory.publishTargets` site (the site's mirror in `publish/<target>/`, the version
@@ -90,7 +103,7 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `runs` / `allRuns` | `{projectId}` / – | the project's runs / every project's |
 | `run` | `{projectId, runId}` | one run, or `null` |
 | `outputFiles` | `{projectId, runId}` | output id → absolute path |
-| `startRun` | `{projectId, brief? \| briefText? \| text?, title?, permissionMode?, outputs?, build?, productExists?, level?, track?, critical?, attachments?}` | a new run (in a worktree when the project is a git repository with commits); a tender needs its documents or a text |
+| `startRun` | `{projectId, brief? \| briefText? \| text?, title?, permissionMode?, outputs?, build?, productExists?, level?, track?, critical?, eval?, attachments?}` | a new run (in a worktree when the project is a git repository with commits); a tender needs its documents or a text |
 | `tracks` | – | the tracks New idea offers: `{id, title, description, interviews, offers, defaults}` |
 | `meetings` | – | your recent ended meetings for New idea's picker (`api.meetings.recent`, permission `meetings:read`) |
 | `ideaFrom` | `{text, title?, source?}` | leaves a pending idea and opens New idea with it (a meeting's or a message's ⋯) |
@@ -114,6 +127,10 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `tenderGaps` | `{projectId}` | `{tenders, gaps}`: requirements not met or unknown under the same key in two or more tenders |
 | `packageCandidates` | `{projectId}` | change requests for a release package: `{runId, title, slug, waiting, why}` |
 | `makePackage` | `{projectId, runIds, day}` | writes the release package of the ready ones (refuses an existing folder), marks them `packaged`, stages it in Releases; `{folder, files, staged}` |
+| `stageEstimates` | `{projectId, runId?}` | every recipe's measured time over all projects' runs, the run left out: recipe (and `build@<level>`) → `{n, medianMs?, p80Ms?}` (D-472) |
+| `factoryReport` | `{projectId}` | publishes the project's factory report through the Pages add-on's `publish`, updating its one page; the page id |
+| `runEvals` | `{projectId, briefs?}` | starts an eval run per golden brief (all of them by default) |
+| `evals` | `{projectId?}` | `{rows, results, running}`: results per recipe version (runs, passed, average score, trend, demo versions), newest results first, the project's eval runs still going |
 | `answer` | `{projectId, runId, stageId, answers? \| reply?}` | answers the interview's question cards, or a stage's `factory_ask` |
 | `rerun` | `{projectId, runId, stageId, note?}` | the stage again as its next version; what follows waits again |
 | `fork` | `{projectId, runId, stageId, note?}` | a new run from that stage on a branch of its own |
@@ -150,11 +167,14 @@ chat that runs a stage (the Conductor knows its chat id).
   **Good enough**, the brief building beside them with its coverage, level, languages and open
   points; **Looks right** approves G0 and opens the Plan dialog.
 - **Plan** (modal, the person stage S3): stages (struck through when skipped, as the Conductor
-  would), the track's outputs with a language per group, a change request's **critical** switch, an owner per gate, level and how chats ask; **Start run**. A run
+  would), the track's outputs with a language per group, a change request's **critical** switch, an owner per gate, level and how chats ask; **Start run**. Each of Jig's stages still to come shows its measured median at the right ("—" without three measurements), and a line under the list the total or how many stages aren't measured yet (D-472). A run
   started from a brief is planned in its start dialog (`plan.confirmed`), so S3 passes by itself.
 - **Floor** (tab): lanes of run cards, the KPI strip, **New idea…**, **Start from a brief…**, ⋯
   **Release package…** (modal: whole-row ticks of the ready change requests, why the others wait, the
-  day), **Recurring gaps…** (modal: per key, its tenders and status) and the sample runs.
+  day), **Recurring gaps…** (modal: per key, its tenders and status), **Factory report** (to Pages, D-472),
+  **Recipe evals…** (modal: **Run evals**, the eval runs going, a row per recipe version with runs,
+  passed, average score, trend and demo versions) and the sample runs. Eval runs show as "Eval ·" cards
+  while they run and leave the Floor when done; they never count in the KPIs.
 - **Run** (tab): the stage graph of the run's own track (each node opens its sheet), outputs,
   timeline and the run's chats; a tender's **Requirements** above the outputs (a fixed box: id, text,
   category, must/should and the status at the right; a status filter and a search; a row opens its

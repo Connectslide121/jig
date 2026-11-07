@@ -1,3 +1,14 @@
+Jig factory measures itself (2026-11-15, phase 28 session 8, D-472): Floor ⋯ → **Factory report**
+puts a page in **Pages** (one per project, made again in place): runs by track and state, how long
+each stage takes (median and 80%), the critic's scores and how many demo versions it took, how much of
+each output you approved as written, and which gates could be lighter on that evidence (suggestions
+only; Jig changes no gate). The **Plan step** shows each of Jig's stages with its measured time and a
+total, or "N stages not measured yet" until three runs have done a stage. Floor ⋯ → **Recipe
+evals…** → **Run evals** runs every golden brief to its quality gate by itself (Jig approves the
+scout and picks the first direction) and shows the critic's score per recipe version, with the trend
+after you change a recipe. Needs a real machine: evals on real models (they use your plan) and a
+report over real runs.
+
 Jig factory's change requests and tenders (2026-11-14, phase 28 session 7, D-471): **New idea** has a
 **Track**: *Change request* (paste the ticket; Jig asks two or three questions and writes the CR,
 builds a demo for the customer to confirm, then tests, release notes, a quote with estimates from
