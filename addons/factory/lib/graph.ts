@@ -35,7 +35,15 @@ export interface TrackItem {
 export interface Track {
   id: string;
   title?: string;
+  /** One line for New idea's track picker. */
+  description?: string;
   caps: { revisionsPerGate: number; retriesPerStage: number };
+  /** The pack's outputs the Plan step offers for this track (all of them when not given, D-471). */
+  offers?: string[];
+  /** The ones ticked by default (the offered outputs' own defaults when not given). */
+  defaults?: string[];
+  /** Whether its runs are changes to a product that exists (change requests): the Plan step's default. */
+  productExists?: boolean;
   stages: TrackItem[];
 }
 
@@ -59,12 +67,18 @@ function list(facts: Facts, key: string | undefined): string[] {
   return Array.isArray(v) ? v : [];
 }
 
-/** Whether a `when` holds: `product.exists`, or `!product.exists` for its opposite. No `when` holds. */
+/**
+ * Whether a `when` holds: `product.exists`, `!product.exists` for its opposite, or terms joined by `&`
+ * (`build.requested&!critical`), all of which must hold. No `when` holds.
+ */
 export function holds(when: string | undefined, facts: Facts): boolean {
   if (!when) return true;
-  const negate = when.startsWith("!");
-  const value = facts[negate ? when.slice(1) : when] === true;
-  return negate ? !value : value;
+  return when.split("&").every((term) => {
+    const t = term.trim();
+    const negate = t.startsWith("!");
+    const value = facts[negate ? t.slice(1) : t] === true;
+    return negate ? !value : value;
+  });
 }
 
 function stageOf(run: Run, id: string): StageRun | undefined {

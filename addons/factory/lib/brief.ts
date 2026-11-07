@@ -21,6 +21,17 @@ export const BRIEF_SECTIONS = [
 
 export type BriefSection = (typeof BRIEF_SECTIONS)[number];
 
+/**
+ * A change request's sections (the CR template, D-471): what changes, who asks, why, what happens
+ * today, the customer and ticket, how they'll know it's done, and the rules.
+ */
+export const CR_SECTIONS = ["Change", "Who", "Why", "Today", "Customer", "Done when", "Rules"] as const;
+
+/** The sections a track's brief has, in order (coverage counts these). */
+export function sectionsFor(track?: string): readonly string[] {
+  return track === "change-request" ? CR_SECTIONS : BRIEF_SECTIONS;
+}
+
 /** Output groups that get a language of their own (D-439). */
 export const LANGUAGE_GROUPS = ["docs", "sales", "learning", "marketing"] as const;
 export type LanguageGroup = (typeof LANGUAGE_GROUPS)[number];
@@ -48,7 +59,8 @@ export const LANGUAGES: Array<{ code: string; label: string }> = [
 export interface BriefDoc {
   title?: string;
   data: FrontMatter;
-  sections: Record<BriefSection, string>;
+  /** The track's sections (`sectionsFor`), "" when missing. */
+  sections: Record<string, string>;
   /** "Open points": one line each. */
   gaps: string[];
   level?: Level;
@@ -61,8 +73,11 @@ export interface BriefDoc {
 const norm = (s: string) => s.trim().toLowerCase();
 const asLevel = (v: unknown): Level | undefined => (v === "L1" || v === "L2" || v === "L3" ? v : undefined);
 
-/** Reads a brief's Markdown (front-matter, `# Title`, `## Section` blocks). Missing sections are "". */
-export function parseBrief(text: string): BriefDoc {
+/**
+ * Reads a brief's Markdown (front-matter, `# Title`, `## Section` blocks) with the track's sections
+ * (`sectionsFor`). Missing sections are "".
+ */
+export function parseBrief(text: string, names: readonly string[] = BRIEF_SECTIONS): BriefDoc {
   const { data, body } = parseFrontMatter(text);
   const blocks = new Map<string, string>();
   let current: string | undefined;
@@ -87,16 +102,15 @@ export function parseBrief(text: string): BriefDoc {
     if (current !== undefined) lines.push(line);
   }
   flush();
-  const sections = Object.fromEntries(BRIEF_SECTIONS.map((s) => [s, blocks.get(norm(s)) ?? ""])) as Record<
-    BriefSection,
-    string
-  >;
+  const sections: Record<string, string> = Object.fromEntries(
+    names.map((s) => [s, blocks.get(norm(s)) ?? ""]),
+  );
   const open = blocks.get("open points") ?? "";
   const gaps = open
     .split("\n")
     .map((l) => l.replace(/^\s*(?:[-*]|\d+\.)\s*/, "").trim())
     .filter((l) => l && !/^(none|—|-)$/i.test(l));
-  const covered = BRIEF_SECTIONS.filter((s) => sections[s].trim()).length;
+  const covered = names.filter((s) => sections[s]?.trim()).length;
   return {
     title,
     data,
@@ -105,7 +119,7 @@ export function parseBrief(text: string): BriefDoc {
     level: asLevel(data.level),
     levelWhy: typeof data.levelWhy === "string" ? data.levelWhy : undefined,
     languages: languagesOf(data.languages),
-    coverage: { covered, total: BRIEF_SECTIONS.length },
+    coverage: { covered, total: names.length },
   };
 }
 
@@ -163,6 +177,8 @@ export const PLAN_OUTPUTS: Array<{
   group: LanguageGroup;
   ticked: boolean;
   pair?: string;
+  /** Only tracks that list it in their `offers` make it (a quote is a change request's, D-471). */
+  only?: boolean;
 }> = [
   { id: "spec", label: "Spec", group: "docs", ticked: true },
   { id: "stories", label: "User stories", group: "docs", ticked: true },
@@ -182,6 +198,7 @@ export const PLAN_OUTPUTS: Array<{
   },
   { id: "objections", label: "Objection handling", group: "sales", ticked: false },
   { id: "letter", label: "Customer letter", group: "sales", ticked: false },
+  { id: "quote", label: "Quote", group: "sales", ticked: false, only: true },
   { id: "course-sales", label: "Sales course", group: "learning", ticked: false },
   { id: "course-customer", label: "Customer course", group: "learning", ticked: false },
   { id: "marketing", label: "Marketing plan", group: "marketing", ticked: true },
@@ -191,3 +208,10 @@ export const PLAN_OUTPUTS: Array<{
   { id: "marketing-images", label: "Marketing images (ChatGPT)", group: "marketing", ticked: false },
   { id: "teaser", label: "Teaser film", group: "marketing", ticked: false },
 ];
+
+/** The outputs a track's Plan step offers (D-471): its `offers`, else every output not kept to some. */
+export function outputsFor(track?: { offers?: string[] }): typeof PLAN_OUTPUTS {
+  return track?.offers?.length
+    ? PLAN_OUTPUTS.filter((o) => track.offers?.includes(o.id))
+    : PLAN_OUTPUTS.filter((o) => !o.only);
+}

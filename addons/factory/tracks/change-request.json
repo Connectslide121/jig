@@ -1,0 +1,31 @@
+{
+  "id": "change-request",
+  "title": "Change request",
+  "description": "A customer's change from a support ticket: the CR, a demo they confirm, a quote, then the release package",
+  "caps": { "revisionsPerGate": 3, "retriesPerStage": 1 },
+  "productExists": true,
+  "offers": ["spec", "tests", "release-notes", "quote", "letter"],
+  "defaults": ["tests", "release-notes", "quote", "letter"],
+  "stages": [
+    { "id": "S1", "recipe": "cr-intake", "title": "Intake", "interactive": true },
+    { "id": "S2", "recipe": "scout", "title": "Scout", "after": ["S1"] },
+    { "gate": "G0", "after": ["S2"] },
+    { "id": "S3", "recipe": "plan", "title": "Plan", "person": true, "after": ["G0"] },
+    { "id": "S4", "recipe": "kit-extract", "title": "Product kit", "after": ["S3"], "when": "!critical" },
+    { "id": "S5", "recipe": "demo-{level}", "title": "Build the demo", "after": ["S4"] },
+    {
+      "id": "S6",
+      "recipe": "critique",
+      "title": "Quality gate",
+      "after": ["S5"],
+      "loop": { "back": "S5", "until": "quality.pass", "max": 3 }
+    },
+    { "gate": "G1", "after": ["S6"], "changes": "S5" },
+    { "id": "S8c", "recipe": "build", "title": "Fix now", "after": ["S3"], "when": "critical" },
+    { "fanout": "S7", "title": "Pack", "after": ["G1|S8c"], "outputs": "plan.outputs" },
+    { "gate": "G2", "after": ["S7:spec", "S7:tests", "S7:release-notes"] },
+    { "gate": "G4", "after": ["S7:quote", "S7:letter"] },
+    { "id": "S8", "recipe": "build", "title": "Build", "after": ["G2"], "when": "build.requested&!critical" },
+    { "gate": "G3", "after": ["S8|S8c"] }
+  ]
+}

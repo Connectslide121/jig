@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import changeRequest from "../tracks/change-request.json";
 import track from "../tracks/new-idea.json";
-import { PLAN_OUTPUTS } from "./brief";
+import { outputsFor, PLAN_OUTPUTS } from "./brief";
 import { parseFrontMatter } from "./frontmatter";
 import { reviewerOf } from "./gates";
 import { recipeFor, type Track } from "./graph";
@@ -51,18 +52,24 @@ describe("the built-in recipes", () => {
     for (const out of PLAN_OUTPUTS) expect(ids).toContain(out.id);
   });
 
-  it("send every pack output to the gate that reviews its kind, and pair the two forms (D-445, D-467)", () => {
-    const gates = new Map<string, string>();
-    for (const item of (track as Track).stages)
-      for (const term of item.gate ? (item.after ?? []) : [])
-        if (term.startsWith("S7:")) gates.set(term.slice(3), item.gate ?? "");
-    for (const out of PLAN_OUTPUTS) {
-      const recipe = builtIns.find((r) => r.id === out.id);
-      expect(gates.get(out.id), out.id).toBe(reviewerOf(recipe?.kind ?? out.id));
-      expect(recipe?.reviewer, out.id).toBe(gates.get(out.id));
-      if (out.pair) expect(PLAN_OUTPUTS.find((o) => o.id === out.pair)?.pair).toBe(out.id);
-    }
-  });
+  it.each([
+    ["new-idea", track],
+    ["change-request", changeRequest],
+  ])(
+    "send every pack output of %s to the gate that reviews its kind, and pair the two forms (D-445, D-467, D-471)",
+    (_id, t) => {
+      const gates = new Map<string, string>();
+      for (const item of (t as Track).stages)
+        for (const term of item.gate ? (item.after ?? []) : [])
+          if (term.startsWith("S7:")) gates.set(term.slice(3), item.gate ?? "");
+      for (const out of outputsFor(t as Track)) {
+        const recipe = builtIns.find((r) => r.id === out.id);
+        expect(gates.get(out.id), out.id).toBe(reviewerOf(recipe?.kind ?? out.id));
+        expect(recipe?.reviewer, out.id).toBe(gates.get(out.id));
+        if (out.pair) expect(PLAN_OUTPUTS.find((o) => o.id === out.pair)?.pair).toBe(out.id);
+      }
+    },
+  );
 
   it("make PDFs only of HTML, and images only on ChatGPT", () => {
     for (const r of builtIns) {

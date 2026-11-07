@@ -1,6 +1,7 @@
 {
   "id": "new-idea",
   "title": "New idea",
+  "description": "An idea for a product or a module: the interview, a polished demo, then the whole pack",
   "caps": { "revisionsPerGate": 3, "retriesPerStage": 1 },
   "stages": [
     { "id": "S1", "recipe": "interview", "title": "Interview", "interactive": true },

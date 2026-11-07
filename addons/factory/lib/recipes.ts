@@ -146,7 +146,7 @@ export function marker(recipe: string, runId: string): string {
 export const RULES = [
   "Everything you write is a draft: front-matter `status: draft`; a person moves it on, never you.",
   "Write only inside the run's folder; commit your files on the run's branch in small commits with the run id in the message; never push.",
-  "Use invented data only: no real customer names, e-mail addresses or phone numbers.",
+  "Demos, examples and sample data use invented data only: no real customer names, e-mail addresses or phone numbers. Name a real customer or buyer only where what came in names it (a change request, a tender), never in a demo.",
   "Write for the value to the customer, simply; follow the product's glossary when it has one.",
   "Nothing outward-facing: never publish, send, post or deploy.",
 ];

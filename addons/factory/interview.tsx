@@ -20,13 +20,7 @@ import {
 } from "@jig/sdk/ui";
 import { Check, Factory, MoreHorizontal } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
-import {
-  BRIEF_SECTIONS,
-  type BriefDoc,
-  LANGUAGE_GROUP_LABELS,
-  LANGUAGE_GROUPS,
-  LANGUAGES,
-} from "./lib/brief";
+import { type BriefDoc, LANGUAGE_GROUP_LABELS, LANGUAGE_GROUPS, LANGUAGES, sectionsFor } from "./lib/brief";
 import type { Question, Run } from "./lib/run";
 import { LevelBadge, Ring } from "./parts";
 import { PlanDialog } from "./plan";
@@ -300,7 +294,7 @@ function Brief({
         <span className="text-hint">({g0?.status === "approved" ? "approved" : "draft"})</span>
       </div>
       <dl className="flex min-h-0 flex-1 flex-col gap-2 text-xs @3xl:overflow-y-auto">
-        {BRIEF_SECTIONS.map((name) => {
+        {sectionsFor(run.track).map((name) => {
           const text = brief?.sections[name]?.trim();
           return (
             <Row key={name} name={name}>

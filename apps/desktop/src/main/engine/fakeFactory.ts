@@ -54,7 +54,9 @@ export async function runFakeFactory(text: string, hooks: FakeFactoryHooks): Pro
     kind === "stage"
       ? (/^\[factory stage (\S+) /.exec(head)?.[1] ?? "")
       : stageId === "S1"
-        ? "interview"
+        ? /^Track: change-request/m.test(brief)
+          ? "cr-intake"
+          : "interview"
         : (stageId.split(":")[1] ?? "");
   const outputs = kind === "stage" ? listAfter(text, "## Write") : listAfter(brief, "## You write");
   if (!folder) {
@@ -97,6 +99,32 @@ export async function runFakeFactory(text: string, hooks: FakeFactoryHooks): Pro
     }
     await write(folder, "brief.md", fakeBrief(title, idea, true, !!enough));
     await report(hooks, "Wrote the one-page brief from your answers.", ["brief.md"]);
+    return;
+  }
+
+  // The change-request intake (D-471): one round of cards, then the CR; `[critical]` in the ticket
+  // makes it a critical bug.
+  if (recipe === "cr-intake" && (kind === "stage" || kind === "answers")) {
+    const ticket = await readFile(join(folder, "input", "idea.md"), "utf8").catch(() => "A change");
+    const title =
+      ticket
+        .split("\n")
+        .find((l) => l.trim())
+        ?.replace(/^#\s*/, "")
+        .replace("[critical]", "")
+        .trim() ?? "A change";
+    if (kind === "stage") {
+      await hooks.call("addon_factory_questions", {
+        questions: [
+          { text: "Who asked for it?", suggestion: "Contoso's planners", options: ["Planners", "Staff"] },
+          { text: "What happens today?", suggestion: "They export to Excel and fix it by hand" },
+        ],
+      });
+      await hooks.say("Posted the questions.");
+      return;
+    }
+    await write(folder, "brief.md", fakeChangeRequest(title, ticket, ticket.includes("[critical]")));
+    await report(hooks, "Wrote the change request.", ["brief.md"]);
     return;
   }
 
@@ -224,6 +252,8 @@ async function contentOf(
       null,
       2,
     );
+  if (recipe === "tender-matrix")
+    return path.endsWith(".json") ? JSON.stringify(fakeMatrix(), null, 2) : FAKE_MATRIX_MD;
   if (path.endsWith(".json"))
     return recipe === "critique"
       ? JSON.stringify(fakeScorecard(fails), null, 2)
@@ -260,3 +290,68 @@ function fakeBrief(title: string, idea: string, full: boolean, enough = false): 
     );
   return `${head}${parts.join("\n\n")}\n`;
 }
+
+/** The fake intake's change request: the CR template's sections, a customer and a ticket. */
+function fakeChangeRequest(title: string, ticket: string, critical: boolean): string {
+  return `---\ntitle: ${title}\nstatus: draft\nlevel: L1\nproductExists: true\ncustomer: Contoso\nticket: SUP-12\ncritical: ${critical}\n---\n${[
+    `# ${title}`,
+    `## Change\n${ticket.replace("[critical]", "").trim()}`,
+    "## Who\nContoso's planners.",
+    "## Why\nThey lose an hour a week fixing exports by hand.",
+    "## Today\nThey export to Excel and fix it by hand.",
+    "## Customer\nContoso, ticket SUP-12.",
+    "## Done when\nThe planner exports and nothing needs fixing.",
+    "## Rules\nThe product's own words: shift, planner.",
+  ].join("\n\n")}\n`;
+}
+
+/** The fake tender analyst's matrix: one requirement of each status, an ISO 27001 gap that recurs. */
+function fakeMatrix() {
+  const req = (
+    id: string,
+    text: string,
+    kind: "must" | "should",
+    category: string,
+    key: string,
+    status: string,
+    why: string,
+  ) => ({ id, text, source: "tender.md", kind, category, key, status, why });
+  return {
+    tender: "Scheduling system",
+    buyer: "Fabrikam municipality",
+    deadline: "2026-12-01",
+    requirements: [
+      req(
+        "R1",
+        "ISO 27001 certified",
+        "must",
+        "company",
+        "cert:iso-27001",
+        "not-met",
+        "The profile has no ISO 27001",
+      ),
+      req("R2", "Staff can swap shifts", "must", "product", "other", "met", "The product's shift swap"),
+      req(
+        "R3",
+        "Turnover over 50 MSEK",
+        "must",
+        "company",
+        "turnover",
+        "unknown",
+        "The profile says nothing",
+      ),
+      req(
+        "R4",
+        "Three earlier municipal references",
+        "must",
+        "company",
+        "references:public",
+        "flagged",
+        "A number of earlier public references may not lawfully be required",
+      ),
+      req("R5", "Swedish user interface", "should", "product", "lang:sv", "met", "The product is in Swedish"),
+    ],
+  };
+}
+
+const FAKE_MATRIX_MD = `---\nstatus: draft\n---\n# Scheduling system (Fabrikam municipality)\n\nDeadline 2026-12-01. 2 met, 1 not met, 1 unknown, 1 flagged.\n\n| Id | Requirement | Source | Must | Status | Why |\n|---|---|---|---|---|---|\n| R1 | ISO 27001 certified | tender.md | yes | not met | The profile has no ISO 27001 |\n`;

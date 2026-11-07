@@ -61,6 +61,9 @@ describe("helpers", () => {
     expect(holds("product.exists", {})).toBe(false);
     expect(holds("!product.exists", {})).toBe(true);
     expect(holds("!product.exists", { "product.exists": true })).toBe(false);
+    expect(holds("build.requested&!critical", { "build.requested": true })).toBe(true);
+    expect(holds("build.requested&!critical", { "build.requested": true, critical: true })).toBe(false);
+    expect(holds("build.requested & !critical", {})).toBe(false);
   });
 
   it("orders the track for the stage-graph row", () => {

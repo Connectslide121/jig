@@ -267,6 +267,16 @@ export interface RepoDetail {
   headVersion?: string;
   detection?: Detection;
   dirty: boolean;
+  /** A release package another add-on handed over (Jig factory, D-471): its notes for the next release. */
+  package?: StagedPackage;
+}
+
+export interface StagedPackage {
+  title: string;
+  notes: string;
+  /** Its folder in the repository. */
+  folder?: string;
+  at: string;
 }
 
 export async function detail({ path }: { path: string }, api: AddonHostApi): Promise<RepoDetail> {
@@ -318,7 +328,34 @@ export async function detail({ path }: { path: string }, api: AddonHostApi): Pro
     headVersion: list.find((r) => r.commit === headSha)?.version,
     detection: policy ? undefined : await detectRepo({ path }, api),
     dirty: status.trim().length > 0,
+    package: (await api.storage.get<StagedPackage>(`package:${path}`)) ?? undefined,
   };
+}
+
+/**
+ * Shared (D-471): Jig factory hands over a release package's notes; the Release section offers them for
+ * the next release of that repository until it is released or dropped.
+ */
+export async function stagePackage(
+  { path, title, notes, folder }: { path: string; title: string; notes: string; folder?: string },
+  api: AddonHostApi,
+): Promise<void> {
+  if (typeof path !== "string" || !path || typeof notes !== "string")
+    throw new Error("Give a path and notes");
+  const staged: StagedPackage = {
+    title: String(title || "Release package").slice(0, 200),
+    notes: notes.slice(0, 100_000),
+    ...(typeof folder === "string" && folder ? { folder } : {}),
+    at: new Date().toISOString(),
+  };
+  await api.storage.set(`package:${path}`, staged);
+  api.emit("changed", { path });
+}
+
+/** Drops a handed-over release package without releasing it. */
+export async function dropPackage({ path }: { path: string }, api: AddonHostApi): Promise<void> {
+  await api.storage.set(`package:${path}`, null);
+  api.emit("changed", { path });
 }
 
 /** Writes `.jig/release.json` (the setup without a chat: the defaults, or what detection found). */
@@ -340,6 +377,7 @@ export async function release(
     notes,
     push,
     runPipeline,
+    usedPackage,
   }: {
     path: string;
     version: string;
@@ -348,6 +386,8 @@ export async function release(
     push?: boolean;
     /** Start the policy's release pipeline on the new tag (after a successful push). */
     runPipeline?: boolean;
+    /** The release used the handed-over release package: it is done. */
+    usedPackage?: boolean;
   },
   api: AddonHostApi,
 ): Promise<{ tag: string; committed: boolean; pushed: boolean; pushError?: string; pipeline?: string }> {
@@ -421,6 +461,7 @@ export async function release(
       pipeline = `Not started: ${(error as Error).message.split("\n").slice(-2).join(" ")}`;
     }
   }
+  if (usedPackage) await api.storage.set(`package:${path}`, null);
   api.emit("changed", { path });
   return { tag, committed: changed.length > 0, pushed, pushError, pipeline };
 }

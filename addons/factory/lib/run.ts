@@ -59,6 +59,8 @@ export interface Run {
   phone?: Record<string, string>;
   /** Copies of the demo published outside Jig (D-470, `lib/publish.ts`), taken down ones included. */
   published?: Published[];
+  /** The release package a change request went into (D-471, `lib/package.ts`): its day and folder. */
+  packaged?: { day: string; path: string; at: string };
 }
 
 export interface RunPlan {
@@ -70,6 +72,11 @@ export interface RunPlan {
   permissionMode: "acceptEdits" | "bypassPermissions";
   /** An existing product (its kit is extracted) or a new one (three directions). */
   productExists: boolean;
+  /**
+   * A critical bug (change requests, D-471): it skips the demo, the quote and the release package and is
+   * fixed at once. From the intake's brief (`critical: true`), changeable on the Plan step.
+   */
+  critical?: boolean;
   /** Confirmed by a person: the start dialog, or the Plan step (D-460). The Plan step then passes by itself. */
   confirmed?: boolean;
   /**
@@ -495,6 +502,12 @@ export function timeline(run: Run, label: (stage: StageRun) => string = (s) => s
     if (p.takenDown)
       events.push({ at: p.takenDown, kind: "output", text: `Demo v${p.version} taken down from ${where}` });
   }
+  if (run.packaged)
+    events.push({
+      at: run.packaged.at,
+      kind: "output",
+      text: `In the release package of ${run.packaged.day}`,
+    });
   return events.sort((a, b) => a.at.localeCompare(b.at));
 }
 
@@ -527,6 +540,9 @@ const KIND_LABEL: Record<string, string> = {
   newsletter: "Newsletter",
   post: "Post",
   code: "Code",
+  quote: "Quote",
+  "tender-matrix": "Requirement matrix",
+  "tender-gaps": "Gap report",
 };
 
 /** An output's name as cards and the inbox show it: "Demo v2", "Spec v1". */

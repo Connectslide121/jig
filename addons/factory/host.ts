@@ -23,7 +23,7 @@ import {
   POLL_MS,
   readCard,
 } from "./lib/approvals";
-import { type BriefDoc, PLAN_OUTPUTS, parseBrief } from "./lib/brief";
+import { type BriefDoc, PLAN_OUTPUTS, parseBrief, sectionsFor } from "./lib/brief";
 import {
   advance,
   afterTurn,
@@ -39,9 +39,18 @@ import {
   runningCount,
   settle,
 } from "./lib/conductor";
+import { estimateLines, quoteEstimates } from "./lib/estimates";
 import { parseFrontMatter, setStatus, updateFrontMatter, writeFrontMatter } from "./lib/frontmatter";
 import { filesOf, GATES, isFile, ownerOf, reviewerOf } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
+import {
+  type Candidate,
+  candidates,
+  dayOf,
+  type PackageItem,
+  packageFiles,
+  packageFolder,
+} from "./lib/package";
 import { settledText, tapOf, wantedCards } from "./lib/phone";
 import {
   demoText,
@@ -100,6 +109,14 @@ import {
 } from "./lib/run";
 import { isSample, sampleMarkdown, sampleRuns } from "./lib/samples";
 import { branchOf, folderOf, newRunId, slugify, titleOf, uniqueSlug } from "./lib/slug";
+import {
+  earlierGapLines,
+  type Matrix,
+  parseMatrix,
+  type RecurringGap,
+  recurringGaps,
+  type TenderMatrix,
+} from "./lib/tenders";
 
 const INDEX = "runs";
 const runKey = (id: string) => `run:${id}`;
@@ -351,12 +368,12 @@ async function loadRun(api: AddonHostApi, projectId: string, runId: string): Pro
   return r;
 }
 
-const tracks = new Map<string, Track>();
+const trackCache = new Map<string, Track>();
 async function trackOf(api: AddonHostApi, id: string): Promise<Track> {
-  const cached = tracks.get(id);
+  const cached = trackCache.get(id);
   if (cached) return cached;
   const t = JSON.parse(await readFile(join(api.addon.dir, "tracks", `${id}.json`), "utf8")) as Track;
-  tracks.set(id, t);
+  trackCache.set(id, t);
   return t;
 }
 
@@ -524,6 +541,10 @@ export interface StartArgs {
   meetingId?: string;
   /** Where the idea came from. */
   source?: Run["source"];
+  /** The track (`tracks/<id>.json`, D-471); new-idea when not given. */
+  track?: string;
+  /** A change request that is a critical bug: fixed at once, no demo, no release package (D-471). */
+  critical?: boolean;
 }
 
 /** The golden briefs, for the start dialog. */
@@ -566,14 +587,27 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
   if (!a?.projectId) throw new Error("No project");
   const project = (await api.projects()).find((p) => p.id === a.projectId);
   if (!project) throw new Error("There is no such project");
-  const briefMd = await briefSource(api, a);
+  const trackId = (a.track ?? "new-idea") as Run["track"];
+  if (!/^[a-z0-9-]+$/.test(trackId)) throw new Error(`There is no track called ${trackId}`);
+  const trackDef = await trackOf(api, trackId).catch(() => {
+    throw new Error(`There is no track called ${trackId}`);
+  });
+  const first = trackDef.stages.find((i) => itemId(i) === "S1");
+  const interviews = !!first?.interactive;
+  const briefMd = interviews ? await briefSource(api, a) : undefined;
   const meeting = a.meetingId ? await meetingText(api, a.meetingId) : undefined;
-  if (!briefMd && !a.text?.trim() && !meeting) throw new Error("Say what the idea is, or pick a brief");
+  if (!interviews && !a.attachments?.length && !a.text?.trim())
+    throw new Error(trackId === "tender" ? "Add the tender documents" : "Say what it is about");
+  if (!briefMd && !a.text?.trim() && !meeting && interviews)
+    throw new Error("Say what the idea is, or pick a brief");
   const brief = briefMd ? parseFrontMatter(briefMd) : undefined;
+  const firstFile = a.attachments?.[0]
+    ? (a.attachments[0].name || basename(a.attachments[0].path)).replace(/\.[^.]+$/, "")
+    : "";
   const title =
     a.title?.trim() ||
     (typeof brief?.data.title === "string" ? brief.data.title : "") ||
-    titleOf(brief?.body ?? a.text ?? "");
+    (brief?.body || a.text?.trim() || !firstFile ? titleOf(brief?.body ?? a.text ?? "") : firstFile);
   const repo = repoOf(project);
   const at = new Date().toISOString();
   const id = newRunId();
@@ -581,12 +615,16 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
     const taken = (await load(api, a.projectId)).map((x) => x.slug);
     const made = await makeWorktree(api, repo, id, uniqueSlug(slugify(title), taken));
     const plan: RunPlan = {
-      outputs: a.outputs ?? asList(brief?.data.outputs) ?? DEFAULT_OUTPUTS,
+      outputs: a.outputs ?? asList(brief?.data.outputs) ?? trackDef.defaults ?? DEFAULT_OUTPUTS,
       build: a.build ?? false,
       permissionMode: a.permissionMode === "bypassPermissions" ? "bypassPermissions" : "acceptEdits",
       productExists:
         a.productExists ??
-        (typeof brief?.data.productExists === "boolean" ? brief.data.productExists : false),
+        (typeof brief?.data.productExists === "boolean"
+          ? brief.data.productExists
+          : trackDef.productExists) ??
+        false,
+      ...(a.critical || brief?.data.critical === true ? { critical: true } : {}),
       // The start dialog is the plan (D-460); a new idea plans after its brief.
       ...(brief ? { confirmed: true } : {}),
     };
@@ -597,10 +635,10 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
       projectId: a.projectId,
       repo,
       worktree: made.worktree,
-      track: "new-idea",
+      track: trackId,
       level: a.level ?? asLevel(brief?.data.level),
       languages: { all: "en" },
-      state: brief ? "running" : "interview",
+      state: brief || !interviews ? "running" : "interview",
       owners: {},
       stages: [],
       outputs: [],
@@ -621,13 +659,20 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
     }
     if (brief) {
       const text = writeFrontMatter(
-        { ...brief.data, status: "draft", recipe: "interview", version: 1, run: id, createdAt: at },
+        {
+          ...brief.data,
+          status: "draft",
+          recipe: first?.recipe ?? "interview",
+          version: 1,
+          run: id,
+          createdAt: at,
+        },
         brief.body.startsWith("\n") ? brief.body : `\n${brief.body}`,
       );
       await writeFile(join(folder, "brief.md"), text, "utf8");
       r = addStage(r, {
         id: "S1",
-        recipe: "interview",
+        recipe: first?.recipe ?? "interview",
         status: "done",
         attempt: 0,
         version: 1,
@@ -643,11 +688,11 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
           level: r.level,
           product: str(brief.data.product),
           audience: str(brief.data.audience),
-          coverage: parseBrief(briefMd ?? "").coverage,
+          coverage: parseBrief(briefMd ?? "", sectionsFor(r.track)).coverage,
         },
       };
     }
-    r = advance(await trackOf(api, r.track), r, at).run;
+    r = advance(trackDef, r, at).run;
     await commitFolder(api, r, `factory ${id}: start "${title}"`);
     await save(api, r);
     await log(api, r, {
@@ -1013,12 +1058,12 @@ export async function briefDoc(a: RunArgs, api: AddonHostApi): Promise<BriefDoc 
   const r = await loadRun(api, a.projectId, a.runId);
   if (isSample(r.id)) {
     const o = r.outputs.find((x) => x.kind === "brief");
-    return o ? parseBrief(sampleMarkdown(r, o)) : null;
+    return o ? parseBrief(sampleMarkdown(r, o), sectionsFor(r.track)) : null;
   }
   const folder = runFolder(r);
   if (!folder) return null;
   const text = await readFile(join(folder, "brief.md"), "utf8").catch(() => undefined);
-  return text === undefined ? null : parseBrief(text);
+  return text === undefined ? null : parseBrief(text, sectionsFor(r.track));
 }
 
 /** Good enough (D-461): the interviewer writes the brief from what it has, with the gaps listed. */
@@ -1048,6 +1093,41 @@ export async function enough(a: RunArgs, api: AddonHostApi): Promise<Run> {
   return r;
 }
 
+/** The tracks a run can follow, for New idea (D-471). */
+export async function tracks(
+  _args: unknown,
+  api: AddonHostApi,
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    description?: string;
+    interviews: boolean;
+    offers?: string[];
+    defaults?: string[];
+  }>
+> {
+  const order = ["new-idea", "change-request", "tender"];
+  const files = (await readdir(join(api.addon.dir, "tracks")).catch(() => [] as string[]))
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => f.replace(/\.json$/, ""))
+    .sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99) || a.localeCompare(b));
+  const out = [];
+  for (const id of files) {
+    const t = await trackOf(api, id).catch(() => undefined);
+    if (t)
+      out.push({
+        id,
+        title: t.title ?? id,
+        description: t.description,
+        interviews: !!t.stages.find((i) => itemId(i) === "S1")?.interactive,
+        offers: t.offers,
+        defaults: t.defaults,
+      });
+  }
+  return out;
+}
+
 /** A run's track (the Plan step lists its stages and gates). */
 export async function track(a: RunArgs, api: AddonHostApi): Promise<Track> {
   const r = await loadRun(api, a.projectId, a.runId);
@@ -1064,6 +1144,8 @@ export interface PlanArgs extends RunArgs {
   productExists?: boolean;
   /** The board gates other people own get their cards on (D-469); none: they decide in Jig. */
   approvals?: RunPlan["approvals"] | null;
+  /** A change request that is a critical bug (D-471). */
+  critical?: boolean;
 }
 
 function approvalsOf(a: unknown): Pick<RunPlan, "approvals"> | undefined {
@@ -1095,6 +1177,7 @@ export async function plan(a: PlanArgs, api: AddonHostApi): Promise<Run> {
         build: a.build ?? r.plan?.build ?? false,
         permissionMode: a.permissionMode === "bypassPermissions" ? "bypassPermissions" : "acceptEdits",
         productExists: a.productExists ?? r.plan?.productExists ?? false,
+        ...((a.critical ?? r.plan?.critical) && r.track === "change-request" ? { critical: true } : {}),
         confirmed: true,
         ...(approvalsOf(a.approvals === undefined ? r.plan?.approvals : a.approvals) ?? {}),
       },
@@ -1643,8 +1726,12 @@ async function collect(api: AddonHostApi, track: Track, input: Run, stage: Stage
             level: level ?? r.level,
             product: str(data.product),
             audience: str(data.audience),
-            coverage: parseBrief(text).coverage,
+            coverage: parseBrief(text, sectionsFor(r.track)).coverage,
           },
+          // The intake says when a change request is a critical bug (D-471); the Plan step can change it.
+          ...(data.critical === true && r.track === "change-request" && r.plan && !r.plan.confirmed
+            ? { plan: { ...r.plan, critical: true } }
+            : {}),
         };
       }
     }
@@ -2102,7 +2189,7 @@ async function withBriefFile(r: Run): Promise<Run> {
   const folder = runFolder(r);
   const text = folder ? await readFile(join(folder, "brief.md"), "utf8").catch(() => undefined) : undefined;
   if (text === undefined) return r;
-  const b = parseBrief(text);
+  const b = parseBrief(text, sectionsFor(r.track));
   return {
     ...r,
     brief: {
@@ -2203,6 +2290,137 @@ async function designLines(api: AddonHostApi, r: Run): Promise<string[]> {
   ];
 }
 
+/** Where the tender analyst finds the company's own facts (D-471): `.jig/factory/company.md`. */
+async function companyLines(r: Run): Promise<string[]> {
+  const file = join(workDir(r) ?? "", ".jig", "factory", "company.md");
+  return [
+    "",
+    "## Company profile",
+    workDir(r) && (await exists(file))
+      ? `- ${file}: the company's certifications, turnover, references and staff. Check every company requirement against it`
+      : "- none (.jig/factory/company.md isn't in the repository): mark every company requirement unknown and say what to add",
+  ];
+}
+
+// Tenders (D-471).
+
+/** The requirement matrices of a project's tender runs, newest first. */
+async function tenderMatrices(api: AddonHostApi, projectId: string): Promise<TenderMatrix[]> {
+  const out: TenderMatrix[] = [];
+  for (const r of await load(api, projectId)) {
+    if (r.track !== "tender" || isSample(r.id) || r.state === "stopped") continue;
+    const m = await matrixOf(r);
+    if (m) out.push({ runId: r.id, title: r.title, at: r.createdAt, matrix: m });
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+async function matrixOf(r: Run): Promise<Matrix | undefined> {
+  const folder = runFolder(r);
+  if (!folder) return undefined;
+  const text = await readFile(join(folder, "tender", "matrix.json"), "utf8").catch(() => undefined);
+  return text === undefined ? undefined : parseMatrix(text);
+}
+
+/** A tender run's requirement matrix, for its Run tab. */
+export async function tenderMatrix(a: RunArgs, api: AddonHostApi): Promise<Matrix | null> {
+  return (await matrixOf(await loadRun(api, a.projectId, a.runId))) ?? null;
+}
+
+/** The recurring-gap report (D-471): requirements the company failed in two or more tenders. */
+export async function tenderGaps(
+  a: { projectId: string },
+  api: AddonHostApi,
+): Promise<{ tenders: number; gaps: RecurringGap[] }> {
+  const list = await tenderMatrices(api, a.projectId);
+  return { tenders: list.length, gaps: recurringGaps(list) };
+}
+
+// The release package (D-471).
+
+/** Change requests that can go into a release package, ready ones first. */
+export async function packageCandidates(a: { projectId: string }, api: AddonHostApi): Promise<Candidate[]> {
+  return candidates(await load(api, a.projectId));
+}
+
+async function latestText(r: Run, kind: string): Promise<string | undefined> {
+  const folder = runFolder(r);
+  const o = r.outputs
+    .filter((x) => x.kind === kind && x.status !== "superseded" && x.status !== "rejected")
+    .sort((x, y) => y.version - x.version)[0];
+  return folder && o ? readFile(join(folder, o.path), "utf8").catch(() => undefined) : undefined;
+}
+
+/**
+ * Makes a release package on your click (D-471): writes `docs/factory/releases/<day>/` into the
+ * project's repository (not committed: the release commits it), marks its change requests, and hands
+ * the combined notes to the Releases add-on's Release section.
+ */
+export async function makePackage(
+  a: { projectId: string; runIds: string[]; day: string },
+  api: AddonHostApi,
+): Promise<{ folder: string; files: string[]; staged: boolean }> {
+  const day = dayOf(a.day);
+  if (!day) throw new Error("Pick the release day");
+  const project = (await api.projects()).find((p) => p.id === a.projectId);
+  if (!project) throw new Error("There is no such project");
+  const repo = repoOf(project);
+  const ready = new Set(
+    candidates(await load(api, a.projectId))
+      .filter((c) => !c.waiting.length)
+      .map((c) => c.runId),
+  );
+  const picked = [...new Set(Array.isArray(a.runIds) ? a.runIds : [])];
+  if (!picked.length) throw new Error("Pick at least one change request");
+  const notReady = picked.filter((id) => !ready.has(id));
+  if (notReady.length) throw new Error("Only ready change requests can go into the package");
+  const folder = join(repo, packageFolder(day));
+  if (await exists(folder)) throw new Error(`There is already a package for ${day}`);
+  return serial(async () => {
+    const runs = await Promise.all(picked.map((id) => loadRun(api, a.projectId, id)));
+    const items: PackageItem[] = [];
+    for (const r of runs) {
+      const brief = parseFrontMatter((await latestText(r, "brief")) ?? "").data;
+      items.push({
+        slug: r.slug,
+        title: r.title,
+        customer: str(brief.customer),
+        ticket: str(brief.ticket) ?? (r.source.kind === "ticket" ? r.source.ref : undefined),
+        releaseNotes: await latestText(r, "release-notes"),
+        tests: await latestText(r, "tests"),
+        letter: await latestText(r, "letter"),
+      });
+    }
+    const files = packageFiles(day, items);
+    for (const f of files) {
+      await mkdir(dirname(join(repo, f.path)), { recursive: true });
+      await writeFile(join(repo, f.path), f.text, "utf8");
+    }
+    const at = new Date().toISOString();
+    for (const r of runs) {
+      const next = { ...r, packaged: { day, path: packageFolder(day), at }, updatedAt: at };
+      await save(api, next);
+      await log(api, next, {
+        kind: "decision",
+        text: `In the release package of ${day} (${packageFolder(day)})`,
+      });
+    }
+    let staged = false;
+    const releases = (await api.addons.list().catch(() => [])).find((x) => x.id === "releases");
+    if (releases?.enabled)
+      staged = await api.addons
+        .call("releases", "stagePackage", {
+          path: repo,
+          title: `Release package ${day}`,
+          notes: files.find((f) => f.path.endsWith("release-notes.md"))?.text ?? "",
+          folder: packageFolder(day),
+        })
+        .then(() => true)
+        .catch(() => false);
+    return { folder, files: files.map((f) => f.path), staged };
+  });
+}
+
 /** `factory_brief`: the run's brief, plan, the stage's inputs and earlier outputs. */
 export async function toolBrief(args: ChatArgs, api: AddonHostApi): Promise<string> {
   const found = await stageOfChat(api, args);
@@ -2217,7 +2435,7 @@ export async function toolBrief(args: ChatArgs, api: AddonHostApi): Promise<stri
   return [
     `# ${r.title} (run ${r.id}, stage ${stage.id}, version ${stage.version ?? 1})`,
     `Folder: ${folder}`,
-    `Level: ${r.level ?? "not decided"} · Product exists: ${r.plan?.productExists ? "yes" : "no"} · Pack: ${(r.plan?.outputs ?? []).join(", ") || "none"}`,
+    `Track: ${r.track}${r.plan?.critical ? " (a critical bug: fix it now, no demo)" : ""} · Level: ${r.level ?? "not decided"} · Product exists: ${r.plan?.productExists ? "yes" : "no"} · Pack: ${(r.plan?.outputs ?? []).join(", ") || "none"}`,
     "",
     "## Your inputs",
     ...(inputs.length ? inputs.map((i) => `- ${i.name}: ${i.path}`) : ["- none"]),
@@ -2229,6 +2447,23 @@ export async function toolBrief(args: ChatArgs, api: AddonHostApi): Promise<stri
       : ["- none"]),
     ...(stage.feedback ? ["", "## Changes asked", stage.feedback] : []),
     ...(recipe && DESIGN_KINDS.has(recipe.kind) ? await designLines(api, r) : []),
+    ...(recipe?.kind === "quote"
+      ? [
+          "",
+          "## Estimates",
+          "Measured from earlier runs on this computer (D-471); the quote's times come only from here.",
+          ...estimateLines(quoteEstimates(await allRuns(undefined, api), r)),
+        ]
+      : []),
+    ...(recipe?.kind === "tender-matrix" ? await companyLines(r) : []),
+    ...(recipe?.kind === "tender-gaps"
+      ? [
+          "",
+          "## Earlier tenders",
+          "Gaps this company had in its earlier tenders (not met or unknown), by key:",
+          ...earlierGapLines((await tenderMatrices(api, r.projectId)).filter((t) => t.runId !== r.id)),
+        ]
+      : []),
     ...(recipe?.kind.startsWith("course") ? await elearningLines(api) : []),
     "",
     "## The brief",

@@ -941,3 +941,193 @@ describe("Jig factory's Conductor", () => {
     ).rejects.toThrow(/outside/);
   });
 });
+
+describe("Jig factory's tracks: change requests and tenders (D-471)", () => {
+  const CR = (critical: boolean) =>
+    `---\ntitle: Export to PDF\nlevel: L1\ncustomer: Contoso\nticket: SUP-12\ncritical: ${critical}\n---\n# Export to PDF\n\n## Change\nExport the plan to PDF.\n\n## Who\nPlanners\n\n## Why\nThey print it.\n\n## Today\nScreenshots.\n\n## Customer\nContoso\n\n## Done when\nOne click.\n\n## Rules\nNone.\n`;
+
+  /** The stage reports files its chat wrote already. */
+  async function reportFiles(r: Run, id: string, outputs: string[]) {
+    const c = chatOf(r, id);
+    await host.toolReport(
+      { chat: { sessionId: c.id, projectId: "shop" }, summary: `${id} done`, outputs },
+      api,
+    );
+    await endTurn(c);
+  }
+
+  async function playAll(r: Run): Promise<Run> {
+    for (let i = 0; i < 8 && running(r).length; i++) {
+      for (const id of running(r)) await play(r, id);
+      r = await load(r.id);
+    }
+    return r;
+  }
+
+  it("lists its tracks for New idea", async () => {
+    const list = await host.tracks(undefined, api);
+    expect(list.map((t) => [t.id, t.interviews])).toEqual([
+      ["new-idea", true],
+      ["change-request", true],
+      ["tender", false],
+    ]);
+    expect(list[1]?.defaults).toEqual(["tests", "release-notes", "quote", "letter"]);
+    await expect(host.startRun({ projectId: "shop", text: "x", track: "../x" }, api)).rejects.toThrow(
+      /no track/,
+    );
+  });
+
+  it("fixes a critical change request at once: its intake, no demo, no package", async () => {
+    let r = await host.startRun(
+      { projectId: "shop", text: "Exports crash [critical]", track: "change-request" },
+      api,
+    );
+    expect(r).toMatchObject({ state: "interview", track: "change-request" });
+    expect(r.plan).toMatchObject({
+      productExists: true,
+      outputs: ["tests", "release-notes", "quote", "letter"],
+    });
+    expect(chatOf(r, "S1").sent[0]).toContain("[factory stage cr-intake ");
+    await writeFile(join(folder(r), "brief.md"), CR(true));
+    await reportFiles(r, "S1", ["brief.md"]);
+    r = await load(r.id);
+    expect(r.plan?.critical).toBe(true);
+    expect(r.brief?.coverage).toEqual({ covered: 7, total: 7 });
+    expect(await host.toolBrief({ chat: { sessionId: chatOf(r, "S2").id } }, api)).toContain(
+      "Track: change-request (a critical bug",
+    );
+    await play(r, "S2");
+    r = await host.decide({ projectId: "shop", runId: r.id, gateId: "G0", kind: "approve" }, api);
+    expect(r.state).toBe("planning");
+    r = await host.plan(
+      { projectId: "shop", runId: r.id, outputs: ["tests", "release-notes", "letter"], critical: true },
+      api,
+    );
+    r = await load(r.id);
+    expect(stage(r, "S4")?.status).toBe("skipped");
+    expect(stage(r, "S5")?.status).toBe("skipped");
+    expect(chatOf(r, "S8c").sent[0]).toContain("[factory stage build ");
+    await play(r, "S8c");
+    r = await playAll(await load(r.id));
+    expect(r.gates.map((g) => `${g.id}:${g.status}`).sort()).toEqual([
+      "G0:approved",
+      "G2:waiting",
+      "G3:waiting",
+      "G4:waiting",
+    ]);
+    expect(await host.packageCandidates({ projectId: "shop" }, api)).toEqual([]);
+  });
+
+  it("takes a change request through its demo and quote into a release package", async () => {
+    (api.addons as unknown as { list: () => Promise<unknown[]> }).list = async () => [
+      { id: "releases", enabled: true },
+    ];
+    let r = await host.startRun(
+      {
+        projectId: "shop",
+        briefText: CR(false),
+        track: "change-request",
+        outputs: ["tests", "release-notes", "quote", "letter"],
+      },
+      api,
+    );
+    expect(stage(r, "S1")).toMatchObject({ recipe: "cr-intake", status: "done" });
+    await play(r, "S2");
+    await host.decide({ projectId: "shop", runId: r.id, gateId: "G0", kind: "approve" }, api);
+    r = await load(r.id);
+    expect(stage(r, "S8c")?.status).toBe("skipped");
+    await play(r, "S4");
+    r = await load(r.id);
+    await play(r, "S5");
+    r = await load(r.id);
+    await play(r, "S6", { quality: { pass: true, score: 90 } });
+    await host.decide({ projectId: "shop", runId: r.id, gateId: "G1", kind: "approve" }, api);
+    r = await load(r.id);
+    const quote = await host.toolBrief({ chat: { sessionId: chatOf(r, "S7:quote").id } }, api);
+    expect(quote).toContain("## Estimates");
+    expect(quote).toContain("Demo (L1): TO FILL IN");
+    r = await playAll(r);
+    expect(await host.packageCandidates({ projectId: "shop" }, api)).toMatchObject([
+      { runId: r.id, why: "Waiting for Docs review" },
+    ]);
+    await expect(
+      host.makePackage({ projectId: "shop", runIds: [r.id], day: "2026-05-04" }, api),
+    ).rejects.toThrow(/Only ready/);
+    r = await host.decide({ projectId: "shop", runId: r.id, gateId: "G2", kind: "approve" }, api);
+    await expect(host.makePackage({ projectId: "shop", runIds: [r.id], day: "May" }, api)).rejects.toThrow(
+      /release day/,
+    );
+    const made = await host.makePackage({ projectId: "shop", runIds: [r.id], day: "2026-05-04" }, api);
+    expect(made.staged).toBe(true);
+    expect(made.files).toEqual([
+      "docs/factory/releases/2026-05-04/README.md",
+      "docs/factory/releases/2026-05-04/release-notes.md",
+      "docs/factory/releases/2026-05-04/tests/export-to-pdf.md",
+      "docs/factory/releases/2026-05-04/letters/export-to-pdf.md",
+    ]);
+    const readme = readFileSync(join(repo, made.files[0] ?? ""), "utf8");
+    expect(readme).toContain("| Export to PDF | Contoso | SUP-12 |");
+    expect(api.addons.call).toHaveBeenCalledWith(
+      "releases",
+      "stagePackage",
+      expect.objectContaining({ path: repo, title: "Release package 2026-05-04" }),
+    );
+    expect((await load(r.id)).packaged).toMatchObject({ day: "2026-05-04" });
+    expect(await host.packageCandidates({ projectId: "shop" }, api)).toEqual([]);
+  });
+
+  it("reads a tender into its matrix and gaps, and counts gaps that recur", async () => {
+    await expect(host.startRun({ projectId: "shop", track: "tender" }, api)).rejects.toThrow(
+      /tender documents/,
+    );
+    const matrix = (status: string) =>
+      JSON.stringify({
+        tender: "Scheduling",
+        buyer: "Fabrikam",
+        requirements: [
+          { id: "R1", text: "ISO 27001", kind: "must", category: "company", key: "cert:iso-27001", status },
+        ],
+      });
+    const tender = async (title: string) => {
+      let r = await host.startRun(
+        {
+          projectId: "shop",
+          track: "tender",
+          attachments: [{ path: join(repo, "README.md"), name: `${title}.md` }],
+        },
+        api,
+      );
+      expect(r).toMatchObject({ title, state: "running" });
+      const brief = await host.toolBrief({ chat: { sessionId: chatOf(r, "T1").id } }, api);
+      expect(brief).toContain("## Company profile\n- none");
+      await mkdir(join(folder(r), "tender"), { recursive: true });
+      await writeFile(join(folder(r), "tender", "matrix.json"), matrix("not-met"));
+      await writeFile(join(folder(r), "tender", "matrix.md"), "# Matrix\n");
+      await reportFiles(r, "T1", ["tender/matrix.md", "tender/matrix.json"]);
+      r = await load(r.id);
+      const gaps = await host.toolBrief({ chat: { sessionId: chatOf(r, "T2").id } }, api);
+      await play(r, "T2");
+      return { r: await load(r.id), gaps };
+    };
+    const first = await tender("Fabrikam scheduling");
+    expect(first.gaps).toContain("## Earlier tenders");
+    expect(first.gaps).toContain("- none: this is the first tender");
+    expect(first.r.gates.map((g) => `${g.id}:${g.status}`)).toEqual(["G0:waiting"]);
+    expect(first.r.state).toBe("waiting");
+    expect(await host.tenderMatrix({ projectId: "shop", runId: first.r.id }, api)).toMatchObject({
+      buyer: "Fabrikam",
+    });
+    expect((await host.tenderGaps({ projectId: "shop" }, api)).gaps).toEqual([]);
+    const second = await tender("Contoso rostering");
+    expect(second.gaps).toContain("- cert:iso-27001 (ISO 27001): 1 earlier tender: Fabrikam scheduling");
+    expect(await host.tenderGaps({ projectId: "shop" }, api)).toMatchObject({
+      tenders: 2,
+      gaps: [
+        {
+          key: "cert:iso-27001",
+          tenders: [{ title: "Contoso rostering" }, { title: "Fabrikam scheduling" }],
+        },
+      ],
+    });
+  });
+});

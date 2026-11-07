@@ -22,6 +22,7 @@ export function factsOf(run: Run): Facts {
       (critique.version ?? 1) === (demo?.version ?? 1),
     "plan.outputs": run.plan?.outputs ?? [],
     "build.requested": run.plan?.build ?? false,
+    critical: run.plan?.critical ?? false,
   };
 }
 

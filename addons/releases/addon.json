@@ -5,6 +5,7 @@
   "description": "Versions, changelogs and release notes per repository, following its release policy: set it up with Jig, see what's unreleased, release in one action, record deploys and see what's live.",
   "version": "1.0.0",
   "icon": "tag",
+  "exports": ["stagePackage"],
   "permissions": ["exec:git", "exec:az", "fs:read", "fs:write", "ai", "chat"],
   "contributes": {
     "views": [

@@ -23,6 +23,7 @@ import {
   FileCog,
   LayoutTemplate,
   MessageSquare,
+  Package,
   Plus,
   RefreshCw,
   Rocket,
@@ -523,6 +524,20 @@ function PrepareCard({
       setBusy(undefined);
     }
   };
+  // A release package from Jig factory (D-471): its combined notes become the changelog and the notes.
+  const [usedPackage, setUsedPackage] = useState(false);
+  const usePackage = () => {
+    const pkg = data.package;
+    if (!pkg) return;
+    const body = pkg.notes.replace(/^# .*\n+/, "").replace(/^## /gm, "### ");
+    setChangelog(`## [${version}] - ${today()}\n\n${body.trim()}\n`);
+    const audiences = policy.notes?.length
+      ? policy.notes
+      : [{ audience: "users of the product", language: "English" }];
+    setNotes(audiences.map((a) => ({ audience: a.audience, language: a.language, text: body.trim() })));
+    setReason(`From ${pkg.title}${pkg.folder ? ` (${pkg.folder})` : ""}.`);
+    setUsedPackage(true);
+  };
   const tag = policy.tagFormat.replace("{version}", version);
   const steps = [
     policy.versionFile && !policy.managedBy ? `Set ${policy.versionFile} to ${version}` : undefined,
@@ -554,6 +569,7 @@ function PrepareCard({
           notes: notesMarkdown(version, notes),
           push,
           runPipeline: Boolean(policy.releasePipeline) && push && pipeline,
+          usedPackage,
         },
       );
       ctx.notify({
@@ -570,6 +586,7 @@ function PrepareCard({
       setNotes([]);
       setReason(undefined);
       setBump(undefined);
+      setUsedPackage(false);
     } catch (error) {
       ctx.notify({ title: "The release failed", message: (error as Error).message, tone: "danger" });
     } finally {
@@ -695,6 +712,17 @@ function PrepareCard({
             >
               {busy === "draft" ? "Drafting…" : "Draft with Jig"}
             </Button>
+            {data.package && (
+              <Button
+                icon={Package}
+                disabled={busy !== undefined}
+                onClick={usePackage}
+                data-testid="release-use-package"
+                title={`Use the notes of ${data.package.title}, handed over by Jig factory`}
+              >
+                Use the release package
+              </Button>
+            )}
           </div>
           {reason && (
             <p className="flex items-start gap-1.5 text-sm text-muted" data-testid="release-reason">

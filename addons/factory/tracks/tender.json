@@ -1,0 +1,13 @@
+{
+  "id": "tender",
+  "title": "Tender",
+  "description": "Tender documents in: a requirement matrix, what the company must be, the gaps; the tender lead decides",
+  "caps": { "revisionsPerGate": 3, "retriesPerStage": 1 },
+  "offers": [],
+  "defaults": [],
+  "stages": [
+    { "id": "T1", "recipe": "tender-matrix", "title": "Requirement matrix" },
+    { "id": "T2", "recipe": "tender-gaps", "title": "Gap report", "after": ["T1"] },
+    { "gate": "G0", "after": ["T2"] }
+  ]
+}

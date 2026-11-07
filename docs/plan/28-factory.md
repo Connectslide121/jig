@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 7, Tracks 2 and 3 — not started (session 6 done: phone API and cards, approvals by others, Publish, D-468…D-470).
+- **Current session:** 7, Tracks 2 and 3 — in progress (D-471): the tracks, recipes, libs (`estimates`, `tenders`, `package`), host methods, Releases' `stagePackage` and the fake roles are in and unit-tested; next the UI (Track picker in New idea, Plan per track with Critical, the matrix in the Run tab, Floor → Release package… and Recurring gaps…), e2e and docs.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -133,7 +133,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 7: change requests (track 2), then tenders (track 3). Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session 7's UI, e2e and docs (see Current session), then session 8. Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -467,7 +467,7 @@ tab's Published list. e2e: `factory.spec.ts` → "approve a gate and ask for cha
 publish target…". Needs a real machine: Telegram/Teams cards on a phone, a real Azure DevOps board,
 a real Static Web Apps deploy.
 
-### 7. Tracks 2 and 3: change requests and tenders — not started
+### 7. Tracks 2 and 3: change requests and tenders — in progress
 
 - [ ] Change requests: intake from a support ticket, CR template, demo, quote draft with calibrated
       estimates, release-package day with the Releases add-on; critical bugs skip the batch.

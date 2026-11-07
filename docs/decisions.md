@@ -8392,3 +8392,51 @@ How Publish (D-438) works:
 Why: D-438 left the mechanism open; Static Web Apps is the simplest static host on the user's own
 Azure (their `az`, as the Boards and Teams relay do), and a page that ends itself is the only expiry
 that holds once a link has been sent.
+
+## D-471: Change requests and tenders: tracks as data with their own pack, a critical path, a release package through Releases, a requirement matrix and recurring gaps computed by Jig
+
+- Status: accepted.
+- **Who:** Claude, on my own (phase 28 session 7, Jon away; pipeline.md → Tracks set what the tracks
+  do, this says how).
+
+**Tracks are data, with their own pack.** `tracks/change-request.json` and `tracks/tender.json` beside
+`new-idea.json`, on the same Conductor. A track may say `description` (New idea's Track picker),
+`offers` (the outputs its Plan step offers; else every output not marked `only`), `defaults` (ticked
+at start) and `productExists`. A `when` may join facts with `&` (`build.requested&!critical`). New
+idea gets a Track picker; `startRun({ track })` checks the name against the folder.
+
+**Change requests.** S1 is `cr-intake`: an interactive stage like the interview (question cards, Good
+enough), writing the CR template's sections (Change, Who, Why, Today, Customer, Done when, Rules;
+coverage counts these) with `customer`, `ticket` and `critical` in the front-matter. Then scout, G0,
+the Plan step, the product kit, the demo with its quality loop, and G1, which the customer decides:
+set G1's owner to the customer on the Plan step and Publish the demo with its confirm bar (D-470).
+The pack offers spec, test cases, release notes, a customer letter and the quote (only this track
+offers it); no sales or marketing. **A critical bug** (`critical` from the intake, a switch on the Plan
+step) skips the product kit, the demo and G1: `S8c` "Fix now" builds the fix right after the plan, the
+pack follows it, G3 merges it, and it never goes into a release package.
+
+**Quotes take their times only from measurements** (`lib/estimates.ts`): the median and the 80th
+percentile of the same stage (the demo at the run's level, the build at it) over at least 3 finished
+runs on this computer, samples left out; with fewer, the quote says TO FILL IN. The AI never guesses a
+time or a price; the quote's stage gets the numbers in its brief ("## Estimates").
+
+**The release package** is your action: Floor → Release package… lists the change requests that can
+go in (not critical, planned, not packaged; ready once G2, and G3 when built, are approved), you tick
+them and pick the day, and Jig writes `docs/factory/releases/<day>/` into the project's checkout
+(overview, combined release notes, a test and letter file each; not committed) and marks the runs. The
+Releases add-on shares `stagePackage`: the notes wait in that repository's Release section ("Use the
+release package" fills the changelog and the notes) until a release uses them. Jig never sends the
+letters.
+
+**Tenders** start from the tender's documents (attachments; or text), with no interview: their
+stages are `T1` (`tender-matrix`) and `T2` (`tender-gaps`), not S1, so the run doesn't wait in an
+interview, then G0 where the tender lead decides. The matrix is `tender/matrix.json` (each requirement
+`met`, `not-met`, `unknown` or `flagged` as one a buyer may not lawfully set, with a stable `key`) plus
+a Markdown copy; the company's facts come from `.jig/factory/company.md` in the repository, and
+without it company requirements are `unknown`. The analyst never says "don't bid". **Recurring gaps
+are counted by Jig, not the AI** (`lib/tenders.ts`): a key not met or unknown in two or more tenders,
+on Floor → Recurring gaps…; the gap stage gets the earlier ones in its brief ("## Earlier tenders").
+
+**Real names.** The stage rules now keep invented data to demos, examples and samples: a change
+request names its real customer and a tender its buyer, because what came in does; the publish scan
+(D-470) still keeps them out of a published demo.
