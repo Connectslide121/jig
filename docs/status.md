@@ -1,3 +1,13 @@
+Motion (2026-11-10, phase 28 session M1, D-463): the **clapperboard** in the top bar → **New
+video…** asks a name, a template (Teaser, What's new, Walkthrough) and a format, and opens the
+video's tab: a live preview with play and a scrubber, the storyboard (a scene's row opens its sheet)
+and the settings. **Render** asks once to install HyperFrames (a fixed version) and FFmpeg when it
+isn't found, into Motion's data folder, then renders one video at a time with progress and Cancel;
+each render is a version with its MP4 and poster. Videos are listed in View → Views → Motion.
+**Settings → Motion**: the FFmpeg folder, the music folder, the format new videos start in. Gaps:
+no voice, captions, music or captures yet (M2), no chat tools (M3). To test on a real machine: a
+render on Windows (the install from the modal, then Render), and how long it takes.
+
 # Status
 
 Jig factory's demo review (2026-11-09, phase 28 session 4, D-462): a run's demo opens in the

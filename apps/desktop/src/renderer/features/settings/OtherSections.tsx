@@ -572,6 +572,88 @@ export function FactorySettings() {
   );
 }
 
+/** A folder setting: the path (or what empty means), Choose… and Reset. */
+function FolderSetting({
+  label,
+  description,
+  value,
+  empty,
+  title,
+  onSave,
+  testId,
+}: {
+  label: string;
+  description: string;
+  value: string;
+  empty: string;
+  title: string;
+  onSave: (path: string) => void;
+  testId?: string;
+}) {
+  return (
+    <SettingRow label={label} description={description}>
+      <div className="flex items-center gap-2" data-testid={testId}>
+        <span className="selectable max-w-72 truncate font-mono text-xs text-muted">{value || empty}</span>
+        <Button
+          size="sm"
+          icon={FolderOpen}
+          onClick={() => void call("app.pickFolder", { title }).then((path) => path && onSave(path))}
+        >
+          Choose…
+        </Button>
+        <Button size="sm" variant="ghost" disabled={!value} onClick={() => onSave("")}>
+          Reset
+        </Button>
+      </div>
+    </SettingRow>
+  );
+}
+
+/** Motion (D-453, D-454): where FFmpeg and music are, and how new videos start. */
+export function MotionSettings() {
+  const config = useConfig((s) => s.config);
+  if (!config) return <Spinner center />;
+  const m = config.motion;
+  return (
+    <SettingsSection
+      title="Motion"
+      description="Videos made from your storyboards: teasers, what's new clips and walkthroughs (Motion in the top bar)."
+    >
+      <FolderSetting
+        label="FFmpeg"
+        description="The folder with ffmpeg and ffprobe Motion renders with. Empty = Motion's own copy (installed on the first render), then the one on your PATH."
+        value={m.ffmpegPath}
+        empty="(Motion's own copy, then PATH)"
+        title="FFmpeg's folder"
+        onSave={(ffmpegPath) => void updateConfig({ motion: { ffmpegPath } })}
+        testId="settings-motion-ffmpeg"
+      />
+      <FolderSetting
+        label="Music folder"
+        description="A folder of music tracks videos can play under the voice."
+        value={m.musicFolder}
+        empty="(none)"
+        title="Music folder"
+        onSave={(musicFolder) => void updateConfig({ motion: { musicFolder } })}
+      />
+      <SettingRow
+        label="New videos"
+        description="The format new videos start with; each video can change it."
+      >
+        <div className="w-64">
+          <SegmentedSwitch
+            label="Format of new videos"
+            value={m.defaultAspect}
+            options={(["16:9", "1:1", "9:16", "4:5"] as const).map((id) => ({ id, label: id }))}
+            onChange={(defaultAspect) => void updateConfig({ motion: { defaultAspect } })}
+            testId="settings-motion-aspect"
+          />
+        </div>
+      </SettingRow>
+    </SettingsSection>
+  );
+}
+
 /** Updates from a git clone of Jig: where it is and how it is built. */
 export function UpdatesSettings() {
   const config = useConfig((s) => s.config);

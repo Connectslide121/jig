@@ -1,0 +1,19 @@
+{
+  "id": "neutral",
+  "name": "Neutral dark",
+  "colors": {
+    "bg": "#0e1015",
+    "surface": "#1b1f27",
+    "fg": "#f3f4f6",
+    "muted": "#a4abb8",
+    "accent": "#6d8dff",
+    "onAccent": "#ffffff"
+  },
+  "fonts": {
+    "headline": "\"Inter Variable\", sans-serif",
+    "body": "\"Inter Variable\", sans-serif"
+  },
+  "radius": 22,
+  "headlineWeight": 700,
+  "eyebrowCase": "upper"
+}

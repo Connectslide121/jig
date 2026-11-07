@@ -362,6 +362,19 @@ export const ConfigSchema = z.object({
       designSources: z.array(z.string()).default([]),
     })
     .prefault({}),
+  /** Motion, videos made from HTML (D-453, D-454). */
+  motion: z
+    .object({
+      /** FFmpeg's folder (or the ffmpeg file); empty = Motion's own copy, then PATH. Runs a program. */
+      ffmpegPath: z.string().default(""),
+      /** A folder of music tracks videos can use (D-456); empty = none. */
+      musicFolder: z.string().default(""),
+      /** The format new videos start with. */
+      defaultAspect: z.enum(["16:9", "1:1", "9:16", "4:5"]).default("16:9"),
+      /** The voice new videos start with (D-455); empty = no voice. */
+      defaultVoice: z.string().default(""),
+    })
+    .prefault({}),
   updates: z
     .object({
       /** Jig's source repository for "Pull, build and restart"; empty = the repo Jig runs from (development). */
@@ -449,7 +462,7 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
  * program runs as Claude Code, the credentials programs run with (the Azure tenant, D-282), shell
  * commands Jig runs (updates), where add-on code comes from (the gallery's sources), and what leaves
  * this computer for your phone (D-350),
- * and the demo kit Jig factory runs npm in (D-443). D-077.
+ * the demo kit Jig factory runs npm in (D-443), and the FFmpeg Motion runs (D-454). D-077.
  */
 export const PROTECTED_SETTINGS = [
   "ai",
@@ -476,6 +489,7 @@ export const PROTECTED_SETTINGS = [
   "updates",
   "addonGallery",
   "factory.demoKitPath",
+  "motion.ffmpegPath",
 ] as const;
 
 /** Dotted paths of the leaves a patch sets (`{ appearance: { themeId } }` → `appearance.themeId`). */

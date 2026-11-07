@@ -110,13 +110,14 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** M1, Motion: storyboard, composition and render — not started.
+- **Current session:** M2, Motion: voice, captions, music, captures — not started.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
   runner, tools, Run tab sheets and Inspector (D-449…D-452, D-459). Session 3: New idea, the
   Interview tab, the Plan step, meetings and dictation for add-ons (D-460, D-461). Session 4: the
-  Demo review tab, GD direction cards, design sources, Show in Pages (D-462).
+  Demo review tab, GD direction cards, design sources, Show in Pages (D-462). Session M1: the Motion
+  add-on, storyboard to MP4 through a pinned HyperFrames (D-463).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -129,8 +130,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 4 is done (see its notes; the L2 path is a recipe not yet
-  tried on a real product). Next: session M1, from its first item (`addons/motion` skeleton). Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session M1 is done (see its notes; a real render on Windows is for
+  Jon). Next: session M2, from its first item (`api.speech.say`). Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -305,28 +306,42 @@ references) feeds a "Design" section of `factory_brief` for the interview and de
 exports `publish`, so ⋯ → Show in Pages keeps a version there. e2e: "pick a direction at GD …
 (D-462)". The fake critic writes axes and fixes; the fake director's boards are coloured SVGs.
 
-### M1. Motion: storyboard, composition and render — not started
+### M1. Motion: storyboard, composition and render — done
 
 The video add-on ([28-factory/motion.md](28-factory/motion.md)); M1–M3 come before session 5,
 whose teaser uses Motion (D-458).
 
-- [ ] `addons/motion` skeleton: manifest (D-453), Videos view listed in View → Views, top-bar menu
+- [x] `addons/motion` skeleton: manifest (D-453), Videos view listed in View → Views, top-bar menu
       (New video…, Videos), empty state, README.
-- [ ] `lib/storyboard.ts` (types, validation, timing) and `lib/compose.ts` (storyboard + style +
+- [x] `lib/storyboard.ts` (types, validation, timing) and `lib/compose.ts` (storyboard + style +
       template → composition HTML, GSAP and fonts bundled, no network) with unit tests.
-- [ ] Templates `teaser`, `whats-new`, `walkthrough` (`template.json`: scene types, inputs schema,
+- [x] Templates `teaser`, `whats-new`, `walkthrough` (`template.json`: scene types, inputs schema,
       durations, licence) and a neutral style; HyperFrames blocks adapted where useful, licences kept.
-- [ ] Renderer and FFmpeg (D-454): look for FFmpeg (`motion.ffmpegPath`, PATH); install modal for
+- [~] Renderer and FFmpeg (D-454): look for FFmpeg (`motion.ffmpegPath`, PATH); install modal for
       what's missing (pinned sources and checksums in `lib/install.ts`) into Motion's data folder;
-      render queue (one at a time), progress, cancel, restart-safe; poster image.
-- [ ] Video tab: storyboard, live preview with scrubber (the composition itself), settings panel,
+      render queue (one at a time), progress, cancel, restart-safe; poster image. Real renders
+      checked on Linux (HyperFrames 0.9.19, FFmpeg b6.0); not yet on Windows.
+- [x] Video tab: storyboard, live preview with scrubber (the composition itself), settings panel,
       scene side sheet, Render, versions; sidebar / panel / tab widths, Dark and Light.
-- [ ] Settings → Motion (`ConfigSchema`, `SETTINGS_GUIDE`, `state.md`); `motion.ffmpegPath` protected.
-- [ ] Fake renderer for tests (writes a tiny MP4); `e2e/motion.spec.ts` and its rule in
+- [x] Settings → Motion (`ConfigSchema`, `SETTINGS_GUIDE`, `state.md`); `motion.ffmpegPath` protected.
+- [x] Fake renderer for tests (writes a tiny MP4); `e2e/motion.spec.ts` and its rule in
       `e2e/affected.json`.
 
 **Done when:** you make a what's-new video from the template with screenshots, preview it, render it
 to MP4 on your machine.
+
+Session M1 notes: `addons/motion` (README there): `lib/storyboard.ts` (types, validation, timing),
+`lib/compose.ts` (storyboard + style + template → one HTML file, CSS animations, Inter embedded),
+`lib/install.ts` (pins), three templates and two styles (neutral, paper); the host keeps videos in
+the project's storage and renders in Motion's data folder, one at a time. Real renders (Linux,
+software GL) taught four things now in D-463: HyperFrames seeks CSS animations from the closest
+`[data-start]` (delays are per scene), a `<video>` needs an id, the root needs `data-no-timeline`
+(else 45 s waits), and fonts must be embedded (the preview frame can't load files). A 28 s video at
+720p, draft quality, renders in about 40 s here. The preview rests on the poster moment; a
+per-frame guard keeps animations paused (Chromium ran them by themselves in the frame). Not done:
+a real render on Windows (Jon), and HyperFrames' own blocks (none fitted the three templates
+better than plain scenes; revisit with captures in M2). e2e: `motion.spec.ts` (create, preview,
+install, render, cancel, the widths shots).
 
 ### M2. Motion: voice, captions, music, captures — not started
 

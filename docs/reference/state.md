@@ -147,6 +147,10 @@ A new state file is documented here in the same commit that adds it.
 | `factory.demoKitPath` | `""` | the demo kit's folder Jig factory builds and checks demos with (`npm run build`/`check` in it, D-431, D-443); empty = not set (Jig factory asks for it before its first demo). Protected (it runs programs) |
 | `factory.designSources` | `[]` | `DESIGN.md` libraries (repository addresses or folders) new brands' directions are made "in the spirit of", offered as "Feels like?" in the interview and read by the critic (D-444, D-462); addresses only |
 | `factory.concurrency` | `3` | how many stage chats Jig factory runs at once, across all runs (1–6); the Conductor reads it through `api.config()` (D-450) |
+| `motion.ffmpegPath` | `""` | the folder of the FFmpeg Motion renders with; empty = look on PATH, else offer to install a pinned build into Motion's data folder (D-454, D-463). Protected (it runs programs) |
+| `motion.musicFolder` | `""` | the folder of music tracks Motion's videos may use (M2, D-456) |
+| `motion.defaultAspect` | `"16:9"` | the format a new video starts in: `16:9`, `9:16` or `1:1` |
+| `motion.defaultVoice` | `""` | the voice new videos speak with (M2, D-455); empty = Read aloud's voice |
 | `updates.sourcePath` | `""` | Jig's git clone for "Pull, build and restart"; empty = the repo Jig runs from |
 | `updates.buildCommand` / `installCommand` | `npm run build` / `npm install` | commands an update runs (`docs/reference/setup.md`) |
 | `addonGallery.sources` | `[]` | add-on gallery sources: git URLs (https/ssh) or folders (D-179); protected, Settings and the gallery only |

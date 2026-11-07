@@ -321,6 +321,7 @@
       ],
       "specs": ["factory.spec.ts"]
     },
+    { "files": ["addons/motion/**"], "specs": ["motion.spec.ts"] },
     {
       "files": [
         "apps/desktop/src/main/lsp/**",

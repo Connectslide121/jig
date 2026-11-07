@@ -1,0 +1,43 @@
+{
+  "id": "teaser",
+  "name": "Teaser",
+  "kind": "teaser",
+  "description": "A launch clip: the title, the problem, three things it does from screens, and the name at the end. 35–50 s.",
+  "licence": "Jig (same as the add-on)",
+  "sceneTypes": ["title", "statement", "feature", "outro"],
+  "durations": { "min": 20, "max": 60 },
+  "inputs": {
+    "product": { "label": "Product", "type": "string", "required": true },
+    "tagline": { "label": "Tagline", "type": "string" },
+    "problem": { "label": "The problem, in one sentence", "type": "string" },
+    "values": {
+      "label": "What it does (three)",
+      "type": "list",
+      "item": { "title": "string", "text": "string", "image": "path" }
+    },
+    "link": { "label": "Link", "type": "string" }
+  },
+  "scenes": [
+    { "type": "title", "title": "{{product}}", "text": "{{tagline}}" },
+    { "type": "statement", "title": "The problem", "text": "{{problem}}" },
+    {
+      "repeat": "values",
+      "type": "feature",
+      "title": "{{item.title}}",
+      "text": "{{item.text}}",
+      "media": "{{item.image}}"
+    },
+    { "type": "outro", "title": "{{product}}", "text": "{{tagline}}" }
+  ],
+  "sample": {
+    "product": "Shift swap",
+    "tagline": "Swap shifts in two taps",
+    "problem": "Swapping a shift today takes a dozen messages and a manager's afternoon.",
+    "values": [
+      { "title": "Offer a shift", "text": "Pick it, say why, done." },
+      { "title": "See who can take it", "text": "Only people with the right skills and hours." },
+      { "title": "Approve in one place", "text": "Managers see every swap, ready to approve." }
+    ],
+    "link": "contoso.example/shift-swap"
+  }
+}

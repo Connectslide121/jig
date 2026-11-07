@@ -1,0 +1,42 @@
+{
+  "id": "whats-new",
+  "name": "What's new",
+  "kind": "whats-new",
+  "description": "A release in a minute: the version, one scene per change with its screenshot and a line, and the way to get it. 30–90 s.",
+  "licence": "Jig (same as the add-on)",
+  "sceneTypes": ["title", "feature", "bullets", "outro"],
+  "durations": { "min": 20, "max": 90 },
+  "inputs": {
+    "product": { "label": "Product", "type": "string", "required": true },
+    "version": { "label": "Version", "type": "string", "required": true },
+    "changes": {
+      "label": "Changes",
+      "type": "list",
+      "item": { "title": "string", "text": "string", "image": "path" }
+    },
+    "fixes": { "label": "Smaller fixes", "type": "list", "item": "string" },
+    "link": { "label": "Where to get it", "type": "string" }
+  },
+  "scenes": [
+    { "type": "title", "title": "What's new in {{product}} {{version}}", "text": "Release {{version}}" },
+    {
+      "repeat": "changes",
+      "type": "feature",
+      "title": "{{item.title}}",
+      "text": "{{item.text}}",
+      "media": "{{item.image}}"
+    },
+    { "type": "bullets", "title": "Also in this release", "bullets": "{{fixes}}" },
+    { "type": "outro", "title": "{{product}} {{version}}", "text": "Available now" }
+  ],
+  "sample": {
+    "product": "Shop",
+    "version": "2.4",
+    "changes": [
+      { "title": "Bulk edit", "text": "Change prices for a whole category at once." },
+      { "title": "Saved filters", "text": "Keep the views you use every day." }
+    ],
+    "fixes": ["Faster search", "Clearer error messages", "Dark mode in reports"],
+    "link": "contoso.example/shop"
+  }
+}

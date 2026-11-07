@@ -1,0 +1,188 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`compose > makes the teaser template's composition 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Shift swap</title>
+<style>
+@font-face{font-family:"Inter Variable";src:url("fonts/inter.woff2") format("woff2");font-weight:100 900;font-display:block}
+:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);overflow:hidden}
+#root{position:relative;width:1920px;height:1080px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:"Inter Variable", sans-serif;-webkit-font-smoothing:antialiased}
+#root::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 85% 10%,color-mix(in oklab,var(--accent) 18%,transparent),transparent 70%);z-index:0}
+.clip{position:absolute;inset:0;z-index:1}
+.scene{display:flex;align-items:center;justify-content:center;padding:110px}
+h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter-spacing:-0.02em;line-height:1.08;text-wrap:balance}
+.headline{font-size:84px}
+.title{font-size:52px}
+.statement{font-size:60px;max-width:1500px}
+.eyebrow{font-size:30px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:24px}
+.text{font-size:36px;line-height:1.4;color:var(--muted);margin-top:24px;max-width:1100px;text-wrap:pretty}
+.center{display:flex;flex-direction:column;align-items:center;text-align:center;max-width:90%}
+.stack{display:flex;flex-direction:column;align-items:flex-start;width:100%;max-width:1500px}
+.bar{width:140px;height:10px;border-radius:5px;background:var(--accent);margin-top:40px;transform-origin:center}
+.bullets{list-style:none;margin-top:40px;display:flex;flex-direction:column;gap:26px}
+.bullets li{display:flex;align-items:center;gap:26px;font-size:44px;line-height:1.25}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--accent);flex:none}
+.split{display:flex;align-items:center;gap:80px;width:100%;height:100%}
+.copy{flex:0 0 34%}
+.shot-wrap{flex:1;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.shot{border-radius:22px;overflow:hidden;background:var(--surface);box-shadow:0 30px 80px color-mix(in oklab,var(--bg) 40%,transparent),0 0 0 2px color-mix(in oklab,var(--fg) 10%,transparent);max-width:100%;max-height:100%;display:flex}
+.shot img,.shot video{display:block;width:auto;max-width:100%;height:778px;object-fit:contain;transform-origin:center}
+.capture{display:flex;flex-direction:column;align-items:center;gap:36px;width:100%;height:100%}
+.wide .shot img,.wide .shot video{height:670px}
+.label{font-size:38px;font-weight:600;background:var(--surface);padding:14px 28px;border-radius:999px}
+.end{font-size:34px;margin-top:40px;color:var(--fg);font-weight:600}
+.link{font-size:30px;margin-top:12px;color:var(--accent)}
+.mark{position:absolute;z-index:2;top:48px;right:56px;font-size:26px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+@keyframes m-rise{from{opacity:0;transform:translateY(var(--rise))}to{opacity:1;transform:none}}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
+@keyframes m-out{from{opacity:1}to{opacity:0}}
+@keyframes m-in{from{opacity:0;transform:translateY(var(--rise)) scale(.97)}to{opacity:1;transform:none}}
+@keyframes m-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes m-drift{from{transform:scale(1)}to{transform:scale(1.045)}}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-no-timeline data-start="0" data-duration="28.2" data-width="1920" data-height="1080" data-fps="30">
+<section id="s-shift-swap" class="clip scene title" data-start="0" data-duration="3.8" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 3.45s forwards"><div class="center"><div class="eyebrow" style="animation:m-rise 0.7s var(--ease) 0.15s both">Swap shifts in two taps</div><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.27s both">Shift swap</h1><div class="bar" style="animation:m-grow 0.84s var(--ease) 0.3s both"></div></div></section>
+<section id="s-the-problem" class="clip scene statement" data-start="3.8" data-duration="5.9" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 5.55s forwards"><div class="stack"><div class="eyebrow" style="animation:m-rise 0.7s var(--ease) 0.15s both">The problem</div><p class="statement" style="animation:m-rise 0.7s var(--ease) 0.27s both">Swapping a shift today takes a dozen messages and a manager&#39;s afternoon.</p></div></section>
+<section id="s-offer-a-shift" class="clip scene feature" data-start="9.7" data-duration="4.1" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 3.75s forwards"><div class="stack"><h2 class="title" style="animation:m-rise 0.7s var(--ease) 0.15s both">Offer a shift</h2><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Pick it, say why, done.</p></div></section>
+<section id="s-see-who-can-take-it" class="clip scene feature" data-start="13.8" data-duration="5.6" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 5.25s forwards"><div class="stack"><h2 class="title" style="animation:m-rise 0.7s var(--ease) 0.15s both">See who can take it</h2><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Only people with the right skills and hours.</p></div></section>
+<section id="s-approve-in-one-place" class="clip scene feature" data-start="19.4" data-duration="5" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 4.65s forwards"><div class="stack"><h2 class="title" style="animation:m-rise 0.7s var(--ease) 0.15s both">Approve in one place</h2><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Managers see every swap, ready to approve.</p></div></section>
+<section id="s-shift-swap-2" class="clip scene outro" data-start="24.4" data-duration="3.8" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both"><div class="center"><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.15s both">Shift swap</h1><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Swap shifts in two taps</p></div></section>
+
+</div>
+
+</body>
+</html>
+"
+`;
+
+exports[`compose > makes the walkthrough template's composition 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Booking suite</title>
+<style>
+@font-face{font-family:"Inter Variable";src:url("fonts/inter.woff2") format("woff2");font-weight:100 900;font-display:block}
+:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);overflow:hidden}
+#root{position:relative;width:1920px;height:1080px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:"Inter Variable", sans-serif;-webkit-font-smoothing:antialiased}
+#root::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 85% 10%,color-mix(in oklab,var(--accent) 18%,transparent),transparent 70%);z-index:0}
+.clip{position:absolute;inset:0;z-index:1}
+.scene{display:flex;align-items:center;justify-content:center;padding:110px}
+h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter-spacing:-0.02em;line-height:1.08;text-wrap:balance}
+.headline{font-size:84px}
+.title{font-size:52px}
+.statement{font-size:60px;max-width:1500px}
+.eyebrow{font-size:30px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:24px}
+.text{font-size:36px;line-height:1.4;color:var(--muted);margin-top:24px;max-width:1100px;text-wrap:pretty}
+.center{display:flex;flex-direction:column;align-items:center;text-align:center;max-width:90%}
+.stack{display:flex;flex-direction:column;align-items:flex-start;width:100%;max-width:1500px}
+.bar{width:140px;height:10px;border-radius:5px;background:var(--accent);margin-top:40px;transform-origin:center}
+.bullets{list-style:none;margin-top:40px;display:flex;flex-direction:column;gap:26px}
+.bullets li{display:flex;align-items:center;gap:26px;font-size:44px;line-height:1.25}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--accent);flex:none}
+.split{display:flex;align-items:center;gap:80px;width:100%;height:100%}
+.copy{flex:0 0 34%}
+.shot-wrap{flex:1;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.shot{border-radius:22px;overflow:hidden;background:var(--surface);box-shadow:0 30px 80px color-mix(in oklab,var(--bg) 40%,transparent),0 0 0 2px color-mix(in oklab,var(--fg) 10%,transparent);max-width:100%;max-height:100%;display:flex}
+.shot img,.shot video{display:block;width:auto;max-width:100%;height:778px;object-fit:contain;transform-origin:center}
+.capture{display:flex;flex-direction:column;align-items:center;gap:36px;width:100%;height:100%}
+.wide .shot img,.wide .shot video{height:670px}
+.label{font-size:38px;font-weight:600;background:var(--surface);padding:14px 28px;border-radius:999px}
+.end{font-size:34px;margin-top:40px;color:var(--fg);font-weight:600}
+.link{font-size:30px;margin-top:12px;color:var(--accent)}
+.mark{position:absolute;z-index:2;top:48px;right:56px;font-size:26px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+@keyframes m-rise{from{opacity:0;transform:translateY(var(--rise))}to{opacity:1;transform:none}}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
+@keyframes m-out{from{opacity:1}to{opacity:0}}
+@keyframes m-in{from{opacity:0;transform:translateY(var(--rise)) scale(.97)}to{opacity:1;transform:none}}
+@keyframes m-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes m-drift{from{transform:scale(1)}to{transform:scale(1.045)}}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-no-timeline data-start="0" data-duration="16.9" data-width="1920" data-height="1080" data-fps="30">
+<section id="s-booking-suite" class="clip scene title" data-start="0" data-duration="4.4" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 4.05s forwards"><div class="center"><div class="eyebrow" style="animation:m-rise 0.7s var(--ease) 0.15s both">Book a room in under a minute</div><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.27s both">Booking suite</h1><div class="bar" style="animation:m-grow 0.84s var(--ease) 0.3s both"></div></div></section>
+<section id="s-pick-the-dates" class="clip scene capture" data-start="4.4" data-duration="2.6" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 2.25s forwards"><div class="capture"><div class="shot-wrap wide" style="animation:m-in 0.7s var(--ease) 0.1s both"></div><div class="label" style="animation:m-rise 0.7s var(--ease) 0.15s both">Pick the dates</div></div></section>
+<section id="s-choose-a-room" class="clip scene capture" data-start="7" data-duration="2.6" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 2.25s forwards"><div class="capture"><div class="shot-wrap wide" style="animation:m-in 0.7s var(--ease) 0.1s both"></div><div class="label" style="animation:m-rise 0.7s var(--ease) 0.15s both">Choose a room</div></div></section>
+<section id="s-confirm-and-pay" class="clip scene capture" data-start="9.6" data-duration="2.6" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 2.25s forwards"><div class="capture"><div class="shot-wrap wide" style="animation:m-in 0.7s var(--ease) 0.1s both"></div><div class="label" style="animation:m-rise 0.7s var(--ease) 0.15s both">Confirm and pay</div></div></section>
+<section id="s-try-booking-suite" class="clip scene outro" data-start="12.2" data-duration="4.7" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both"><div class="center"><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.15s both">Try Booking suite</h1><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Book a room in under a minute</p></div></section>
+
+</div>
+
+</body>
+</html>
+"
+`;
+
+exports[`compose > makes the whats-new template's composition 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Shop 2.4</title>
+<style>
+@font-face{font-family:"Inter Variable";src:url("fonts/inter.woff2") format("woff2");font-weight:100 900;font-display:block}
+:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);overflow:hidden}
+#root{position:relative;width:1920px;height:1080px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:"Inter Variable", sans-serif;-webkit-font-smoothing:antialiased}
+#root::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 85% 10%,color-mix(in oklab,var(--accent) 18%,transparent),transparent 70%);z-index:0}
+.clip{position:absolute;inset:0;z-index:1}
+.scene{display:flex;align-items:center;justify-content:center;padding:110px}
+h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter-spacing:-0.02em;line-height:1.08;text-wrap:balance}
+.headline{font-size:84px}
+.title{font-size:52px}
+.statement{font-size:60px;max-width:1500px}
+.eyebrow{font-size:30px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:24px}
+.text{font-size:36px;line-height:1.4;color:var(--muted);margin-top:24px;max-width:1100px;text-wrap:pretty}
+.center{display:flex;flex-direction:column;align-items:center;text-align:center;max-width:90%}
+.stack{display:flex;flex-direction:column;align-items:flex-start;width:100%;max-width:1500px}
+.bar{width:140px;height:10px;border-radius:5px;background:var(--accent);margin-top:40px;transform-origin:center}
+.bullets{list-style:none;margin-top:40px;display:flex;flex-direction:column;gap:26px}
+.bullets li{display:flex;align-items:center;gap:26px;font-size:44px;line-height:1.25}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--accent);flex:none}
+.split{display:flex;align-items:center;gap:80px;width:100%;height:100%}
+.copy{flex:0 0 34%}
+.shot-wrap{flex:1;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.shot{border-radius:22px;overflow:hidden;background:var(--surface);box-shadow:0 30px 80px color-mix(in oklab,var(--bg) 40%,transparent),0 0 0 2px color-mix(in oklab,var(--fg) 10%,transparent);max-width:100%;max-height:100%;display:flex}
+.shot img,.shot video{display:block;width:auto;max-width:100%;height:778px;object-fit:contain;transform-origin:center}
+.capture{display:flex;flex-direction:column;align-items:center;gap:36px;width:100%;height:100%}
+.wide .shot img,.wide .shot video{height:670px}
+.label{font-size:38px;font-weight:600;background:var(--surface);padding:14px 28px;border-radius:999px}
+.end{font-size:34px;margin-top:40px;color:var(--fg);font-weight:600}
+.link{font-size:30px;margin-top:12px;color:var(--accent)}
+.mark{position:absolute;z-index:2;top:48px;right:56px;font-size:26px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+@keyframes m-rise{from{opacity:0;transform:translateY(var(--rise))}to{opacity:1;transform:none}}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
+@keyframes m-out{from{opacity:1}to{opacity:0}}
+@keyframes m-in{from{opacity:0;transform:translateY(var(--rise)) scale(.97)}to{opacity:1;transform:none}}
+@keyframes m-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes m-drift{from{transform:scale(1)}to{transform:scale(1.045)}}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-no-timeline data-start="0" data-duration="21.4" data-width="1920" data-height="1080" data-fps="30">
+<section id="s-what-s-new-in-shop-2-4" class="clip scene title" data-start="0" data-duration="3.8" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 3.45s forwards"><div class="center"><div class="eyebrow" style="animation:m-rise 0.7s var(--ease) 0.15s both">Release 2.4</div><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.27s both">What&#39;s new in Shop 2.4</h1><div class="bar" style="animation:m-grow 0.84s var(--ease) 0.3s both"></div></div></section>
+<section id="s-bulk-edit" class="clip scene feature" data-start="3.8" data-duration="4.7" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 4.35s forwards"><div class="stack"><h2 class="title" style="animation:m-rise 0.7s var(--ease) 0.15s both">Bulk edit</h2><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Change prices for a whole category at once.</p></div></section>
+<section id="s-saved-filters" class="clip scene feature" data-start="8.5" data-duration="4.4" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 4.05s forwards"><div class="stack"><h2 class="title" style="animation:m-rise 0.7s var(--ease) 0.15s both">Saved filters</h2><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Keep the views you use every day.</p></div></section>
+<section id="s-also-in-this-release" class="clip scene bullets" data-start="12.9" data-duration="5.6" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 5.25s forwards"><div class="stack"><h2 class="title" style="animation:m-rise 0.7s var(--ease) 0.15s both">Also in this release</h2><ul class="bullets"><li style="animation:m-rise 0.7s var(--ease) 0.27s both"><span class="dot"></span>Faster search</li><li style="animation:m-rise 0.7s var(--ease) 0.39s both"><span class="dot"></span>Clearer error messages</li><li style="animation:m-rise 0.7s var(--ease) 0.51s both"><span class="dot"></span>Dark mode in reports</li></ul></div></section>
+<section id="s-shop-2-4" class="clip scene outro" data-start="18.5" data-duration="2.9" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both"><div class="center"><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.15s both">Shop 2.4</h1><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Available now</p></div></section>
+
+</div>
+
+</body>
+</html>
+"
+`;

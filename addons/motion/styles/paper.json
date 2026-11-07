@@ -1,0 +1,19 @@
+{
+  "id": "paper",
+  "name": "Paper light",
+  "colors": {
+    "bg": "#f6f4ef",
+    "surface": "#ffffff",
+    "fg": "#16181d",
+    "muted": "#5d6470",
+    "accent": "#2f6b55",
+    "onAccent": "#ffffff"
+  },
+  "fonts": {
+    "headline": "Georgia, serif",
+    "body": "\"Inter Variable\", sans-serif"
+  },
+  "radius": 14,
+  "headlineWeight": 600,
+  "eyebrowCase": "none"
+}

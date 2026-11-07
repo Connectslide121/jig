@@ -1,0 +1,47 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "motion",
+  "name": "Motion",
+  "description": "Videos made from HTML: a teaser, a what's-new clip or a walkthrough as a storyboard of scenes, previewed live and rendered to MP4 on this computer. Rendering uses no AI and costs nothing.",
+  "version": "1.0.0",
+  "icon": "clapperboard",
+  "permissions": ["fs:read", "fs:write", "exec", "net"],
+  "storage": { "scope": "project" },
+  "contributes": {
+    "views": [
+      {
+        "id": "videos",
+        "title": "Motion",
+        "icon": "clapperboard",
+        "region": "right",
+        "hidden": true,
+        "component": "VideosView"
+      }
+    ],
+    "tabs": [
+      {
+        "type": "video",
+        "title": "Video",
+        "icon": "clapperboard",
+        "component": "VideoTab"
+      }
+    ],
+    "topbar": [{ "id": "motion", "component": "MotionButton" }],
+    "actions": [
+      {
+        "id": "new-video",
+        "title": "Motion: new video…",
+        "group": "Motion",
+        "icon": "clapperboard",
+        "run": "newVideo"
+      },
+      {
+        "id": "videos",
+        "title": "Motion: videos",
+        "group": "Motion",
+        "icon": "film",
+        "run": "showVideos"
+      }
+    ]
+  }
+}

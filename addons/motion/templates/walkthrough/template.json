@@ -1,0 +1,30 @@
+{
+  "id": "walkthrough",
+  "name": "Walkthrough",
+  "kind": "walkthrough",
+  "description": "A tour of an app or demo: a title, then a capture or screenshot per step with a caption, and an end card. 1–3 min.",
+  "licence": "Jig (same as the add-on)",
+  "sceneTypes": ["title", "capture", "outro"],
+  "durations": { "min": 30, "max": 180 },
+  "inputs": {
+    "product": { "label": "Product", "type": "string", "required": true },
+    "goal": { "label": "What you'll see", "type": "string" },
+    "steps": {
+      "label": "Steps",
+      "type": "list",
+      "item": { "title": "string", "image": "path" }
+    },
+    "link": { "label": "Link", "type": "string" }
+  },
+  "scenes": [
+    { "type": "title", "title": "{{product}}", "text": "{{goal}}" },
+    { "repeat": "steps", "type": "capture", "title": "{{item.title}}", "media": "{{item.image}}" },
+    { "type": "outro", "title": "Try {{product}}", "text": "{{goal}}" }
+  ],
+  "sample": {
+    "product": "Booking suite",
+    "goal": "Book a room in under a minute",
+    "steps": [{ "title": "Pick the dates" }, { "title": "Choose a room" }, { "title": "Confirm and pay" }],
+    "link": "contoso.example/booking"
+  }
+}

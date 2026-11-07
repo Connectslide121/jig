@@ -6558,7 +6558,38 @@ stopped for good.
 ## D-386: Usage limits and closing a phone room as Jig tools
 
 - Status: accepted.
-- **Who:**
+- **Who:** Claude, on my own (2026-11-10), phase 28 session M1.
+- **Animation:** a composition animates with plain CSS animations (rise, grow, in, fade, out), no
+  GSAP: HyperFrames seeks CSS animations itself, relative to the element's closest `[data-start]`,
+  so every delay counts from its scene's start. Media `data-start` is absolute (from the
+  composition). Every `<video>` gets an id (HyperFrames renders one without an id frozen) and the
+  root gets `data-no-timeline` (else every render waits 45 s for GSAP timelines). HyperFrames' lint
+  flags `video_nested_in_timed_element`; harmless here because a shot's video starts with its scene,
+  checked frame by frame against an FFmpeg counter clip.
+- **Preview:** the composition itself in `<iframe sandbox="allow-scripts">` through `ctx.frameUrl`
+  (D-462), driven by `postMessage` (play, pause, seek; it reports the time). Each animation is
+  seeked to (t − its scene's start); at rest the preview shows the poster moment (min(1.5 s, half the
+  length)) and the first Play starts from 0. Chromium let animations created at load run on their
+  own in the frame, so a per-frame guard re-pauses any animation that runs while the player is
+  paused.
+- **Font:** Inter (the variable latin woff2 from `@fontsource-variable/inter`, OFL, licence kept)
+  ships in `addons/motion/fonts/`; the host embeds it as a `data:font/woff2` URL (about 64 KB),
+  because the sandboxed frame has an opaque origin and the file protocol's CSP has
+  `connect-src 'none'`. The renderer gets the same HTML, so preview and MP4 match. Only a woff2 data
+  URL is accepted, otherwise the composition points at `fonts/inter.woff2`.
+- **Renderer:** HyperFrames is pinned (0.9.19) and installed with `npm install --ignore-scripts` into
+  Motion's data folder; the installed package's integrity must equal the pinned one, else the
+  install is removed and fails. FFmpeg: `motion.ffmpegPath`, then PATH, else a pinned static build
+  (6.0, a SHA-256 per platform) downloaded into the data folder; hence the `net` permission. Renders
+  run one at a time across projects, with telemetry, update checks and skill installs off
+  (`HYPERFRAMES_NO_TELEMETRY`, `DO_NOT_TRACK`, `HYPERFRAMES_NO_UPDATE_CHECK`,
+  `HYPERFRAMES_SKIP_SKILLS`). A job a closed Jig left behind is marked failed ("interrupted").
+- **Tests:** with `JIG_ENGINE=fake` a fake renderer ticks five times and writes a tiny MP4 and a
+  poster; "install" writes a marker. `[hold]` in a composition holds its render (cancel tests).
+- **Layout:** the Video tab puts the preview beside the storyboard and settings when wide and above
+  them when narrow; the Videos grid's columns use container variants on every side (D-297).
+- **Later sessions:** the voice and music settings (`motion.defaultVoice`, the music picker) exist
+  but stay hidden in Settings until M2 makes them do something.
   Jon asked for both tools (2026-11-05, task queue): a tool that reports both providers' usage
   limits, reusing what Jig already shows, and one that closes a chat's room on the phone like /close.
   Names, shapes and wording are Claude, on my own.
@@ -6581,7 +6612,38 @@ stopped for good.
 ## D-387: Hey Jig in the status bar: always shown, click on/off, right-click menu, one icon per meaning
 
 - Status: accepted.
-- **Who:**
+- **Who:** Claude, on my own (2026-11-10), phase 28 session M1.
+- **Animation:** a composition animates with plain CSS animations (rise, grow, in, fade, out), no
+  GSAP: HyperFrames seeks CSS animations itself, relative to the element's closest `[data-start]`,
+  so every delay counts from its scene's start. Media `data-start` is absolute (from the
+  composition). Every `<video>` gets an id (HyperFrames renders one without an id frozen) and the
+  root gets `data-no-timeline` (else every render waits 45 s for GSAP timelines). HyperFrames' lint
+  flags `video_nested_in_timed_element`; harmless here because a shot's video starts with its scene,
+  checked frame by frame against an FFmpeg counter clip.
+- **Preview:** the composition itself in `<iframe sandbox="allow-scripts">` through `ctx.frameUrl`
+  (D-462), driven by `postMessage` (play, pause, seek; it reports the time). Each animation is
+  seeked to (t − its scene's start); at rest the preview shows the poster moment (min(1.5 s, half the
+  length)) and the first Play starts from 0. Chromium let animations created at load run on their
+  own in the frame, so a per-frame guard re-pauses any animation that runs while the player is
+  paused.
+- **Font:** Inter (the variable latin woff2 from `@fontsource-variable/inter`, OFL, licence kept)
+  ships in `addons/motion/fonts/`; the host embeds it as a `data:font/woff2` URL (about 64 KB),
+  because the sandboxed frame has an opaque origin and the file protocol's CSP has
+  `connect-src 'none'`. The renderer gets the same HTML, so preview and MP4 match. Only a woff2 data
+  URL is accepted, otherwise the composition points at `fonts/inter.woff2`.
+- **Renderer:** HyperFrames is pinned (0.9.19) and installed with `npm install --omit=dev` into
+  Motion's data folder; the installed package's integrity must equal the pinned one, else the
+  install is removed and fails. FFmpeg: `motion.ffmpegPath`, then PATH, else a pinned static build
+  (ffmpeg-static's b6.0, GPL-3.0, a SHA-256 per platform) downloaded into the data folder; hence the `net` permission. Renders
+  run one at a time across projects, with telemetry, update checks and skill installs off
+  (`HYPERFRAMES_NO_TELEMETRY`, `DO_NOT_TRACK`, `HYPERFRAMES_NO_UPDATE_CHECK`,
+  `HYPERFRAMES_SKIP_SKILLS`). A job a closed Jig left behind is marked failed ("interrupted").
+- **Tests:** with `JIG_ENGINE=fake` a fake renderer ticks five times and writes a tiny MP4 and a
+  poster; "install" writes a marker. `[hold]` in a composition holds its render (cancel tests).
+- **Layout:** the Video tab puts the preview beside the storyboard and settings when wide and above
+  them when narrow; the Videos grid's columns use container variants on every side (D-297).
+- **Later sessions:** the voice and music settings (`motion.defaultVoice`, the music picker) exist
+  but stay hidden in Settings until M2 makes them do something.
   Jon asked for it (2026-11-05, task queue): the status bar's "Hey Jig" always shown and working as
   an on/off switch. With Jon the same day: a left click toggles, a right-click opens the menu, no
   chevron, and the same entries are in Settings → Speech → Hey Jig so nothing is right-click-only.
@@ -8106,3 +8168,40 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   loosely ("spacing rhythm", "color") and shows the axes it finds.
 - **L2:** the product engineer's flag is named `factory-<slug>`, off by default, with seeded
   invented data; it never starts servers it leaves running and never deploys.
+
+## D-463: Motion's compositions animate with CSS, preview live in a sandboxed frame, render through a pinned HyperFrames
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-10), phase 28 session M1.
+- **Animation:** a composition animates with plain CSS animations (rise, grow, in, fade, out), no
+  GSAP: HyperFrames seeks CSS animations itself, relative to the element's closest `[data-start]`,
+  so every delay counts from its scene's start. Media `data-start` is absolute (from the
+  composition). Every `<video>` gets an id (HyperFrames renders one without an id frozen) and the
+  root gets `data-no-timeline` (else every render waits 45 s for GSAP timelines). HyperFrames' lint
+  flags `video_nested_in_timed_element`; harmless here because a shot's video starts with its scene,
+  checked frame by frame against an FFmpeg counter clip.
+- **Preview:** the composition itself in `<iframe sandbox="allow-scripts">` through `ctx.frameUrl`
+  (D-462), driven by `postMessage` (play, pause, seek; it reports the time). Each animation is
+  seeked to (t − its scene's start); at rest the preview shows the poster moment (min(1.5 s, half the
+  length)) and the first Play starts from 0. Chromium let animations created at load run on their
+  own in the frame, so a per-frame guard re-pauses any animation that runs while the player is
+  paused.
+- **Font:** Inter (the variable latin woff2 from `@fontsource-variable/inter`, OFL, licence kept)
+  ships in `addons/motion/fonts/`; the host embeds it as a `data:font/woff2` URL (about 64 KB),
+  because the sandboxed frame has an opaque origin and the file protocol's CSP has
+  `connect-src 'none'`. The renderer gets the same HTML, so preview and MP4 match. Only a woff2 data
+  URL is accepted; otherwise the composition points at `fonts/inter.woff2`.
+- **Renderer:** HyperFrames is pinned (0.9.19) and installed with `npm install --omit=dev` into
+  Motion's data folder; the installed package's integrity in the lock file must equal the pinned
+  one, else the install is removed and fails. FFmpeg: `motion.ffmpegPath`, then PATH, else a pinned
+  static build (ffmpeg-static's b6.0, GPL-3.0, a SHA-256 per platform) downloaded into the data
+  folder; hence the `net` permission. Renders run one at a time across projects, with telemetry,
+  update checks and skill installs off (`HYPERFRAMES_NO_TELEMETRY`, `DO_NOT_TRACK`,
+  `HYPERFRAMES_NO_UPDATE_CHECK`, `HYPERFRAMES_SKIP_SKILLS`). A job a closed Jig left behind is
+  marked failed ("interrupted").
+- **Tests:** with `JIG_ENGINE=fake` a fake renderer ticks five times and writes a tiny MP4 and a
+  poster; "install" writes a marker. `[hold]` in a composition holds its render (cancel tests).
+- **Layout:** the Video tab puts the preview beside the storyboard and settings when wide and above
+  them when narrow; the Videos grid's columns use container variants on every side (D-297).
+- **Later sessions:** `motion.defaultVoice` exists but stays hidden in Settings until M2 makes it do
+  something.
