@@ -17,6 +17,7 @@ import {
   PLAN_OUTPUTS,
   planLanguages,
 } from "./lib/brief";
+import { duration, MIN_MEASURED, planStageTime, planTotal, type StageTime } from "./lib/estimates";
 import { GATE_ORDER, GATES } from "./lib/gates";
 import { holds, type Track, type TrackItem } from "./lib/graph";
 import type { GateId, Level, Owner, Run, RunPlan } from "./lib/run";
@@ -67,6 +68,25 @@ export function PlanDialog({
     "build.requested": build,
     critical: isCR && critical,
   });
+  const { data: times } = useHostCall<Record<string, StageTime>>("stageEstimates", {
+    projectId: run.projectId,
+    runId: run.id,
+  });
+  // Measured times only (D-472): Jig's stages still to come; the interview, the Plan step and gates are people's time.
+  const timed = (i: TrackItem) =>
+    !!(i.recipe || i.fanout) && !i.interactive && !i.person && !skipped.has(itemKey(i));
+  const timeOf = (i: TrackItem) =>
+    times
+      ? planStageTime(
+          times,
+          i.fanout ? outputs : [(i.recipe ?? "").replace("{level}", level.toLowerCase())],
+          level,
+        )
+      : undefined;
+  const ahead = (track?.stages ?? []).filter(
+    (i) => timed(i) && run.stages.find((s) => s.id === i.id)?.status !== "done",
+  );
+  const total = planTotal(ahead.map(timeOf));
   const toggle = (id: string, on: boolean) =>
     setOutputs((l) => (on ? [...new Set([...l, id])] : l.filter((x) => x !== id)));
   const usable = (boards?.targets ?? []).filter((t) => t.type && !t.problem);
@@ -179,7 +199,7 @@ export function PlanDialog({
             </div>
             <ol className="flex flex-col" data-testid="factory-plan-stages">
               {(track?.stages ?? []).map((i) => {
-                const id = i.id ?? i.gate ?? i.fanout ?? "";
+                const id = itemKey(i);
                 const off = skipped.has(id);
                 const name = i.gate ? GATES[i.gate].label : (i.title ?? id);
                 return (
@@ -194,13 +214,43 @@ export function PlanDialog({
                     >
                       {name}
                     </span>
-                    <span className="w-12 shrink-0 text-right text-hint">
+                    <span className="w-16 shrink-0 text-right text-muted tabular-nums">
+                      {timed(i) && times
+                        ? timeOf(i)?.medianMs === undefined
+                          ? "—"
+                          : duration(timeOf(i)?.medianMs ?? 0)
+                        : ""}
+                    </span>
+                    <span className="w-10 shrink-0 text-right text-hint">
                       {i.gate ? "gate" : i.person ? "you" : ""}
                     </span>
                   </li>
                 );
               })}
             </ol>
+            <div
+              className="flex h-7 items-center gap-2 border-t border-line"
+              data-testid="factory-plan-estimate"
+            >
+              <span
+                className="min-w-0 flex-1 truncate text-hint"
+                title={
+                  total.missing
+                    ? `Indicative only: times come from earlier runs' stages, and a stage needs ${MIN_MEASURED} before it gets one.`
+                    : "The median of earlier runs' stages, one after the other; gates are people's time."
+                }
+              >
+                {!times || !ahead.length
+                  ? ""
+                  : total.missing
+                    ? `${total.missing} stage${total.missing === 1 ? "" : "s"} not measured yet`
+                    : `Jig's stages, measured: 80% of runs within ${duration(total.p80Ms)}`}
+              </span>
+              <span className="w-16 shrink-0 text-right font-medium text-fg tabular-nums">
+                {times && !total.missing && total.ms ? duration(total.ms) : ""}
+              </span>
+              <span className="w-10 shrink-0" />
+            </div>
           </Column>
           <Column title="Outputs">
             {LANGUAGE_GROUPS.map((g) => (
@@ -324,3 +374,5 @@ function skippedItems(items: TrackItem[], facts: Record<string, boolean>): Set<s
   }
   return off;
 }
+
+const itemKey = (i: TrackItem) => i.id ?? i.gate ?? i.fanout ?? "";

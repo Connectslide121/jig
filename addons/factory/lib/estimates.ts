@@ -23,7 +23,7 @@ export interface Measurement {
 export function measurements(runs: Run[]): Measurement[] {
   const out: Measurement[] = [];
   for (const r of runs) {
-    if (isSample(r.id)) continue;
+    if (isSample(r.id) || r.eval) continue;
     for (const s of r.stages) {
       if (s.status !== "done" || !s.startedAt || !s.endedAt || s.recipe === "plan") continue;
       const ms = Date.parse(s.endedAt) - Date.parse(s.startedAt);
@@ -112,4 +112,65 @@ export function estimateLines(list: Estimate[]): string[] {
       ? `- ${e.label}: TO FILL IN, ${e.basis}`
       : `- ${e.label}: ${duration(e.medianMs)} (80% of runs within ${duration(e.p80Ms ?? e.medianMs)}), ${e.basis}`,
   );
+}
+
+/** A recipe's measured time: how many runs, and the median and p80 once there are `MIN_MEASURED`. */
+export interface StageTime {
+  n: number;
+  medianMs?: number;
+  p80Ms?: number;
+}
+
+/**
+ * Every recipe's measured time (D-472), for the Plan step: by recipe id, and the build also by level
+ * (`build@L2`, a build's size follows the level). The run itself left out.
+ */
+export function stageTimes(runs: Run[], exclude?: string): Record<string, StageTime> {
+  const by = new Map<string, number[]>();
+  for (const m of measurements(runs)) {
+    if (m.runId === exclude) continue;
+    const keys = m.recipe === "build" && m.level ? [m.recipe, `build@${m.level}`] : [m.recipe];
+    for (const k of keys) by.set(k, [...(by.get(k) ?? []), m.ms]);
+  }
+  return Object.fromEntries(
+    [...by].map(([k, ms]) => [
+      k,
+      ms.length < MIN_MEASURED
+        ? { n: ms.length }
+        : { n: ms.length, medianMs: percentile(ms, 0.5), p80Ms: percentile(ms, 0.8) },
+    ]),
+  );
+}
+
+/** A plan stage's time: its recipe's (the build at the run's level), or the slowest of a fan-out's recipes. */
+export function planStageTime(
+  times: Record<string, StageTime>,
+  recipes: string[],
+  level?: Level,
+): StageTime | undefined {
+  const list = recipes.map((r) =>
+    r === "build" && level ? (times[`build@${level}`] ?? times[r]) : times[r],
+  );
+  if (!list.length || list.some((t) => t?.medianMs === undefined)) return undefined;
+  const slowest = list.reduce((a, b) => ((b?.medianMs ?? 0) > (a?.medianMs ?? 0) ? b : a));
+  return slowest;
+}
+
+/** The plan's measured total (Jig's stages one after the other; people's gates not counted), and the stages without a number. */
+export function planTotal(stages: Array<StageTime | undefined>): {
+  ms: number;
+  p80Ms: number;
+  missing: number;
+} {
+  let ms = 0;
+  let p80Ms = 0;
+  let missing = 0;
+  for (const t of stages) {
+    if (t?.medianMs === undefined) missing++;
+    else {
+      ms += t.medianMs;
+      p80Ms += t.p80Ms ?? t.medianMs;
+    }
+  }
+  return { ms, p80Ms, missing };
 }

@@ -20,6 +20,7 @@ import {
 } from "@jig/sdk/ui";
 import { Factory, Inbox, LayoutGrid, Lightbulb, MoreHorizontal, Play } from "lucide-react";
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
+import { EvalsDialog } from "./evals";
 import { NewIdeaDialog, openNewIdea, useNewIdea } from "./idea";
 import type { BriefDoc } from "./lib/brief";
 import {
@@ -283,7 +284,7 @@ export function FloorTab({ ctx }: AddonTabProps) {
   const { data, error } = useRuns(project?.id);
   const now = useNow();
   const starting = useStartOpen();
-  const [floorModal, setFloorModal] = useState<"package" | "gaps">();
+  const [floorModal, setFloorModal] = useState<"package" | "gaps" | "evals">();
   const start = starting && project && (
     <StartDialog ctx={ctx} projectId={project.id} onClose={() => setStartOpen(false)} />
   );
@@ -296,7 +297,9 @@ export function FloorTab({ ctx }: AddonTabProps) {
         {start}
       </>
     );
-  const byLane = (lane: Lane) => data.filter((r) => laneOf(r) === lane);
+  // Eval runs show while they run, then only in Recipe evals (D-472); they never count in the KPIs.
+  const shown = data.filter((r) => !r.eval || (r.state !== "stopped" && r.state !== "done"));
+  const byLane = (lane: Lane) => shown.filter((r) => laneOf(r) === lane);
   return (
     <div className="@container flex h-full min-h-0 flex-col" data-testid="factory-floor">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-4">
@@ -346,6 +349,34 @@ export function FloorTab({ ctx }: AddonTabProps) {
                   onSelect: () => setFloorModal("gaps"),
                 },
                 { separator: true },
+                {
+                  label: "Factory report",
+                  icon: "chart-column",
+                  testId: "factory-floor-report",
+                  disabled: !data.some((r) => !isSample(r.id) && !r.eval),
+                  onSelect: () =>
+                    void ctx.host.call("factoryReport", { projectId: project.id }).then(
+                      () =>
+                        ctx.notify({
+                          title: "The factory report is in Pages",
+                          message: "Open it from the Pages view; it's updated each time you make it.",
+                          tone: "success",
+                        }),
+                      (err: unknown) =>
+                        ctx.notify({
+                          title: "Couldn't make the factory report",
+                          message: err instanceof Error ? err.message : String(err),
+                          tone: "danger",
+                        }),
+                    ),
+                },
+                {
+                  label: "Recipe evals…",
+                  icon: "flask-conical",
+                  testId: "factory-floor-evals",
+                  onSelect: () => setFloorModal("evals"),
+                },
+                { separator: true },
                 ...sampleItems(
                   ctx,
                   project.id,
@@ -358,7 +389,7 @@ export function FloorTab({ ctx }: AddonTabProps) {
         />
       </div>
       <div className="shrink-0 px-4 pt-3">
-        <Kpis runs={data} />
+        <Kpis runs={data.filter((r) => !r.eval)} />
       </div>
       {/* Wide: six lanes side by side, scrolling sideways when they don't fit. */}
       <div className="@max-3xl:hidden @3xl:flex min-h-0 flex-1 gap-3 overflow-x-auto p-4">
@@ -391,6 +422,17 @@ export function FloorTab({ ctx }: AddonTabProps) {
       {start}
       {floorModal === "package" && (
         <ReleasePackageDialog ctx={ctx} projectId={project.id} onClose={() => setFloorModal(undefined)} />
+      )}
+      {floorModal === "evals" && (
+        <EvalsDialog
+          ctx={ctx}
+          projectId={project.id}
+          onOpenRun={(runId) => {
+            const r = data.find((x) => x.id === runId);
+            if (r) openRun(ctx, r);
+          }}
+          onClose={() => setFloorModal(undefined)}
+        />
       )}
       {floorModal === "gaps" && (
         <RecurringGapsDialog
@@ -457,7 +499,10 @@ function RunCard({ run, color, now, onOpen }: { run: Run; color?: string; now: n
     >
       <span className="flex min-w-0 items-center gap-2">
         <ProjectSwatch color={color} />
-        <span className="min-w-0 truncate text-sm font-medium text-fg">{run.title}</span>
+        <span className="min-w-0 truncate text-sm font-medium text-fg">
+          {run.eval && <span className="text-hint">Eval · </span>}
+          {run.title}
+        </span>
       </span>
       <span className="flex min-w-0 items-center gap-2">
         <LevelBadge level={run.level} />

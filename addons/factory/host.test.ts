@@ -922,6 +922,56 @@ describe("Jig factory's Conductor", () => {
     expect((await load(r.id)).gates).toEqual([]);
   });
 
+  it("runs a recipe eval to its quality gate by itself, records it per recipe version and stops (D-472)", async () => {
+    const [started] = await host.runEvals({ projectId: "shop", briefs: ["shift-swap"] }, api);
+    let r = started as Run;
+    expect(r.eval).toMatchObject({ brief: "shift-swap", recipes: { "demo-l1": expect.any(String) } });
+    await play(r, "S2");
+    r = await load(r.id);
+    // Jig approved the scout itself, and told nobody.
+    expect(r.gates.find((g) => g.id === "G0")).toMatchObject({ status: "approved", decidedBy: "eval" });
+    expect(api.notify).not.toHaveBeenCalled();
+    await play(r, "S4b", {}, ["directions/README.md", "directions/1-calm.svg"]);
+    r = await load(r.id);
+    expect(r.direction).toBe("1-calm");
+    await play(r, "S5");
+    r = await load(r.id);
+    await play(r, "S6", { quality: { pass: false, score: 62 } });
+    r = await load(r.id);
+    await play(r, "S5");
+    r = await load(r.id);
+    await play(r, "S6", { quality: { pass: true, score: 86 } });
+    r = await load(r.id);
+    expect(r.state).toBe("stopped");
+    const ev = await host.evals({ projectId: "shop" }, api);
+    expect(ev.running).toEqual([]);
+    expect(ev.results).toEqual([
+      expect.objectContaining({ runId: r.id, brief: "shift-swap", score: 86, pass: true, rounds: 2 }),
+    ]);
+    expect(ev.rows).toEqual([expect.objectContaining({ recipe: "demo-l1", n: 1, passed: 1, avgScore: 86 })]);
+    // An eval's times stay out of the estimates.
+    expect(await host.stageEstimates({ projectId: "shop" }, api)).toEqual({});
+  });
+
+  it("publishes the factory report to Pages, updating its one page (D-472)", async () => {
+    const call = vi.fn(async (_addon: string, _method: string, args: { id?: string }) =>
+      JSON.stringify({ page: args.id ?? "p_1" }),
+    );
+    api.addons.call = call as never;
+    expect(await host.factoryReport({ projectId: "shop" }, api)).toBe("p_1");
+    expect(await host.factoryReport({ projectId: "shop" }, api)).toBe("p_1");
+    expect(call).toHaveBeenLastCalledWith(
+      "pages",
+      "publish",
+      expect.objectContaining({
+        id: "p_1",
+        title: "Factory report · Shop",
+        html: expect.stringContaining("<h1>Factory report</h1>"),
+      }),
+    );
+    await expect(host.factoryReport({ projectId: "nope" }, api)).rejects.toThrow(/no such project/);
+  });
+
   it("answers only stage chats, and lists the runs for any chat", async () => {
     await expect(
       host.toolReport({ chat: { sessionId: "other" }, summary: "x", outputs: [] }, api),

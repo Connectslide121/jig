@@ -580,6 +580,8 @@ test("Jig factory: a new idea, its interview with Good enough, and the Plan step
     await page.waitForTimeout(1500);
     await page.screenshot({ path: join(SHOTS_DIR, "factory-plan.png") });
   }
+  // Estimates come only from measured runs (D-472): none yet, so the plan says so instead of guessing.
+  await expect(plan.getByTestId("factory-plan-estimate")).toContainText("not measured yet");
   await plan.getByTestId("factory-plan-output-stories").uncheck();
   await plan.getByTestId("factory-plan-level").selectOption("L2");
   await plan.getByTestId("factory-plan-start").click();
@@ -735,6 +737,53 @@ test("Jig factory: two tenders, their requirement matrix and the recurring gaps 
   await expect(gaps.getByTestId("factory-gaps-rows")).toContainText("cert:iso-27001");
   await expect(gaps.getByTestId("factory-gaps-rows")).toContainText("2 tenders");
   await shots(app, page, "gaps", () => gaps);
+});
+
+test("Jig factory: recipe evals run golden briefs to their quality gate, and the factory report goes to Pages (D-472)", async ({
+  app,
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(120_000);
+  const projectId = await gitShop(page, jigHome);
+  // A real run, stopped at once: the report has something to count.
+  const real = (await factory(page, "startRun", { projectId, brief: "invoice-export" })) as {
+    value: RunLike;
+  };
+  await factory(page, "stop", { projectId, runId: real.value.id });
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-floor").click();
+  const floor = page.getByTestId("factory-floor");
+  await expect(floor).toBeVisible();
+
+  // Recipe evals: every golden brief runs by itself to its quality gate, then shows per recipe version.
+  await floor.getByTestId("factory-floor-more").click();
+  await page.getByTestId("factory-floor-evals").click();
+  const evals = page.getByTestId("factory-evals");
+  await expect(evals).toContainText("No evals yet");
+  await evals.getByTestId("factory-evals-run").click();
+  await expect(evals.getByTestId("factory-evals-running").first()).toBeVisible({ timeout: 15000 });
+  await expect(evals.getByTestId("factory-evals-running")).toHaveCount(0, { timeout: 90_000 });
+  const rows = evals.getByTestId("factory-evals-row");
+  await expect(rows.first()).toBeVisible();
+  // The fake critic fails v1 and passes v2 at 86: every brief passed after two demo versions.
+  await expect(rows.first()).toContainText("86");
+  await expect(rows.first()).toContainText("2.0");
+  await shots(app, page, "evals", () => evals);
+  await evals.getByRole("button", { name: "Close", exact: true }).last().click();
+  // Finished eval runs leave the Floor: only the stopped real run is on it.
+  await expect(floor.locator("[data-testid=factory-card]:visible")).toHaveCount(1);
+
+  // The factory report: one page in Pages, made again in place.
+  for (let i = 0; i < 2; i++) {
+    await floor.getByTestId("factory-floor-more").click();
+    await page.getByTestId("factory-floor-report").click();
+    await expect(page.getByText("The factory report is in Pages").first()).toBeVisible();
+  }
+  const pages = (await hostCall(page, "addons.call", { id: "pages", method: "list", args: {} })) as {
+    value: Array<{ title: string }>;
+  };
+  expect(pages.value.filter((p) => p.title === "Factory report · shop")).toHaveLength(1);
 });
 
 test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({

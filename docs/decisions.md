@@ -8440,3 +8440,42 @@ on Floor → Recurring gaps…; the gap stage gets the earlier ones in its brief
 **Real names.** The stage rules now keep invented data to demos, examples and samples: a change
 request names its real customer and a tender its buyer, because what came in does; the publish scan
 (D-470) still keeps them out of a published demo.
+
+## D-472: Measure and tune: the factory report as a page, estimates in the Plan step, recipe evals scored by the critic per recipe version
+
+- Status: accepted.
+- **Who:** Claude, on my own (phase 28 session 8, Jon away; the plan's session 8 said what to measure,
+  this says how).
+
+**Only measured numbers.** Everything here comes from finished stages of real runs (samples and eval
+runs left out, `measurements` in `lib/estimates.ts`), never from an AI's guess.
+
+**The factory report is a Pages page.** `lib/report.ts` (pure) counts a project's runs by track and
+state, each recipe's median and 80th-percentile time, the critic (quality gates, first-demo passes,
+average score, average demo versions), and approved-as-written per output kind with its gate.
+Floor ⋯ → Factory report publishes it through the Pages add-on's `publish` (one page per project,
+its id in project storage, updated in place; a page removed in Pages is made again). The page is
+self-contained, no scripts, and uses CSS system colours (`Canvas`, `CanvasText`, `GrayText`), so it
+follows the reader's light or dark and needs no token. **Gates loosened on evidence are suggestions
+only:** a kind with at least 5 decisions approved as written 90% of the time "could be lighter"; under
+50%, its recipe needs work. Jig changes no gate by itself: a gate is a person's promise to look.
+
+**Estimates in the Plan step.** `stageEstimates` gives every recipe's measured time over all projects
+(the run itself left out), the build also per level (`build@L2`); a fan-out counts as its slowest
+output (they run side by side). The Plan step shows each of Jig's stages still to come in a
+right-aligned column ("—" without 3 measurements) and a total line under the list: the sum of medians
+and "80% of runs within" the sum of p80s, or "N stages not measured yet" (indicative). The interview,
+the Plan step and gates are people's time and are not counted.
+
+**Recipe evals from a button, in the Floor's ⋯ (not Settings).** Settings → Jig factory is core
+code that can't call the add-on's host; the Floor already holds the factory's project-wide reports.
+Floor ⋯ → Recipe evals… → Run evals starts a run per golden brief (`fixtures/briefs/`) in the active
+project, marked `Run.eval` with the short content hashes of the recipes it compares (`demo-<level>`
+and `critique`, with the repository's overrides). Jig approves its G0 and GD (the first direction)
+itself, sends no notification or phone card for it, and when G1 opens (or a stage needs a person)
+records `{brief, recipes, score, pass, rounds, ms}` in global storage (newest 200) and stops the run.
+The modal groups results per recipe version: runs, passed, average score, the trend against the
+previous version of the same recipe, average demo versions. Eval runs show on the Floor while they
+run ("Eval ·"), then only in the modal; they never count in the KPIs, estimates or the report.
+Evals run on the models the recipes name: on real models they cost plan usage, so they start only
+from the button.

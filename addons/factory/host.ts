@@ -39,7 +39,16 @@ import {
   runningCount,
   settle,
 } from "./lib/conductor";
-import { estimateLines, quoteEstimates } from "./lib/estimates";
+import { estimateLines, quoteEstimates, type StageTime, stageTimes } from "./lib/estimates";
+import {
+  EVALS_MAX,
+  type EvalResult,
+  type EvalRow,
+  evalDecisions,
+  evalOutcome,
+  evalRecipes,
+  evalTable,
+} from "./lib/evals";
 import { parseFrontMatter, setStatus, updateFrontMatter, writeFrontMatter } from "./lib/frontmatter";
 import { filesOf, GATES, isFile, ownerOf, reviewerOf } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
@@ -68,6 +77,7 @@ import {
   untilOf,
 } from "./lib/publish";
 import { outputPaths, parseRecipe, type Recipe, resolveRecipes, stagePrompt } from "./lib/recipes";
+import { factoryReport as buildReport, reportHtml } from "./lib/report";
 import {
   changesNote,
   type DemoVersion,
@@ -509,6 +519,7 @@ const openRunAction = (r: Run) => [
 ];
 
 function announceGates(api: AddonHostApi, r: Run, gates: GateId[]): void {
+  if (r.eval) return;
   for (const g of gates)
     api.notify({
       title: `Jig factory: ${GATES[g].label}`,
@@ -545,6 +556,8 @@ export interface StartArgs {
   track?: string;
   /** A change request that is a critical bug: fixed at once, no demo, no release package (D-471). */
   critical?: boolean;
+  /** A recipe eval (D-472): needs a golden brief; Jig decides its gates and stops it at the quality gate. */
+  eval?: boolean;
 }
 
 /** The golden briefs, for the start dialog. */
@@ -692,6 +705,8 @@ export async function startRun(a: StartArgs, api: AddonHostApi): Promise<Run> {
         },
       };
     }
+    if (a.eval && a.brief)
+      r = { ...r, eval: { brief: a.brief, recipes: await recipeHashes(api, r, evalRecipes(r.level)) } };
     r = advance(trackDef, r, at).run;
     await commitFolder(api, r, `factory ${id}: start "${title}"`);
     await save(api, r);
@@ -847,6 +862,116 @@ export async function showInPages(a: RunArgs & { version: number }, api: AddonHo
       await save(api, { ...now, demoPage: page });
     });
   return page ?? "";
+}
+
+// Measure and tune (D-472): the factory report, the Plan step's estimates, recipe evals.
+
+const REPORT_PAGE = "reportPage";
+const EVALS = "evals";
+
+/** Every recipe's measured time over all projects' runs, the run itself left out: the Plan step's estimates. */
+export async function stageEstimates(
+  a: { projectId?: string; runId?: string },
+  api: AddonHostApi,
+): Promise<Record<string, StageTime>> {
+  return stageTimes(await allRuns(undefined, api), a?.runId);
+}
+
+/** The factory report for a project, published to Pages (one page per project, updated each time). */
+export async function factoryReport(a: { projectId: string }, api: AddonHostApi): Promise<string> {
+  const project = (await api.projects()).find((p) => p.id === a?.projectId);
+  if (!project) throw new Error("There is no such project");
+  const evals = (await api.storage.get<EvalResult[]>(EVALS)) ?? [];
+  const html = reportHtml(buildReport(await load(api, project.id), evals), {
+    project: project.name,
+    at: new Date().toISOString(),
+  });
+  const known = (await api.storage.get<string>(REPORT_PAGE, scope(project.id))) ?? undefined;
+  const publish = (id?: string) =>
+    api.addons.call<string>("pages", "publish", { html, title: `Factory report · ${project.name}`, id });
+  const out = await publish(known).catch((e) => (known ? publish() : Promise.reject(e)));
+  const page = (JSON.parse(out) as { page?: string }).page ?? "";
+  if (page && page !== known) await api.storage.set(REPORT_PAGE, page, scope(project.id));
+  return page;
+}
+
+/** Short content hashes of the recipes a run would use (its repository's overrides count). */
+async function recipeHashes(api: AddonHostApi, r: Run, ids: string[]): Promise<Record<string, string>> {
+  const { recipes } = await recipesOf(api, r);
+  return Object.fromEntries(
+    ids.map((id) => {
+      const recipe = recipes.get(id);
+      const text = recipe ? JSON.stringify(recipe) : "";
+      return [id, text ? createHash("sha1").update(text).digest("hex").slice(0, 8) : "missing"];
+    }),
+  );
+}
+
+/** Starts a recipe eval per golden brief in a project: each runs to its quality gate by itself. */
+export async function runEvals(
+  a: { projectId: string; briefs?: string[] },
+  api: AddonHostApi,
+): Promise<Run[]> {
+  const all = (await briefs(undefined, api)).map((b) => b.id);
+  const picked = a?.briefs?.length ? all.filter((b) => a.briefs?.includes(b)) : all;
+  if (!picked.length) throw new Error("There are no golden briefs to run");
+  const started: Run[] = [];
+  for (const brief of picked)
+    started.push(await startRun({ projectId: a.projectId, brief, eval: true }, api));
+  return started;
+}
+
+/** The recipe evals: the results per recipe version, and the eval runs still going in a project. */
+export async function evals(
+  a: { projectId?: string },
+  api: AddonHostApi,
+): Promise<{
+  rows: EvalRow[];
+  results: EvalResult[];
+  running: Array<{ runId: string; title: string; brief: string }>;
+}> {
+  const results = (await api.storage.get<EvalResult[]>(EVALS)) ?? [];
+  const running = a?.projectId
+    ? (await load(api, a.projectId))
+        .filter((r) => r.eval && r.state !== "stopped" && r.state !== "done")
+        .map((r) => ({ runId: r.id, title: r.title, brief: r.eval?.brief ?? "" }))
+    : [];
+  return { rows: evalTable(results), results: [...results].reverse(), running };
+}
+
+/** Moves eval runs on: Jig decides their scout and direction gates, and records and stops them at the quality gate. */
+export async function evalSteps(api: AddonHostApi): Promise<void> {
+  for (const p of await api.projects())
+    for (const r of await load(api, p.id)) {
+      if (!r.eval || r.state === "stopped" || r.state === "done") continue;
+      const outcome = evalOutcome(r, new Date().toISOString());
+      if (outcome) {
+        await serial(async () => {
+          const list = (await api.storage.get<EvalResult[]>(EVALS)) ?? [];
+          if (list.some((x) => x.runId === r.id)) return;
+          await api.storage.set(EVALS, [...list, outcome].slice(-EVALS_MAX));
+        });
+        await log(api, r, {
+          kind: "decision",
+          text: `Eval done: ${outcome.pass ? "passed" : "didn't pass"}${outcome.score === undefined ? "" : ` with ${outcome.score}`} after ${outcome.rounds} demo version${outcome.rounds === 1 ? "" : "s"}${outcome.note ? ` (${outcome.note})` : ""}`,
+        });
+        await stop({ projectId: r.projectId, runId: r.id }, api);
+        continue;
+      }
+      for (const d of evalDecisions(r))
+        await decide(
+          {
+            projectId: r.projectId,
+            runId: r.id,
+            gateId: d.gate,
+            kind: "approve",
+            direction: d.direction ? directionsOf(r)[0]?.id : undefined,
+            note: "Approved by the eval",
+          },
+          api,
+          "eval",
+        );
+    }
 }
 
 /** Publish (D-438, D-470): where a demo can go, which versions may, and the copies out there. */
@@ -1221,6 +1346,7 @@ export async function tick(_args: unknown, api: AddonHostApi): Promise<void> {
   caughtUp = true;
   await step(api, catchingUp);
   await boardApprovals(api);
+  await evalSteps(api);
 }
 
 /** Main tells us about the chats we started: a turn ended, it needs you, it works again. */
@@ -1230,6 +1356,7 @@ export async function chatChanged(
 ): Promise<void> {
   if (!chatIndex.has(sessionId) && !(await findChat(api, sessionId))) return;
   await step(api);
+  await evalSteps(api);
 }
 
 async function findChat(
@@ -1382,7 +1509,7 @@ let phoneQuietUntil = 0;
  * Approved"), without buttons. Saves the run when its cards changed.
  */
 async function phoneCards(api: AddonHostApi, r: Run): Promise<Run> {
-  if (!api.phone || Date.now() < phoneQuietUntil) return r;
+  if (!api.phone || r.eval || Date.now() < phoneQuietUntil) return r;
   const track = await trackOf(api, r.track);
   const wanted = wantedCards(r, (s) => stageTitle(track, s));
   const have = { ...(r.phone ?? {}) };

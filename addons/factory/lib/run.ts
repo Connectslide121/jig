@@ -61,6 +61,11 @@ export interface Run {
   published?: Published[];
   /** The release package a change request went into (D-471, `lib/package.ts`): its day and folder. */
   packaged?: { day: string; path: string; at: string };
+  /**
+   * A recipe eval (D-472, `lib/evals.ts`): a golden brief run up to its quality gate. Jig decides its
+   * gates and stops it there; it stays out of estimates, the report and the release package.
+   */
+  eval?: { brief: string; recipes: Record<string, string> };
 }
 
 export interface RunPlan {

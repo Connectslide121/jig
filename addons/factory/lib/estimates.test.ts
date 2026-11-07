@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { duration, estimate, estimateLines, measurements, percentile, quoteEstimates } from "./estimates";
+import {
+  duration,
+  estimate,
+  estimateLines,
+  measurements,
+  percentile,
+  planStageTime,
+  planTotal,
+  quoteEstimates,
+  stageTimes,
+} from "./estimates";
 import type { Run, StageRun } from "./run";
 
 const H = 3_600_000;
@@ -95,5 +105,41 @@ describe("duration", () => {
     expect(duration(130 * 60_000)).toBe("2 h 10 min");
     expect(duration(2 * H)).toBe("2 h");
     expect(duration(76 * H)).toBe("3 d 4 h");
+  });
+});
+
+describe("stageTimes", () => {
+  const runs = [1, 2, 3, 4].map((h) =>
+    run(`fx-${h}`, h > 2 ? "L2" : "L1", [{ hours: h }, { recipe: "scout", hours: 1 }]),
+  );
+  it("measures each recipe, the build also by level, leaving the run and eval runs out", () => {
+    const t = stageTimes(
+      [...runs, { ...run("fx-e", "L2", [{ hours: 90 }]), eval: { brief: "b", recipes: {} } }],
+      "fx-4",
+    );
+    expect(t.build).toEqual({ n: 3, medianMs: 2 * H, p80Ms: 3 * H });
+    expect(t["build@L1"]).toEqual({ n: 2 });
+    expect(t["build@L2"]).toEqual({ n: 1 });
+    expect(t.scout?.n).toBe(3);
+  });
+  it("gives a plan stage the build at its level, a fan-out its slowest recipe", () => {
+    const t = {
+      build: { n: 3, medianMs: 5 },
+      "build@L1": { n: 3, medianMs: 2 },
+      a: { n: 3, medianMs: 7 },
+      b: { n: 3, medianMs: 9, p80Ms: 10 },
+    };
+    expect(planStageTime(t, ["build"], "L1")?.medianMs).toBe(2);
+    expect(planStageTime(t, ["build"], "L3")?.medianMs).toBe(5);
+    expect(planStageTime(t, ["a", "b"])).toEqual({ n: 3, medianMs: 9, p80Ms: 10 });
+    expect(planStageTime(t, ["a", "c"])).toBeUndefined();
+    expect(planStageTime(t, [])).toBeUndefined();
+  });
+  it("adds the plan's stages up and counts those without a number", () => {
+    expect(planTotal([{ n: 3, medianMs: 2, p80Ms: 3 }, undefined, { n: 3, medianMs: 4 }])).toEqual({
+      ms: 6,
+      p80Ms: 7,
+      missing: 1,
+    });
   });
 });
