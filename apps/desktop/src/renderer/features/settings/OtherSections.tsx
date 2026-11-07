@@ -17,6 +17,7 @@ import { BOTTOM_SPANS, DEFAULT_BOTTOM_SPAN } from "../../../shared/layout";
 import type { LanguageServerInfo } from "../../../shared/lsp";
 import { modelOptions } from "../../../shared/models";
 import { shellName } from "../../../shared/shellNames";
+import { NATURAL_VOICES, VOICE_LANGUAGES } from "../../../shared/speech";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { useChatGptStatus, useProviderModels } from "../../stores/providers";
@@ -649,6 +650,24 @@ export function MotionSettings() {
             testId="settings-motion-aspect"
           />
         </div>
+      </SettingRow>
+      <SettingRow
+        label="Voice of new videos"
+        description="The natural voice new videos speak their scripts with (spoken on this computer); each video can change it."
+      >
+        <Select
+          className="w-64"
+          value={m.defaultVoice}
+          onChange={(e) => void updateConfig({ motion: { defaultVoice: e.target.value } })}
+          data-testid="settings-motion-voice"
+        >
+          <option value="">No voice</option>
+          {NATURAL_VOICES.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name} ({VOICE_LANGUAGES.find((l) => l.code === v.language)?.label ?? v.language})
+            </option>
+          ))}
+        </Select>
       </SettingRow>
     </SettingsSection>
   );

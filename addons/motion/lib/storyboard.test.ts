@@ -3,6 +3,8 @@ import {
   clock,
   DEFAULT_SETTINGS,
   dimensions,
+  estimateVoiceSeconds,
+  freshVoice,
   isSafeMediaPath,
   normalizeSettings,
   readingSeconds,
@@ -10,8 +12,10 @@ import {
   type Storyboard,
   sceneId,
   sceneSeconds,
+  shortHash,
   timeline,
   validate,
+  voicePath,
 } from "./storyboard";
 
 const scene = (over: Partial<Scene> = {}): Scene => ({
@@ -55,7 +59,28 @@ describe("timing", () => {
   });
   it("follows a fixed duration, else the voice when it is longer", () => {
     expect(sceneSeconds(scene({ duration: 7 }), DEFAULT_SETTINGS)).toBe(7);
-    expect(sceneSeconds(scene({ voiceSeconds: 9 }), DEFAULT_SETTINGS)).toBe(9.6);
+    expect(sceneSeconds(scene({ voice: "Hello there", voiceSeconds: 9 }), DEFAULT_SETTINGS)).toBe(9.9);
+    // No script, no voice: a leftover length counts for nothing.
+    expect(sceneSeconds(scene({ voiceSeconds: 9 }), DEFAULT_SETTINGS)).toBe(2.5);
+  });
+  it("estimates the voice from its script before it is spoken", () => {
+    expect(estimateVoiceSeconds("")).toBe(0);
+    expect(estimateVoiceSeconds("one")).toBe(0.8);
+    expect(estimateVoiceSeconds(Array(20).fill("word").join(" "))).toBe(7.6);
+    expect(estimateVoiceSeconds(Array(20).fill("word").join(" "), 2)).toBe(3.8);
+    expect(sceneSeconds(scene({ voice: Array(20).fill("word").join(" ") }), DEFAULT_SETTINGS)).toBe(8.5);
+  });
+  it("names a voice file by its text, voice and speed", () => {
+    const s = { voice: "af_heart", voiceSpeed: 1 };
+    const sc = scene({ id: "intro", voice: "Hi" });
+    const path = voicePath(sc, s);
+    expect(path).toMatch(/^media\/voice-intro-[0-9a-f]{8}\.wav$/);
+    expect(voicePath(sc, { ...s, voiceSpeed: 1.1 })).not.toBe(path);
+    expect(voicePath({ ...sc, voice: "Hello" }, s)).not.toBe(path);
+    expect(freshVoice({ ...sc, voiceFile: path }, s)).toBe(path);
+    expect(freshVoice({ ...sc, voiceFile: path }, { ...s, voice: "" })).toBeUndefined();
+    expect(freshVoice({ ...sc, voiceFile: path, voice: "Changed" }, s)).toBeUndefined();
+    expect(shortHash("abc")).toBe(shortHash("abc"));
   });
   it("puts scenes back to back", () => {
     const t = timeline(

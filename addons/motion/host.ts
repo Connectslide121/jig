@@ -2,7 +2,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { chmod, copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { gunzipSync } from "node:zlib";
-import type { AddonHostApi } from "@jig/sdk";
+import type { AddonCaptureStep, AddonHostApi } from "@jig/sdk";
+import { mixArgs } from "./lib/audio";
+import { cues, srt, vtt } from "./lib/captions";
 import { compose, FONT_FILE, type MotionStyle } from "./lib/compose";
 import { TINY_MP4, TINY_PNG } from "./lib/fake";
 import {
@@ -15,15 +17,19 @@ import {
   parseProgress,
   RENDERER,
 } from "./lib/install";
+import { type Finding, parseNames, scan } from "./lib/realdata";
 import {
   dimensions,
+  freshVoice,
   KINDS,
   normalizeSettings,
   type Storyboard,
   timeline,
   type VideoKind,
   type VideoSettings,
+  VOICE_LEAD,
   validate,
+  voicePath,
 } from "./lib/storyboard";
 import { checkTemplate, fromTemplate, type Template } from "./lib/templates";
 
@@ -89,7 +95,10 @@ export interface MotionStatus {
 
 interface Config {
   ffmpegPath?: string;
+  musicFolder?: string;
 }
+
+const MUSIC_EXT = new Set([".mp3", ".m4a", ".aac", ".wav", ".ogg", ".flac"]);
 
 const ID = /^v_[a-f0-9]{8}$/;
 const PROJECT = /^[\w.-]{1,80}$/;
@@ -306,16 +315,27 @@ export async function update(
     const current = await readVideo(api, args.projectId, args.id);
     if (current.job?.state === "rendering") throw new Error("Wait for the render to finish, or cancel it");
     const dir = current.dir;
+    let settings = current.settings;
+    if (args.settings) {
+      settings = normalizeSettings({ ...current.settings, ...args.settings });
+      if (!STYLE.test(settings.style)) settings.style = "neutral";
+    }
+    const board = args.storyboard ?? current.storyboard;
     if (args.storyboard) {
       const errors = validate(args.storyboard);
       if (errors.length) throw new Error(errors.join("; "));
-      await writeJson(join(dir, "storyboard.json"), args.storyboard);
     }
-    if (args.settings) {
-      const settings = normalizeSettings({ ...current.settings, ...args.settings });
-      if (!STYLE.test(settings.style)) settings.style = "neutral";
-      await writeJson(join(dir, "settings.json"), settings);
-    }
+    // A voice whose text, voice or speed changed is stale: its length no longer times the scene.
+    let stale = false;
+    const scenes = board.scenes.map((scene) => {
+      if (!scene.voiceFile && scene.voiceSeconds === undefined) return scene;
+      if (settings.voice && scene.voiceFile === voicePath(scene, settings)) return scene;
+      stale = true;
+      const { voiceFile: _f, voiceSeconds: _s, ...rest } = scene;
+      return rest;
+    });
+    if (args.storyboard || stale) await writeJson(join(dir, "storyboard.json"), { ...board, scenes });
+    if (args.settings) await writeJson(join(dir, "settings.json"), settings);
     const meta = (await readJson<VideoMeta>(join(dir, "meta.json"))) as VideoMeta;
     meta.updatedAt = new Date().toISOString();
     if (args.storyboard) meta.title = args.storyboard.title;
@@ -393,6 +413,237 @@ export async function preview(args: { projectId: string; id: string }, api: Addo
   const path = join(video.dir, "preview.html");
   await writeFile(path, html, "utf8");
   return path;
+}
+
+// ── voice, music, captures ───────────────────────────────────────────────────
+
+const speaking = new Map<string, Promise<VideoDetail>>();
+
+/**
+ * Speaks every scene's voice script that isn't spoken yet for the video's voice and speed (D-464:
+ * `api.speech.say`), into `media/voice-<scene>-<key>.wav`, and keeps each length, which times the
+ * scene. Old voice files nobody uses are removed. Runs before every render too.
+ */
+export function speak(args: { projectId: string; id: string }, api: AddonHostApi): Promise<VideoDetail> {
+  const k = key(projectId(args.projectId), videoId(args.id));
+  const busy = speaking.get(k);
+  if (busy) return busy;
+  const work = speakNow(args, api).finally(() => speaking.delete(k));
+  speaking.set(k, work);
+  return work;
+}
+
+async function speakNow(args: { projectId: string; id: string }, api: AddonHostApi): Promise<VideoDetail> {
+  const video = await get(args, api);
+  const s = video.settings;
+  if (!s.voice) return video;
+  const todo = video.storyboard.scenes.filter((sc) => sc.voice?.trim() && !freshVoice(sc, s));
+  const spoken = new Map<string, { file: string; seconds: number }>();
+  for (const [i, scene] of todo.entries()) {
+    api.emit("speaking", { projectId: args.projectId, id: args.id, done: i, total: todo.length });
+    const file = voicePath(scene, s);
+    const out = await api.speech.say({ text: scene.voice ?? "", voice: s.voice, speed: s.voiceSpeed });
+    await mkdir(join(video.dir, "media"), { recursive: true });
+    await copyFile(out.path, join(video.dir, file));
+    spoken.set(scene.id, { file, seconds: Math.round(out.seconds * 100) / 100 });
+  }
+  api.emit("speaking", { projectId: args.projectId, id: args.id, done: todo.length, total: todo.length });
+  return serial(async () => {
+    const now = await readVideo(api, args.projectId, args.id);
+    const scenes = now.storyboard.scenes.map((scene) => {
+      const got = spoken.get(scene.id);
+      return got && voicePath(scene, now.settings) === got.file
+        ? { ...scene, voiceFile: got.file, voiceSeconds: got.seconds }
+        : scene;
+    });
+    await writeJson(join(now.dir, "storyboard.json"), { ...now.storyboard, scenes });
+    const used = new Set(scenes.map((x) => x.voiceFile).filter(Boolean));
+    for (const name of await readdir(join(now.dir, "media")).catch(() => [] as string[]))
+      if (/^voice-.+\.wav$/.test(name) && !used.has(`media/${name}`))
+        await rm(join(now.dir, "media", name), { force: true });
+    if (spoken.size) api.emit("changed", { projectId: args.projectId, id: args.id });
+    return readVideo(api, args.projectId, args.id);
+  });
+}
+
+export interface Track {
+  name: string;
+  path: string;
+  bytes: number;
+}
+
+/** The audio files in `motion.musicFolder` (D-456), by name; `folder` is "" when it isn't set. */
+export async function tracks(
+  _args: unknown,
+  api: AddonHostApi,
+): Promise<{ folder: string; tracks: Track[] }> {
+  const folder = ((await api.config<Config>().catch(() => undefined)) ?? {}).musicFolder ?? "";
+  if (!folder) return { folder, tracks: [] };
+  const out: Track[] = [];
+  for (const name of await readdir(folder).catch(() => [] as string[])) {
+    if (!MUSIC_EXT.has(extname(name).toLowerCase())) continue;
+    const info = await stat(join(folder, name)).catch(() => undefined);
+    if (info?.isFile()) out.push({ name, path: join(folder, name), bytes: info.size });
+  }
+  return { folder, tracks: out.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 500) };
+}
+
+/** Copies a track into the video's `media/` and makes it the music; `path` "" takes it out. */
+export async function setMusic(
+  args: { projectId: string; id: string; path: string; source?: string },
+  api: AddonHostApi,
+): Promise<VideoDetail> {
+  const video = await get(args, api);
+  if (!args.path)
+    return update(
+      {
+        projectId: args.projectId,
+        id: args.id,
+        settings: { music: { ...video.settings.music, track: "", source: "" } },
+      },
+      api,
+    );
+  const ext = extname(args.path).toLowerCase();
+  if (!MUSIC_EXT.has(ext)) throw new Error("Music is an MP3, M4A, AAC, WAV, OGG or FLAC file");
+  const stem =
+    basename(args.path, extname(args.path))
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "track";
+  const name = `music-${stem}${ext}`;
+  await mkdir(join(video.dir, "media"), { recursive: true });
+  await copyFile(args.path, join(video.dir, "media", name));
+  const old = video.settings.music.track;
+  if (old && old !== `media/${name}` && /^media\/music-/.test(old))
+    await rm(join(video.dir, old), { force: true });
+  return update(
+    {
+      projectId: args.projectId,
+      id: args.id,
+      settings: {
+        music: {
+          ...video.settings.music,
+          track: `media/${name}`,
+          source: typeof args.source === "string" ? args.source.slice(0, 300) : video.settings.music.source,
+        },
+      },
+    },
+    api,
+  );
+}
+
+export interface Take {
+  /** `media/capture-N.mp4`, kept until you keep or discard it. */
+  path: string;
+  seconds: number;
+  cut: boolean;
+  events: Array<{
+    step: number;
+    do: string;
+    at: number;
+    box?: { x: number; y: number; w: number; h: number };
+  }>;
+  findings: Finding[];
+}
+
+/** The size a capture records at: the video's shape, at most 1080 on the short side. */
+function captureSize(s: VideoSettings): { width: number; height: number } {
+  const { width, height } = dimensions({
+    aspect: s.aspect,
+    resolution: s.resolution === "720p" ? "720p" : "1080p",
+  });
+  return { width, height };
+}
+
+/** The names in the project's `.jig/factory/kit/real-names.txt`, if it has one. */
+async function realNames(api: AddonHostApi, project: string): Promise<string[]> {
+  const p = (await api.projects().catch(() => [])).find((x) => x.id === project);
+  if (!p) return [];
+  const text = await readFile(join(p.path, ".jig", "factory", "kit", "real-names.txt"), "utf8").catch(
+    () => "",
+  );
+  return parseNames(text);
+}
+
+/**
+ * Records a capture (D-457, D-464: `api.capture.record`) at the video's shape, encodes its frames
+ * into `media/capture-N.mp4` with FFmpeg and scans its text for real data. The take is a file in
+ * the video's media until you keep it (a scene) or discard it. Without FFmpeg it returns what to
+ * install. With `JIG_ENGINE=fake` the recording is real, the encoding writes a tiny MP4.
+ */
+export async function record(
+  args: { projectId: string; id: string; url: string; steps: AddonCaptureStep[]; maxSeconds?: number },
+  api: AddonHostApi,
+): Promise<Take | { needs: MotionStatus }> {
+  const video = await get(args, api);
+  const { ffmpeg } = await findFfmpeg(api);
+  if (!fake() && !ffmpeg) {
+    const s = await status(undefined, api);
+    return { needs: s };
+  }
+  const size = captureSize(video.settings);
+  const shot = await api.capture.record({
+    url: args.url,
+    steps: args.steps,
+    ...size,
+    maxSeconds: Math.min(120, Math.max(3, args.maxSeconds ?? 60)),
+    fps: video.settings.fps === 60 ? 60 : 30,
+  });
+  try {
+    await mkdir(join(video.dir, "media"), { recursive: true });
+    let n = 1;
+    while (await exists(join(video.dir, "media", `capture-${n}.mp4`))) n++;
+    const path = `media/capture-${n}.mp4`;
+    if (fake() || !ffmpeg) await writeFile(join(video.dir, path), Buffer.from(TINY_MP4, "base64"));
+    else {
+      const out = await api.exec(
+        ffmpeg,
+        [
+          "-nostdin",
+          "-v",
+          "error",
+          "-y",
+          "-framerate",
+          String(shot.fps),
+          "-i",
+          join(shot.dir, "%06d.jpg"),
+          "-c:v",
+          "libx264",
+          "-pix_fmt",
+          "yuv420p",
+          "-crf",
+          "18",
+          "-movflags",
+          "+faststart",
+          join(video.dir, path),
+        ],
+        { timeoutMs: 300_000 },
+      );
+      if (out.code !== 0)
+        throw new Error(`FFmpeg couldn't encode the capture: ${out.stderr.trim().slice(-300)}`);
+    }
+    return {
+      path,
+      seconds: Math.round(shot.seconds * 10) / 10,
+      cut: shot.cut,
+      events: shot.events,
+      findings: scan(shot.texts, await realNames(api, args.projectId)),
+    };
+  } finally {
+    await rm(shot.dir, { recursive: true, force: true });
+  }
+}
+
+/** Throws away a take (or any media file) the storyboard doesn't use. */
+export async function discardMedia(
+  args: { projectId: string; id: string; path: string },
+  api: AddonHostApi,
+): Promise<void> {
+  const video = await get(args, api);
+  if (!/^media\/[\w.-]+$/.test(args.path)) throw new Error("Not a media file");
+  if (video.storyboard.scenes.some((s) => s.media?.path === args.path)) return;
+  await rm(join(video.dir, args.path), { force: true });
 }
 
 // ── installs ─────────────────────────────────────────────────────────────────
@@ -722,8 +973,20 @@ async function pump(api: AddonHostApi): Promise<void> {
 }
 
 async function renderOne(api: AddonHostApi, project: string, id: string): Promise<void> {
-  const video = await readVideo(api, project, id).catch(() => undefined);
+  let video = await readVideo(api, project, id).catch(() => undefined);
   if (!video) return;
+  if (video.settings.voice) {
+    try {
+      video = await speak({ projectId: project, id }, api);
+    } catch (error) {
+      await setJob(api, project, id, (m) => {
+        delete m.job;
+        m.error = `The voice couldn't be spoken: ${error instanceof Error ? error.message : String(error)}`;
+      });
+      api.emit("changed", { projectId: project, id });
+      return;
+    }
+  }
   const n = (video.renders.at(-1)?.n ?? 0) + 1;
   const out = join(video.dir, "renders", String(n));
   await mkdir(out, { recursive: true });
@@ -756,6 +1019,12 @@ async function renderOne(api: AddonHostApi, project: string, id: string): Promis
   api.emit("changed", { projectId: project, id });
   try {
     await run.done;
+    const list = cues(video.storyboard, video.settings);
+    if (list.length) {
+      await writeFile(join(out, "captions.srt"), srt(list), "utf8");
+      await writeFile(join(out, "captions.vtt"), vtt(list), "utf8");
+    }
+    if (!renderer && !fake()) await mixSound(api, video, join(out, "video.mp4"));
     const { size } = await stat(join(out, "video.mp4"));
     await setJob(api, project, id, (m) => {
       delete m.job;
@@ -785,6 +1054,30 @@ async function renderOne(api: AddonHostApi, project: string, id: string): Promis
     running.delete(key(project, id));
     api.emit("changed", { projectId: project, id });
   }
+}
+
+/** Lays the voices and the music under the rendered picture (lib/audio.ts), in place. */
+async function mixSound(api: AddonHostApi, video: VideoDetail, file: string): Promise<void> {
+  const s = video.settings;
+  const voices = timeline(video.storyboard, s).slots.flatMap(({ scene, start }) => {
+    const f = freshVoice(scene, s);
+    return f ? [{ path: join(video.dir, f), at: start + VOICE_LEAD }] : [];
+  });
+  const music =
+    s.music.track && (await exists(join(video.dir, s.music.track)))
+      ? { path: join(video.dir, s.music.track), volume: s.music.volume }
+      : undefined;
+  const tmp = `${file.slice(0, -4)}.mixed.mp4`;
+  const args = mixArgs({ video: file, out: tmp, seconds: video.seconds, voices, music });
+  if (!args) return;
+  const { ffmpeg } = await findFfmpeg(api);
+  if (!ffmpeg) throw new Error("FFmpeg wasn't found");
+  const res = await api.exec(ffmpeg, args, { timeoutMs: 600_000 });
+  if (res.code !== 0 || !(await exists(tmp))) {
+    await rm(tmp, { force: true });
+    throw new Error(`The sound couldn't be mixed: ${res.stderr.trim().slice(-300)}`);
+  }
+  await rename(tmp, file);
 }
 
 export async function cancel(args: { projectId: string; id: string }, api: AddonHostApi): Promise<void> {

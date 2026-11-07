@@ -22,6 +22,24 @@ export interface SceneMedia {
   kind: "image" | "video";
 }
 
+/**
+ * An overlay on a capture or screenshot (M2): a zoom into a region, a highlight around it, or an
+ * arrow at a point. Positions are shares (0–1) of the media; `at` and `hold` are seconds into the
+ * scene.
+ */
+export interface Mark {
+  kind: "zoom" | "highlight" | "arrow";
+  at: number;
+  hold?: number;
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+  label?: string;
+}
+
+export const MARK_KINDS = ["zoom", "highlight", "arrow"] as const;
+
 export interface Scene {
   id: string;
   type: SceneType;
@@ -33,6 +51,10 @@ export interface Scene {
   voice?: string;
   /** The voice's measured length in seconds, once spoken (M2). */
   voiceSeconds?: number;
+  /** The spoken voice, `media/voice-<scene>-<key>.wav`; stale once the text, voice or speed changes. */
+  voiceFile?: string;
+  /** Zooms, highlights and arrows over the media (M2), at most 8. */
+  marks?: Mark[];
   /** A fixed length in seconds; otherwise it follows the reading time and the voice. */
   duration?: number;
 }
@@ -55,10 +77,21 @@ export interface VideoSettings {
   motion: MotionPace;
   /** `wordSeconds`: seconds on screen per word, at least (readable without sound). */
   type: { headline: "medium" | "large" | "huge"; wordSeconds: number };
-  captions: { on: boolean; position: "bottom" | "top" };
+  captions: {
+    on: boolean;
+    position: "bottom" | "top";
+    size: "small" | "medium" | "large";
+    background: boolean;
+  };
   /** A natural voice's id (M2); "" = no voice. */
   voice: string;
-  music: { track: string; volume: number };
+  /** The voice's speed, 0.7–1.3. */
+  voiceSpeed: number;
+  /**
+   * `track`: a copy in the video's `media/` (`media/music-….mp3`), "" = none; `volume` 0–1; `source`:
+   * where it came from (a library page), kept with the track for its licence (D-456).
+   */
+  music: { track: string; volume: number; source: string };
   brand: { logo: "always" | "end" | "never"; endText: string; link: string };
 }
 
@@ -69,13 +102,66 @@ export const DEFAULT_SETTINGS: VideoSettings = {
   style: "neutral",
   motion: "normal",
   type: { headline: "large", wordSeconds: 0.3 },
-  captions: { on: true, position: "bottom" },
+  captions: { on: true, position: "bottom", size: "medium", background: true },
   voice: "",
-  music: { track: "", volume: 0.6 },
+  voiceSpeed: 1,
+  music: { track: "", volume: 0.6, source: "" },
   brand: { logo: "end", endText: "", link: "" },
 };
 
-export const LIMITS = { scenes: 40, title: 120, text: 600, bullets: 6, sceneSeconds: 60, videoSeconds: 600 };
+export const LIMITS = {
+  scenes: 40,
+  title: 120,
+  text: 600,
+  voice: 1000,
+  bullets: 6,
+  marks: 8,
+  sceneSeconds: 60,
+  videoSeconds: 600,
+};
+
+/** The voice starts this long after its scene, and the scene holds this long after it ends. */
+export const VOICE_LEAD = 0.3;
+export const VOICE_TAIL = 0.6;
+
+/** About how long the natural voice takes for a text (2.6 words a second), before it is spoken. */
+export function estimateVoiceSeconds(text: string, speed = 1): number {
+  const n = text.split(/\s+/).filter(Boolean).length;
+  return n ? Math.max(0.8, Math.round(((n * 0.38) / speed) * 100) / 100) : 0;
+}
+
+/** A scene's voice length: measured once spoken, else estimated from its script. */
+export function voiceLength(scene: Scene): number {
+  if (!scene.voice?.trim()) return 0;
+  return scene.voiceSeconds && scene.voiceSeconds > 0
+    ? scene.voiceSeconds
+    : estimateVoiceSeconds(scene.voice);
+}
+
+/** 8 hex characters (FNV-1a), stable across processes: names a spoken voice file. */
+export function shortHash(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+/** Where a scene's voice goes for this voice and speed; a `voiceFile` that differs is stale. */
+export function voicePath(
+  scene: Pick<Scene, "id" | "voice">,
+  s: Pick<VideoSettings, "voice" | "voiceSpeed">,
+): string {
+  return `media/voice-${scene.id}-${shortHash(`${s.voice}|${s.voiceSpeed}|${scene.voice ?? ""}`)}.wav`;
+}
+
+/** The scene's voice file when it is spoken and current for these settings, else undefined. */
+export function freshVoice(scene: Scene, s: Pick<VideoSettings, "voice" | "voiceSpeed">): string | undefined {
+  return s.voice && scene.voice?.trim() && scene.voiceFile === voicePath(scene, s)
+    ? scene.voiceFile
+    : undefined;
+}
 
 /** Pixel size of the frame: 1080p is 1080 on the short side. */
 export function dimensions(s: Pick<VideoSettings, "aspect" | "resolution">): {
@@ -110,7 +196,8 @@ const tenth = (n: number) => Math.round(n * 10) / 10;
 /** A scene's length: fixed if set, else the longer of reading time and the voice plus a pause. */
 export function sceneSeconds(scene: Scene, s: Pick<VideoSettings, "motion" | "type">): number {
   if (scene.duration && scene.duration > 0) return tenth(scene.duration);
-  const voice = scene.voiceSeconds ? scene.voiceSeconds + 0.6 : 0;
+  const length = voiceLength(scene);
+  const voice = length ? VOICE_LEAD + length + VOICE_TAIL : 0;
   return tenth(Math.max(readingSeconds(scene, s), voice));
 }
 
@@ -193,6 +280,32 @@ export function validate(
       else if (scene.media.kind !== "image" && scene.media.kind !== "video")
         errors.push(`${n}'s media kind must be image or video`);
     }
+    if (scene.voice !== undefined && (typeof scene.voice !== "string" || scene.voice.length > LIMITS.voice))
+      errors.push(`${n}'s voice script must be at most ${LIMITS.voice} characters`);
+    if (scene.voiceFile !== undefined && !isSafeMediaPath(scene.voiceFile))
+      errors.push(`${n}'s voice file must be in the video's folder`);
+    if (scene.marks !== undefined) {
+      const share = (v: unknown) => typeof v === "number" && v >= 0 && v <= 1;
+      if (!Array.isArray(scene.marks) || scene.marks.length > LIMITS.marks)
+        errors.push(`${n} has at most ${LIMITS.marks} zooms, highlights and arrows`);
+      else
+        scene.marks.forEach((m, j) => {
+          if (
+            !m ||
+            !MARK_KINDS.includes(m.kind) ||
+            typeof m.at !== "number" ||
+            m.at < 0 ||
+            m.at > LIMITS.sceneSeconds ||
+            !share(m.x) ||
+            !share(m.y) ||
+            (m.w !== undefined && !share(m.w)) ||
+            (m.h !== undefined && !share(m.h)) ||
+            (m.hold !== undefined && (typeof m.hold !== "number" || m.hold < 0.3 || m.hold > 20)) ||
+            (m.label !== undefined && (typeof m.label !== "string" || m.label.length > 80))
+          )
+            errors.push(`${n}'s mark ${j + 1} needs a kind, a time and a place (shares 0–1)`);
+        });
+    }
     if (
       scene.duration !== undefined &&
       (typeof scene.duration !== "number" || scene.duration < 1 || scene.duration > LIMITS.sceneSeconds)
@@ -239,11 +352,18 @@ export function normalizeSettings(input: unknown): VideoSettings {
     captions: {
       on: typeof v.captions?.on === "boolean" ? v.captions.on : d.captions.on,
       position: v.captions?.position === "top" ? "top" : "bottom",
+      size: pick(v.captions?.size, ["small", "medium", "large"] as const, d.captions.size),
+      background: typeof v.captions?.background === "boolean" ? v.captions.background : d.captions.background,
     },
-    voice: typeof v.voice === "string" ? v.voice : d.voice,
+    voice: typeof v.voice === "string" && /^[a-z0-9_]{0,40}$/.test(v.voice) ? v.voice : d.voice,
+    voiceSpeed: Math.round(num(v.voiceSpeed, 0.7, 1.3, d.voiceSpeed) * 100) / 100,
     music: {
-      track: typeof v.music?.track === "string" ? v.music.track : "",
+      track:
+        typeof v.music?.track === "string" && (v.music.track === "" || isSafeMediaPath(v.music.track))
+          ? v.music.track
+          : "",
       volume: num(v.music?.volume, 0, 1, d.music.volume),
+      source: typeof v.music?.source === "string" ? v.music.source.slice(0, 300) : "",
     },
     brand: {
       logo: pick(v.brand?.logo, ["always", "end", "never"] as const, d.brand.logo),

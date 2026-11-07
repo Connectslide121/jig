@@ -45,6 +45,17 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 @keyframes m-in{from{opacity:0;transform:translateY(var(--rise)) scale(.97)}to{opacity:1;transform:none}}
 @keyframes m-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes m-drift{from{transform:scale(1)}to{transform:scale(1.045)}}
+@keyframes m-show{0%{opacity:0}12%{opacity:1}88%{opacity:1}100%{opacity:0}}
+.zoom{position:relative;display:block;transform-origin:0 0}
+.hl{position:absolute;border:4px solid var(--accent);border-radius:10px;box-shadow:0 0 0 4000px color-mix(in oklab,var(--bg) 45%,transparent);pointer-events:none}
+.arrow{position:absolute;width:150px;height:150px;margin-left:-128px;margin-top:-22px;color:var(--accent);filter:drop-shadow(0 4px 10px color-mix(in oklab,var(--bg) 60%,transparent))}
+.arrow.flip{margin-left:-22px}
+.arrow.flip svg{transform:scaleX(-1)}
+.arrow svg{display:block;width:100%;height:100%}
+.tag{position:absolute;left:50%;top:100%;transform:translate(-50%,10px);white-space:nowrap;font-size:30px;font-weight:600;background:var(--accent);color:var(--on-accent);padding:8px 18px;border-radius:999px}
+.cap{display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
+.cap.top{align-items:flex-start;padding-top:70px;padding-bottom:0}
+.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
 </style>
 </head>
 <body>
@@ -56,7 +67,9 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 <section id="s-approve-in-one-place" class="clip scene feature" data-start="19.4" data-duration="5" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 4.65s forwards"><div class="stack"><h2 class="title" style="animation:m-rise 0.7s var(--ease) 0.15s both">Approve in one place</h2><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Managers see every swap, ready to approve.</p></div></section>
 <section id="s-shift-swap-2" class="clip scene outro" data-start="24.4" data-duration="3.8" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both"><div class="center"><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.15s both">Shift swap</h1><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Swap shifts in two taps</p></div></section>
 
+
 </div>
+
 
 </body>
 </html>
@@ -108,6 +121,17 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 @keyframes m-in{from{opacity:0;transform:translateY(var(--rise)) scale(.97)}to{opacity:1;transform:none}}
 @keyframes m-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes m-drift{from{transform:scale(1)}to{transform:scale(1.045)}}
+@keyframes m-show{0%{opacity:0}12%{opacity:1}88%{opacity:1}100%{opacity:0}}
+.zoom{position:relative;display:block;transform-origin:0 0}
+.hl{position:absolute;border:4px solid var(--accent);border-radius:10px;box-shadow:0 0 0 4000px color-mix(in oklab,var(--bg) 45%,transparent);pointer-events:none}
+.arrow{position:absolute;width:150px;height:150px;margin-left:-128px;margin-top:-22px;color:var(--accent);filter:drop-shadow(0 4px 10px color-mix(in oklab,var(--bg) 60%,transparent))}
+.arrow.flip{margin-left:-22px}
+.arrow.flip svg{transform:scaleX(-1)}
+.arrow svg{display:block;width:100%;height:100%}
+.tag{position:absolute;left:50%;top:100%;transform:translate(-50%,10px);white-space:nowrap;font-size:30px;font-weight:600;background:var(--accent);color:var(--on-accent);padding:8px 18px;border-radius:999px}
+.cap{display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
+.cap.top{align-items:flex-start;padding-top:70px;padding-bottom:0}
+.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
 </style>
 </head>
 <body>
@@ -118,7 +142,9 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 <section id="s-confirm-and-pay" class="clip scene capture" data-start="9.6" data-duration="2.6" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 2.25s forwards"><div class="capture"><div class="shot-wrap wide" style="animation:m-in 0.7s var(--ease) 0.1s both"></div><div class="label" style="animation:m-rise 0.7s var(--ease) 0.15s both">Confirm and pay</div></div></section>
 <section id="s-try-booking-suite" class="clip scene outro" data-start="12.2" data-duration="4.7" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both"><div class="center"><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.15s both">Try Booking suite</h1><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Book a room in under a minute</p></div></section>
 
+
 </div>
+
 
 </body>
 </html>
@@ -170,6 +196,17 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 @keyframes m-in{from{opacity:0;transform:translateY(var(--rise)) scale(.97)}to{opacity:1;transform:none}}
 @keyframes m-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes m-drift{from{transform:scale(1)}to{transform:scale(1.045)}}
+@keyframes m-show{0%{opacity:0}12%{opacity:1}88%{opacity:1}100%{opacity:0}}
+.zoom{position:relative;display:block;transform-origin:0 0}
+.hl{position:absolute;border:4px solid var(--accent);border-radius:10px;box-shadow:0 0 0 4000px color-mix(in oklab,var(--bg) 45%,transparent);pointer-events:none}
+.arrow{position:absolute;width:150px;height:150px;margin-left:-128px;margin-top:-22px;color:var(--accent);filter:drop-shadow(0 4px 10px color-mix(in oklab,var(--bg) 60%,transparent))}
+.arrow.flip{margin-left:-22px}
+.arrow.flip svg{transform:scaleX(-1)}
+.arrow svg{display:block;width:100%;height:100%}
+.tag{position:absolute;left:50%;top:100%;transform:translate(-50%,10px);white-space:nowrap;font-size:30px;font-weight:600;background:var(--accent);color:var(--on-accent);padding:8px 18px;border-radius:999px}
+.cap{display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
+.cap.top{align-items:flex-start;padding-top:70px;padding-bottom:0}
+.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
 </style>
 </head>
 <body>
@@ -180,7 +217,9 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 <section id="s-also-in-this-release" class="clip scene bullets" data-start="12.9" data-duration="5.6" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both,m-out 0.35s ease-in 5.25s forwards"><div class="stack"><h2 class="title" style="animation:m-rise 0.7s var(--ease) 0.15s both">Also in this release</h2><ul class="bullets"><li style="animation:m-rise 0.7s var(--ease) 0.27s both"><span class="dot"></span>Faster search</li><li style="animation:m-rise 0.7s var(--ease) 0.39s both"><span class="dot"></span>Clearer error messages</li><li style="animation:m-rise 0.7s var(--ease) 0.51s both"><span class="dot"></span>Dark mode in reports</li></ul></div></section>
 <section id="s-shop-2-4" class="clip scene outro" data-start="18.5" data-duration="2.9" data-track-index="0" style="animation:m-fade 0.25s ease-out 0s both"><div class="center"><h1 class="headline" style="animation:m-rise 0.7s var(--ease) 0.15s both">Shop 2.4</h1><p class="text" style="animation:m-rise 0.7s var(--ease) 0.27s both">Available now</p></div></section>
 
+
 </div>
+
 
 </body>
 </html>

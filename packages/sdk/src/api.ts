@@ -750,6 +750,13 @@ export interface AddonCaptureResult {
   seconds: number;
   cut: boolean;
   texts: string[];
+  /** When each step acted (seconds) and its element's box as a share of the frame (0–1). */
+  events: Array<{
+    step: number;
+    do: AddonCaptureStep["do"];
+    at: number;
+    box?: { x: number; y: number; w: number; h: number };
+  }>;
 }
 
 /** A meeting as `api.meetings.recent()` gives it. */

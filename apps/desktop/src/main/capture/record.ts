@@ -46,6 +46,18 @@ export interface CaptureResult {
   cut: boolean;
   /** The page's text after loading and after each step (for a real-data scan), at most 40. */
   texts: string[];
+  /**
+   * When each step acted (seconds into the recording) and, for steps on an element, its box as a
+   * share of the frame (0–1), so a caller can zoom or highlight there.
+   */
+  events: CaptureEvent[];
+}
+
+export interface CaptureEvent {
+  step: number;
+  do: CaptureStep["do"];
+  at: number;
+  box?: { x: number; y: number; w: number; h: number };
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -107,6 +119,7 @@ export async function recordCapture(input: CaptureInput, dataDir: string): Promi
   let writing: Promise<unknown> = Promise.resolve();
   let timer: ReturnType<typeof setInterval> | undefined;
   const texts: string[] = [];
+  const events: CaptureEvent[] = [];
   let cut = false;
   const frameOf = (image: NativeImage) => {
     const size = image.getSize();
@@ -151,7 +164,25 @@ export async function recordCapture(input: CaptureInput, dataDir: string): Promi
       }
       const name = describeStep(step, index);
       try {
-        await runStep(wc, step);
+        await runStep(wc, step, (box) => {
+          const at = Math.round(((Date.now() - started) / 1000) * 100) / 100;
+          const share = (n: number, of: number) => Math.round(Math.max(0, Math.min(1, n / of)) * 1000) / 1000;
+          events.push({
+            step: index,
+            do: step.do,
+            at,
+            ...(box
+              ? {
+                  box: {
+                    x: share(box.left, width),
+                    y: share(box.top, height),
+                    w: share(box.w, width),
+                    h: share(box.h, height),
+                  },
+                }
+              : {}),
+          });
+        });
       } catch (error) {
         throw new Error(`${name} failed: ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -164,7 +195,7 @@ export async function recordCapture(input: CaptureInput, dataDir: string): Promi
     timer = undefined;
     await writing;
     if (!written) throw new Error("Nothing was recorded");
-    return { dir, frames: written, fps, width, height, seconds: written / fps, cut, texts };
+    return { dir, frames: written, fps, width, height, seconds: written / fps, cut, texts, events };
   } catch (error) {
     if (timer) clearInterval(timer);
     await writing.catch(() => undefined);
@@ -177,18 +208,24 @@ export async function recordCapture(input: CaptureInput, dataDir: string): Promi
   }
 }
 
-async function runStep(wc: Electron.WebContents, step: CaptureStep): Promise<void> {
+type Box = { x: number; y: number; w: number; h: number; left: number; top: number };
+
+/** Plays one step; `acted` is called the moment it acts, with the element's box when it has one. */
+async function runStep(
+  wc: Electron.WebContents,
+  step: CaptureStep,
+  acted: (box?: Box) => void,
+): Promise<void> {
   const run = (script: string) => wc.executeJavaScript(script, true) as Promise<unknown>;
   const find = async (selector: string) => {
-    const found = (await run(findScript(selector))) as
-      | { x: number; y: number; w: number; h: number; left: number; top: number }
-      | { error: string };
+    const found = (await run(findScript(selector))) as Box | { error: string };
     if ("error" in found) throw new Error(found.error);
     return found;
   };
   switch (step.do) {
     case "go":
       if (!isCaptureUrl(step.url)) throw new Error("only http(s) and file addresses");
+      acted();
       await withTimeout(wc.loadURL(step.url), 30_000, "the page didn't load");
       await run(OVERLAY_SCRIPT);
       return;
@@ -197,6 +234,7 @@ async function runStep(wc: Electron.WebContents, step: CaptureStep): Promise<voi
       const at = await find(step.selector);
       await run(moveScript(at.x, at.y));
       await sleep(650);
+      acted(at);
       if (!(await run(step.do === "click" ? clickScript(step.selector) : hoverScript(step.selector))))
         throw new Error(`nothing matches ${step.selector}`);
       return;
@@ -205,6 +243,7 @@ async function runStep(wc: Electron.WebContents, step: CaptureStep): Promise<voi
       const at = await find(step.selector);
       await run(moveScript(at.x, at.y));
       await sleep(500);
+      acted(at);
       await run(clickScript(step.selector));
       const text = step.text.slice(0, CAPTURE_LIMITS.text);
       for (let i = 1; i <= text.length; i++) {
@@ -215,13 +254,15 @@ async function runStep(wc: Electron.WebContents, step: CaptureStep): Promise<voi
       return;
     }
     case "scroll":
-      if (step.selector) await find(step.selector);
+      acted(step.selector ? await find(step.selector) : undefined);
       if (!(await run(scrollScript(step)))) throw new Error(`nothing matches ${step.selector}`);
       return;
     case "wait":
+      acted();
       return;
     case "highlight": {
       const at = await find(step.selector);
+      acted(at);
       await run(highlightScript(at, Math.min(CAPTURE_LIMITS.wait, step.ms ?? 1200)));
       return;
     }
