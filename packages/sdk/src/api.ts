@@ -718,7 +718,20 @@ export interface AddonHostApi {
    * ("Step 3 (Buy) failed: nothing matches #buy"); at `maxSeconds` (at most 120) it stops and says
    * `cut`. `texts` is the page's text after loading and after each step, for a real-data scan.
    */
-  capture: { record(input: AddonCaptureInput): Promise<AddonCaptureResult> };
+  capture: {
+    record(input: AddonCaptureInput): Promise<AddonCaptureResult>;
+    /**
+     * Prints a local HTML file to PDF (D-466; the `capture` permission) in a hidden window, never on
+     * your screen, with backgrounds, once its fonts have loaded. `file` and `out` are absolute paths
+     * (`out` ends in `.pdf`); `page` is `a4` (the default) or `slides` (16:9), and a page's own
+     * `@page` rule wins.
+     */
+    pdf(input: {
+      file: string;
+      out: string;
+      page?: "a4" | "slides";
+    }): Promise<{ path: string; bytes: number }>;
+  };
   log(message: string, detail?: unknown): void;
 }
 

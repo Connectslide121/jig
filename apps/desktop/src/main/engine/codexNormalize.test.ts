@@ -374,6 +374,74 @@ describe("CodexNormalizer", () => {
     expect(n.mcpCallId("jig", "run")).toBeUndefined();
   });
 
+  it("shows a generated image on its card, and its limit as the chat's limit (D-446)", () => {
+    const n = new CodexNormalizer();
+    expect(
+      n.handle(
+        item("item/started", {
+          type: "imageGeneration",
+          id: "g",
+          status: "inProgress",
+          revisedPrompt: "A calm hero",
+        }),
+      ),
+    ).toEqual([
+      {
+        type: "tool_use",
+        id: "g",
+        name: "ImageGeneration",
+        input: { prompt: "A calm hero" },
+        model: undefined,
+      },
+    ]);
+    expect(
+      n.handle(
+        item("item/completed", {
+          type: "imageGeneration",
+          id: "g",
+          status: "completed",
+          revisedPrompt: "A calm hero",
+          failure: null,
+          generationId: null,
+          result: "AAAA",
+          savedPath: "/w/hero.png",
+        }),
+      ),
+    ).toEqual([
+      {
+        type: "tool_result",
+        toolUseId: "g",
+        output: "Saved to /w/hero.png",
+        isError: false,
+        imageData: [{ mime: "image/png", data: "AAAA" }],
+      },
+    ]);
+    n.handle(
+      item("item/started", { type: "imageGeneration", id: "h", status: "inProgress", revisedPrompt: null }),
+    );
+    expect(
+      n.handle(
+        item("item/completed", {
+          type: "imageGeneration",
+          id: "h",
+          status: "failed",
+          revisedPrompt: null,
+          failure: { type: "usageLimitExceeded", limitId: "img", resetsAt: 1793178000 },
+          generationId: null,
+          fileId: "f",
+        }),
+      ),
+    ).toEqual([
+      { type: "tool_result", toolUseId: "h", output: "ChatGPT's image limit is reached.", isError: true },
+      {
+        type: "error",
+        code: "rate_limit",
+        message: "ChatGPT's image limit is reached.",
+        resetsAt: new Date(1793178000 * 1000).toISOString(),
+      },
+    ]);
+  });
+
   it("shows a dynamic tool's text and images, not their JSON", () => {
     const n = new CodexNormalizer();
     n.handle(

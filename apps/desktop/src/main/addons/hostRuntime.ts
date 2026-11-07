@@ -62,7 +62,8 @@ export type FromHost =
         | "addons.call"
         | "meetings.recent"
         | "speech.say"
-        | "capture.record";
+        | "capture.record"
+        | "capture.pdf";
       args: unknown;
     };
 
@@ -270,6 +271,10 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         record: async (input) => {
           need("capture");
           return rpc("capture.record", input) as Promise<never>;
+        },
+        pdf: async (input) => {
+          need("capture");
+          return rpc("capture.pdf", input) as Promise<never>;
         },
       },
       projects: () => rpc("projects", {}) as Promise<never>,

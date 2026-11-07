@@ -200,6 +200,7 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   | `fileChange` item | `tool_use` Edit (Write for a new file) per file, `tool_result` with the diff |
   | `mcpToolCall`, `dynamicToolCall` | `tool_use` `mcp__<server>__<tool>` (Jig's `exit_plan` / `ask_user` → `ExitPlanMode` / `AskUserQuestion`), result text and images |
   | `webSearch`, `imageView`, `contextCompaction` | WebSearch, Read, `compacted` |
+  | `imageGeneration` item | `tool_use` ImageGeneration (its revised prompt), `tool_result` "Saved to …" with the picture; failed: an error result, and on `usageLimitExceeded` the chat's `rate_limit` (D-466) |
   | `turn/completed` | open blocks end, then `result` (this turn's tokens and `turnCostUsd`, its cost estimated at OpenAI API prices from `shared/openaiPrices.ts`, each token update priced at its request's context rate; `null` for a model without a known price, D-414; interrupted → `stopped`) |
   | `error` | a notice (`willRetry`: "retrying"); login failures → `error` `not_signed_in` |
   | `account/updated` without a sign-in | `error` `not_signed_in`; an API key → billing notice |

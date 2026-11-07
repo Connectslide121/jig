@@ -8258,3 +8258,24 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   composer isn't possible without core changes. "From a release" waits for the Releases add-on.
 - **Exports** (D-215): `createVideo` (a storyboard from a caller, as the tool takes it, plus
   `projectId`), `render` and `get`, for Jig factory's teaser (D-458).
+
+## D-466: Add-ons print HTML to PDF: api.capture.pdf
+
+- Status: accepted.
+- **Who:** Claude, on my own (session 5 of phase 28, Jon asleep with full autonomy).
+- **What:** `api.capture.pdf({ file, out, page })` (permission `capture`) prints a local `.html`
+  file to `out` (`.pdf`) in a hidden helper window with its own empty session (no permissions,
+  downloads, new windows or navigation away), after the page's fonts are ready, with its
+  backgrounds. `page`: `a4` (default, the page's own CSS `@page` wins) or `slides` (13.333 × 7.5 in,
+  no margins). At most two at once, 60 s each.
+- **Why:** the factory's two forms of a deck, a one-pager and a customer letter are HTML the AI
+  writes; a PDF is what people send. Chromium already prints well (fonts, backgrounds, page CSS), so
+  no PDF library and no extra program. Codex's `imageGeneration` items also became image cards in
+  the chat (`ImageGeneration`, the picture shown, its limit as the chat's limit), so the factory's
+  image recipes on ChatGPT show what they made.
+
+## D-467: Jig factory's pack: recipes, two forms, images, courses, the teaser, reviews per output
+
+- Status: accepted.
+- **Who:** Claude, on my own (session 5 of phase 28, Jon asleep with full autonomy). Filled in as
+  session 5 is built.

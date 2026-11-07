@@ -1,3 +1,4 @@
+import { isAbsolute } from "node:path";
 import { isTenantInput } from "@jig/azure";
 import { z } from "zod";
 import { ADDON_AI_FEATURES } from "../../shared/aiFeatures";
@@ -616,6 +617,21 @@ export const addonSpeechSay = z
     text: z.string().trim().min(1).max(5000),
     voice: z.enum(NATURAL_VOICE_IDS as [string, ...string[]]),
     speed: z.number().min(0.5).max(2),
+  })
+  .strict();
+
+/** `api.capture.pdf` (D-466): a local HTML file printed to a PDF path. */
+export const addonCapturePdf = z
+  .object({
+    file: z
+      .string()
+      .max(4096)
+      .refine((p) => isAbsolute(p) && /\.html?$/i.test(p), "an absolute path to an .html file"),
+    out: z
+      .string()
+      .max(4096)
+      .refine((p) => isAbsolute(p) && /\.pdf$/i.test(p), "an absolute path ending in .pdf"),
+    page: z.enum(["a4", "slides"]).optional(),
   })
   .strict();
 

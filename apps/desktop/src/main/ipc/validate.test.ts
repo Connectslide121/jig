@@ -91,4 +91,15 @@ describe("add-on speech and capture input (D-464)", () => {
     expect(addonCaptureRecord.safeParse({ ...ok, maxSeconds: 999 }).success).toBe(false);
     expect(addonCaptureRecord.safeParse({ ...ok, width: 10 }).success).toBe(false);
   });
+
+  it("prints only an absolute HTML file to an absolute PDF path (D-466)", async () => {
+    const { addonCapturePdf } = await import("./validate");
+    const { join } = await import("node:path");
+    const dir = process.cwd();
+    const ok = { file: join(dir, "deck.html"), out: join(dir, "deck.pdf"), page: "slides" };
+    expect(addonCapturePdf.safeParse(ok).success).toBe(true);
+    expect(addonCapturePdf.safeParse({ ...ok, file: "deck.html" }).success).toBe(false);
+    expect(addonCapturePdf.safeParse({ ...ok, out: join(dir, "deck.exe") }).success).toBe(false);
+    expect(addonCapturePdf.safeParse({ ...ok, page: "letter" }).success).toBe(false);
+  });
 });

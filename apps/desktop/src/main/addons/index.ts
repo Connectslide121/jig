@@ -12,6 +12,7 @@ import { JigError } from "../../shared/ipc";
 import { appWindows, focusJig, hiddenMode, mainWindow } from "../appWindows";
 import { onActiveTenantChange } from "../azure";
 import { onAzureContextChange } from "../azure/env";
+import { printPdf } from "../capture/pdf";
 import { recordCapture } from "../capture/record";
 import { getConfig } from "../config";
 import { card } from "../configure/tools";
@@ -23,7 +24,7 @@ import {
   setJigToolHandlers,
 } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
-import { addonCaptureRecord, addonSpeechSay } from "../ipc/validate";
+import { addonCapturePdf, addonCaptureRecord, addonSpeechSay } from "../ipc/validate";
 import { logger } from "../log";
 import { recentMeetings } from "../meetings";
 import { projectStore } from "../projects";
@@ -284,7 +285,7 @@ export async function startAddons(): Promise<void> {
           throw new Error('This add-on needs the "meetings:read" permission in addon.json');
         const { limit } = args as { limit?: unknown };
         return recentMeetings(typeof limit === "number" ? limit : undefined);
-      } else if (op === "speech.say" || op === "capture.record") {
+      } else if (op === "speech.say" || op === "capture.record" || op === "capture.pdf") {
         // Checked here too (D-464): the host process enforces it, but main doesn't trust it.
         const need = op === "speech.say" ? "speech" : "capture";
         if (
@@ -304,6 +305,16 @@ export async function startAddons(): Promise<void> {
           });
           if (!parsed.success) throw new Error(`speech.say: ${parsed.error.issues[0]?.message ?? "invalid"}`);
           return sayForAddon(dataDir, parsed.data);
+        }
+        if (op === "capture.pdf") {
+          const pdf = addonCapturePdf.safeParse(args);
+          if (!pdf.success) {
+            const issue = pdf.error.issues[0];
+            throw new Error(
+              `capture.pdf: ${issue?.path.join(".") || "arguments"}: ${issue?.message ?? "invalid"}`,
+            );
+          }
+          return printPdf(pdf.data);
         }
         const parsed = addonCaptureRecord.safeParse(args);
         if (!parsed.success) {

@@ -447,6 +447,16 @@ export class CodexNormalizer {
             model: this.model || undefined,
           },
         ];
+      case "imageGeneration":
+        return [
+          {
+            type: "tool_use",
+            id,
+            name: "ImageGeneration",
+            input: { prompt: str(item.revisedPrompt) ?? "" },
+            model: this.model || undefined,
+          },
+        ];
       case "imageView":
         return [
           {
@@ -578,6 +588,8 @@ export class CodexNormalizer {
       case "webSearch":
       case "imageView":
         return [{ type: "tool_result", toolUseId: id, output: "", isError: false }];
+      case "imageGeneration":
+        return this.imageGenerated(id, item);
       case "contextCompaction":
         return [{ type: "compacted", trigger: "auto", preTokens: 0 }];
       default:
@@ -636,6 +648,43 @@ export class CodexNormalizer {
       ...(!ok && !stopped ? { error: str(turn?.error?.message) ?? "Codex couldn't finish this turn." } : {}),
     });
     return events;
+  }
+
+  /**
+   * A generated image (D-446): its picture on the card, where Codex saved it as the text. A plan
+   * limit fails the card and reaches the chat as the limit, like a turn's.
+   */
+  private imageGenerated(id: string, item: Msg): EngineEvent[] {
+    const failure = item.failure;
+    if (failure) {
+      const resetsAt =
+        typeof failure.resetsAt === "number" ? new Date(failure.resetsAt * 1000).toISOString() : undefined;
+      const message = "ChatGPT's image limit is reached.";
+      return [
+        { type: "tool_result", toolUseId: id, output: message, isError: true },
+        ...(failure.type === "usageLimitExceeded"
+          ? [
+              {
+                type: "error" as const,
+                code: "rate_limit" as const,
+                message,
+                ...(resetsAt ? { resetsAt } : {}),
+              },
+            ]
+          : []),
+      ];
+    }
+    const data = str(item.result);
+    const path = str(item.savedPath);
+    return [
+      {
+        type: "tool_result",
+        toolUseId: id,
+        output: path ? `Saved to ${path}` : "Generated an image.",
+        isError: false,
+        ...(data ? { imageData: [{ mime: "image/png", data }] } : {}),
+      },
+    ];
   }
 
   private error(p: Msg): EngineEvent[] {
