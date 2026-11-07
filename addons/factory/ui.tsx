@@ -67,14 +67,23 @@ import {
 import { PlanDialog } from "./plan";
 import { PublishDialog, PublishedList } from "./publish";
 import { GateSheet, InspectorDialog, StageActionDialog, StageSheet, StartDialog } from "./sheets";
+import { MatrixSection, RecurringGapsDialog, ReleasePackageDialog } from "./tender";
+import changeRequest from "./tracks/change-request.json";
 import newIdea from "./tracks/new-idea.json";
+import tender from "./tracks/tender.json";
 
 /**
  * Jig factory (phase 28). Session 0: the Floor, a run's page, the inbox, the sidebar view and the top
  * bar button, showing the sample runs (D-442) until runs can be started.
  */
 
-const TRACK = newIdea as Track;
+// The tracks a run's page draws its graph from (D-471); an unknown one draws as a new idea.
+const TRACKS: Record<string, Track> = {
+  "new-idea": newIdea as Track,
+  "change-request": changeRequest as Track,
+  tender: tender as Track,
+};
+const trackOfRun = (run: Pick<Run, "track">): Track => TRACKS[run.track] ?? (newIdea as Track);
 const TRACK_NAME: Record<Run["track"], string> = {
   "new-idea": "new idea",
   "existing-product": "existing product",
@@ -274,6 +283,7 @@ export function FloorTab({ ctx }: AddonTabProps) {
   const { data, error } = useRuns(project?.id);
   const now = useNow();
   const starting = useStartOpen();
+  const [floorModal, setFloorModal] = useState<"package" | "gaps">();
   const start = starting && project && (
     <StartDialog ctx={ctx} projectId={project.id} onClose={() => setStartOpen(false)} />
   );
@@ -320,11 +330,28 @@ export function FloorTab({ ctx }: AddonTabProps) {
           data-testid="factory-floor-more"
           onClick={(e) =>
             ctx.menu(
-              sampleItems(
-                ctx,
-                project.id,
-                data.some((r) => isSample(r.id)),
-              ),
+              [
+                {
+                  label: "Release package…",
+                  icon: "package",
+                  testId: "factory-floor-package",
+                  disabled: !data.some((r) => r.track === "change-request" && !isSample(r.id)),
+                  onSelect: () => setFloorModal("package"),
+                },
+                {
+                  label: "Recurring gaps…",
+                  icon: "list-checks",
+                  testId: "factory-floor-gaps",
+                  disabled: !data.some((r) => r.track === "tender" && !isSample(r.id)),
+                  onSelect: () => setFloorModal("gaps"),
+                },
+                { separator: true },
+                ...sampleItems(
+                  ctx,
+                  project.id,
+                  data.some((r) => isSample(r.id)),
+                ),
+              ],
               e.currentTarget,
             )
           }
@@ -362,6 +389,19 @@ export function FloorTab({ ctx }: AddonTabProps) {
         ))}
       </div>
       {start}
+      {floorModal === "package" && (
+        <ReleasePackageDialog ctx={ctx} projectId={project.id} onClose={() => setFloorModal(undefined)} />
+      )}
+      {floorModal === "gaps" && (
+        <RecurringGapsDialog
+          projectId={project.id}
+          onOpenRun={(runId) => {
+            const r = data.find((x) => x.id === runId);
+            if (r) openRun(ctx, r);
+          }}
+          onClose={() => setFloorModal(undefined)}
+        />
+      )}
     </div>
   );
 }
@@ -469,6 +509,7 @@ export function RunTab({ ctx, params }: AddonTabProps) {
   if (!run) return <Empty icon={Factory} title="This run is gone" className="h-full" />;
   const project = projects.find((p) => p.id === run.projectId);
   const outputs = run.outputs.filter((o) => o.status !== "superseded");
+  const stageTitle = (id: string) => stageTitleIn(trackOfRun(run), id);
   return (
     <div className="@container flex h-full min-h-0 flex-col" data-testid="factory-run">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-4">
@@ -563,11 +604,12 @@ export function RunTab({ ctx, params }: AddonTabProps) {
         />
       </div>
       <StageGraph
-        boxes={graphBoxes(run, TRACK)}
+        boxes={graphBoxes(run, trackOfRun(run))}
         onOpen={(b) => setSheet({ kind: b.kind === "gate" ? "gate" : "stage", id: b.id })}
       />
       <div className="@max-3xl:flex-col @3xl:flex-row flex min-h-0 flex-1 overflow-y-auto">
         <section className="@container flex min-w-0 flex-1 flex-col gap-2 p-4">
+          {run.track === "tender" && <MatrixSection run={run} />}
           <div className="flex h-5 items-center gap-2">
             <span className="text-2xs font-semibold tracking-wide text-hint uppercase">Outputs</span>
             <span className="text-2xs text-hint tabular-nums">{outputs.length}</span>
@@ -677,9 +719,9 @@ export function RunTab({ ctx, params }: AddonTabProps) {
   );
 }
 
-function stageTitle(id: string): string {
+function stageTitleIn(track: Track, id: string): string {
   const [base = id, sub] = id.split(":");
-  const item = TRACK.stages.find((s) => itemId(s) === base);
+  const item = track.stages.find((s) => itemId(s) === base);
   const title = item?.title ?? base;
   return sub ? `${title}: ${sub}` : title;
 }

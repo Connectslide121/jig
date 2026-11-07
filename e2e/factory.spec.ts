@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Page } from "@playwright/test";
+import type { ElectronApplication, Locator, Page } from "@playwright/test";
 import { expect, hostCall, launchJig, test } from "./fixtures";
 import { SHOTS_DIR, shootView } from "./shots";
 import { fakeTelegram, TOKEN } from "./telegram";
@@ -15,6 +15,29 @@ async function shop(page: Page, jigHome: string): Promise<string> {
   const projectId = projects.value.projects[0]!.id;
   await hostCall(page, "projects.setActive", { id: projectId });
   return projectId;
+}
+
+/** Design-check screenshots of whatever is on screen, in Dark and Light at two widths (JIG_UI_SHOTS=1). */
+async function shots(app: ElectronApplication, page: Page, name: string, what: () => Locator) {
+  if (!process.env.JIG_UI_SHOTS) return;
+  for (const theme of ["jig-dark", "jig-light"])
+    for (const [width, label] of [
+      [1600, "wide"],
+      [820, "narrow"],
+    ] as const) {
+      await hostCall(page, "config.update", { appearance: { themeId: theme } });
+      await app.evaluate(({ BrowserWindow }, w) => {
+        BrowserWindow.getAllWindows()
+          .find((x) => x.webContents.getURL().startsWith("jig-app:"))!
+          .setContentSize(w, 900);
+      }, width);
+      await page.waitForTimeout(800);
+      await what().screenshot({
+        path: join(SHOTS_DIR, `factory-${name}-${label}-${theme}.png`),
+        animations: "disabled",
+      });
+    }
+  await hostCall(page, "config.update", { appearance: { themeId: "jig-dark" } });
 }
 
 const factory = (page: Page, method: string, args: Record<string, unknown>) =>
@@ -579,6 +602,139 @@ test("Jig factory: a new idea, its interview with Good enough, and the Plan step
   expect(r.languages.sales).toBe("sv");
   expect(r.plan?.outputs).not.toContain("stories");
   expect(r.stages.find((s) => s.id === "S3")?.status).toBe("done");
+});
+
+test("Jig factory: a change request from its ticket to the release package (D-471)", async ({
+  app,
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(120_000);
+  const projectId = await gitShop(page, jigHome);
+
+  // New idea → Change request: the product is the project's, the button starts the intake.
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-new-idea").click();
+  const dialog = page.getByTestId("factory-new-idea");
+  await dialog.getByTestId("factory-idea-track").selectOption("change-request");
+  await expect(dialog.getByTestId("factory-idea-product")).toBeDisabled();
+  await dialog.getByTestId("factory-idea-text").fill("Export shifts without fixing them by hand");
+  await expect(dialog.getByTestId("factory-idea-start")).toHaveText("Start intake");
+  await shots(app, page, "idea-cr", () => dialog);
+  await dialog.getByTestId("factory-idea-start").click();
+
+  // The intake's one round of cards, then the change request; Looks right opens the Plan step.
+  const tab = page.getByTestId("factory-interview");
+  await expect(tab.getByTestId("factory-question")).toHaveCount(2, { timeout: 20000 });
+  await tab.getByTestId("factory-answer").click();
+  await expect(tab.getByTestId("factory-looks-right")).toBeEnabled({ timeout: 30000 });
+  await tab.getByTestId("factory-looks-right").click();
+  const plan = page.getByTestId("factory-plan");
+  await expect(plan).toBeVisible();
+  // The track's pack: a quote, no user stories; a critical bug would skip the demo.
+  await expect(plan.getByTestId("factory-plan-output-quote")).toBeChecked();
+  await expect(plan.getByTestId("factory-plan-output-stories")).toHaveCount(0);
+  await plan.getByTestId("factory-plan-critical").getByRole("switch").click();
+  await expect(plan.getByTestId("factory-plan-stages")).toContainText("Fix now");
+  await shots(app, page, "plan-critical", () => plan);
+  await expect(
+    plan
+      .getByTestId("factory-plan-stages")
+      .locator("li", { hasText: "Build the demo" })
+      .locator("span")
+      .nth(1),
+  ).toHaveClass(/line-through/);
+  await plan.getByTestId("factory-plan-critical").getByRole("switch").click();
+  await plan.getByTestId("factory-plan-start").click();
+  await expect(page.getByTestId("factory-run")).toBeVisible();
+
+  // Approve every gate as it opens, until the change request is ready for a package.
+  const id = ((await factory(page, "runs", { projectId })) as { value: RunLike[] }).value[0]!.id;
+  await expect
+    .poll(
+      async () => {
+        const r = await runOf(page, projectId, id);
+        for (const g of r.gates.filter((g) => g.status === "waiting"))
+          await factory(page, "decide", { projectId, runId: id, gateId: g.id, kind: "approve" });
+        const c = (await factory(page, "packageCandidates", { projectId })) as {
+          value: Array<{ runId: string; waiting: string[] }>;
+        };
+        return c.value.find((x) => x.runId === id)?.waiting.length;
+      },
+      { timeout: 90_000, intervals: [300] },
+    )
+    .toBe(0);
+
+  // Floor → ⋯ → Release package…: tick the ready row, write the package into the repository.
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-floor").click();
+  await page.getByTestId("factory-floor-more").click();
+  await page.getByTestId("factory-floor-package").click();
+  const pack = page.getByTestId("factory-package");
+  await pack.getByTestId(`factory-package-${id}`).click();
+  await pack.getByTestId("factory-package-day").fill("2026-05-04");
+  await shots(app, page, "package", () => pack);
+  await pack.getByTestId("factory-package-make").click();
+  await expect(pack).toBeHidden();
+  const folder = join(jigHome, "shop", "docs", "factory", "releases", "2026-05-04");
+  expect(await readFile(join(folder, "release-notes.md"), "utf8")).toContain("Export shifts");
+  expect(((await runOf(page, projectId, id)) as RunLike & { packaged?: unknown }).packaged).toBeTruthy();
+});
+
+test("Jig factory: two tenders, their requirement matrix and the recurring gaps (D-471)", async ({
+  app,
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const projectId = await shop(page, jigHome);
+  // An earlier tender, started from the host.
+  const first = (await factory(page, "startRun", {
+    projectId,
+    track: "tender",
+    text: "Contoso scheduling",
+  })) as {
+    value: RunLike;
+  };
+
+  // New idea → Tender: Read the tender opens the run's page, the matrix arrives in its box.
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-new-idea").click();
+  const dialog = page.getByTestId("factory-new-idea");
+  await dialog.getByTestId("factory-idea-track").selectOption("tender");
+  await expect(dialog.getByTestId("factory-idea-start")).toBeDisabled();
+  await dialog.getByTestId("factory-idea-text").fill("Fabrikam scheduling system");
+  await expect(dialog.getByTestId("factory-idea-start")).toHaveText("Read the tender");
+  await dialog.getByTestId("factory-idea-start").click();
+  const matrix = page.getByTestId("factory-matrix");
+  await expect(matrix.getByTestId("factory-req-R1")).toBeVisible({ timeout: 30000 });
+  await expect(matrix.getByTestId("factory-matrix-blocking")).toHaveText("1 must not met");
+  await shots(app, page, "tender-run", () => page.getByTestId("main-area"));
+  await matrix.getByTestId("factory-matrix-status").selectOption("not-met");
+  await expect(matrix.getByTestId("factory-matrix-rows").locator("button")).toHaveCount(1);
+  await matrix.getByTestId("factory-req-R1").click();
+  await expect(page.getByTestId("factory-req-detail")).toContainText("The profile has no ISO 27001");
+  await page.keyboard.press("Escape");
+
+  // The earlier tender has its matrix too: ISO 27001 recurs.
+  await expect
+    .poll(
+      async () =>
+        ((await factory(page, "tenderMatrix", { projectId, runId: first.value.id })) as { value: unknown })
+          .value,
+      {
+        timeout: 30000,
+      },
+    )
+    .toBeTruthy();
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-floor").click();
+  await page.getByTestId("factory-floor-more").click();
+  await page.getByTestId("factory-floor-gaps").click();
+  const gaps = page.getByTestId("factory-gaps");
+  await expect(gaps.getByTestId("factory-gaps-rows")).toContainText("cert:iso-27001");
+  await expect(gaps.getByTestId("factory-gaps-rows")).toContainText("2 tenders");
+  await shots(app, page, "gaps", () => gaps);
 });
 
 test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({

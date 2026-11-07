@@ -21,7 +21,31 @@ import {
 import { Paperclip } from "lucide-react";
 import { useRef, useState, useSyncExternalStore } from "react";
 import type { Run } from "./lib/run";
-import { openInterview } from "./parts";
+import { openRun } from "./parts";
+
+type TrackInfo = { id: string; title: string; description?: string; interviews: boolean };
+
+/** What New idea says for each track (D-471): the text box's hint, the button, and what happens. */
+const TRACK_TEXT: Record<string, { placeholder: string; start: string; files: string; hint: string }> = {
+  "new-idea": {
+    placeholder: "Describe the idea, paste anything, or press the mic…",
+    start: "Start interview",
+    files: "Files for the interview",
+    hint: "Jig interviews you about the idea with question cards, writes a one-page brief and checks it against what exists. Nothing else starts until you say the brief looks right.",
+  },
+  "change-request": {
+    placeholder: "Paste the support ticket, or describe the customer's change…",
+    start: "Start intake",
+    files: "Files for the change request",
+    hint: "Jig asks until the change request is clear (what, who, why, what happens today), builds a demo for the customer to confirm, then the quote. Write [critical] for a bug to fix at once.",
+  },
+  tender: {
+    placeholder: "The tender's name and anything to know about it (optional)…",
+    start: "Read the tender",
+    files: "The tender's documents",
+    hint: "Add the tender's documents. Jig builds the requirement matrix, checks what the company must be against .jig/factory/company.md, and lists the gaps; you decide whether to bid.",
+  },
+};
 
 export interface IdeaPrefill {
   text?: string;
@@ -86,6 +110,9 @@ export function NewIdeaDialog({ ctx, prefill }: { ctx: AddonUiContext; prefill: 
   const projects = useProjectList();
   const active = useActiveProject();
   const { data: meetings } = useHostCall<Meeting[]>("meetings");
+  const { data: tracks } = useHostCall<TrackInfo[]>("tracks");
+  const [track, setTrack] = useState("new-idea");
+  const words = TRACK_TEXT[track] ?? TRACK_TEXT["new-idea"];
   const [text, setText] = useState(prefill.text ?? "");
   const [projectId, setProjectId] = useState(active?.id ?? projects[0]?.id ?? "");
   const [product, setProduct] = useState<"existing" | "new">("existing");
@@ -97,7 +124,8 @@ export function NewIdeaDialog({ ctx, prefill }: { ctx: AddonUiContext; prefill: 
   const [error, setError] = useState<string>();
   const dictated = useDictation(text, setText);
   const project = projects.find((p) => p.id === projectId);
-  const ready = !!projectId && (!!text.trim() || !!meetingId);
+  const ready =
+    !!projectId && (track === "tender" ? !!files.length || !!text.trim() : !!text.trim() || !!meetingId);
   const add = (list: AddonAttachment[]) => setFiles((f) => [...f, ...list].slice(0, 20));
   const close = () => {
     if (!busy) closeNewIdea();
@@ -131,11 +159,12 @@ export function NewIdeaDialog({ ctx, prefill }: { ctx: AddonUiContext; prefill: 
                   title: prefill.title,
                   meetingId: meetingId || undefined,
                   attachments: files.map((f) => ({ path: f.path, name: f.name })),
-                  productExists: product === "existing",
-                  source: prefill.source,
+                  productExists: track === "new-idea" ? product === "existing" : undefined,
+                  source: prefill.source ?? (track === "change-request" ? { kind: "ticket" } : undefined),
+                  track,
                 });
                 closeNewIdea();
-                openInterview(ctx, r);
+                openRun(ctx, r);
               } catch (e) {
                 setError(e instanceof Error ? e.message : String(e));
               } finally {
@@ -143,7 +172,7 @@ export function NewIdeaDialog({ ctx, prefill }: { ctx: AddonUiContext; prefill: 
               }
             }}
           >
-            Start interview
+            {words?.start}
           </Button>
         </>
       }
@@ -157,12 +186,28 @@ export function NewIdeaDialog({ ctx, prefill }: { ctx: AddonUiContext; prefill: 
           add(await ctx.attachments.add(e.dataTransfer.files));
         }}
       >
+        <div className="flex items-center gap-3">
+          <span className="w-16 shrink-0 text-hint">Track</span>
+          <span className="size-4 shrink-0" />
+          <Select
+            value={track}
+            onChange={(e) => setTrack(e.target.value)}
+            className="w-60"
+            data-testid="factory-idea-track"
+          >
+            {(tracks ?? [{ id: "new-idea", title: "New idea" }]).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </Select>
+        </div>
         <div className="relative">
           <Textarea
             rows={6}
             value={text}
             autoFocus
-            placeholder="Describe the idea, paste anything, or press the mic…"
+            placeholder={words?.placeholder}
             onChange={(e) => setText(e.target.value)}
             onPaste={async (e) => {
               if (!e.clipboardData.files.length) return;
@@ -182,7 +227,7 @@ export function NewIdeaDialog({ ctx, prefill }: { ctx: AddonUiContext; prefill: 
             variant="ghost"
             icon={Paperclip}
             data-testid="factory-idea-files"
-            onClick={async () => add(await ctx.attachments.pick({ title: "Files for the interview" }))}
+            onClick={async () => add(await ctx.attachments.pick({ title: words?.files ?? "Files" }))}
           >
             Add files…
           </Button>
@@ -236,19 +281,18 @@ export function NewIdeaDialog({ ctx, prefill }: { ctx: AddonUiContext; prefill: 
             ))}
           </Select>
           <Select
-            value={product}
+            value={track === "new-idea" ? product : "existing"}
             onChange={(e) => setProduct(e.target.value as typeof product)}
             className="w-60"
+            disabled={track !== "new-idea"}
             data-testid="factory-idea-product"
           >
             <option value="existing">A change to its product</option>
             <option value="new">A new product</option>
           </Select>
         </div>
-        <span className="text-hint">
-          Jig interviews you about the idea with question cards, writes a one-page brief and checks it against
-          what exists. Nothing else starts until you say the brief looks right.
-        </span>
+        {/* Three lines kept for the hint, so switching the track moves nothing. */}
+        <span className="line-clamp-3 h-12 text-hint">{words?.hint}</span>
       </div>
     </Dialog>
   );

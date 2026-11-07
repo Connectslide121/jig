@@ -13,11 +13,12 @@ import {
   LANGUAGE_GROUPS,
   LANGUAGES,
   type LanguageGroup,
+  outputsFor,
   PLAN_OUTPUTS,
   planLanguages,
 } from "./lib/brief";
 import { GATE_ORDER, GATES } from "./lib/gates";
-import type { Track } from "./lib/graph";
+import { holds, type Track, type TrackItem } from "./lib/graph";
 import type { GateId, Level, Owner, Run, RunPlan } from "./lib/run";
 
 type OwnerDraft = { kind: Owner["kind"]; name: string };
@@ -49,6 +50,9 @@ export function PlanDialog({
   const [mode, setMode] = useState<RunPlan["permissionMode"]>(run.plan?.permissionMode ?? "acceptEdits");
   const [build, setBuild] = useState(run.plan?.build ?? false);
   const [exists, setExists] = useState(run.plan?.productExists ?? false);
+  const [critical, setCritical] = useState(run.plan?.critical ?? false);
+  const isCR = (track?.id ?? run.track) === "change-request";
+  const offered = outputsFor(track ?? undefined);
   const { data: boards } = useHostCall<{
     targets: Array<{ id: string; name: string; type?: string; problem?: string }>;
     problem?: string;
@@ -58,6 +62,11 @@ export function PlanDialog({
   const [error, setError] = useState<string>();
   const waiting = run.stages.some((s) => s.recipe === "plan" && s.status === "needs-you");
   const gates = GATE_ORDER.filter((g) => !track || track.stages.some((i) => i.gate === g));
+  const skipped = skippedItems(track?.stages ?? [], {
+    "product.exists": exists,
+    "build.requested": build,
+    critical: isCR && critical,
+  });
   const toggle = (id: string, on: boolean) =>
     setOutputs((l) => (on ? [...new Set([...l, id])] : l.filter((x) => x !== id)));
   const usable = (boards?.targets ?? []).filter((t) => t.type && !t.problem);
@@ -102,7 +111,7 @@ export function PlanDialog({
             size="sm"
             variant="primary"
             busy={busy}
-            disabled={!waiting || !outputs.length || !ownersValid}
+            disabled={!waiting || !outputs.some((o) => offered.some((x) => x.id === o)) || !ownersValid}
             data-testid="factory-plan-start"
             onClick={async () => {
               setBusy(true);
@@ -111,7 +120,7 @@ export function PlanDialog({
                 await ctx.host.call("plan", {
                   projectId: run.projectId,
                   runId: run.id,
-                  outputs,
+                  outputs: outputs.filter((o) => offered.some((x) => x.id === o)),
                   level,
                   languages,
                   owners: Object.fromEntries(
@@ -125,6 +134,7 @@ export function PlanDialog({
                   permissionMode: mode,
                   build,
                   productExists: exists,
+                  ...(isCR ? { critical } : {}),
                   approvals: approvalsBoard
                     ? { boardId: approvalsBoard.id, name: approvalsBoard.name, type: approvalsBoard.type }
                     : null,
@@ -150,6 +160,7 @@ export function PlanDialog({
               <Select
                 value={exists ? "existing" : "new"}
                 onChange={(e) => setExists(e.target.value === "existing")}
+                disabled={track?.productExists !== undefined}
                 data-testid="factory-plan-product"
               >
                 <option value="existing">An existing product (extract its kit)</option>
@@ -159,16 +170,17 @@ export function PlanDialog({
                 <Switch checked={build} onChange={setBuild} label="Build it after the docs are approved" />
                 <span className="min-w-0 flex-1 truncate text-fg">Build it after the docs are approved</span>
               </div>
+              {isCR && (
+                <div className="flex h-7 items-center gap-2" data-testid="factory-plan-critical">
+                  <Switch checked={critical} onChange={setCritical} label="A critical bug: fix it now" />
+                  <span className="min-w-0 flex-1 truncate text-fg">A critical bug: fix it now, no demo</span>
+                </div>
+              )}
             </div>
             <ol className="flex flex-col" data-testid="factory-plan-stages">
               {(track?.stages ?? []).map((i) => {
                 const id = i.id ?? i.gate ?? i.fanout ?? "";
-                const off =
-                  (i.when === "product.exists" && !exists) ||
-                  (i.when === "!product.exists" && exists) ||
-                  (i.when === "build.requested" && !build) ||
-                  (i.gate === "GD" && exists) ||
-                  (i.gate === "G3" && !build);
+                const off = skipped.has(id);
                 const name = i.gate ? GATES[i.gate].label : (i.title ?? id);
                 return (
                   <li key={id} className="flex h-7 items-center gap-2">
@@ -209,18 +221,20 @@ export function PlanDialog({
                     ))}
                   </Select>
                 </div>
-                {PLAN_OUTPUTS.filter((o) => o.group === g).map((o) => (
-                  <label key={o.id} className="flex h-6 cursor-pointer items-center gap-2 pl-2 text-fg">
-                    <input
-                      type="checkbox"
-                      className="accent-accent"
-                      checked={outputs.includes(o.id)}
-                      onChange={(e) => toggle(o.id, e.target.checked)}
-                      data-testid={`factory-plan-output-${o.id}`}
-                    />
-                    {o.label}
-                  </label>
-                ))}
+                {offered
+                  .filter((o) => o.group === g)
+                  .map((o) => (
+                    <label key={o.id} className="flex h-6 cursor-pointer items-center gap-2 pl-2 text-fg">
+                      <input
+                        type="checkbox"
+                        className="accent-accent"
+                        checked={outputs.includes(o.id)}
+                        onChange={(e) => toggle(o.id, e.target.checked)}
+                        data-testid={`factory-plan-output-${o.id}`}
+                      />
+                      {o.label}
+                    </label>
+                  ))}
               </div>
             ))}
           </Column>
@@ -289,4 +303,24 @@ function Column({ title, children }: { title: string; children: ReactNode }) {
       {children}
     </section>
   );
+}
+
+/**
+ * What the run will skip with these choices, as the Conductor would: an item whose `when` fails, or
+ * whose every `after` term is skipped (a term `A|B` when all of them are). GD is the new product's gate.
+ */
+function skippedItems(items: TrackItem[], facts: Record<string, boolean>): Set<string> {
+  const off = new Set<string>();
+  for (const i of items) {
+    const id = i.id ?? i.gate ?? i.fanout ?? "";
+    const after = i.after ?? [];
+    const termOff = (term: string) => term.split("|").every((t) => off.has(t.split(":")[0] ?? t));
+    if (
+      !holds(i.when, facts) ||
+      (i.gate === "GD" && facts["product.exists"]) ||
+      (after.length > 0 && after.every(termOff))
+    )
+      off.add(id);
+  }
+  return off;
 }

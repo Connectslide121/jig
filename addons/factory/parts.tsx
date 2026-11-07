@@ -34,7 +34,6 @@ export function useNow(): number {
   return now;
 }
 
-/** Opens a run's page. */
 /** Opens a run: its Interview tab while it is in its interview, else its Run tab. */
 export function openRun(
   ctx: AddonUiContext,
