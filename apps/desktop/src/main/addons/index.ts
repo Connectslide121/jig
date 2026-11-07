@@ -12,6 +12,7 @@ import { JigError } from "../../shared/ipc";
 import { appWindows, focusJig, hiddenMode, mainWindow } from "../appWindows";
 import { onActiveTenantChange } from "../azure";
 import { onAzureContextChange } from "../azure/env";
+import { recordCapture } from "../capture/record";
 import { getConfig } from "../config";
 import { card } from "../configure/tools";
 import {
@@ -22,6 +23,7 @@ import {
   setJigToolHandlers,
 } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
+import { addonCaptureRecord, addonSpeechSay } from "../ipc/validate";
 import { logger } from "../log";
 import { recentMeetings } from "../meetings";
 import { projectStore } from "../projects";
@@ -31,6 +33,7 @@ import { GUARD_TIMEOUT_MS, registerQuitGuard } from "../quit";
 import { createChat, keepChatAwake, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
 import { addAddonAttachment, copyAddonAttachments, removeAddonAttachments } from "../sessions/attachments";
 import { notificationsAllowed } from "../sessions/notify";
+import { sayForAddon } from "../speech";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
 import { ANNOUNCE_TIMEOUT_MS, beforeUpdate } from "../updates/announce";
@@ -281,6 +284,35 @@ export async function startAddons(): Promise<void> {
           throw new Error('This add-on needs the "meetings:read" permission in addon.json');
         const { limit } = args as { limit?: unknown };
         return recentMeetings(typeof limit === "number" ? limit : undefined);
+      } else if (op === "speech.say" || op === "capture.record") {
+        // Checked here too (D-464): the host process enforces it, but main doesn't trust it.
+        const need = op === "speech.say" ? "speech" : "capture";
+        if (
+          !service
+            ?.list()
+            .find((a) => a.id === addonId)
+            ?.manifest?.permissions.includes(need)
+        )
+          throw new Error(`This add-on needs the "${need}" permission in addon.json`);
+        const dataDir = join(paths.addonData(), addonId);
+        if (op === "speech.say") {
+          const input = args as { text?: unknown; voice?: unknown; speed?: unknown };
+          const parsed = addonSpeechSay.safeParse({
+            text: input.text,
+            voice: input.voice ?? getConfig().speech.naturalVoice,
+            speed: input.speed ?? 1,
+          });
+          if (!parsed.success) throw new Error(`speech.say: ${parsed.error.issues[0]?.message ?? "invalid"}`);
+          return sayForAddon(dataDir, parsed.data);
+        }
+        const parsed = addonCaptureRecord.safeParse(args);
+        if (!parsed.success) {
+          const issue = parsed.error.issues[0];
+          throw new Error(
+            `capture.record: ${issue?.path.join(".") || "arguments"}: ${issue?.message ?? "invalid"}`,
+          );
+        }
+        return recordCapture(parsed.data, dataDir);
       } else if (op === "projects") {
         // With the provider of each project's new chats (its own, else Jig's), as the UI's list has it.
         const fallback = getConfig().engine.provider;

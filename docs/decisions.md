@@ -8205,3 +8205,27 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   them when narrow; the Videos grid's columns use container variants on every side (D-297).
 - **Later sessions:** `motion.defaultVoice` exists but stays hidden in Settings until M2 makes it do
   something.
+
+## D-464: Add-ons speak and record: api.speech.say writes a WAV, api.capture.record records frames in an offscreen window
+
+- Status: accepted.
+- **Who:** Claude, on my own (Jon asked for M2 to be built overnight without questions; motion.md
+  planned both APIs).
+- **Speech:** `api.speech.say({ text, voice?, speed? })` (permission `speech`) speaks through the
+  same local Kokoro voice Read aloud uses and writes a 24 kHz mono 16-bit WAV into the add-on's data
+  folder (`speech/<sha256 of voice, speed and text>.wav`), so the same line is not spoken twice. It
+  returns the path and the length, which is what a timeline needs. Main checks the permission from
+  the manifest and the input (voice id from `NATURAL_VOICES`, speed 0.5–2, at most 5000
+  characters). With `JIG_ENGINE=fake` it writes silence of a word-count length, so tests need no
+  model.
+- **Capture:** `api.capture.record` (permission `capture`) returns **JPEG frames in a folder, not a
+  video file**, unlike D-457's wording: main has no video encoder and shipping one in core for one
+  add-on is heavy, while Motion already installs FFmpeg for its renders and encodes the frames
+  itself. The window is an offscreen `BrowserWindow` (`paint` events), never shown, marked as a
+  helper window, with its own in-memory partition, every permission denied, downloads blocked, no
+  new windows and navigation only to http, https and file addresses. A timer keeps a steady frame
+  rate by repeating the last painted frame. Steps play with a drawn cursor, ripple on click and
+  per-character typing; selectors and text enter page scripts only as JSON strings. A failing step
+  names itself ("Step 3 (Buy) failed: …") and removes the frames; `maxSeconds` (≤ 120) cuts it.
+  At most two run at once. `texts` (visible text after load and each step) lets the caller scan
+  for real data before keeping a capture.

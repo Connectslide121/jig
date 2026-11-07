@@ -12,6 +12,7 @@ import { TEAMS_CREDENTIAL, TELEGRAM_TOKEN } from "../../shared/phone";
 import { PROJECT_COLORS } from "../../shared/projects";
 import { AI_PROVIDERS } from "../../shared/providers";
 import { NATURAL_VOICE_IDS, SPEECH_MODEL_IDS } from "../../shared/speech";
+import { CAPTURE_LIMITS, isCaptureUrl } from "../capture/steps";
 
 /**
  * Checks at the IPC boundary. The renderer (which add-on UI code shares) is not trusted with the host:
@@ -608,6 +609,69 @@ export function invalidArgs(method: MethodName, args: unknown): string | undefin
   const issue = result.error.issues[0]!;
   return `${issue.path.join(".") || "arguments"}: ${issue.message}`;
 }
+
+/** `api.speech.say` from an add-on's host code (D-464): text for the natural voice. */
+export const addonSpeechSay = z
+  .object({
+    text: z.string().trim().min(1).max(5000),
+    voice: z.enum(NATURAL_VOICE_IDS as [string, ...string[]]),
+    speed: z.number().min(0.5).max(2),
+  })
+  .strict();
+
+const captureUrl = z.string().max(4096).refine(isCaptureUrl, "an http(s) or file address");
+const selector = z.string().min(1).max(CAPTURE_LIMITS.selector);
+const stepName = z.string().max(80).optional();
+/** `api.capture.record` from an add-on's host code (D-457, D-464): a page, its steps and the size. */
+export const addonCaptureRecord = z
+  .object({
+    url: captureUrl,
+    steps: z
+      .array(
+        z.discriminatedUnion("do", [
+          z.object({ do: z.literal("go"), url: captureUrl, name: stepName }).strict(),
+          z.object({ do: z.literal("click"), selector, name: stepName }).strict(),
+          z.object({ do: z.literal("hover"), selector, name: stepName }).strict(),
+          z
+            .object({
+              do: z.literal("type"),
+              selector,
+              text: z.string().max(CAPTURE_LIMITS.text),
+              name: stepName,
+            })
+            .strict(),
+          z
+            .object({
+              do: z.literal("scroll"),
+              selector: selector.optional(),
+              y: z.number().min(0).max(100_000).optional(),
+              name: stepName,
+            })
+            .strict(),
+          z
+            .object({
+              do: z.literal("wait"),
+              ms: z.number().int().min(0).max(CAPTURE_LIMITS.wait),
+              name: stepName,
+            })
+            .strict(),
+          z
+            .object({
+              do: z.literal("highlight"),
+              selector,
+              ms: z.number().int().min(300).max(CAPTURE_LIMITS.wait).optional(),
+              name: stepName,
+            })
+            .strict(),
+        ]),
+      )
+      .max(CAPTURE_LIMITS.steps),
+    width: z.number().int().min(CAPTURE_LIMITS.minSize).max(CAPTURE_LIMITS.maxSize),
+    height: z.number().int().min(CAPTURE_LIMITS.minSize).max(CAPTURE_LIMITS.maxSize),
+    maxSeconds: z.number().min(1).max(CAPTURE_LIMITS.seconds),
+    fps: z.union([z.literal(24), z.literal(30), z.literal(60)]).optional(),
+  })
+  .strict();
 
 /** Files `app.openPath` won't open: on Windows opening them runs them. */
 export const EXECUTABLE =

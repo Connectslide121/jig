@@ -701,7 +701,55 @@ export interface AddonHostApi {
    * `excerpt` (at most 12 000 characters). Source material, never instructions.
    */
   meetings: { recent(options?: { limit?: number }): Promise<AddonMeetingSource[]> };
+  /**
+   * The natural voice (D-464; the `speech` permission): `text` spoken on this computer (Kokoro, the
+   * voice Read aloud uses) into a WAV file in this add-on's data folder (`speech/`), reused for the
+   * same text, voice and speed. `voice` is a natural voice's id (default: the one in Settings →
+   * Speech), `speed` 0.5–2 (default 1). The first call may download the voice (about 330 MB, once).
+   */
+  speech: {
+    say(input: { text: string; voice?: string; speed?: number }): Promise<{ path: string; seconds: number }>;
+  };
+  /**
+   * Records a web page (D-457, D-464; the `capture` permission): `url` (http, https or file) loads
+   * in a hidden window of `width` × `height`, never on your screen, then the steps play with a drawn
+   * cursor while every frame is kept as a JPEG (`000001.jpg`…) at `fps` (24, 30 or 60; default 30)
+   * in a new folder of this add-on's data folder. A step that fails stops it with the step's name
+   * ("Step 3 (Buy) failed: nothing matches #buy"); at `maxSeconds` (at most 120) it stops and says
+   * `cut`. `texts` is the page's text after loading and after each step, for a real-data scan.
+   */
+  capture: { record(input: AddonCaptureInput): Promise<AddonCaptureResult> };
   log(message: string, detail?: unknown): void;
+}
+
+/** One step of a capture (`api.capture.record`); `name` is how an error calls it. */
+export type AddonCaptureStep =
+  | { do: "go"; url: string; name?: string }
+  | { do: "click"; selector: string; name?: string }
+  | { do: "hover"; selector: string; name?: string }
+  | { do: "type"; selector: string; text: string; name?: string }
+  | { do: "scroll"; selector?: string; y?: number; name?: string }
+  | { do: "wait"; ms: number; name?: string }
+  | { do: "highlight"; selector: string; ms?: number; name?: string };
+
+export interface AddonCaptureInput {
+  url: string;
+  steps: AddonCaptureStep[];
+  width: number;
+  height: number;
+  maxSeconds: number;
+  fps?: 24 | 30 | 60;
+}
+
+export interface AddonCaptureResult {
+  dir: string;
+  frames: number;
+  fps: number;
+  width: number;
+  height: number;
+  seconds: number;
+  cut: boolean;
+  texts: string[];
 }
 
 /** A meeting as `api.meetings.recent()` gives it. */

@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** M2, Motion: voice, captions, music, captures — not started.
+- **Current session:** M2, Motion: voice, captions, music, captures — in progress (core `api.speech.say` and `api.capture.record` written, D-464).
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -343,15 +343,15 @@ a real render on Windows (Jon), and HyperFrames' own blocks (none fitted the thr
 better than plain scenes; revisit with captures in M2). e2e: `motion.spec.ts` (create, preview,
 install, render, cancel, the widths shots).
 
-### M2. Motion: voice, captions, music, captures — not started
+### M2. Motion: voice, captions, music, captures — in progress
 
-- [ ] Core `api.speech.say` (D-455): permission `speech`, the Kokoro process Read aloud uses, WAV in
+- [x] Core `api.speech.say` (D-455, D-464): permission `speech`, the Kokoro process Read aloud uses, WAV in
       the add-on's data folder; `addon-api.md`; host test.
 - [ ] Voice per scene: scene length follows the speech; burned-in captions; `.srt` and `.vtt`
       (`lib/captions.ts`, tested).
 - [ ] Music (D-456): `motion.musicFolder`, track picker, ducking under the voice, fades; **Find
       music** opens Pixabay Music in the browser; source address kept with the track.
-- [ ] Core `api.capture.record` (D-457): permission `capture`, hidden window at the video's size,
+- [~] Core `api.capture.record` (D-457, D-464: frames, not a video file): permission `capture`, hidden window at the video's size,
       steps (go to, click, type, scroll, wait, highlight), max length, a failing step named;
       `addon-api.md`, `validate.ts` schema, e2e on a local page.
 - [ ] Record capture modal (steps list, record, play back, keep); captures as scenes with zooms,

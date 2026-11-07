@@ -5,6 +5,7 @@ import type { MicrophoneAccess } from "../../shared/speech";
 import { emit, emitTo, handle } from "../ipc/router";
 import { logger } from "../log";
 import { paths } from "../state/paths";
+import { type AddonSayInput, addonSay, fakeSay } from "./addonSpeech";
 import { SpeechModels } from "./models";
 import { NaturalVoiceHost, type VoiceChannel } from "./naturalVoice";
 import type { FromVoiceHost } from "./voiceProtocol";
@@ -81,6 +82,17 @@ export function startSpeech(): void {
     voice!.stop();
     await models!.removeVoice();
   });
+}
+
+/** `api.speech.say` for an add-on (D-464): a WAV in its data folder; the fake engine speaks silence. */
+export async function sayForAddon(
+  dataDir: string,
+  input: AddonSayInput,
+): Promise<{ path: string; seconds: number }> {
+  if (process.env.JIG_ENGINE === "fake") return addonSay(input, dataDir, fakeSay);
+  if (!models || !voice) throw new Error("The natural voice isn't ready yet");
+  await models.ensureVoice(input.voice);
+  return addonSay(input, dataDir, (text, id, speed) => voice!.say(text, id, speed));
 }
 
 async function microphoneAccess(): Promise<MicrophoneAccess> {

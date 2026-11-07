@@ -15,9 +15,12 @@ export const PERMISSIONS = {
     "Read your chats' list and timelines: when each turn and tool call ran, and what it ran (D-423).",
   ai: "Ask Jig's AI questions (uses your plan; answers only, no tools).",
   "meetings:read": "Read your meeting history: titles, notes and the end of each transcript (D-460).",
+  speech: "Speak text with the natural voice on this computer, into audio files (D-464).",
+  capture: "Record web pages in a hidden window, step by step, into video frames (D-464).",
 } as const;
 
-const PATTERN = /^(exec|exec:[\w.+-]+|fs:read|fs:write|net|terminal|chat|chat:read|ai|meetings:read)$/;
+const PATTERN =
+  /^(exec|exec:[\w.+-]+|fs:read|fs:write|net|terminal|chat|chat:read|ai|meetings:read|speech|capture)$/;
 
 export function isPermission(value: string): boolean {
   return PATTERN.test(value);

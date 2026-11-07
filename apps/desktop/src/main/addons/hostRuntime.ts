@@ -60,7 +60,9 @@ export type FromHost =
         | "setBadge"
         | "addons.list"
         | "addons.call"
-        | "meetings.recent";
+        | "meetings.recent"
+        | "speech.say"
+        | "capture.record";
       args: unknown;
     };
 
@@ -256,6 +258,18 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         recent: async (options) => {
           need("meetings:read");
           return rpc("meetings.recent", options ?? {}) as Promise<never>;
+        },
+      },
+      speech: {
+        say: async (input) => {
+          need("speech");
+          return rpc("speech.say", input) as Promise<never>;
+        },
+      },
+      capture: {
+        record: async (input) => {
+          need("capture");
+          return rpc("capture.record", input) as Promise<never>;
         },
       },
       projects: () => rpc("projects", {}) as Promise<never>,

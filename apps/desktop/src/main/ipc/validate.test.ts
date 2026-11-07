@@ -63,3 +63,32 @@ describe("IPC checks", () => {
     expect(EXECUTABLE.test("report.pdf")).toBe(false);
   });
 });
+
+describe("add-on speech and capture input (D-464)", () => {
+  it("accepts a known voice and refuses others", async () => {
+    const { addonSpeechSay } = await import("./validate");
+    expect(addonSpeechSay.safeParse({ text: "Hello", voice: "af_heart", speed: 1 }).success).toBe(true);
+    expect(addonSpeechSay.safeParse({ text: "Hello", voice: "nobody", speed: 1 }).success).toBe(false);
+    expect(addonSpeechSay.safeParse({ text: "", voice: "af_heart", speed: 1 }).success).toBe(false);
+    expect(addonSpeechSay.safeParse({ text: "Hi", voice: "af_heart", speed: 3 }).success).toBe(false);
+  });
+
+  it("accepts web and file pages with known steps only", async () => {
+    const { addonCaptureRecord } = await import("./validate");
+    const ok = {
+      url: "file:///tmp/demo.html",
+      steps: [
+        { do: "click", selector: "#buy", name: "Buy" },
+        { do: "wait", ms: 500 },
+      ],
+      width: 1280,
+      height: 720,
+      maxSeconds: 30,
+    };
+    expect(addonCaptureRecord.safeParse(ok).success).toBe(true);
+    expect(addonCaptureRecord.safeParse({ ...ok, url: "javascript:alert(1)" }).success).toBe(false);
+    expect(addonCaptureRecord.safeParse({ ...ok, steps: [{ do: "eval", code: "x" }] }).success).toBe(false);
+    expect(addonCaptureRecord.safeParse({ ...ok, maxSeconds: 999 }).success).toBe(false);
+    expect(addonCaptureRecord.safeParse({ ...ok, width: 10 }).success).toBe(false);
+  });
+});
