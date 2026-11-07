@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{Product}} — one-pager</title>
+<style>
+  /* From the product kit's tokens.json. */
+  :root {
+    --bg: #ffffff;
+    --fg: #111827;
+    --muted: #6b7280;
+    --accent: #4f46e5;
+    --surface: #f3f4f6;
+    --font-heading: "Inter", system-ui, sans-serif;
+    --font-body: "Inter", system-ui, sans-serif;
+  }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); }
+  .page { width: 210mm; height: 297mm; padding: 16mm 18mm; display: flex; flex-direction: column; gap: 9mm; position: relative; }
+  header { border-bottom: 2px solid var(--accent); padding-bottom: 6mm; }
+  h1, h2, h3 { font-family: var(--font-heading); margin: 0; line-height: 1.15; }
+  h1 { font-size: 28pt; }
+  h2 { font-size: 14pt; color: var(--accent); margin-bottom: 2mm; }
+  h3 { font-size: 11pt; margin: 2mm 0 1mm; }
+  p { font-size: 10.5pt; line-height: 1.5; margin: 0; color: var(--muted); }
+  .lead { font-size: 13pt; color: var(--fg); margin-top: 3mm; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }
+  .features img { width: 100%; border-radius: 6px; border: 1px solid var(--surface); }
+  .next { margin-top: auto; background: var(--surface); border-radius: 8px; padding: 6mm 8mm; }
+  .mark { position: absolute; right: 18mm; bottom: 7mm; font-size: 8pt; color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>{{Product}}</h1>
+      <p class="lead">{{One line: the value, in the customer's words}}</p>
+    </header>
+    <div class="two">
+      <section><h2>{{The problem}}</h2><p>{{Who has it and what it costs}}</p></section>
+      <section><h2>{{What changes}}</h2><p>{{The value, measured when you can}}</p></section>
+    </div>
+    <section class="features">
+      <div><img src="{{../demo/check/screenshots/….png}}" alt=""><h3>{{Feature}}</h3><p>{{What it gives}}</p></div>
+      <div><img src="{{../demo/check/screenshots/….png}}" alt=""><h3>{{Feature}}</h3><p>{{What it gives}}</p></div>
+      <div><img src="{{../demo/check/screenshots/….png}}" alt=""><h3>{{Feature}}</h3><p>{{What it gives}}</p></div>
+    </section>
+    <section class="next"><h2>{{The next step}}</h2><p>{{Who to contact and what we propose}}</p></section>
+    <span class="mark">PROTOTYPE · sample data</span>
+  </div>
+</body>
+</html>

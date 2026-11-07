@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{Subject}}</title>
+<style>
+  /* From the product kit's tokens.json. */
+  :root {
+    --fg: #111827;
+    --muted: #6b7280;
+    --accent: #4f46e5;
+    --font-heading: "Inter", system-ui, sans-serif;
+    --font-body: "Inter", system-ui, sans-serif;
+  }
+  @page { size: A4; margin: 22mm 24mm; }
+  html, body { margin: 0; color: var(--fg); font-family: var(--font-body); font-size: 11pt; line-height: 1.55; }
+  .from { color: var(--accent); font-family: var(--font-heading); font-weight: 600; font-size: 13pt; }
+  .meta { display: flex; justify-content: space-between; margin: 14mm 0 10mm; color: var(--muted); }
+  h1 { font-family: var(--font-heading); font-size: 15pt; margin: 0 0 6mm; }
+  p { margin: 0 0 4mm; }
+  .sign { margin-top: 12mm; }
+</style>
+</head>
+<body>
+  <div class="from">{{Company}}</div>
+  <div class="meta">
+    <div>{{Customer name}}<br>{{Customer company}}</div>
+    <div>{{Date}}</div>
+  </div>
+  <h1>{{Subject}}</h1>
+  <p>{{Greeting}}</p>
+  <p>{{What is new, in the customer's words}}</p>
+  <p>{{What it means for them, and what they do (or don't need to do)}}</p>
+  <p>{{When, and who to ask}}</p>
+  <div class="sign">{{Closing}}<br><br>{{Name}}<br>{{Role}}</div>
+</body>
+</html>

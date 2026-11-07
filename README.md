@@ -38,6 +38,7 @@ names from `--names` or `real-names.txt`). Screenshots go to `<folder>/check/scr
   empty state, status badge. Also published through `registry.json`.
 - `src/components/ui/` — shadcn/ui components (see NOTICE.md).
 - `kits/<name>/` — a brand kit: `tokens.json` (DTCG), `brand.md`, `glossary.md`.
+- `templates/print/` — the deck, one-pager and letter pages Jig factory prints to PDF.
 - `templates/demo/` — what `npm run new` copies. `demos/sample/` — a complete example.
 
 Writing a demo: read `AGENTS.md`.

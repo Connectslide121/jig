@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{Product}} — deck</title>
+<style>
+  /* From the product kit's tokens.json. */
+  :root {
+    --bg: #ffffff;
+    --fg: #111827;
+    --muted: #6b7280;
+    --accent: #4f46e5;
+    --surface: #f3f4f6;
+    --font-heading: "Inter", system-ui, sans-serif;
+    --font-body: "Inter", system-ui, sans-serif;
+  }
+  @page { size: 13.333in 7.5in; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); }
+  .slide {
+    width: 13.333in; height: 7.5in; padding: 0.8in 1in; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: center; gap: 0.3in;
+    page-break-after: always; break-after: page;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  h1, h2 { font-family: var(--font-heading); margin: 0; line-height: 1.1; }
+  h1 { font-size: 54pt; }
+  h2 { font-size: 34pt; }
+  p, li { font-size: 20pt; line-height: 1.4; margin: 0; color: var(--muted); }
+  ul { margin: 0; padding-left: 1.2em; display: grid; gap: 0.15in; }
+  .accent { color: var(--accent); }
+  .title { background: var(--accent); color: var(--bg); }
+  .title p { color: var(--bg); opacity: 0.85; }
+  .shot { display: grid; grid-template-columns: 1fr 1.4fr; gap: 0.5in; align-items: center; }
+  .shot img { width: 100%; border-radius: 12px; border: 1px solid var(--surface); }
+  .mark { position: absolute; right: 0.4in; bottom: 0.3in; font-size: 10pt; color: var(--muted); }
+  .num { position: absolute; left: 1in; bottom: 0.3in; font-size: 10pt; color: var(--muted); }
+</style>
+</head>
+<body>
+  <section class="slide title">
+    <h1>{{Product}}</h1>
+    <p>{{One line: the value, in the customer's words}}</p>
+  </section>
+
+  <section class="slide">
+    <h2>{{The problem}}</h2>
+    <p>{{Who has it, how often, what it costs them}}</p>
+    <span class="num">2</span>
+  </section>
+
+  <section class="slide shot">
+    <div>
+      <h2>{{A moment of the demo}}</h2>
+      <p>{{What the customer does here, and what it gives them}}</p>
+    </div>
+    <img src="{{../demo/check/screenshots/….png}}" alt="{{The screen}}">
+    <span class="num">3</span>
+    <span class="mark">PROTOTYPE · sample data</span>
+  </section>
+
+  <section class="slide">
+    <h2>{{Why it matters}}</h2>
+    <ul>
+      <li>{{A value, measured when you can}}</li>
+      <li>{{A second}}</li>
+      <li>{{A third}}</li>
+    </ul>
+    <span class="num">4</span>
+  </section>
+
+  <section class="slide">
+    <h2 class="accent">{{The next step}}</h2>
+    <p>{{What we ask for: a pilot, a meeting, a decision}}</p>
+    <span class="num">5</span>
+  </section>
+</body>
+</html>
