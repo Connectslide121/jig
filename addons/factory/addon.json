@@ -188,5 +188,5 @@
       }
     ]
   },
-  "exports": ["runs", "ideaFrom"]
+  "exports": ["runs", "ideaFrom", "designSources"]
 }

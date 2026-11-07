@@ -7,6 +7,7 @@ import {
   addMedia,
   cancel,
   create,
+  createVideo,
   discardMedia,
   get,
   install,
@@ -20,7 +21,12 @@ import {
   setRenderer,
   speak,
   status,
+  styles,
   templates,
+  toolCreate,
+  toolList,
+  toolRender,
+  toolUpdate,
   update,
 } from "./host";
 
@@ -318,5 +324,135 @@ describe("voice, music and captures (M2)", () => {
     await discardMedia({ projectId: P, id: video.id, path: take.path }, api);
     await expect(readFile(join(video.dir, take.path))).rejects.toThrow();
     await expect(discardMedia({ projectId: P, id: video.id, path: "../meta.json" }, api)).rejects.toThrow();
+  });
+});
+
+describe("chat tools and style sources (M3)", () => {
+  const chat = () => ({ projectId: P, cwd: root });
+
+  it("creates a video from a chat's scenes with a screenshot, changes it by scene id, lists and renders it", async () => {
+    await writeFile(join(root, "shot.png"), "png");
+    const made = JSON.parse(
+      await toolCreate(
+        {
+          chat: chat(),
+          kind: "teaser",
+          title: "Shop 2.0",
+          brief: "For customers",
+          scenes: [
+            { type: "title", title: "Shop 2.0" },
+            { type: "feature", title: "Pay", media: "shot.png" },
+          ],
+        },
+        api,
+      ),
+    );
+    expect(made).toMatchObject({
+      projectId: P,
+      title: "Shop 2.0",
+      kind: "teaser",
+      scenes: ["s1", "s2"],
+      status: "draft",
+    });
+    let video = await get({ projectId: P, id: made.video }, api);
+    expect(video.brief).toBe("For customers");
+    expect(video.storyboard.scenes[1]?.media).toEqual({ path: "media/shot.png", kind: "image" });
+
+    await toolUpdate(
+      {
+        chat: chat(),
+        id: made.video,
+        title: "Shop 2.0 is here",
+        scenes: [{ id: "s2" }, { id: "s1", title: "Hi" }],
+      },
+      api,
+    );
+    video = await get({ projectId: P, id: made.video }, api);
+    expect(video.title).toBe("Shop 2.0 is here");
+    expect(video.storyboard.scenes.map((s) => [s.id, s.title])).toEqual([
+      ["s2", "Pay"],
+      ["s1", "Hi"],
+    ]);
+    expect(video.storyboard.scenes[0]?.media?.path).toBe("media/shot.png");
+
+    const listed = await toolList({ chat: chat() }, api);
+    expect(listed).toContain(`${made.video}: "Shop 2.0 is here", teaser`);
+    expect(listed).toMatch(/Styles .*neutral: Neutral dark, motion/);
+    expect(await toolList({ chat: chat(), id: made.video }, api)).toContain('"title": "Pay"');
+
+    expect(JSON.parse(await toolRender({ chat: chat(), id: made.video }, api)).message).toMatch(
+      /isn't installed/,
+    );
+    await install(undefined, api);
+    const r = JSON.parse(await toolRender({ chat: chat(), id: made.video }, api));
+    expect(r.message).toMatch(/Rendering/);
+    await until(async () => (await get({ projectId: P, id: made.video }, api)).status === "rendered");
+  });
+
+  it("refuses chats without a project, missing media and unknown styles", async () => {
+    await expect(toolCreate({ chat: {}, title: "x" }, api)).rejects.toThrow(/project/);
+    await expect(
+      toolCreate({ chat: chat(), title: "x", scenes: [{ title: "a", media: "nope.png" }] }, api),
+    ).rejects.toThrow(/no file nope.png/);
+    expect(await list({ projectId: P }, api)).toEqual([]);
+    await expect(toolCreate({ chat: chat(), title: "x", style: "nope" }, api)).rejects.toThrow(
+      /No style "nope"/,
+    );
+  });
+
+  it("keeps a look a chat describes as an own style, and offers the kit, themes and DESIGN.md references", async () => {
+    const made = JSON.parse(
+      await toolCreate(
+        {
+          chat: chat(),
+          title: "x",
+          ownStyle: { name: "Mine", colors: { background: "#ffffff", accent: "#cc0000" } },
+        },
+        api,
+      ),
+    );
+    const video = await get({ projectId: P, id: made.video }, api);
+    expect(video.settings.style).toMatch(/^own-[a-f0-9]{8}$/);
+
+    const kit = join(root, "repo", ".jig", "factory", "kit");
+    await import("node:fs/promises").then((fs) => fs.mkdir(kit, { recursive: true }));
+    await writeFile(
+      join(kit, "tokens.json"),
+      JSON.stringify({ color: { background: { $type: "color", $value: "#101010" } } }),
+    );
+    const refs = join(root, "refs", "fabrikam");
+    await import("node:fs/promises").then((fs) => fs.mkdir(refs, { recursive: true }));
+    await writeFile(join(refs, "DESIGN.md"), "# Fabrikam\n- Background #faf7f2\n- Primary #b4442c\n");
+    Object.assign(api as object, {
+      projects: async () => [{ id: P, name: "Shop", path: join(root, "repo") }],
+      addons: { call: async () => [join(root, "refs"), "github.com/example/designs"] },
+    });
+    const all = await styles({ projectId: P }, api);
+    const ids = all.map((s) => `${s.id}:${s.source}`);
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "neutral:motion",
+        "kit:kit",
+        `${video.settings.style}:own`,
+        "design-fabrikam:design",
+        "theme-ocean-depths:theme",
+      ]),
+    );
+    expect(all.find((s) => s.id === "kit")).toMatchObject({ name: "Shop kit", colors: { bg: "#101010" } });
+  });
+
+  it("shares createVideo with Jig factory", async () => {
+    await writeFile(join(root, "a.png"), "png");
+    const v = await createVideo(
+      {
+        projectId: P,
+        kind: "whats-new",
+        title: "New",
+        scenes: [{ type: "capture", title: "A", media: join(root, "a.png") }],
+      },
+      api,
+    );
+    expect(v).toMatchObject({ kind: "whats-new", title: "New", status: "draft" });
+    expect(v.storyboard.scenes[0]?.media?.path).toBe("media/a.png");
   });
 });

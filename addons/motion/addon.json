@@ -5,8 +5,11 @@
   "description": "Videos made from HTML: a teaser, a what's-new clip or a walkthrough as a storyboard of scenes, previewed live and rendered to MP4 on this computer. Rendering uses no AI and costs nothing.",
   "version": "1.0.0",
   "icon": "clapperboard",
-  "permissions": ["fs:read", "fs:write", "exec", "net", "speech", "capture"],
-  "storage": { "scope": "project" },
+  "permissions": ["fs:read", "fs:write", "exec", "net", "speech", "capture", "chat"],
+  "storage": {
+    "scope": "project"
+  },
+  "exports": ["createVideo", "render", "get"],
   "contributes": {
     "views": [
       {
@@ -26,7 +29,12 @@
         "component": "VideoTab"
       }
     ],
-    "topbar": [{ "id": "motion", "component": "MotionButton" }],
+    "topbar": [
+      {
+        "id": "motion",
+        "component": "MotionButton"
+      }
+    ],
     "actions": [
       {
         "id": "new-video",
@@ -41,6 +49,144 @@
         "group": "Motion",
         "icon": "film",
         "run": "showVideos"
+      }
+    ],
+    "tools": [
+      {
+        "id": "create",
+        "description": "Make a video in Jig's Motion: a teaser, a what's-new clip or a walkthrough, as a storyboard of scenes the user previews, tweaks and renders to MP4 on their computer (no AI, no cost). Use it when the user asks for a video, teaser, clip, trailer or walkthrough of something; write the scenes yourself from what they gave you (a release, notes, screenshots, the chat). A 40 s teaser is about 6–8 scenes: a title, statements or features, an outro. Returns the video's id; the user sees a card in the chat. Change it later with addon_motion_update, never by making a new one.",
+        "params": {
+          "kind": {
+            "description": "teaser (short, punchy), whats-new (what changed in a release) or walkthrough (how to do something, with captures)",
+            "enum": ["teaser", "whats-new", "walkthrough"]
+          },
+          "title": {
+            "description": "The video's title"
+          },
+          "brief": {
+            "description": "What the video is for and who watches it, in a sentence or two (kept with it; Write with Jig starts from it)",
+            "optional": true
+          },
+          "scenes": {
+            "type": "array",
+            "description": "The scenes in order. Each: { id? (only to change an existing scene; keep the ids addon_motion_list shows), type: title | statement | feature | bullets | capture | outro, title, text? (one or two short sentences), bullets? (up to 6 short lines, for a bullets scene), voice? (what the voice says over the scene, also its captions; only when the user wants a voice), duration? (seconds; else timed by reading and voice), media? (path of a screenshot or clip, relative to the chat's folder, for feature and capture scenes) }. A scene shows few words: say it in the voice, not on screen.",
+            "optional": true
+          },
+          "language": {
+            "description": "The language of the words, BCP 47 (en, es, sv…); default en",
+            "optional": true
+          },
+          "style": {
+            "description": "A style id from addon_motion_list (the project's product kit is `kit` when it has one); default the user's",
+            "optional": true
+          },
+          "ownStyle": {
+            "type": "object",
+            "description": "A look of your own instead of `style`: { name, colors: { background, surface?, text, muted?, accent }, fonts?: { headline, body }, radius? }, colours as #hex",
+            "optional": true
+          },
+          "settings": {
+            "type": "object",
+            "description": "Video settings to change from the defaults, e.g. { aspect: \"9:16\" } for a vertical clip, { voice: \"af_heart\" }, { captions: { on: false } }, { motion: \"calm\" | \"energetic\" }",
+            "optional": true
+          }
+        },
+        "alwaysLoad": true,
+        "run": "toolCreate"
+      },
+      {
+        "id": "update",
+        "description": "Change a Motion video: its scenes (pass the whole list in the new order; scenes keep their media, marks and spoken voice by id unless you change them), title, brief, kind, language, style or settings. Read it first with addon_motion_list and its id.",
+        "params": {
+          "id": {
+            "description": "The video's id (v_…)"
+          },
+          "title": {
+            "description": "A new title",
+            "optional": true
+          },
+          "brief": {
+            "description": "A new brief (empty removes it)",
+            "optional": true
+          },
+          "kind": {
+            "description": "teaser, whats-new or walkthrough",
+            "optional": true,
+            "enum": ["teaser", "whats-new", "walkthrough"]
+          },
+          "scenes": {
+            "type": "array",
+            "description": "The scenes in order. Each: { id? (only to change an existing scene; keep the ids addon_motion_list shows), type: title | statement | feature | bullets | capture | outro, title, text? (one or two short sentences), bullets? (up to 6 short lines, for a bullets scene), voice? (what the voice says over the scene, also its captions; only when the user wants a voice), duration? (seconds; else timed by reading and voice), media? (path of a screenshot or clip, relative to the chat's folder, for feature and capture scenes) }. A scene shows few words: say it in the voice, not on screen.",
+            "optional": true
+          },
+          "language": {
+            "description": "The language of the words, BCP 47",
+            "optional": true
+          },
+          "style": {
+            "description": "A style id from addon_motion_list",
+            "optional": true
+          },
+          "ownStyle": {
+            "type": "object",
+            "description": "A look of your own: { name, colors: { background, surface?, text, muted?, accent }, fonts?, radius? }",
+            "optional": true
+          },
+          "settings": {
+            "type": "object",
+            "description": "Settings to change, e.g. { aspect: \"1:1\" }",
+            "optional": true
+          }
+        },
+        "run": "toolUpdate"
+      },
+      {
+        "id": "render",
+        "description": "Render a Motion video to MP4 (and a poster) on the user's computer: no AI, no cost, a minute or two. Only when the user wants the file; the card in the chat shows progress.",
+        "params": {
+          "id": {
+            "description": "The video's id (v_…)"
+          }
+        },
+        "run": "toolRender"
+      },
+      {
+        "id": "list",
+        "description": "The chat's project's Motion videos (ids, kinds, lengths, whether rendered) and the styles a video can take; with `id`, that video's brief, settings and storyboard, to change it with addon_motion_update.",
+        "params": {
+          "id": {
+            "description": "A video's id, for its storyboard",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolList"
+      }
+    ],
+    "toolRenderers": [
+      {
+        "tool": "mcp__jig__addon_motion_create",
+        "component": "VideoCard",
+        "promote": true
+      },
+      {
+        "tool": "mcp__jig__addon_motion_update",
+        "component": "VideoCard",
+        "promote": true
+      },
+      {
+        "tool": "mcp__jig__addon_motion_render",
+        "component": "VideoCard",
+        "promote": true
+      }
+    ],
+    "menus": [
+      {
+        "slot": "context.message",
+        "id": "video-from-message",
+        "title": "Make a video from this",
+        "icon": "clapperboard",
+        "run": "videoFromMessage"
       }
     ]
   }

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { chmod, copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
-import { basename, extname, join } from "node:path";
+import { basename, extname, isAbsolute, join, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 import type { AddonCaptureStep, AddonHostApi } from "@jig/sdk";
 import { mixArgs, musicFile } from "./lib/audio";
@@ -31,7 +31,15 @@ import {
   validate,
   voicePath,
 } from "./lib/storyboard";
+import {
+  finishStyle,
+  fontStack,
+  styleFromDesignMd,
+  styleFromTheme,
+  styleFromTokens,
+} from "./lib/styleSources";
 import { checkTemplate, fromTemplate, type Template } from "./lib/templates";
+import { scenesFromTool, type ToolScene, toolKind, videoLine } from "./lib/tools";
 
 /**
  * Motion (D-453, D-454, D-463): videos made from HTML. Each video is a folder in Motion's own data,
@@ -57,6 +65,8 @@ export interface VideoMeta {
   title: string;
   kind: VideoKind;
   template?: string;
+  /** What the video is for, in the user's or the chat's words (M3): Write with Jig starts from it. */
+  brief?: string;
   createdAt: string;
   updatedAt: string;
   renders: RenderInfo[];
@@ -151,25 +161,130 @@ const serial = <T>(work: () => Promise<T>): Promise<T> => {
 
 // ── styles and templates ─────────────────────────────────────────────────────
 
-export async function styles(
-  _args: unknown,
-  api: AddonHostApi,
-): Promise<Array<MotionStyle & { id: string }>> {
-  const dir = join(api.addon.dir, "styles");
-  const out: Array<MotionStyle & { id: string }> = [];
-  for (const file of (await readdir(dir).catch(() => [])).sort()) {
-    if (!file.endsWith(".json")) continue;
-    const style = await readJson<MotionStyle>(join(dir, file));
-    if (style) out.push({ ...style, id: basename(file, ".json") });
+export type StyleSource = "motion" | "own" | "kit" | "design" | "theme";
+export type StyleEntry = MotionStyle & { id: string; source: StyleSource };
+
+const THEMES_DIR = ["skills", "theme-factory", "skills", "theme-factory", "themes"];
+
+/** The active project's product kit tokens (`<repo>/.jig/factory/kit/tokens.json`), if it has one. */
+async function kitStyle(api: AddonHostApi, project: string | undefined): Promise<StyleEntry | undefined> {
+  if (!project) return undefined;
+  const p = (
+    await Promise.resolve()
+      .then(() => api.projects())
+      .catch(() => [])
+  ).find((x) => x.id === project);
+  const repo = p?.focusRepo ?? p?.path;
+  if (!repo) return undefined;
+  const tokens = await readJson<unknown>(join(repo, ".jig", "factory", "kit", "tokens.json"));
+  return tokens
+    ? { ...styleFromTokens(tokens, "kit", `${p?.name ?? "Product"} kit`), source: "kit" }
+    : undefined;
+}
+
+/**
+ * `DESIGN.md` references (D-444) from Settings → Jig factory, through the factory's `designSources`
+ * export: local files and folders only (a folder's DESIGN.md files, two levels down); repository
+ * addresses are for chats to read (D-465).
+ */
+async function designStyles(api: AddonHostApi): Promise<StyleEntry[]> {
+  const sources = await Promise.resolve()
+    .then(() => api.addons.call<string[]>("factory", "designSources"))
+    .catch(() => [] as string[]);
+  const files: string[] = [];
+  const walk = async (dir: string, depth: number) => {
+    for (const e of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+      if (files.length >= 60) return;
+      if (e.isFile() && /^design\.md$/i.test(e.name)) files.push(join(dir, e.name));
+      else if (e.isDirectory() && depth > 0 && !e.name.startsWith(".") && e.name !== "node_modules")
+        await walk(join(dir, e.name), depth - 1);
+    }
+  };
+  for (const src of Array.isArray(sources) ? sources : []) {
+    if (typeof src !== "string" || !src.trim() || /^[a-z]+:\/\//i.test(src) || /^github\.com\//i.test(src))
+      continue;
+    const st = await stat(src).catch(() => undefined);
+    if (st?.isFile()) files.push(src);
+    else if (st?.isDirectory()) await walk(src, 2);
+  }
+  const out: StyleEntry[] = [];
+  for (const file of files) {
+    const md = await readFile(file, "utf8").catch(() => "");
+    const folder = basename(join(file, ".."));
+    const id = `design-${slug(folder)}`;
+    if (md && !out.some((x) => x.id === id))
+      out.push({ ...styleFromDesignMd(md, id, folder), source: "design" });
   }
   return out;
 }
 
-async function style(api: AddonHostApi, id: string): Promise<MotionStyle> {
-  const list = await styles(undefined, api);
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 30) || "x";
+
+/**
+ * Every look a video can take (M3, D-465): Motion's own, styles saved from a chat (`own-…`), the
+ * project's product kit (`kit`), DESIGN.md references (`design-…`) and theme-factory themes
+ * (`theme-…`, from Jig's bundled skills).
+ */
+export async function styles(
+  args: { projectId?: string } | undefined,
+  api: AddonHostApi,
+): Promise<StyleEntry[]> {
+  const out: StyleEntry[] = [];
+  const readDir = async (dir: string, source: StyleSource) => {
+    for (const file of (await readdir(dir).catch(() => [])).sort()) {
+      if (!file.endsWith(".json")) continue;
+      const s = await readJson<MotionStyle>(join(dir, file));
+      if (s?.colors) out.push({ ...s, id: basename(file, ".json"), source });
+    }
+  };
+  await readDir(join(api.addon.dir, "styles"), "motion");
+  const kit = await kitStyle(api, args?.projectId);
+  if (kit) out.push(kit);
+  await readDir(join(api.addon.dataDir, "styles"), "own");
+  out.push(...(await designStyles(api)));
+  const themes = join(api.addon.dir, "..", "..", ...THEMES_DIR);
+  for (const file of (await readdir(themes).catch(() => [])).sort()) {
+    if (!file.endsWith(".md")) continue;
+    const md = await readFile(join(themes, file), "utf8").catch(() => "");
+    if (md) out.push({ ...styleFromTheme(md, `theme-${basename(file, ".md")}`), source: "theme" });
+  }
+  return out;
+}
+
+async function style(api: AddonHostApi, id: string, project?: string): Promise<MotionStyle> {
+  const list = await styles({ projectId: project }, api);
   const found = list.find((s) => s.id === id) ?? list.find((s) => s.id === "neutral") ?? list[0];
   if (!found) throw new Error("Motion's styles are missing");
   return found;
+}
+
+/** Keeps a look a chat described (`create`/`update`'s `style` object) as `own-<hash>`. */
+async function saveOwnStyle(api: AddonHostApi, input: Record<string, unknown>): Promise<string> {
+  const colors = (input.colors ?? {}) as Record<string, unknown>;
+  const swatches = Object.entries(colors)
+    .filter((e): e is [string, string] => typeof e[1] === "string")
+    .map(([label, hex]) => ({ label, hex }));
+  const fonts = (input.fonts ?? {}) as Record<string, unknown>;
+  const name = typeof input.name === "string" ? input.name : "Own style";
+  const radius = Number(input.radius);
+  const made = finishStyle("own", name, swatches, {
+    fonts: {
+      headline: fontStack(typeof fonts.headline === "string" ? fonts.headline : undefined),
+      body: fontStack(typeof fonts.body === "string" ? fonts.body : undefined),
+    },
+    ...(Number.isFinite(radius) ? { radius: Math.max(0, Math.min(60, radius)) } : {}),
+  });
+  const hash = createHash("sha256").update(JSON.stringify(made)).digest("hex").slice(0, 8);
+  const id = `own-${hash}`;
+  const dir = join(api.addon.dataDir, "styles");
+  await mkdir(dir, { recursive: true });
+  await writeJson(join(dir, `${id}.json`), { ...made, id });
+  return id;
 }
 
 export async function templates(_args: unknown, api: AddonHostApi): Promise<Template[]> {
@@ -257,6 +372,7 @@ export interface CreateArgs {
   storyboard?: Storyboard;
   settings?: Partial<VideoSettings>;
   title?: string;
+  brief?: string;
 }
 
 export async function create(args: CreateArgs, api: AddonHostApi): Promise<VideoDetail> {
@@ -287,6 +403,7 @@ export async function create(args: CreateArgs, api: AddonHostApi): Promise<Video
     title: board.title,
     kind: board.kind,
     ...(template ? { template } : {}),
+    ...(args.brief?.trim() ? { brief: args.brief.trim().slice(0, 4000) } : {}),
     createdAt: now,
     updatedAt: now,
     renders: [],
@@ -308,7 +425,13 @@ async function defaults(api: AddonHostApi): Promise<Partial<VideoSettings>> {
 }
 
 export async function update(
-  args: { projectId: string; id: string; storyboard?: Storyboard; settings?: Partial<VideoSettings> },
+  args: {
+    projectId: string;
+    id: string;
+    storyboard?: Storyboard;
+    settings?: Partial<VideoSettings>;
+    brief?: string;
+  },
   api: AddonHostApi,
 ): Promise<VideoDetail> {
   return serial(async () => {
@@ -339,6 +462,10 @@ export async function update(
     const meta = (await readJson<VideoMeta>(join(dir, "meta.json"))) as VideoMeta;
     meta.updatedAt = new Date().toISOString();
     if (args.storyboard) meta.title = args.storyboard.title;
+    if (typeof args.brief === "string") {
+      if (args.brief.trim()) meta.brief = args.brief.trim().slice(0, 4000);
+      else delete meta.brief;
+    }
     await writeJson(join(dir, "meta.json"), meta);
     api.emit("changed", { projectId: args.projectId, id: args.id });
     return readVideo(api, args.projectId, args.id);
@@ -406,7 +533,7 @@ export async function preview(args: { projectId: string; id: string }, api: Addo
   const html = compose({
     board: video.storyboard,
     settings: video.settings,
-    style: await style(api, video.settings.style),
+    style: await style(api, video.settings.style, video.projectId),
     preview: true,
     font: await font(api),
   });
@@ -552,7 +679,11 @@ function captureSize(s: VideoSettings): { width: number; height: number } {
 
 /** The names in the project's `.jig/factory/kit/real-names.txt`, if it has one. */
 async function realNames(api: AddonHostApi, project: string): Promise<string[]> {
-  const p = (await api.projects().catch(() => [])).find((x) => x.id === project);
+  const p = (
+    await Promise.resolve()
+      .then(() => api.projects())
+      .catch(() => [])
+  ).find((x) => x.id === project);
   if (!p) return [];
   const text = await readFile(join(p.path, ".jig", "factory", "kit", "real-names.txt"), "utf8").catch(
     () => "",
@@ -987,7 +1118,7 @@ async function renderOne(api: AddonHostApi, project: string, id: string): Promis
   const html = compose({
     board: video.storyboard,
     settings: video.settings,
-    style: await style(api, video.settings.style),
+    style: await style(api, video.settings.style, video.projectId),
     font: await font(api),
   });
   await writeFile(join(video.dir, "index.html"), html, "utf8");
@@ -1098,4 +1229,243 @@ export async function renderPath(
   const video = await get(args, api);
   const r = args.n ? video.renders.find((x) => x.n === args.n) : video.renders.at(-1);
   return r ? join(video.dir, "renders", String(r.n), "video.mp4") : undefined;
+}
+
+// ── chat tools (M3, D-465) ───────────────────────────────────────────────────
+
+interface ToolChat {
+  chat?: { projectId?: string; cwd?: string };
+}
+
+interface ToolVideoArgs extends ToolChat {
+  kind?: string;
+  title?: string;
+  brief?: string;
+  language?: string;
+  scenes?: ToolScene[];
+  template?: string;
+  style?: string;
+  ownStyle?: Record<string, unknown>;
+  settings?: Partial<VideoSettings>;
+}
+
+const SCENE_HELP =
+  "Each scene: { id? (keep it to change that scene), type: title | statement | feature | bullets | capture | outro, title, text?, bullets? (≤ 6), voice? (what the voice says, also the captions), duration? (seconds), media? (an image or clip file for feature and capture scenes) }";
+
+function toolProject(args: ToolChat): string {
+  const id = args.chat?.projectId;
+  if (!id)
+    throw new Error("This chat has no project: Motion keeps videos per project. Open the chat in a project.");
+  return projectId(id);
+}
+
+/** The style a tool named or described: an id from `addon_motion_list`'s styles, or `{ name, colors, fonts, radius }`. */
+async function toolStyle(
+  api: AddonHostApi,
+  project: string,
+  input: string | Record<string, unknown> | undefined,
+): Promise<string | undefined> {
+  if (input === undefined || input === "") return undefined;
+  if (typeof input === "object" && input) return saveOwnStyle(api, input);
+  const all = await styles({ projectId: project }, api);
+  if (!all.some((s) => s.id === input))
+    throw new Error(`No style "${String(input)}". Styles: ${all.map((s) => s.id).join(", ")}`);
+  return input;
+}
+
+/** Copies each scene's `media` file into the video and points the scene at it. */
+async function toolMedia(
+  api: AddonHostApi,
+  project: string,
+  id: string,
+  input: ToolScene[],
+  scenes: Storyboard["scenes"],
+  cwd: string | undefined,
+): Promise<Storyboard["scenes"]> {
+  const out = [...scenes];
+  for (let i = 0; i < input.length; i++) {
+    const file = input[i]?.media;
+    const scene = out[i];
+    if (!file || !scene) continue;
+    const path = isAbsolute(file) ? file : resolve(cwd ?? "", file);
+    if (!(await stat(path).catch(() => undefined))?.isFile())
+      throw new Error(`Scene ${i + 1}: no file ${file}`);
+    const rel = await addMedia({ projectId: project, id, path }, api);
+    const ext = extname(rel).toLowerCase();
+    out[i] = {
+      ...scene,
+      media: { path: rel, kind: [".mp4", ".webm", ".mov"].includes(ext) ? "video" : "image" },
+    };
+  }
+  return out;
+}
+
+function toolResult(v: VideoDetail, message: string): string {
+  return JSON.stringify({
+    video: v.id,
+    projectId: v.projectId,
+    title: v.title,
+    kind: v.kind,
+    seconds: Math.round(v.seconds),
+    scenes: v.storyboard.scenes.map((s) => s.id),
+    status: v.status,
+    message,
+  });
+}
+
+/** `addon_motion_create`: a new video from a chat's scenes, or from a kind's template. */
+export async function toolCreate(args: ToolVideoArgs, api: AddonHostApi): Promise<string> {
+  const project = toolProject(args);
+  const kind = toolKind(args.kind) ?? "teaser";
+  const style = await toolStyle(api, project, args.ownStyle ?? args.style);
+  const scenes = args.scenes ? scenesFromTool(args.scenes) : undefined;
+  const board: Storyboard | undefined = scenes
+    ? {
+        version: 1,
+        kind,
+        title: args.title?.trim().slice(0, 120) || "Untitled video",
+        language: /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(args.language ?? "")
+          ? (args.language as string)
+          : "en",
+        scenes: scenes.map(({ media: _m, ...s }) => s),
+      }
+    : undefined;
+  let video = await create(
+    {
+      projectId: project,
+      kind,
+      ...(args.template ? { template: args.template } : {}),
+      ...(board ? { storyboard: board } : {}),
+      ...(args.title ? { title: args.title } : {}),
+      ...(args.brief ? { brief: args.brief } : {}),
+      settings: { ...(args.settings ?? {}), ...(style ? { style } : {}) },
+    },
+    api,
+  );
+  if (board && args.scenes?.some((s) => s.media)) {
+    try {
+      const withMedia = await toolMedia(
+        api,
+        project,
+        video.id,
+        args.scenes,
+        video.storyboard.scenes,
+        args.chat?.cwd,
+      );
+      video = await update(
+        { projectId: project, id: video.id, storyboard: { ...video.storyboard, scenes: withMedia } },
+        api,
+      );
+    } catch (e) {
+      await remove({ projectId: project, id: video.id }, api);
+      throw e;
+    }
+  }
+  return toolResult(
+    video,
+    `Made the video "${video.title}" (${Math.round(video.seconds)} s, draft) in Motion. The user sees it in the card in this chat and opens it to preview; render it with addon_motion_render when they want the MP4.`,
+  );
+}
+
+/** `addon_motion_update`: new scenes (merged by id), title, brief, settings or style. */
+export async function toolUpdate(args: ToolVideoArgs & { id: string }, api: AddonHostApi): Promise<string> {
+  const project = toolProject(args);
+  const current = await get({ projectId: project, id: args.id }, api);
+  const style = await toolStyle(api, project, args.ownStyle ?? args.style);
+  let storyboard: Storyboard | undefined;
+  if (args.scenes || args.title || args.language || args.kind) {
+    let scenes = args.scenes
+      ? scenesFromTool(args.scenes, current.storyboard.scenes)
+      : current.storyboard.scenes;
+    if (args.scenes) scenes = await toolMedia(api, project, current.id, args.scenes, scenes, args.chat?.cwd);
+    storyboard = {
+      ...current.storyboard,
+      ...(args.title?.trim() ? { title: args.title.trim().slice(0, 120) } : {}),
+      ...(toolKind(args.kind) ? { kind: toolKind(args.kind) as VideoKind } : {}),
+      ...(args.language && /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(args.language)
+        ? { language: args.language }
+        : {}),
+      scenes,
+    };
+  }
+  const settings =
+    args.settings || style ? { ...(args.settings ?? {}), ...(style ? { style } : {}) } : undefined;
+  const video = await update(
+    {
+      projectId: project,
+      id: current.id,
+      ...(storyboard ? { storyboard } : {}),
+      ...(settings ? { settings } : {}),
+      ...(typeof args.brief === "string" ? { brief: args.brief } : {}),
+    },
+    api,
+  );
+  return toolResult(video, `Updated "${video.title}" (${Math.round(video.seconds)} s).`);
+}
+
+/** `addon_motion_render`: queues the MP4 (Motion's own renderer on this computer, no AI). */
+export async function toolRender(args: ToolChat & { id: string }, api: AddonHostApi): Promise<string> {
+  const project = toolProject(args);
+  const result = await render({ projectId: project, id: args.id }, api);
+  const video = await get({ projectId: project, id: args.id }, api);
+  if ("needs" in result)
+    return toolResult(
+      video,
+      "Motion's renderer isn't installed yet: ask the user to open the video from the card and press Render, which offers the install. Nothing was rendered.",
+    );
+  return toolResult(
+    video,
+    `Rendering "${video.title}" on this computer (no AI, no cost); the card in this chat shows its progress and the MP4 when it's done.`,
+  );
+}
+
+/** `addon_motion_list`: the project's videos and styles; with `id`, one video's storyboard and settings. */
+export async function toolList(args: ToolChat & { id?: string }, api: AddonHostApi): Promise<string> {
+  const project = toolProject(args);
+  if (args.id) {
+    const v = await get({ projectId: project, id: args.id }, api);
+    const { music: _m, ...settings } = v.settings;
+    return [
+      videoLine(v),
+      v.brief ? `Brief: ${v.brief}` : "Brief: (none)",
+      `Settings: ${JSON.stringify(settings)}`,
+      `Storyboard (${SCENE_HELP}):`,
+      JSON.stringify(
+        {
+          title: v.storyboard.title,
+          kind: v.storyboard.kind,
+          language: v.storyboard.language,
+          scenes: v.storyboard.scenes.map(({ voiceFile: _f, voiceSeconds: _s, ...s }) => s),
+        },
+        null,
+        1,
+      ),
+    ].join("\n");
+  }
+  const videos = await list({ projectId: project }, api);
+  const all = await styles({ projectId: project }, api);
+  return [
+    videos.length
+      ? "Videos, newest first:"
+      : "No videos in this project yet. Make one with addon_motion_create.",
+    ...videos.map(videoLine),
+    "",
+    `Styles (id: name, source): ${all.map((s) => `${s.id}: ${s.name}, ${s.source}`).join("; ")}`,
+  ].join("\n");
+}
+
+/**
+ * Shared with other add-ons (D-215, D-458): Jig factory's teaser makes its video here. Takes the
+ * tool's shape with `projectId` (media as absolute paths) and returns the video; `render` and `get`
+ * are shared as they are.
+ */
+export async function createVideo(
+  args: Omit<ToolVideoArgs, "chat"> & { projectId: string },
+  api: AddonHostApi,
+): Promise<VideoDetail> {
+  const { projectId: project, ...rest } = args;
+  const made = JSON.parse(await toolCreate({ ...rest, chat: { projectId: project } }, api)) as {
+    video: string;
+  };
+  return get({ projectId: project, id: made.video }, api);
 }

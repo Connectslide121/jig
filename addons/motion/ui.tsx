@@ -32,6 +32,7 @@ import {
   Plus,
   Quote,
   Search,
+  Sparkles,
   Type,
   X,
 } from "lucide-react";
@@ -45,9 +46,16 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { MotionStatus, Take, VideoDetail, VideoStatus, VideoSummary } from "./host";
+import type {
+  MotionStatus,
+  StyleEntry,
+  StyleSource,
+  Take,
+  VideoDetail,
+  VideoStatus,
+  VideoSummary,
+} from "./host";
 import { musicFile } from "./lib/audio";
-import type { MotionStyle } from "./lib/compose";
 import { captureScene } from "./lib/marks";
 import { STEP_DO, STEP_HINT, type StepDo, type StepRow, stepNames, toSteps } from "./lib/steps";
 import {
@@ -105,6 +113,36 @@ const STATUS: Record<
   failed: { label: "Failed", tone: "danger" },
 };
 const RATIO: Record<string, string> = { "16:9": "16 / 9", "1:1": "1 / 1", "9:16": "9 / 16", "4:5": "4 / 5" };
+
+const STYLE_GROUP: Array<[StyleSource, string]> = [
+  ["motion", "Motion"],
+  ["kit", "This project's product kit"],
+  ["own", "Made in chats"],
+  ["design", "Design references"],
+  ["theme", "Themes"],
+];
+
+/** A style picker's options, grouped by where the style comes from (M3, D-465). */
+function StyleOptions({ list, current }: { list?: StyleEntry[]; current: string }) {
+  if (!list) return <option value={current}>{current}</option>;
+  return (
+    <>
+      {!list.some((x) => x.id === current) && <option value={current}>{current} (not found)</option>}
+      {STYLE_GROUP.map(([source, label]) => {
+        const items = list.filter((x) => x.source === source);
+        return items.length ? (
+          <optgroup key={source} label={label}>
+            {items.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name ?? x.id}
+              </option>
+            ))}
+          </optgroup>
+        ) : null;
+      })}
+    </>
+  );
+}
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -183,9 +221,11 @@ function NewVideoDialog({ ctx }: { ctx: AddonUiContext }) {
   const open = useNewOpen();
   const project = useActiveProject();
   const { data: list } = useHostCall<Template[]>("templates", undefined, { skip: !open });
-  const { data: styleList } = useHostCall<Array<MotionStyle & { id: string }>>("styles", undefined, {
-    skip: !open,
-  });
+  const { data: styleList } = useHostCall<StyleEntry[]>(
+    "styles",
+    { projectId: project?.id },
+    { skip: !open },
+  );
   const [template, setTemplate] = useState("teaser");
   const [title, setTitle] = useState("");
   const [aspect, setAspect] = useState<VideoSettings["aspect"]>("16:9");
@@ -272,11 +312,7 @@ function NewVideoDialog({ ctx }: { ctx: AddonUiContext }) {
         </Select>
         <span className="text-muted">Style</span>
         <Select value={style} onChange={(e) => setStyle(e.target.value)}>
-          {(styleList ?? [{ id: "neutral", name: "Neutral" } as MotionStyle & { id: string }]).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name ?? s.id}
-            </option>
-          ))}
+          <StyleOptions list={styleList} current={style} />
         </Select>
       </div>
       <p className="mt-3 h-4 text-xs text-danger">{error ?? (project ? "" : "Open a project first.")}</p>
@@ -323,6 +359,7 @@ export function MotionButton({ ctx }: { ctx: AddonUiContext }) {
         <Clapperboard className="size-4" />
       </button>
       <NewVideoDialog ctx={ctx} />
+      <FromMessageDialog ctx={ctx} />
     </>
   );
 }
@@ -611,8 +648,10 @@ function Header({ ctx, video, onRender }: { ctx: AddonUiContext; video: VideoDet
   const busy = video.status === "rendering" || video.status === "queued";
   const projectId = video.projectId;
   const latest = video.renders.at(-1);
+  const [writing, setWriting] = useState(false);
   return (
-    <div className="flex flex-col">
+    <div className="@container flex flex-col">
+      <WriteDialog ctx={ctx} video={video} open={writing} onClose={() => setWriting(false)} />
       <div className="flex h-11 items-center gap-2 px-3">
         <Clapperboard className="size-4 shrink-0 text-muted" />
         <div className="min-w-0 flex-1 truncate text-sm">
@@ -623,6 +662,15 @@ function Header({ ctx, video, onRender }: { ctx: AddonUiContext; video: VideoDet
             <span className="tabular-nums">{clock(video.seconds)}</span>
           </span>
         </div>
+        <Button
+          variant="ghost"
+          icon={Sparkles}
+          className="@max-md:hidden"
+          onClick={() => setWriting(true)}
+          data-testid="motion-write"
+        >
+          Write with Jig
+        </Button>
         <Button
           variant="primary"
           icon={Clapperboard}
@@ -670,6 +718,8 @@ function Header({ ctx, video, onRender }: { ctx: AddonUiContext; video: VideoDet
                       { separator: true as const },
                     ]
                   : []),
+                { label: "Write with Jig…", icon: "sparkles", onSelect: () => setWriting(true) },
+                { separator: true as const },
                 {
                   label: "Delete video…",
                   icon: "trash-2",
@@ -690,6 +740,199 @@ function Header({ ctx, video, onRender }: { ctx: AddonUiContext; video: VideoDet
         />
       </div>
     </div>
+  );
+}
+
+/** The prompt a chat gets to write or change a video (M3): the request, then how to reach the video. */
+function writePrompt(video: VideoDetail, request: string): string {
+  return [
+    request.trim(),
+    "",
+    `This is the Motion video ${video.id}, "${video.title}" (${KIND_LABEL[video.kind].toLowerCase()}, ${video.storyboard.scenes.length} scenes, ${clock(video.seconds)}, language ${video.storyboard.language}). Read it with addon_motion_list (id ${video.id}), then write its scenes with addon_motion_update: few words on screen, the rest in the voice. Don't render it unless I ask.`,
+  ].join("\n");
+}
+
+/**
+ * Write with Jig (M3): what to write or change, starting from the video's brief; it is kept as the
+ * brief and sent to a new chat on the user's provider, which changes the video with Motion's tools.
+ */
+function WriteDialog({
+  ctx,
+  video,
+  open,
+  onClose,
+}: {
+  ctx: AddonUiContext;
+  video: VideoDetail;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  useEffect(() => {
+    if (open) {
+      setText(video.brief ?? "");
+      setError(undefined);
+    }
+  }, [open, video.brief]);
+  const send = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    try {
+      if (text.trim() !== (video.brief ?? ""))
+        await ctx.host.call("update", { projectId: video.projectId, id: video.id, brief: text });
+      await ctx.sendToChat(writePrompt(video, text), { send: true });
+      onClose();
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Write with Jig"
+      width="md"
+      testId="motion-write-dialog"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            icon={Sparkles}
+            busy={busy}
+            disabled={!text.trim()}
+            onClick={send}
+            data-testid="motion-write-send"
+          >
+            Write in a new chat
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-2 text-sm text-muted">
+        What the video is for and what to change. Jig writes the scenes in a new chat; you keep editing here.
+      </p>
+      <Textarea
+        rows={6}
+        value={text}
+        placeholder="A 40 s teaser of the new checkout for customers: one step, saved cards, out now."
+        onChange={(e) => setText(e.target.value)}
+        data-testid="motion-write-text"
+      />
+      <p className="mt-2 h-4 text-xs text-danger">{error ?? ""}</p>
+    </Dialog>
+  );
+}
+
+/** "Make a video from this" on a chat reply (M3): a modal for the kind and length, then that chat writes it. */
+let fromMessageTarget: { sessionId: string; text: string } | undefined;
+const fromMessageListeners = new Set<() => void>();
+function setFromMessage(target: typeof fromMessageTarget) {
+  fromMessageTarget = target;
+  for (const l of fromMessageListeners) l();
+}
+export function videoFromMessage(_ctx: AddonUiContext, target: { sessionId?: string; text?: string }) {
+  if (target.sessionId) setFromMessage({ sessionId: target.sessionId, text: target.text ?? "" });
+}
+
+const LENGTHS = [20, 40, 60, 90] as const;
+
+/** The request a chat gets for a video of one of its replies. */
+export function fromMessagePrompt(text: string, kind: VideoKind, seconds: number, notes: string): string {
+  const quote = text.trim().replace(/\s+/g, " ");
+  const start = quote.length > 160 ? `${quote.slice(0, 160)}…` : quote;
+  return [
+    `Make a ${KIND_LABEL[kind].toLowerCase()} video of about ${seconds} s with Motion (addon_motion_create, kind ${kind}) from your reply that starts "${start}". Few words on screen, the rest in the voice.`,
+    notes.trim(),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function FromMessageDialog({ ctx }: { ctx: AddonUiContext }) {
+  const target = useSyncExternalStore(
+    (l) => {
+      fromMessageListeners.add(l);
+      return () => fromMessageListeners.delete(l);
+    },
+    () => fromMessageTarget,
+  );
+  const [kind, setKind] = useState<VideoKind>("teaser");
+  const [seconds, setSeconds] = useState<number>(40);
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const close = () => {
+    setFromMessage(undefined);
+    setNotes("");
+  };
+  const send = async () => {
+    if (!target) return;
+    setBusy(true);
+    try {
+      await ctx.sendToChat(fromMessagePrompt(target.text, kind, seconds, notes), {
+        sessionId: target.sessionId,
+      });
+      close();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open={!!target}
+      onClose={close}
+      title="Make a video from this"
+      width="sm"
+      testId="motion-from-message"
+      footer={
+        <>
+          <Button variant="ghost" onClick={close}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            icon={Sparkles}
+            busy={busy}
+            onClick={send}
+            data-testid="motion-from-message-send"
+          >
+            Ask Jig in this chat
+          </Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 text-sm">
+        <span className="text-muted">Kind</span>
+        <Select value={kind} onChange={(e) => setKind(e.target.value as VideoKind)}>
+          {(Object.keys(KIND_LABEL) as VideoKind[]).map((k) => (
+            <option key={k} value={k}>
+              {KIND_LABEL[k]}
+            </option>
+          ))}
+        </Select>
+        <span className="text-muted">Length</span>
+        <Select value={String(seconds)} onChange={(e) => setSeconds(Number(e.target.value))}>
+          {LENGTHS.map((n) => (
+            <option key={n} value={n}>
+              About {n} s
+            </option>
+          ))}
+        </Select>
+      </div>
+      <Textarea
+        className="mt-3"
+        rows={3}
+        value={notes}
+        placeholder="Anything else: who watches it, the tone, a vertical clip…"
+        onChange={(e) => setNotes(e.target.value)}
+      />
+    </Dialog>
   );
 }
 
@@ -824,7 +1067,7 @@ function SettingsPanel({
   video: VideoDetail;
   onChange: (s: Partial<VideoSettings>) => void;
 }) {
-  const { data: styleList } = useHostCall<Array<MotionStyle & { id: string }>>("styles");
+  const { data: styleList } = useHostCall<StyleEntry[]>("styles", { projectId: video.projectId });
   const s = video.settings;
   const [endText, setEndText] = useState(s.brand.endText);
   useEffect(() => setEndText(s.brand.endText), [s.brand.endText]);
@@ -868,11 +1111,7 @@ function SettingsPanel({
           value={s.style}
           onChange={(e) => onChange({ style: e.target.value })}
         >
-          {(styleList ?? [{ id: s.style, name: s.style } as MotionStyle & { id: string }]).map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.name ?? x.id}
-            </option>
-          ))}
+          <StyleOptions list={styleList} current={s.style} />
         </Select>
       </Row>
       <Row label="Motion">
@@ -1832,5 +2071,112 @@ function InstallDialog({
         </p>
       </div>
     </Dialog>
+  );
+}
+
+// ── the card in a chat under Motion's tools (M3) ─────────────────────────────
+
+interface ToolVideo {
+  video: string;
+  projectId: string;
+  title: string;
+}
+
+function parseToolVideo(output: string | undefined): ToolVideo | undefined {
+  try {
+    const v = JSON.parse(output ?? "") as Partial<ToolVideo>;
+    return typeof v.video === "string" && typeof v.projectId === "string" ? (v as ToolVideo) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The video a `create`/`update`/`render` call made: its poster, title, length and state, Open and Render. */
+export function VideoCard({ ctx, item }: { ctx: AddonUiContext; item: { status: string; output?: string } }) {
+  const made = parseToolVideo(item.output);
+  const ready = item.status === "done" && !!made;
+  const {
+    data: video,
+    error,
+    reload,
+  } = useHostCall<VideoDetail>("get", { projectId: made?.projectId, id: made?.video }, { skip: !ready });
+  const p = useProgress(made?.video ?? "");
+  useProgressFeed();
+  useAddonEvent("changed", (e) => {
+    if (made && (e as { id?: string }).id === made.video) void reload();
+  });
+  if (!ready || !made) return null;
+  const busy = video?.status === "rendering" || video?.status === "queued";
+  const latest = video?.renders.at(-1);
+  const open = () => openVideo(ctx, made.projectId, { id: made.video, title: video?.title ?? made.title });
+  const meta = error
+    ? "This video was deleted"
+    : video
+      ? `${KIND_LABEL[video.kind]} · ${clock(video.seconds)} · ${video.settings.aspect} · ${video.storyboard.scenes.length} scenes`
+      : " ";
+  const renderNow = async () => {
+    if (!video) return;
+    const r = await ctx.host.call<{ queued: true } | { needs: MotionStatus }>("render", {
+      projectId: made.projectId,
+      id: made.video,
+    });
+    if ("needs" in r) open();
+  };
+  return (
+    <div
+      className="@container overflow-hidden rounded-lg border border-line bg-surface"
+      data-testid="motion-card"
+    >
+      <button
+        type="button"
+        className="flex w-full cursor-pointer justify-center border-b border-line bg-sunken p-2 disabled:cursor-default"
+        aria-label={`Open ${made.title} in Motion`}
+        disabled={!!error}
+        onClick={open}
+        data-testid="motion-card-poster"
+      >
+        <div className="w-full max-w-72">
+          <Poster path={video?.poster} aspect={video?.settings.aspect ?? "16:9"} version={video?.updatedAt} />
+        </div>
+      </button>
+      <div className="flex h-12 items-center gap-2 px-3">
+        <Clapperboard className="size-4 shrink-0 text-muted" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm font-medium text-fg" data-testid="motion-card-title">
+            {video?.title ?? made.title}
+          </span>
+          <span className="truncate text-2xs text-muted" data-testid="motion-card-meta">
+            {meta}
+          </span>
+        </div>
+        <span className="w-20 shrink-0 text-right @max-md:hidden">
+          {video && <StatusBadge video={video} />}
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={latest && !busy ? Play : Clapperboard}
+          busy={busy}
+          disabled={!video || busy}
+          className="w-24 justify-center"
+          data-testid="motion-card-render"
+          onClick={() =>
+            latest && !busy && video ? ctx.openPreview(renderFile(video, latest.n)) : void renderNow()
+          }
+        >
+          {busy ? `${Math.round((p ?? 0) * 100)}%` : latest ? "Play" : "Render"}
+        </Button>
+        <Button
+          size="sm"
+          variant="primary"
+          icon={MonitorPlay}
+          disabled={!!error}
+          data-testid="motion-card-open"
+          onClick={open}
+        >
+          Open
+        </Button>
+      </div>
+    </div>
   );
 }

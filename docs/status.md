@@ -1,3 +1,12 @@
+Motion from chats (2026-11-11, phase 28 session M3, D-465): ask a chat for a video ("make a 40 s
+teaser of this release"): Jig writes the storyboard with Motion's tools and a **video card** shows
+in the chat (poster, name, kind, length, scenes, Render or Play, Open); "change the video" edits it
+scene by scene and keeps your screenshots and voice. A reply's ⋯ → **Make a video from this** (kind,
+length, notes) asks that chat. In a video's tab, **Write with Jig** keeps what the video is for as
+its brief and asks a new chat to write it. Styles now also come from a product kit, a `DESIGN.md`
+in Jig factory's design sources and the bundled theme-factory themes. Gap: from a release (later,
+with Releases).
+
 Motion's voice, captions, music and captures (2026-11-11, phase 28 session M2, D-464): in a video's
 tab, Settings → **Sound**: pick a **Voice** (spoken on this computer, the voices of Read aloud) and
 a speed; a scene's **Voice script** is spoken by **Speak** or the next Render, and the scene lasts as

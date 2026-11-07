@@ -35,6 +35,15 @@ pinned HyperFrames with FFmpeg. Rendering uses no AI and costs nothing.
   real data (emails, phone numbers, names in the kit's `real-names.txt`), Keep waits until you say
   it's sample data. **Keep as a scene** adds a capture scene with marks where the steps acted: a zoom
   on clicks and typing, a highlight, an arrow on hovers (`lib/marks.ts`); a scene's sheet edits them.
+- **From chats (M3, D-465):** tools `addon_motion_create`, `addon_motion_update` (merges scenes by
+  id, keeping media, marks and spoken voice), `addon_motion_render` and the read-only
+  `addon_motion_list` (with an `id`, a storyboard as JSON); a video card draws them in the chat. A
+  reply's ⋯ → **Make a video from this** asks that chat; **Write with Jig** in a video keeps its
+  brief and asks a new chat.
+- **Styles** come from Motion's own, the product kit's `tokens.json`, styles a chat gave
+  (`own-<hash>`), `DESIGN.md` files in Jig factory's design sources (local paths) and the bundled
+  theme-factory themes (`lib/styleSources.ts`).
+- **Exports** for other add-ons: `createVideo`, `render`, `get`.
 - **Settings → Motion:** the FFmpeg folder (protected: it runs programs), the music folder, the
   format and the voice new videos start with.
 - **Templates** live in `templates/<id>/template.json` (scene types, inputs, default lengths,

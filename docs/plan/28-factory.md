@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** M3, Motion: AI and other add-ons — not started.
+- **Current session:** 5, The pack — not started.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -118,7 +118,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Interview tab, the Plan step, meetings and dictation for add-ons (D-460, D-461). Session 4: the
   Demo review tab, GD direction cards, design sources, Show in Pages (D-462). Session M1: the Motion
   add-on, storyboard to MP4 through a pinned HyperFrames (D-463). Session M2: voice, captions, music,
-  captures with marks (D-464).
+  captures with marks (D-464). Session M3: chat tools, Write with Jig, style sources,
+  exports (D-465).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -131,8 +132,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session M2 is done (see its notes; a real voice and a render with
-  sound on Windows are for Jon). Next: session M3, from its first item (the `motion_*` chat tools). Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session M3 is done (see its notes). Next: session 5, from its first
+  item (recipes). Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -375,18 +376,29 @@ zoom and a labelled highlight over a clip) and a real mix (h264 + aac). Not chec
 Kokoro voice and a render with sound on Windows (Jon). e2e: `motion.spec.ts` → "speak the scripts,
 then record a capture…" (a local `file://` page, the email warning, the zoom mark).
 
-### M3. Motion: AI and other add-ons — not started
+### M3. Motion: AI and other add-ons — done
 
-- [ ] Chat tools (engine-neutral): `motion_create`, `motion_update`, `motion_render`, `motion_list`
+- [x] Chat tools (engine-neutral): `motion_create`, `motion_update`, `motion_render`, `motion_list`
       (read-only); tool renderer with the video card; `jigContext` lines; fake-engine rows.
-- [ ] Write with Jig in the Video tab (a chat on the current provider, prompt from the video's
-      brief and sources), and "New video…" from a chat's ⋯ and from a release (later: Releases).
-- [ ] Styles from a product kit, a `DESIGN.md` reference (D-444) or a `theme-factory` theme.
-- [ ] Export `createVideo` / `render` (D-215) for Jig factory (D-458).
-- [ ] "What Jig can do" line, README line, screenshots, `docs/status.md`.
+- [x] Write with Jig in the Video tab (a chat on the current provider, prompt from the video's
+      brief and sources), and "New video…" from a chat's ⋯ ("Make a video from this"). From a
+      release: later, with the Releases add-on (D-465).
+- [x] Styles from a product kit, a `DESIGN.md` reference (D-444) or a `theme-factory` theme.
+- [x] Export `createVideo` / `render` (D-215) for Jig factory (D-458).
+- [x] "What Jig can do" line, README line, screenshots, `docs/status.md`.
 
 **Done when:** "make a 40 s teaser for this release" in a chat gives a video you only tweak, and
 Jig factory can call Motion.
+
+**Session M3 notes (2026-11-11).** Tools `addon_motion_create/update/render/list` (D-465): a chat
+writes scenes; update merges by scene id and keeps media, marks and spoken voice; `list` with an id
+gives a storyboard as JSON. The chat card (poster, name, "Teaser · 0:16 · 16:9 · 4 scenes", status,
+Render/Play, Open). Write with Jig (header button and ⋯) keeps the brief and asks a new chat; a
+reply's ⋯ → **Make a video from this** (kind, length, notes) asks that chat. Style sources:
+product kit tokens, own styles from a chat, `DESIGN.md` from the factory's local design sources
+(exported, since Motion can't read factory settings), `theme-factory` themes; one finishing step
+guarantees contrast. Exports `createVideo`, `render`, `get`. e2e: `motion.spec.ts` → "a chat makes
+and changes a video…". Not done: "from a release" (waits for Releases).
 
 ### 5. The pack — not started
 

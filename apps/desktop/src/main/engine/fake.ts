@@ -1100,7 +1100,7 @@ ${output.slice(0, 600)}`,
           }
         } else if (
           toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|close my phone room|my usage limits|any pipelines running|publish a page|update the page)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|close my phone room|my usage limits|any pipelines running|publish a page|update the page|make a teaser video|change the video|render the video)\b/.test(
             lower,
           )
         ) {
@@ -1170,6 +1170,51 @@ ${output.slice(0, 600)}`,
             for (let i = 0; runId && i < 5 && /still running/.test(result); i++)
               result = await call("addon_tests_wait", { id: runId, wait: 10 });
             await stream(`${msg}:text:0`, `The unit tests ran. ${result.split("\n")[0]}`, signal);
+          } else if (/make a teaser video|change the video|render the video/.test(lower)) {
+            // Motion's tools (M3, D-465): a teaser with a screenshot scene, a change by scene id, a render.
+            const listed = await call("addon_motion_list", {});
+            const id = /v_[a-f0-9]{8}/.exec(listed)?.[0];
+            if (/make a teaser video/.test(lower)) {
+              await writeFile(
+                join(options.cwd, "screen.png"),
+                Buffer.from(
+                  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+                  "base64",
+                ),
+              );
+              await call("addon_motion_create", {
+                kind: "teaser",
+                title: "Shop 2.0",
+                brief: "A 20 s teaser of Shop 2.0 for customers",
+                scenes: [
+                  { type: "title", title: "Shop 2.0", text: "Checkout in one step" },
+                  {
+                    type: "feature",
+                    title: "Pay in one tap",
+                    text: "Saved cards, no forms",
+                    media: "screen.png",
+                  },
+                  { type: "outro", title: "Out now", voice: "Try Shop 2.0 today." },
+                ],
+              });
+              await stream(`${msg}:text:0`, "Made the teaser.", signal);
+            } else if (/change the video/.test(lower) && id) {
+              await call("addon_motion_list", { id });
+              await call("addon_motion_update", {
+                id,
+                title: "Shop 2.0 is here",
+                scenes: [
+                  { id: "s1", title: "Shop 2.0 is here" },
+                  { id: "s2" },
+                  { type: "bullets", title: "Also new", bullets: ["Dark mode", "Faster search"] },
+                  { id: "s3" },
+                ],
+              });
+              await stream(`${msg}:text:0`, "Changed the video.", signal);
+            } else if (id) {
+              const r = await call("addon_motion_render", { id });
+              await stream(`${msg}:text:0`, /Rendering/.test(r) ? "Rendering the video." : r, signal);
+            } else await stream(`${msg}:text:0`, "No video yet.", signal);
           } else if (/publish a page|update the page/.test(lower)) {
             // Jig's own artifacts (D-405): a page with an image next to it, then a new version of it.
             const file = join(options.cwd, "sales.html");

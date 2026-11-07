@@ -8229,3 +8229,32 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   names itself ("Step 3 (Buy) failed: …") and removes the frames; `maxSeconds` (≤ 120) cuts it.
   At most two run at once. `texts` (visible text after load and each step) lets the caller scan
   for real data before keeping a capture.
+
+## D-465: Motion's chat tools and style sources
+
+- Status: accepted.
+- **Who:** Claude, on my own (Jon asked for the remaining sessions to be built overnight without
+  questions; motion.md planned the tools, Write with Jig, the style sources and the exports).
+- **Tools:** `addon_motion_create` (always loaded), `addon_motion_update`, `addon_motion_render` and
+  the read-only `addon_motion_list`. A chat writes a storyboard as scenes (`id`, `type`, `title`,
+  `text`, `bullets`, `media`, `voice`, `seconds`); update merges by scene `id`, so a scene the chat
+  doesn't send again is dropped, a scene it sends keeps its media, marks and spoken voice unless
+  they change (a changed script drops the spoken file), and new scenes get the next `s<n>`.
+  `list` with an `id` returns that video's brief, settings and storyboard as JSON, so a chat
+  changes a video it didn't make. Render without the renderer installed says so instead of
+  installing from a chat. One card (`toolRenderer`) draws create, update and render.
+- **Styles, in this order:** Motion's own, the product kit (`<repo>/.jig/factory/kit/tokens.json`,
+  DTCG), styles a chat gave as colours and fonts (`ownStyle`, kept as `own-<hash>` in Motion's data
+  folder so the same look is one style), `DESIGN.md` references from Jig factory's design sources,
+  and the `theme-factory` themes of the bundled skills. Every style is finished the same way: roles
+  by keyword, a foreground with contrast at least 4.5 against the background, fonts sanitised with
+  Inter as the fallback (`lib/styleSources.ts`). Motion can't read factory settings (`api.config()`
+  is an add-on's own, D-450), so the factory **exports `designSources`**; Motion reads only local
+  paths from it, never a URL. The skills folder sits beside the add-ons folder in a packaged Jig.
+- **Write with Jig** keeps the text as the video's **brief** and sends a prompt naming the video's
+  id and the update tool into a **new chat**, so the user keeps editing in the tab. **Make a video
+  from this** (a reply's ⋯) is a small modal (kind, length, notes) that sends into **that** chat:
+  `sendToChat(…, { send: false })` drops the text and `openChat` takes no draft, so a prefilled
+  composer isn't possible without core changes. "From a release" waits for the Releases add-on.
+- **Exports** (D-215): `createVideo` (a storyboard from a caller, as the tool takes it, plus
+  `projectId`), `render` and `get`, for Jig factory's teaser (D-458).

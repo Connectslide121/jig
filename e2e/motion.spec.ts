@@ -148,6 +148,69 @@ test("Motion: speak the scripts, then record a capture of a page and keep it as 
   await expect(sheet.getByTestId("motion-mark").getByLabel("Kind of mark")).toHaveValue("zoom");
 });
 
+test("Motion: a chat makes and changes a video with the tools, Write with Jig and Make a video from this", async ({
+  page,
+  jigHome,
+}) => {
+  await shop(page, jigHome);
+  await hostCall(page, "config.update", { chat: { view: "compact" } });
+  const visible = page.locator("[data-tab-id]:not(.hidden)");
+
+  // A chat writes a teaser (with a screenshot scene): the card stands in the chat.
+  await page.keyboard.press("Control+N");
+  await visible.getByTestId("composer-input").fill("make a teaser video of Shop 2.0");
+  await page.keyboard.press("Enter");
+  let chat = visible.getByTestId("chat");
+  await expect(chat).toContainText("Made the teaser.", { timeout: 20000 });
+  let card = chat.getByTestId("motion-card");
+  await expect(card.getByTestId("motion-card-title")).toHaveText("Shop 2.0");
+  await expect(card.getByTestId("motion-card-meta")).toContainText("3 scenes");
+  await expect(card.getByTestId("motion-card-render")).toHaveText("Render");
+
+  // Another chat changes it by scene id: the screenshot stays, a scene is added.
+  await page.keyboard.press("Control+N");
+  await visible.getByTestId("composer-input").fill("change the video's title");
+  await page.keyboard.press("Enter");
+  chat = visible.getByTestId("chat");
+  await expect(chat).toContainText("Changed the video.", { timeout: 20000 });
+  card = chat.getByTestId("motion-card");
+  await expect(card.getByTestId("motion-card-title")).toHaveText("Shop 2.0 is here");
+  await expect(card.getByTestId("motion-card-meta")).toContainText("4 scenes");
+  if (process.env.JIG_UI_SHOTS) await chat.screenshot({ path: join(SHOTS_DIR, "motion-card-chat.png") });
+
+  // Open → the video's tab; Write with Jig starts from the brief and sends it to a new chat.
+  await card.getByTestId("motion-card-open").click();
+  const tab = page.getByTestId("motion-video-tab");
+  await expect(tab.getByTestId("motion-scene")).toHaveCount(4, { timeout: 15000 });
+  await tab.getByTestId("motion-write").click();
+  const write = page.getByTestId("motion-write-dialog");
+  await expect(write.getByTestId("motion-write-text")).toHaveValue("A 20 s teaser of Shop 2.0 for customers");
+  await write.getByTestId("motion-write-text").fill("Make it calmer, for partners");
+  if (process.env.JIG_UI_SHOTS) await write.screenshot({ path: join(SHOTS_DIR, "motion-write-dialog.png") });
+  await write.getByTestId("motion-write-send").click();
+  await expect(write).toBeHidden();
+  await expect(visible.getByTestId("chat")).toContainText("Make it calmer, for partners", { timeout: 20000 });
+  await expect(visible.getByTestId("chat")).toContainText("addon_motion_update");
+
+  // A reply's ⋯ → Make a video from this: kind and length, then that chat is asked.
+  await page.keyboard.press("Control+N");
+  await visible.getByTestId("composer-input").fill("Gift cards for Shop");
+  await page.keyboard.press("Enter");
+  const reply = visible.getByTestId("assistant-message").last();
+  await expect(reply).toContainText("You said: Gift cards for Shop", { timeout: 20000 });
+  await reply.hover();
+  await reply.getByRole("button", { name: "Message options" }).click();
+  await page.getByRole("menuitem", { name: "Make a video from this" }).click();
+  const from = page.getByTestId("motion-from-message");
+  await from.getByRole("combobox").first().selectOption("whats-new");
+  if (process.env.JIG_UI_SHOTS) await from.screenshot({ path: join(SHOTS_DIR, "motion-from-message.png") });
+  await from.getByTestId("motion-from-message-send").click();
+  await expect(from).toBeHidden();
+  await expect(visible.getByTestId("chat")).toContainText("video of about 40 s with Motion", {
+    timeout: 20000,
+  });
+});
+
 test("Motion at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({
   page,
   app,

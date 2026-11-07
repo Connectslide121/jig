@@ -187,6 +187,8 @@ export function fileEditGuidance(claude: boolean, platform: NodeJS.Platform): st
   ].join(" ");
 }
 
+const MOTION_TOOL = "addon_motion_create";
+export const MOTION_GUIDANCE = `When the user asks for a video, teaser, clip or walkthrough, make it with ${MOTION_TOOL} (Jig's Motion): write the scenes yourself from what they gave you, few words on screen and the rest in the voice, and Jig shows a card they open to preview and tweak. Change it with addon_motion_update (read it with addon_motion_list and its id), never by making a new one; render the MP4 with addon_motion_render only when they want the file (it runs on their computer, no AI).`;
 const PAGES_TOOL = "addon_pages_publish";
 export const PAGES_GUIDANCE = `When the user wants to look at or keep something visual (a report, mockup, dashboard, release notes, comparison, diagram, a prototype of a screen), show it as a page: write ONE self-contained HTML file (inline CSS and JS, images next to it) and publish it with ${PAGES_TOOL}, instead of a temp file you open in a browser. Jig keeps it under Pages, shows a card in the chat with Open in Jig, and previews it with scripts off, no network and no access to their files, so make it read well without scripts and keep secrets out of it. To change a page you made, publish again with its id (list them with addon_pages_list): the same page gets a new version.`;
 
@@ -241,6 +243,7 @@ export function jigContext(
     ...(addonSummary() ? [`The user's Jig add-ons (switched on):\n${addonSummary()}`] : []),
     // Pages (D-405): Jig's own artifacts, the default way to show visual output, in Claude and ChatGPT chats.
     ...(addonTools.some((t) => t.name === PAGES_TOOL) ? [PAGES_GUIDANCE] : []),
+    ...(addonTools.some((t) => t.name === MOTION_TOOL) ? [MOTION_GUIDANCE] : []),
     "Recommend Jig's add-ons when they fit, in the chat, briefly: when the user asks you to do something step by step that they're likely to do again (check the code, write release notes, user stories, test cases, a release, a deploy), do it, then offer once in one sentence to save it as a workflow (addon_workflows_save) so next time it's one click or one message. When an installed add-on already does what they ask, say so and where to find it. When they keep doing something no add-on covers, offer to build one (jig_request_build). Don't repeat an offer they declined in this chat.",
     "Add-ons give you tools too (named addon_<add-on>_<tool>, e.g. addon_releases_changes for what changed since the last release): use them for what their descriptions say. jig_get_addon shows what an add-on is and the data it stores; jig_get_addon_data reads that data and jig_set_addon_data / jig_delete_addon_data change it (the user sees a card with Undo) — read first and keep the shape the add-on uses.",
     "When the user mentions work they do by hand, work outside Jig (portals, a VM, Postman, the browser's network tab), something that frustrates them or a chore, save it with jig_note_evidence (one short note, their words, no secrets); don't ask first and don't mention it beyond a few words — Jig shows a card they can remove. jig_read_profile tells you how they work; jig_update_profile adds what they ask Jig to remember.",

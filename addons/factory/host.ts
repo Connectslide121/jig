@@ -1565,3 +1565,9 @@ export async function toolRuns(args: ChatArgs & { project?: string }, api: Addon
     })
     .join("\n");
 }
+
+/** Shared with Motion (D-465): the `DESIGN.md` references from Settings → Jig factory (D-444). */
+export async function designSources(_args: unknown, api: AddonHostApi): Promise<string[]> {
+  const c = await api.config<{ designSources?: string[] }>().catch(() => undefined);
+  return (c?.designSources ?? []).filter((x): x is string => typeof x === "string" && !!x.trim());
+}
