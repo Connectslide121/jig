@@ -21,7 +21,7 @@ test("Skills library: topbar access, stable details, global switches and project
   };
   await openLibrary();
   const library = page.getByTestId("skills-library");
-  await expect(library.getByRole("switch")).toHaveCount(14);
+  await expect(library.getByRole("switch")).toHaveCount(15);
   // Factory's skills start off (D-443); the others start on.
   const factorySkills = [
     "web-artifacts",
