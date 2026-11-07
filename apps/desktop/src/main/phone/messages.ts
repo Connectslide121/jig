@@ -227,7 +227,8 @@ export type Tap =
   | { kind: "option"; key: string; index: number }
   | { kind: "chat"; sessionId: string }
   | { kind: "open"; sessionId: string }
-  | { kind: "queue"; action: "q" | "p" | "r"; projectId: string };
+  | { kind: "queue"; action: "q" | "p" | "r"; projectId: string }
+  | { kind: "addon"; key: string; index: number };
 
 export function parseTap(data: string): Tap | undefined {
   const permission = /^p:([\w-]+):([ad])$/.exec(data);
@@ -240,6 +241,8 @@ export function parseTap(data: string): Tap | undefined {
   if (open) return { kind: "open", sessionId: open[1]! };
   const queue = /^k:([qpr]):([\w-]+)$/.exec(data);
   if (queue) return { kind: "queue", action: queue[1] as "q" | "p" | "r", projectId: queue[2]! };
+  const addon = /^a:([\w-]+):(\d+)$/.exec(data);
+  if (addon) return { kind: "addon", key: addon[1]!, index: Number(addon[2]) };
   return undefined;
 }
 

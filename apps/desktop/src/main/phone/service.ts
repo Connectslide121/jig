@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { ChatItem, PermissionDecision, SessionMeta } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { isTeamsCredential, type PhoneChannelId, type PhoneState } from "../../shared/phone";
@@ -72,6 +73,8 @@ export interface SavedPhone {
   threads?: Record<string, { place: Place; parent: Place }>;
   /** The name each project's place was made or last renamed with: a renamed project renames it. */
   names?: Record<string, string>;
+  /** Add-ons' cards (D-468), newest last, at most `MAX_CARDS`. */
+  cards?: AddonCard[];
 }
 
 /** A chat open as a room: what was there when it opened, what it shows, your messages from the phone. */
@@ -111,6 +114,30 @@ export interface PhoneSettings {
   screenshots: boolean;
 }
 
+/** A button on an add-on's card (D-468): its own id; `reply` asks for your text first. */
+export interface AddonPhoneButton {
+  id: string;
+  label: string;
+  reply?: boolean;
+}
+
+/** What an add-on's host hears when you tap its card's button (`phone.action`). */
+export interface AddonPhoneAction {
+  messageId: string;
+  buttonId: string;
+  /** What you wrote after a `reply` button. */
+  text?: string;
+}
+
+/** An add-on's card on the phone, kept so its taps still work after a restart. */
+export interface AddonCard {
+  key: string;
+  addonId: string;
+  ref: MessageRef;
+  place?: Place;
+  buttons: AddonPhoneButton[];
+}
+
 export interface PhoneDeps {
   chats: {
     list(): Promise<SessionMeta[]>;
@@ -126,6 +153,10 @@ export interface PhoneDeps {
   };
   /** Telegram's Bot API with a token: the Telegram channel's transport. */
   api(token: string): TelegramApi;
+  /** Add-ons' cards (D-468): a tap or a reply goes to the add-on that sent the card. */
+  addons?: { action(addonId: string, action: AddonPhoneAction): Promise<void> };
+  /** A fresh card key (tests pass a counter); default: 8 random hex characters. */
+  cardKey?(): string;
   /** The other channels (Teams, D-370), from their credential; none: not in this version. */
   channel?(id: Exclude<PhoneChannelId, "telegram">, credential: string): PhoneChannel | undefined;
   /** A project's name and colour, for its topic. */
@@ -173,6 +204,21 @@ export interface PhoneDeps {
 const STALE_SECONDS = 10 * 60;
 const MAX_WRONG_CODES = 5;
 const MAX_REMEMBERED = 300;
+/** Add-ons' cards kept for their taps, and buttons on one card (D-468). */
+const MAX_CARDS = 100;
+const MAX_CARD_BUTTONS = 6;
+/** A reply button's "write your answer" waits this long for your text in that place. */
+const ASK_MS = 15 * 60_000;
+
+/** An add-on card's buttons, two to a row; their data is the card's key and the button's place. */
+function cardRows(key: string, buttons: AddonPhoneButton[]): OutMessage["buttons"] {
+  const rows: Array<Array<{ text: string; data: string }>> = [];
+  buttons.forEach((b, i) => {
+    if (i % 2 === 0) rows.push([]);
+    rows[rows.length - 1]!.push({ text: excerpt(b.label, 40), data: `a:${key}:${i}` });
+  });
+  return rows.length ? rows : undefined;
+}
 
 interface SentRequest {
   key: string;
@@ -240,6 +286,11 @@ export class PhoneService {
   private readonly sending = new Set<string>();
   private readonly answeredHere = new Set<string>();
   private nextKey = 0;
+  /** Add-ons' cards by key (D-468), and the "write your answer" prompts a reply button sent. */
+  private readonly cards = new Map<string, AddonCard>();
+  private readonly asks = new Map<MessageRef, { key: string; buttonId: string }>();
+  /** Per place: the reply button you tapped last; your next text there is its answer. */
+  private readonly pendingAsk = new Map<Place, { key: string; buttonId: string; at: number }>();
   private saving: Promise<void> = Promise.resolve();
 
   constructor(private readonly deps: PhoneDeps) {}
@@ -260,6 +311,10 @@ export class PhoneService {
     this.targets.clear();
     this.rooms.clear();
     this.areas.clear();
+    this.cards.clear();
+    this.asks.clear();
+    this.pendingAsk.clear();
+    for (const card of this.saved?.cards ?? []) this.cards.set(card.key, card);
     for (const [messageId, sessionId] of this.saved?.replies ?? []) this.replies.set(messageId, sessionId);
     for (const [thread, sessionId] of this.saved?.targets ?? []) this.targets.set(thread, sessionId);
     for (const [sessionId, { place, parent }] of Object.entries(this.saved?.threads ?? {})) {
@@ -636,6 +691,96 @@ export class PhoneService {
     return `Sent to the user's phone${photo ? " with the picture" : ""}.${note} Their reply, if any, arrives in this chat as their next message.`;
   }
 
+  /**
+   * An add-on's card (D-468, `api.phone.send`): its text masked and cut like a chat's, a picture, and
+   * its buttons, in its project's place (or Jig's). Sent whether or not you're away: the add-on
+   * decides what's worth a card. Its taps come back as `phone.action` to that add-on only.
+   */
+  async addonSend(
+    addonId: string,
+    input: { text: string; image?: Buffer; buttons?: AddonPhoneButton[]; projectId?: string },
+  ): Promise<{ messageId: string } | { error: "not_paired" | "off" | "failed" }> {
+    if (!this.saved?.owner) return { error: "not_paired" };
+    if (!this.connected()) return { error: "off" };
+    const key = this.deps.cardKey?.() ?? randomBytes(4).toString("hex");
+    const buttons = (input.buttons ?? []).slice(0, MAX_CARD_BUTTONS);
+    const place = this.topics ? await this.topicFor(input.projectId) : undefined;
+    const ref = await this.send(
+      { text: rich(input.text, 3000), buttons: cardRows(key, buttons) },
+      { thread: place },
+      input.image,
+    );
+    if (ref === undefined) return { error: "failed" };
+    this.cards.set(key, { key, addonId, ref, ...(place !== undefined ? { place } : {}), buttons });
+    while (this.cards.size > MAX_CARDS) this.cards.delete(this.cards.keys().next().value!);
+    this.persist();
+    return { messageId: key };
+  }
+
+  /** Changes an add-on's card (`api.phone.update`): new text, and its buttons or none ("Approved on the computer"). */
+  async addonUpdate(
+    addonId: string,
+    messageId: string,
+    input: { text: string; buttons?: AddonPhoneButton[] },
+  ): Promise<{ ok: true } | { error: "not_paired" | "unknown" | "failed" }> {
+    const card = this.cards.get(messageId);
+    if (!card || card.addonId !== addonId) return { error: "unknown" };
+    const to = this.address(card.place);
+    if (!to || !this.channel) return { error: "not_paired" };
+    const buttons = (input.buttons ?? []).slice(0, MAX_CARD_BUTTONS);
+    try {
+      await this.channel.edit(to, card.ref, {
+        text: rich(input.text, 3000),
+        buttons: cardRows(card.key, buttons),
+      });
+    } catch (error) {
+      if (!(error instanceof ChannelError && error.reason === "unchanged")) {
+        this.deps.log?.warn("Changing an add-on's card failed", error);
+        return { error: "failed" };
+      }
+    }
+    this.cards.set(card.key, { ...card, buttons });
+    this.persist();
+    return { ok: true };
+  }
+
+  /** A tap on an add-on's card: to the add-on, or first a prompt for your text (a `reply` button). */
+  private async addonTap(
+    key: string,
+    index: number,
+    here: Place | undefined,
+    answer: (t?: string) => unknown,
+  ) {
+    const card = this.cards.get(key);
+    const button = card?.buttons[index];
+    if (!card || !button) return void (await answer("This is no longer waiting."));
+    if (button.reply) {
+      await answer();
+      const ask = { key, buttonId: button.id };
+      this.pendingAsk.set(here ?? 0, { ...ask, at: this.deps.now?.() ?? Date.now() });
+      const prompt = await this.send(
+        { text: `✍️ <b>${escapeHtml(button.label)}</b>: write your answer as a reply to this message.` },
+        { thread: here },
+      );
+      if (prompt !== undefined) this.asks.set(prompt, ask);
+      return;
+    }
+    await answer("Done");
+    await this.toAddon(card, button.id);
+  }
+
+  private async toAddon(card: AddonCard, buttonId: string, text?: string): Promise<void> {
+    try {
+      await this.deps.addons?.action(card.addonId, {
+        messageId: card.key,
+        buttonId,
+        ...(text !== undefined ? { text } : {}),
+      });
+    } catch (error) {
+      this.deps.log?.warn("An add-on's phone action failed", error);
+    }
+  }
+
   private channelName(): string {
     return this.channel?.name ?? CHANNEL_NAMES[this.kind];
   }
@@ -888,6 +1033,7 @@ export class PhoneService {
           ...this.saved,
           replies: [...this.replies],
           targets: [...this.targets],
+          cards: [...this.cards.values()],
         };
         await this.deps.store.save(this.saved, kind);
       })
@@ -1082,6 +1228,17 @@ export class PhoneService {
     const command = /^\/(\w+)/.exec(text)?.[1]?.toLowerCase();
     if (command === "start" || command === "help")
       return void (await this.send({ text: this.help() }, { thread: here }));
+    const pending = this.pendingAsk.get(here ?? 0);
+    const fresh = pending && (this.deps.now?.() ?? Date.now()) - pending.at < ASK_MS ? pending : undefined;
+    const ask = command ? undefined : ((replyTo !== undefined ? this.asks.get(replyTo) : undefined) ?? fresh);
+    const asked = ask && this.cards.get(ask.key);
+    if (ask && asked) {
+      this.pendingAsk.delete(here ?? 0);
+      for (const [ref, a] of this.asks)
+        if (a.key === ask.key && a.buttonId === ask.buttonId) this.asks.delete(ref);
+      await this.toAddon(asked, ask.buttonId, text);
+      return void (await this.send({ text: "✓ Sent.", silent: true }, { thread: here }));
+    }
     const roomChat = this.roomOfThread(here);
     if (roomChat && command === "close") return this.closeRoom(roomChat);
     if (command === "close")
@@ -1573,6 +1730,7 @@ export class PhoneService {
     const parsed = tap.data ? parseTap(tap.data) : undefined;
     if (!owner || tap.from.id !== owner.chatId || !parsed) return void (await answer());
     const here = tap.place;
+    if (parsed.kind === "addon") return this.addonTap(parsed.key, parsed.index, here, answer);
     if (parsed.kind === "open") {
       await answer();
       return this.openRoom(parsed.sessionId, here);

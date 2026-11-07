@@ -732,7 +732,31 @@ export interface AddonHostApi {
       page?: "a4" | "slides";
     }): Promise<{ path: string; bytes: number }>;
   };
+  /**
+   * Cards on your phone (D-468; the `phone` permission), through the bot you paired in Settings →
+   * Phone (Telegram or Teams). `text` is Markdown, masked and cut like a chat's message; `image` an
+   * absolute PNG or JPEG path (at most 10 MB); `buttons` (at most 6) carry your own ids, and a
+   * `reply: true` button asks for text first. `projectId` puts it in that project's topic or channel.
+   * A tap comes back as the `phone.action` event (`contributes.events`), to this add-on only.
+   * Sent whether or not you're away: send only what needs the person.
+   */
+  phone: {
+    send(
+      input: AddonPhoneCard & { image?: string; projectId?: string },
+    ): Promise<{ messageId: string } | { error: "not_paired" | "off" | "failed" }>;
+    /** Changes a card it sent: new text, and its buttons (none when left out). */
+    update(
+      messageId: string,
+      input: AddonPhoneCard,
+    ): Promise<{ ok: true } | { error: "not_paired" | "unknown" | "failed" }>;
+  };
   log(message: string, detail?: unknown): void;
+}
+
+/** A phone card's text and buttons (`api.phone`). */
+export interface AddonPhoneCard {
+  text: string;
+  buttons?: Array<{ id: string; label: string; reply?: boolean }>;
 }
 
 /** One step of a capture (`api.capture.record`); `name` is how an error calls it. */

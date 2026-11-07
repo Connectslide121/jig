@@ -8313,3 +8313,23 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   cards by itself.
 - **Why:** each output is reviewed by the person who owns its group, and a pack is many files; one
   review per output keeps the gate meaningful without a click per file.
+
+## D-468: Phone cards for add-ons: api.phone, buttons by key, replies, owner only
+
+- Status: accepted.
+- **Who:** Claude, on my own (session 6 of phase 28, Jon asleep with full autonomy), within D-434.
+- **API:** `api.phone.send({ text, image?, buttons?, projectId? })` → `{ messageId }` or
+  `{ error: "not_paired" | "off" | "failed" }`, and `api.phone.update(messageId, { text, buttons? })`
+  (buttons left out: none, e.g. "✓ Approved on the computer"). The new `phone` permission.
+- **Text** is masked and cut like a chat's (3 000 characters); a picture is an absolute PNG or JPG
+  path of at most 10 MB, read by main. At most 6 buttons, two per row.
+- **Buttons by key:** a card gets a short random key; a button's data is `a:<key>:<index>`
+  (Telegram allows 64 bytes), never the add-on's own ids. Main keeps the last 100 cards in
+  `phone.json` (`cards`) with their add-on, place and buttons.
+- **Taps go to the owning add-on only** (`dispatchTo`, its `contributes.events` handler for
+  `phone.action`, payload `{ messageId, buttonId, text? }`), and only from the paired account. A
+  button with `reply: true` asks "write your answer as a reply"; the answer is a reply to that prompt,
+  or the next text written in the same place within 15 minutes.
+- **Sent whether or not you're away:** the add-on decides what is worth a card (the factory sends one
+  per gate, question and finished run); turning the phone off stops them all.
+- **Place:** the project's topic when the channel has topics, else the private chat.

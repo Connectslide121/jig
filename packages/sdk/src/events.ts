@@ -14,6 +14,8 @@ export const JIG_EVENTS = {
     "You switched the Azure tenant: every az Jig runs now uses it; drop Azure/DevOps caches and reload.",
   "app.updating":
     "Jig is about to close to install an update and starts again by itself: hold work that shouldn't start now.",
+  "phone.action":
+    "You tapped a button on this add-on's phone card (or wrote the answer a reply button asked for). Only the add-on that sent the card hears it.",
 } as const;
 
 export type JigEventName = keyof typeof JIG_EVENTS;
@@ -54,6 +56,11 @@ export interface JigEventPayloads {
    * then. `version` is the update's, when known.
    */
   "app.updating": { version?: string };
+  /**
+   * A tap on a card this add-on sent with `api.phone.send` (D-468): the card's `messageId`, the
+   * button's own `id`, and for a `reply: true` button the text you wrote after it.
+   */
+  "phone.action": { messageId: string; buttonId: string; text?: string };
 }
 
 export const JIG_EVENT_NAMES = Object.keys(JIG_EVENTS) as JigEventName[];

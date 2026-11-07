@@ -316,6 +316,20 @@ export class AddonService {
   }
 
   /**
+   * Runs one add-on's handlers for an event meant only for it (`phone.action`, D-468: a tap on a
+   * card it sent).
+   */
+  async dispatchTo(addonId: string, name: JigEventName, payload: unknown): Promise<void> {
+    const l = this.loaded.get(addonId);
+    if (!l?.info.enabled || !l.host || l.info.errors.length) return;
+    for (const e of l.record.manifest?.contributes.events ?? [])
+      if (e.on === name)
+        await l.host
+          .call(e.run, payload)
+          .catch((error: Error) => log.warn(`Event ${name} in ${addonId} failed: ${error.message}`));
+  }
+
+  /**
    * Asks every search provider (`contributes.search`) at once; one that takes longer than `timeoutMs`
    * or fails is left out. Up to 8 results each, checked so a bad one can't break the search.
    */

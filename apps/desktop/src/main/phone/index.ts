@@ -25,7 +25,7 @@ import { jigHome, paths } from "../state/paths";
 import { APP_PNG } from "../window";
 import { conciergeChat, onConciergeStartedChat, registerConcierge } from "./concierge";
 import type { QueueCounts, QueueView } from "./messages";
-import { COMMANDS, PhoneService, type SavedPhone } from "./service";
+import { type AddonPhoneButton, COMMANDS, PhoneService, type SavedPhone } from "./service";
 import { teamsChannel } from "./teams";
 import { SavedSetup, TeamsSetup } from "./teamsSetup";
 import { teamsAppManifest } from "./teamsSetupPlan";
@@ -48,6 +48,17 @@ const SavedChannel = z.object({
   rooms: z.record(z.string(), Ref).optional(),
   threads: z.record(z.string(), z.object({ place: Ref, parent: Ref })).optional(),
   names: z.record(z.string(), z.string()).optional(),
+  cards: z
+    .array(
+      z.object({
+        key: z.string(),
+        addonId: z.string(),
+        ref: Ref,
+        place: Ref.optional(),
+        buttons: z.array(z.object({ id: z.string(), label: z.string(), reply: z.boolean().optional() })),
+      }),
+    )
+    .optional(),
 });
 
 /** `phone.json`: each channel's state apart; the flat file from before D-377 is Telegram's. */
@@ -225,6 +236,7 @@ export async function startPhone(): Promise<void> {
     },
     store: phoneStore(),
     api: (token) => telegramApi(token),
+    addons: { action: (addonId, action) => addonService().dispatchTo(addonId, "phone.action", action) },
     channel: (id, credential) =>
       id === "teams" ? teamsChannel(credential, { reader: readerId(), fit: fitForTeams }) : undefined,
     project: async (id) => {
@@ -398,6 +410,31 @@ export async function startPhone(): Promise<void> {
   ]);
 
   await s.start();
+}
+
+/** `api.phone.send` from an add-on's host code (D-468), checked by the caller. */
+export async function addonPhoneSend(
+  addonId: string,
+  input: { text: string; image?: string; buttons?: AddonPhoneButton[]; projectId?: string },
+): Promise<{ messageId: string } | { error: "not_paired" | "off" | "failed" }> {
+  if (!service) return { error: "off" };
+  let image: Buffer | undefined;
+  if (input.image) {
+    const info = await stat(input.image).catch(() => undefined);
+    if (!info?.isFile()) throw new Error(`phone.send: there is no picture at ${input.image}`);
+    if (info.size > 10_000_000) throw new Error("phone.send: the picture is over 10 MB");
+    image = await readFile(input.image);
+  }
+  return service.addonSend(addonId, { ...input, image });
+}
+
+/** `api.phone.update` (D-468). */
+export async function addonPhoneUpdate(
+  addonId: string,
+  messageId: string,
+  input: { text: string; buttons?: AddonPhoneButton[] },
+): Promise<{ ok: true } | { error: "not_paired" | "unknown" | "failed" }> {
+  return service ? service.addonUpdate(addonId, messageId, input) : { error: "not_paired" };
 }
 
 export function stopPhone(): void {

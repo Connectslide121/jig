@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ChatItem, PermissionDecision, SessionMeta } from "../../shared/engine";
 import type { PhoneState } from "../../shared/phone";
 import type { PermissionItem } from "./messages";
-import { PhoneService, type PhoneSettings, type SavedPhone } from "./service";
+import { type AddonPhoneAction, PhoneService, type PhoneSettings, type SavedPhone } from "./service";
 import { type TelegramApi, TelegramError, type TelegramUpdate } from "./telegram";
 
 const OWNER = 42;
@@ -91,6 +91,8 @@ function setup(
   const states: PhoneState[] = [];
   let enabled = false;
   const awake: boolean[] = [];
+  const actions: Array<{ addonId: string; action: AddonPhoneAction }> = [];
+  let cardKey = 0;
   const settings: PhoneSettings = {
     enabled: true,
     when: "always",
@@ -113,6 +115,8 @@ function setup(
     },
     store: { load: async () => opts.saved, save: async (s) => void saves.push(s), remembered: true },
     api: () => api,
+    addons: { action: async (addonId, action) => void actions.push({ addonId, action }) },
+    cardKey: () => `k${++cardKey}`,
     project: async (id) => (id === "p1" ? { name: "Podium", color: "info" } : undefined),
     ...(opts.concierge
       ? {
@@ -226,6 +230,7 @@ function setup(
     photos,
     timers,
     voices,
+    actions,
   };
 }
 
@@ -1000,5 +1005,109 @@ describe("PhoneService reconnecting", () => {
       expect(t.service.state().error).toBe(error);
       t.service.stop();
     }
+  });
+});
+
+describe("PhoneService add-ons' cards (D-468)", () => {
+  const buttons = [
+    { id: "approve", label: "Approve" },
+    { id: "changes", label: "Ask for changes", reply: true },
+    { id: "open", label: "Open in Jig" },
+  ];
+
+  it("sends a card with the add-on's buttons, masked, and its tap goes to that add-on only", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    const sent = await t.service.addonSend("factory", {
+      text: "**Shop** · Demo v2 is ready, key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789",
+      buttons,
+    });
+    expect(sent).toEqual({ messageId: "k1" });
+    const card = t.calls.find((c) => c.method === "sendMessage");
+    expect(String(card?.params.text)).toContain("<b>Shop</b>");
+    expect(String(card?.params.text)).not.toContain("abcdefghijklmnopqrstuvwxyz");
+    const rows = (card!.params.reply_markup as { inline_keyboard: Array<Array<{ callback_data: string }>> })
+      .inline_keyboard;
+    expect(rows.map((r) => r.map((b) => b.callback_data))).toEqual([["a:k1:0", "a:k1:1"], ["a:k1:2"]]);
+    await t.tap("a:k1:0", 7);
+    expect(t.actions).toEqual([]);
+    await t.tap("a:k1:0");
+    expect(t.actions).toEqual([{ addonId: "factory", action: { messageId: "k1", buttonId: "approve" } }]);
+  });
+
+  it("asks for your text after a reply button, and sends it with the button", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.addonSend("factory", { text: "Demo v2", buttons });
+    await t.tap("a:k1:1");
+    expect(t.actions).toEqual([]);
+    expect(t.messages().at(-1)).toContain("<b>Ask for changes</b>: write your answer");
+    await t.text("bigger buttons, please");
+    expect(t.actions).toEqual([
+      {
+        addonId: "factory",
+        action: { messageId: "k1", buttonId: "changes", text: "bigger buttons, please" },
+      },
+    ]);
+    // Only once: the next text goes where text goes again.
+    await t.text("thanks");
+    expect(t.actions).toHaveLength(1);
+  });
+
+  it("takes a reply to the prompt even after other text", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.addonSend("factory", { text: "Demo v2", buttons });
+    await t.tap("a:k1:1");
+    const prompt = t.calls.filter((c) => c.method === "sendMessage").length + 100;
+    await t.text("make the logo bigger", {
+      reply_to_message: { message_id: prompt, date: NOW, chat: { id: OWNER, type: "private" } },
+    });
+    expect(t.actions[0]?.action.text).toBe("make the logo bigger");
+  });
+
+  it("changes a card, only the add-on's own, and keeps cards across a restart", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.addonSend("factory", { text: "Demo v2", buttons });
+    expect(await t.service.addonUpdate("motion", "k1", { text: "x" })).toEqual({ error: "unknown" });
+    expect(await t.service.addonUpdate("factory", "k1", { text: "Approved on the computer" })).toEqual({
+      ok: true,
+    });
+    const edit = t.calls.find((c) => c.method === "editMessageText");
+    expect(edit?.params.text).toBe("Approved on the computer");
+    const saved = t.saves.at(-1);
+    expect(saved?.cards).toEqual([{ key: "k1", addonId: "factory", ref: 101, buttons: [] }]);
+    const again = setup({
+      saved: { ...paired, cards: [{ key: "k9", addonId: "factory", ref: 5, buttons }] },
+    });
+    current = again.service;
+    await again.service.start();
+    await again.tap("a:k9:2");
+    expect(again.actions[0]?.action).toEqual({ messageId: "k9", buttonId: "open" });
+  });
+
+  it("says why nothing was sent: not paired, or turned off", async () => {
+    const t = setup();
+    current = t.service;
+    await t.service.start();
+    expect(await t.service.addonSend("factory", { text: "x" })).toEqual({ error: "not_paired" });
+    const off = setup({ saved: paired, settings: { enabled: false } });
+    current = off.service;
+    await off.service.start();
+    expect(await off.service.addonSend("factory", { text: "x" })).toEqual({ error: "off" });
+  });
+
+  it("puts a project's card in its topic", async () => {
+    const t = setup({ saved: paired, topics: true });
+    current = t.service;
+    await t.service.start();
+    await t.service.addonSend("factory", { text: "Demo v2", projectId: "p1" });
+    const card = t.calls.find((c) => c.method === "sendMessage");
+    expect(card?.params.message_thread_id).toBe(501);
   });
 });

@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 6, Reach — not started.
+- **Current session:** 6, Reach — in progress (core phone API written, D-468).
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -434,12 +434,12 @@ files, Edit / Reject… / Approve; stories become board cards only on **Add as b
 per kind under the inbox. e2e: `factory.spec.ts` → "the pack in the inbox…". Not done: none; the
 demo kit's print templates are on `demo-kit` (08e73fa6).
 
-### 6. Reach: phone buttons, other people, publishing — not started
+### 6. Reach: phone buttons, other people, publishing — in progress
 
-- [ ] Core: phone API for add-ons (D-434, [architecture.md](28-factory/architecture.md) → Phone
+- [~] Core: phone API for add-ons (D-434, D-468, [architecture.md](28-factory/architecture.md) → Phone
       buttons): `phone` permission, `api.phone.send/update`, `phone.action` events, Telegram and
       Teams channels, a reply-with-text button; docs in `addon-api.md`, `26-phone.md`; e2e with the
-      fake Telegram server.
+      fake Telegram server (with the factory's cards, next).
 - [ ] Jig factory's phone cards: gate waiting (screenshot + Approve / Ask for changes / Open),
       run finished, run stuck.
 - [ ] Approvals by others (D-435): a card per gate in the product's board (Boards add-on), polled;

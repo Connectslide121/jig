@@ -17,10 +17,11 @@ export const PERMISSIONS = {
   "meetings:read": "Read your meeting history: titles, notes and the end of each transcript (D-460).",
   speech: "Speak text with the natural voice on this computer, into audio files (D-464).",
   capture: "Record web pages in a hidden window, step by step, into video frames (D-464).",
+  phone: "Send cards with buttons to your phone (Telegram or Teams), and hear your taps (D-468).",
 } as const;
 
 const PATTERN =
-  /^(exec|exec:[\w.+-]+|fs:read|fs:write|net|terminal|chat|chat:read|ai|meetings:read|speech|capture)$/;
+  /^(exec|exec:[\w.+-]+|fs:read|fs:write|net|terminal|chat|chat:read|ai|meetings:read|speech|capture|phone)$/;
 
 export function isPermission(value: string): boolean {
   return PATTERN.test(value);

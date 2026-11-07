@@ -63,7 +63,9 @@ export type FromHost =
         | "meetings.recent"
         | "speech.say"
         | "capture.record"
-        | "capture.pdf";
+        | "capture.pdf"
+        | "phone.send"
+        | "phone.update";
       args: unknown;
     };
 
@@ -275,6 +277,16 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         pdf: async (input) => {
           need("capture");
           return rpc("capture.pdf", input) as Promise<never>;
+        },
+      },
+      phone: {
+        send: async (input) => {
+          need("phone");
+          return rpc("phone.send", input) as Promise<never>;
+        },
+        update: async (messageId, input) => {
+          need("phone");
+          return rpc("phone.update", { messageId, ...input }) as Promise<never>;
         },
       },
       projects: () => rpc("projects", {}) as Promise<never>,

@@ -635,6 +635,36 @@ export const addonCapturePdf = z
   })
   .strict();
 
+const phoneButtons = z
+  .array(
+    z
+      .object({
+        id: z.string().min(1).max(64),
+        label: z.string().min(1).max(60),
+        reply: z.boolean().optional(),
+      })
+      .strict(),
+  )
+  .max(6)
+  .optional();
+/** `api.phone.send` from an add-on's host code (D-468): a card's text, picture and buttons. */
+export const addonPhoneSend = z
+  .object({
+    text: z.string().min(1).max(4000),
+    image: z
+      .string()
+      .max(4096)
+      .refine((p) => isAbsolute(p) && /\.(png|jpe?g)$/i.test(p), "an absolute path to a PNG or JPEG")
+      .optional(),
+    buttons: phoneButtons,
+    projectId: z.string().max(200).optional(),
+  })
+  .strict();
+/** `api.phone.update` (D-468): the card's new text and buttons. */
+export const addonPhoneUpdate = z
+  .object({ messageId: z.string().min(1).max(64), text: z.string().min(1).max(4000), buttons: phoneButtons })
+  .strict();
+
 const captureUrl = z.string().max(4096).refine(isCaptureUrl, "an http(s) or file address");
 const selector = z.string().min(1).max(CAPTURE_LIMITS.selector);
 const stepName = z.string().max(80).optional();

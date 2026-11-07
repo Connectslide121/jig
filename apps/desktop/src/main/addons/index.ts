@@ -24,7 +24,13 @@ import {
   setJigToolHandlers,
 } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
-import { addonCapturePdf, addonCaptureRecord, addonSpeechSay } from "../ipc/validate";
+import {
+  addonCapturePdf,
+  addonCaptureRecord,
+  addonPhoneSend,
+  addonPhoneUpdate,
+  addonSpeechSay,
+} from "../ipc/validate";
 import { logger } from "../log";
 import { recentMeetings } from "../meetings";
 import { projectStore } from "../projects";
@@ -274,6 +280,31 @@ export async function startAddons(): Promise<void> {
         if (service?.list().find((a) => a.id === addonId)?.source !== "builtin")
           throw new Error("Only built-in add-ons read Jig's settings.");
         return (getConfig() as Record<string, unknown>)[addonId];
+      } else if (op === "phone.send" || op === "phone.update") {
+        // Checked here too (D-468): the host process enforces it, but main doesn't trust it.
+        if (
+          !service
+            ?.list()
+            .find((a) => a.id === addonId)
+            ?.manifest?.permissions.includes("phone")
+        )
+          throw new Error('This add-on needs the "phone" permission in addon.json');
+        const phone = await import("../phone");
+        if (op === "phone.update") {
+          const parsed = addonPhoneUpdate.safeParse(args);
+          if (!parsed.success)
+            throw new Error(`phone.update: ${parsed.error.issues[0]?.message ?? "invalid"}`);
+          const { messageId, ...input } = parsed.data;
+          return phone.addonPhoneUpdate(addonId, messageId, input);
+        }
+        const parsed = addonPhoneSend.safeParse(args);
+        if (!parsed.success) {
+          const issue = parsed.error.issues[0];
+          throw new Error(
+            `phone.send: ${issue?.path.join(".") || "arguments"}: ${issue?.message ?? "invalid"}`,
+          );
+        }
+        return phone.addonPhoneSend(addonId, parsed.data);
       } else if (op === "meetings.recent") {
         // Checked here too (D-460): the host process enforces it, but main doesn't trust it.
         if (

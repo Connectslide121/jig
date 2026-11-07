@@ -163,6 +163,9 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       the room, never the chat; says when there's none) and `jig_usage_limits` (both providers' used,
       left and reset, from the footer's numbers), for every chat and the concierge. Fake engine:
       "close my phone room", "my usage limits".
+- [x] Cards for add-ons (D-468, from phase 28): `api.phone.send` / `update` with the `phone`
+      permission; a tap (or a reply button's answer) comes back as `phone.action` to that add-on
+      only. Jig factory's gate, question and done cards are the first user.
 
 **Order:** check the first version with a real bot (above) → persistence, keep awake, quiet finished
 messages → topics → fixed commands → concierge and its chat tools → digest, questions, voice.

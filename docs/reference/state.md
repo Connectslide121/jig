@@ -193,14 +193,16 @@ read-only application resources, not user state. Personal/project Jig skills rem
 ## Phone (D-350)
 
 `phone.json`: `{ telegram?, teams? }`, each channel's saved state apart (D-377), each
-`{ token, bot, owner?, replies?, targets?, topics?, rooms? }`. A file from before D-377 (those fields
+`{ token, bot, owner?, replies?, targets?, topics?, rooms?, cards? }`. A file from before D-377 (those fields
 at the top level) is read as Telegram's and rewritten in the new shape on the next save. `token` is
 the channel's credential (the Telegram bot token; the Teams relay's address and key, `https://<relay>#<key>`, D-379) encrypted with the OS
 (Electron safeStorage, base64); without OS encryption (Linux without a keyring) nothing is written
 and the credential lives only until Jig closes. `bot` is the bot's name; `owner` (`{ chatId, name }`) the
 account it is paired with (Telegram: the private chat's id; Teams: the Entra object id). `replies` maps the last 300 messages to their chats and `targets` (per place, 0 for the main chat)
 the chat plain text written there goes to, so replies keep working after Jig restarts. Message and
-place ids are the channel's own (numbers on Telegram, strings on Teams).
+place ids are the channel's own (numbers on Telegram, strings on Teams). `cards` (D-468): add-ons'
+phone cards by their key (`{ key, addonId, ref, place?, buttons }`, the last 100), so a tap after a
+restart still reaches the add-on that sent it.
 
 `phone-teams-setup.json` (D-381): Teams setup's record, no secrets: `choice` (`tenantId`,
 `subscription`, `region`, `group`, `suffix` of the resource names), `outputs` (`appId`, `host`), `done`
