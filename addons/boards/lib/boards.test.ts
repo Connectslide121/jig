@@ -6,6 +6,7 @@ import {
   boardTenant,
   boardTitle,
   boardUrl,
+  cardDone,
   chatDraft,
   columnField,
   initials,
@@ -147,5 +148,20 @@ describe("boardTenant", () => {
   it("is the tenant a board was followed in, your own az login for older boards", () => {
     expect(boardTenant({ tenant: "contoso" })).toBe("contoso");
     expect(boardTenant({})).toBe("default");
+  });
+});
+
+describe("cardDone", () => {
+  const cols: BoardColumn[] = [
+    { id: "a", name: "To do", columnType: "incoming", itemLimit: 0, stateMappings: { Task: "To Do" } },
+    { id: "b", name: "Doing", columnType: "inProgress", itemLimit: 0, stateMappings: { Task: "Doing" } },
+    { id: "c", name: "Shipped", columnType: "outgoing", itemLimit: 0, stateMappings: { Task: "Finished" } },
+  ];
+  it("is done in the last column, its state, or a finished state", () => {
+    expect(cardDone(cols, { type: "Task", state: "Doing", column: "Shipped" })).toBe(true);
+    expect(cardDone(cols, { type: "Task", state: "Finished" })).toBe(true);
+    expect(cardDone(cols, { type: "Issue", state: "Closed" })).toBe(true);
+    expect(cardDone(cols, { type: "Task", state: "Doing", column: "Doing" })).toBe(false);
+    expect(cardDone([], { type: "Task", state: "To Do" })).toBe(false);
   });
 });

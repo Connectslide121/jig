@@ -464,6 +464,86 @@ describe("Jig factory's Conductor", () => {
     await host.phoneAction({ messageId: "unknown", buttonId: "approve" }, api);
   });
 
+  it("gives a gate a person owns a card on the run's board, and decides it from there (D-469)", async () => {
+    let comments: Array<{ by: string; at: string; text: string }> = [];
+    let done = false;
+    const calls: Array<[string, string, Record<string, unknown>]> = [];
+    api.addons.call = vi.fn(async (id: string, method: string, args: Record<string, unknown>) => {
+      calls.push([id, method, args]);
+      if (method === "cardAssignee") return { assignedTo: "dana@contoso.com", name: "Dana Fabrikam" };
+      if (method === "createCard")
+        return { id: 42, url: "https://dev.azure.com/contoso/Shop/_workitems/edit/42", board: "Shop" };
+      if (method === "cardStatus") return { state: "Active", done, url: "", comments };
+      if (method === "commentCard")
+        comments = [...comments, { by: "Jig", at: later(), text: String(args.text) }];
+      return undefined;
+    }) as AddonHostApi["addons"]["call"];
+    let r = await host.startRun({ projectId: "shop", brief: "gift-cards" }, api);
+    r = await load(r.id);
+    await api.storage.set(
+      `run:${r.id}`,
+      {
+        ...r,
+        owners: { G0: { kind: "person", name: "Dana" } },
+        plan: {
+          ...(r.plan ?? {
+            outputs: ["spec"],
+            build: false,
+            permissionMode: "acceptEdits",
+            productExists: true,
+          }),
+          approvals: { boardId: "b1", name: "Shop", type: "User Story" },
+        },
+      },
+      { scope: "project", id: "shop" },
+    );
+    await play(r, "S2");
+    await host.tick(undefined, api);
+    r = await load(r.id);
+    expect(r.gates.find((g) => g.id === "G0")?.card).toMatchObject({ id: 42, round: 0 });
+    const made = calls.find((c) => c[1] === "createCard")?.[2];
+    expect(made).toMatchObject({
+      projectId: "shop",
+      boardId: "b1",
+      type: "User Story",
+      assignedTo: "dana@contoso.com",
+    });
+    expect(String(made?.title)).toContain("·");
+    expect(String(made?.description)).toContain('"changes:"');
+
+    // Read at most every two minutes; a "changes:" comment asks for changes, by the commenter.
+    comments = [{ by: "Dana Fabrikam", at: later(), text: "changes: name the second card type" }];
+    await host.tick(undefined, api);
+    expect((await load(r.id)).gates.find((g) => g.id === "G0")?.status).toBe("waiting");
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 3 * 60_000);
+    await host.tick(undefined, api);
+    r = await load(r.id);
+    const g0 = r.gates.find((g) => g.id === "G0");
+    expect(g0).toMatchObject({
+      status: "closed",
+      revisions: 1,
+      decidedBy: "board:Dana Fabrikam",
+      note: "name the second card type",
+    });
+    expect(chatOf(r, "S2").sent.at(-1)).toContain("name the second card type");
+
+    // The brief again: one comment says so on the same card; moved to done approves it.
+    await play(r, "S2");
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 6 * 60_000);
+    await host.tick(undefined, api);
+    expect(comments.at(-1)?.text).toContain("A new version is ready");
+    expect(calls.filter((c) => c[1] === "createCard")).toHaveLength(1);
+    done = true;
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 9 * 60_000);
+    await host.tick(undefined, api);
+    r = await load(r.id);
+    expect(r.gates.find((g) => g.id === "G0")).toMatchObject({ status: "approved", decidedBy: "board:Dana" });
+    await host.tick(undefined, api);
+    r = await load(r.id);
+    expect(r.gates.find((g) => g.id === "G0")?.card).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+
   it("waits a minute when the phone isn't paired", async () => {
     const send = vi.fn(async () => ({ error: "not_paired" }));
     (api as { phone: unknown }).phone = { send, update: vi.fn() };

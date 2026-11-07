@@ -523,6 +523,12 @@ test("Jig factory: a new idea, its interview with Good enough, and the Plan step
   await expect(plan).toBeVisible();
   await expect(plan.getByTestId("factory-plan-lang-sales")).toHaveValue("sv");
   await expect(plan.getByTestId("factory-plan-product")).toHaveValue("new");
+  // Other people's cards go on a board only when a gate has a person (D-469); none followed here.
+  await expect(plan.getByTestId("factory-plan-approvals")).toBeDisabled();
+  await plan.getByTestId("factory-plan-owner-G1").selectOption("person");
+  await expect(plan.getByTestId("factory-plan-approvals")).toBeEnabled();
+  await expect(plan.getByTestId("factory-plan-approvals")).toHaveValue("");
+  await plan.getByTestId("factory-plan-owner-G1").selectOption("me");
   if (process.env.JIG_UI_SHOTS) {
     await page.waitForTimeout(1500);
     await page.screenshot({ path: join(SHOTS_DIR, "factory-plan.png") });

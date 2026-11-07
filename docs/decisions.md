@@ -8333,3 +8333,28 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
 - **Sent whether or not you're away:** the add-on decides what is worth a card (the factory sends one
   per gate, question and finished run); turning the phone off stops them all.
 - **Place:** the project's topic when the channel has topics, else the private chat.
+
+## D-469: Approvals by others: one board per run, its done column approves, a changes: comment asks
+
+- Status: accepted.
+- **Who:** Claude, on my own (session 6 of phase 28, Jon asleep with full autonomy), within D-435.
+
+D-435 says what: a card per gate a person owns on the product's board, polled. The details:
+
+- **Where:** one board per run, picked on the Plan step under the gates ("Their cards on"), from the
+  boards the project follows in the Boards add-on (`RunPlan.approvals`: board id, name, card type =
+  the board's backlog type). No board: other people's gates are decided in Jig, as before. The
+  `Owner.board` field from architecture.md is not used: a run picks one board, not one per owner.
+- **The card:** "<run> · <gate>", assigned to the owner when Boards finds exactly one person with
+  that name (`cardAssignee`), its description listing the outputs to review on the run's branch and
+  how to decide. Made when the gate starts waiting; the gate keeps `{ id, url, round, seen }`.
+- **Reading it:** at most every two minutes per card (the Conductor's one-minute tick), through new
+  Boards exports `cardStatus` (state, column, done, comments) and `commentCard`. Done = the board's
+  last (`outgoing`) column, the state that column maps the type to, or Done/Closed/Resolved/Completed.
+  A new comment starting "changes:" (any case) wins over done and asks for changes with the rest as
+  the note, recorded as decided by `board:<commenter>`; done approves as `board:<owner>`.
+- **Rounds:** after changes the same card is reused: when the gate waits again, Jig comments "A new
+  version is ready…". Decided in Jig, or the run stopped: one closing comment ("Approved in Jig.") and
+  the run forgets the card. GD (picking one of three directions) stays in Jig: no card.
+- **Failures:** the Boards add-on missing, az signed out or another tenant: the run's timeline says so
+  and the run's cards are tried again after five minutes.

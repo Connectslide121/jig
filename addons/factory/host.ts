@@ -6,11 +6,23 @@
  * collects what a stage reported, opens gates, and runs stages again for "Ask for changes", Re-run and
  * Fork. The decisions are pure, in `lib/conductor.ts`; this file reads and writes.
  */
+
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { AddonChatInfo, AddonHostApi, AddonProject } from "@jig/sdk";
+import {
+  againText,
+  type BoardStep,
+  BY_BOARD,
+  boardSteps,
+  type CardStatus,
+  cardDescription,
+  cardTitle,
+  POLL_MS,
+  readCard,
+} from "./lib/approvals";
 import { type BriefDoc, PLAN_OUTPUTS, parseBrief } from "./lib/brief";
 import {
   advance,
@@ -28,7 +40,7 @@ import {
   settle,
 } from "./lib/conductor";
 import { parseFrontMatter, setStatus, updateFrontMatter, writeFrontMatter } from "./lib/frontmatter";
-import { filesOf, GATES, isFile, reviewerOf } from "./lib/gates";
+import { filesOf, GATES, isFile, ownerOf, reviewerOf } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
 import { settledText, tapOf, wantedCards } from "./lib/phone";
 import { outputPaths, parseRecipe, type Recipe, resolveRecipes, stagePrompt } from "./lib/recipes";
@@ -45,6 +57,7 @@ import {
 import {
   addOutput,
   addStage,
+  type BoardCard,
   decideGate,
   failStage,
   finishStage,
@@ -842,6 +855,14 @@ export interface PlanArgs extends RunArgs {
   permissionMode?: RunPlan["permissionMode"];
   build?: boolean;
   productExists?: boolean;
+  /** The board gates other people own get their cards on (D-469); none: they decide in Jig. */
+  approvals?: RunPlan["approvals"] | null;
+}
+
+function approvalsOf(a: unknown): Pick<RunPlan, "approvals"> | undefined {
+  const x = a as RunPlan["approvals"] | null | undefined;
+  if (!x || typeof x.boardId !== "string" || !x.boardId || typeof x.type !== "string" || !x.type) return;
+  return { approvals: { boardId: x.boardId, name: String(x.name ?? x.boardId), type: x.type } };
 }
 
 /** The Plan step (D-460): what the run makes, at what level, in which languages, and who owns its gates. */
@@ -868,6 +889,7 @@ export async function plan(a: PlanArgs, api: AddonHostApi): Promise<Run> {
         permissionMode: a.permissionMode === "bypassPermissions" ? "bypassPermissions" : "acceptEdits",
         productExists: a.productExists ?? r.plan?.productExists ?? false,
         confirmed: true,
+        ...(approvalsOf(a.approvals === undefined ? r.plan?.approvals : a.approvals) ?? {}),
       },
     };
     r = finishStage(
@@ -908,6 +930,7 @@ export async function tick(_args: unknown, api: AddonHostApi): Promise<void> {
   const catchingUp = !caughtUp;
   caughtUp = true;
   await step(api, catchingUp);
+  await boardApprovals(api);
 }
 
 /** Main tells us about the chats we started: a turn ended, it needs you, it works again. */
@@ -954,6 +977,108 @@ export function step(api: AddonHostApi, catchingUp = false): Promise<void> {
     }
     for (const r of all) await phoneCards(api, await loadRun(api, r.projectId, r.id).catch(() => r));
   });
+}
+
+// Approvals by other people on the run's board (D-435, D-469).
+
+/** When each card was last read (in memory: after a restart they are all read at the next tick). */
+const boardReadAt = new Map<number, number>();
+/** Runs whose board failed: tried again after five minutes, so a missing add-on doesn't spam az. */
+const boardQuietUntil = new Map<string, number>();
+
+/**
+ * Brings each run's board cards in line (`boardSteps`): a card for a gate a person owns, assigned to
+ * them; a comment when it waits again or is settled elsewhere; reads cards every two minutes and
+ * decides the gate from them. Runs after the step, outside its queue (deciding steps again).
+ */
+export async function boardApprovals(api: AddonHostApi): Promise<void> {
+  for (const p of await api.projects())
+    for (const r of await load(api, p.id)) {
+      if (isSample(r.id) || (boardQuietUntil.get(r.id) ?? 0) > Date.now()) continue;
+      for (const st of boardSteps(r))
+        try {
+          await boardStep(api, r, st);
+        } catch (e) {
+          boardQuietUntil.set(r.id, Date.now() + 5 * 60_000);
+          api.log("factory: the approvals board failed", { run: r.id, gate: st.gate, error: String(e) });
+          await log(api, r, {
+            kind: "error",
+            text: `The approvals board couldn't be reached for ${GATES[st.gate].label} (${e instanceof Error ? e.message : String(e)}); trying again in five minutes`,
+          });
+          break;
+        }
+    }
+}
+
+async function boardStep(api: AddonHostApi, r: Run, st: BoardStep): Promise<void> {
+  const board = r.plan?.approvals;
+  if (!board) return;
+  const where = { projectId: r.projectId, boardId: board.boardId };
+  const setCard = (card: BoardCard | undefined) =>
+    serial(async () => {
+      const cur = await loadRun(api, r.projectId, r.id);
+      await save(api, {
+        ...cur,
+        gates: cur.gates.map((g) => {
+          if (g.id !== st.gate) return g;
+          const { card: _old, ...rest } = g;
+          return card ? { ...rest, card } : rest;
+        }),
+      });
+    });
+  if (st.kind === "create") {
+    const who = await api.addons
+      .call<{ assignedTo?: string; name?: string }>("boards", "cardAssignee", { ...where, owner: st.owner })
+      .catch(() => ({}) as { assignedTo?: string; name?: string });
+    const made = await api.addons.call<{ id: number; url: string; board: string }>("boards", "createCard", {
+      ...where,
+      type: board.type,
+      title: cardTitle(r, st.gate),
+      description: cardDescription(r, st.gate, { done: "the board's last (done) column" }),
+      ...(who.assignedTo ? { assignedTo: who.assignedTo } : {}),
+    });
+    const g = r.gates.find((x) => x.id === st.gate);
+    await setCard({ id: made.id, url: made.url, round: g?.revisions ?? 0, seen: 0 });
+    boardReadAt.set(made.id, Date.now());
+    await log(api, r, {
+      kind: "message",
+      text: `${GATES[st.gate].label}: card #${made.id} on ${made.board} for ${who.name ?? st.owner}`,
+    });
+    return;
+  }
+  if (st.kind === "close") {
+    if (st.text) await api.addons.call("boards", "commentCard", { ...where, id: st.card.id, text: st.text });
+    boardReadAt.delete(st.card.id);
+    await setCard(undefined);
+    return;
+  }
+  let card = st.card;
+  if (st.kind === "again") {
+    await api.addons.call("boards", "commentCard", { ...where, id: card.id, text: againText(r, st.gate) });
+    card = { ...card, round: r.gates.find((x) => x.id === st.gate)?.revisions ?? card.round };
+    await setCard(card);
+    boardReadAt.delete(card.id);
+  }
+  if (Date.now() - (boardReadAt.get(card.id) ?? 0) < POLL_MS) return;
+  boardReadAt.set(card.id, Date.now());
+  const status = await api.addons.call<CardStatus>("boards", "cardStatus", { ...where, id: card.id });
+  const read = readCard(status, card);
+  if (read.seen !== card.seen) await setCard({ ...card, seen: read.seen });
+  const d = read.decision;
+  if (!d) return;
+  const owner = ownerOf(r, st.gate).name || "Someone";
+  if (d.kind === "changes")
+    await decide(
+      { projectId: r.projectId, runId: r.id, gateId: st.gate, kind: "changes", note: d.note },
+      api,
+      `${BY_BOARD}${d.by || owner}`,
+    );
+  else
+    await decide(
+      { projectId: r.projectId, runId: r.id, gateId: st.gate, kind: "approve" },
+      api,
+      `${BY_BOARD}${owner}`,
+    );
 }
 
 // Cards on your phone (D-434, D-468).
@@ -1518,6 +1643,8 @@ export async function decide(
     direction?: string;
   },
   api: AddonHostApi,
+  /** Who decided: you (`me`), or `board:<name>` from the approvals board (D-469); not from the UI. */
+  by: string = ME,
 ): Promise<Run> {
   const r = await serial(async () => {
     let r = await loadRun(api, a.projectId, a.runId);
@@ -1535,10 +1662,10 @@ export async function decide(
       r,
       a.gateId,
       a.kind === "changes"
-        ? { kind: "changes", by: ME, note, pins: pins.length ? pins : undefined }
+        ? { kind: "changes", by, note, pins: pins.length ? pins : undefined }
         : {
             kind: a.kind,
-            by: ME,
+            by,
             note: note ?? (r.direction && a.gateId === "GD" ? `Picked ${r.direction}` : undefined),
           },
       { cap: track.caps.revisionsPerGate },
@@ -1558,7 +1685,7 @@ export async function decide(
     await save(api, r);
     await log(api, r, {
       kind: "decision",
-      text: `${GATES[a.gateId].label}: ${a.kind}${note ? ` (${note})` : ""}`,
+      text: `${GATES[a.gateId].label}: ${a.kind}${by.startsWith(BY_BOARD) ? ` by ${by.slice(BY_BOARD.length)} on the board` : ""}${note ? ` (${note})` : ""}`,
     });
     return r;
   });

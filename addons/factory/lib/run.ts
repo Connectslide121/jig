@@ -69,6 +69,11 @@ export interface RunPlan {
   productExists: boolean;
   /** Confirmed by a person: the start dialog, or the Plan step (D-460). The Plan step then passes by itself. */
   confirmed?: boolean;
+  /**
+   * Where gates other people own get their cards (D-435, D-469): a board the project follows in the
+   * Boards add-on (its id and name) and the card type. None: they decide in Jig.
+   */
+  approvals?: { boardId: string; name: string; type: string };
 }
 
 export interface Question {
@@ -166,6 +171,16 @@ export interface GateState {
   at?: string;
   note?: string;
   pins?: Pin[];
+  /** Its card on the run's approvals board, while a person owns it (D-469). */
+  card?: BoardCard;
+}
+
+/** A gate's card on a board (D-469): which revision it was last told about, how many comments were read. */
+export interface BoardCard {
+  id: number;
+  url: string;
+  round: number;
+  seen: number;
 }
 
 /** Who writes AI-made drafts in an output's history. AI only ever writes `draft`. */

@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 6, Reach — in progress (phone API and the factory's phone cards done, D-468; next: approvals by others).
+- **Current session:** 6, Reach — in progress (phone API, the factory's phone cards, approvals by others done, D-468, D-469; next: Publish).
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -443,8 +443,10 @@ demo kit's print templates are on `demo-kit` (08e73fa6).
 - [x] Jig factory's phone cards: gate waiting (screenshot + Approve / Ask for changes / Open),
       run finished, run stuck; also a stage's question (Answer). `lib/phone.ts`, `phoneAction`;
       cards settle ("✅ Approved") when decided anywhere.
-- [ ] Approvals by others (D-435): a card per gate in the product's board (Boards add-on), polled;
-      owner chosen per run.
+- [x] Approvals by others (D-435, D-469): a card per gate in the run's approvals board (Boards
+      add-on, picked on the Plan step), polled every two minutes: done column approves, a "changes:"
+      comment asks for changes; Boards exports `cardStatus`, `commentCard`. Unit-tested with a fake
+      Boards add-on; not yet tried on a real Azure DevOps board.
 - [ ] Publish (D-438): asks where (local only / Azure Static Web Apps target from settings) and for
       how long, runs the pre-publish scan, then the human-confirmed deploy; a customer confirm page.
 

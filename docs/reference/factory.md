@@ -46,6 +46,14 @@ One loop, serialised (`serial`), driven by the `tick` watcher (every minute and 
   buttons. The screenshot is the demo kit's first `check/screenshots/` file, else one frame of the
   page through `capture.record`, kept in the add-on's data folder. Not paired or off: tried again
   after a minute. Gates someone else owns don't get phone cards (their board card instead).
+- **Approvals by others** (D-435, D-469, `lib/approvals.ts`): with an approvals board picked on the
+  Plan step (`plan.approvals`), a gate a person owns gets a card there when it starts waiting
+  ("<run> · <gate>", assigned to them, the outputs to review), through the Boards add-on's exports
+  `cardAssignee`, `createCard`, `cardStatus` and `commentCard`. After every tick (`boardApprovals`) each
+  card is read at most every two minutes: a new comment starting "changes:" asks for changes (the
+  rest is the note, decided by `board:<name>`), the card in the board's done column approves. Waiting
+  again after changes comments on the same card; decided in Jig or stopped comments and forgets it
+  (`GateState.card`). GD stays in Jig. Errors: in the timeline, tried again after five minutes.
 
 ## Host methods
 
@@ -63,7 +71,7 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `briefDoc` | `{projectId, runId}` | the run's brief parsed: sections, coverage, gaps, level, languages (D-461) |
 | `enough` | `{projectId, runId}` | Good enough: the interviewer writes the brief from what there is and ends |
 | `track` | `{projectId, runId}` | the run's track and plan for the Plan dialog |
-| `plan` | `{projectId, runId, outputs, languages, owners, level, build, productExists, permissionMode}` | confirms the Plan step (`plan.confirmed`), the run goes on |
+| `plan` | `{projectId, runId, outputs, languages, owners, level, build, productExists, permissionMode, approvals?}` | confirms the Plan step (`plan.confirmed`), the run goes on |
 | `decide` | `{projectId, runId, gateId, kind: "approve" \| "changes" \| "reject", note?, pins?, direction?}` | a gate decision; on G1 Ask for changes the Demo review's pins join the note as numbered lines (at most 30), on GD Approve `direction` picks a board (D-462) |
 | `decideOutput` | `{projectId, runId, outputId, kind: "approve" \| "reject", note?}` | one pack output and its files (a reason is needed to reject); an edit since Jig wrote it is noticed by its hash and counts against trust; the gate is approved by itself once nothing of it waits and something was approved (D-467) |
 | `reviewOf` | `{projectId, runId, outputId}` | the review sheet: the output and the newest version of its other form (deck ↔ deck images, one-pager ↔ its images), each with its file, its Markdown text and its files (PDF, HTML, images) |

@@ -405,6 +405,18 @@ export function GateSheet({
             <Badge tone={status.tone}>{status.label}</Badge>
           </Field>
           <Field label="Owner">{ownerName(ownerOf(run, gateId))}</Field>
+          {gate?.card && run.plan?.approvals && (
+            <Field label="Board">
+              <button
+                type="button"
+                className="cursor-pointer text-accent hover:underline"
+                onClick={() => gate.card && ctx.openExternal(gate.card.url)}
+                data-testid="factory-gate-card"
+              >
+                #{gate.card.id} on {run.plan.approvals.name}
+              </button>
+            </Field>
+          )}
           <Field label="Revisions">
             <span className="tabular-nums">{revisionsLeft(run, gateId)} left</span>
           </Field>

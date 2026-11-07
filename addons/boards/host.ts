@@ -11,6 +11,7 @@ import {
   boardTenant,
   boardTypes,
   buildInfo,
+  cardDone,
   columnField,
   commitInfo,
   createArgs,
@@ -888,4 +889,46 @@ export async function createCard(
     api,
   );
   return { id: made.id, url: made.url, board: tabName(b) };
+}
+
+/**
+ * Where a card made elsewhere stands (D-469, Jig factory's approvals by others): its state and column,
+ * whether it's done on its board (`cardDone`), and its comments, oldest first.
+ */
+export async function cardStatus(
+  input: { projectId: string; boardId: string; id: number },
+  api: AddonHostApi,
+): Promise<{
+  state: string;
+  column?: string;
+  done: boolean;
+  url: string;
+  comments: Array<{ by: string; at: string; text: string }>;
+}> {
+  const b = await chatBoard({ chat: { projectId: input.projectId }, board: input.boardId }, api);
+  const data = await boardData(b, api, HOUR);
+  const d = await item(
+    { board: b, id: Number(input.id), ...(data.columnField ? { columnField: data.columnField } : {}) },
+    api,
+  );
+  const comments = d.comments
+    .map(({ by, at, text }) => ({ by, at, text }))
+    .sort((x, y) => x.at.localeCompare(y.at));
+  return {
+    state: d.state,
+    ...(d.column ? { column: d.column } : {}),
+    done: cardDone(data.columns, d),
+    url: d.url,
+    comments,
+  };
+}
+
+/** A comment on a card made elsewhere (D-469): "Version 3 is ready", "Approved in Jig". */
+export async function commentCard(
+  input: { projectId: string; boardId: string; id: number; text: string },
+  api: AddonHostApi,
+): Promise<void> {
+  if (!input.text?.trim()) throw new Error("A comment needs text.");
+  const b = await chatBoard({ chat: { projectId: input.projectId }, board: input.boardId }, api);
+  await update({ board: b, id: Number(input.id), patch: { comment: input.text.trim() } }, api);
 }

@@ -49,12 +49,21 @@ export function PlanDialog({
   const [mode, setMode] = useState<RunPlan["permissionMode"]>(run.plan?.permissionMode ?? "acceptEdits");
   const [build, setBuild] = useState(run.plan?.build ?? false);
   const [exists, setExists] = useState(run.plan?.productExists ?? false);
+  const { data: boards } = useHostCall<{
+    targets: Array<{ id: string; name: string; type?: string; problem?: string }>;
+    problem?: string;
+  }>("boardTargets", { projectId: run.projectId });
+  const [approvals, setApprovals] = useState(run.plan?.approvals?.boardId ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const waiting = run.stages.some((s) => s.recipe === "plan" && s.status === "needs-you");
   const gates = GATE_ORDER.filter((g) => !track || track.stages.some((i) => i.gate === g));
   const toggle = (id: string, on: boolean) =>
     setOutputs((l) => (on ? [...new Set([...l, id])] : l.filter((x) => x !== id)));
+  const usable = (boards?.targets ?? []).filter((t) => t.type && !t.problem);
+  const picked = usable.find((t) => t.id === approvals);
+  const approvalsBoard = picked?.type ? { id: picked.id, name: picked.name, type: picked.type } : undefined;
+  const anyPerson = gates.some((g) => owners[g]?.kind === "person");
   const ownersValid = gates.every((g) => owners[g]?.kind === "me" || owners[g]?.name.trim());
   return (
     <Dialog
@@ -116,6 +125,9 @@ export function PlanDialog({
                   permissionMode: mode,
                   build,
                   productExists: exists,
+                  approvals: approvalsBoard
+                    ? { boardId: approvalsBoard.id, name: approvalsBoard.name, type: approvalsBoard.type }
+                    : null,
                 });
                 onClose();
                 ctx.openTab("run", { projectId: run.projectId, runId: run.id, title: run.title });
@@ -240,6 +252,29 @@ export function PlanDialog({
                 </div>
               );
             })}
+            <div
+              className="flex h-8 items-center gap-2"
+              title="Gates other people own get a card there, assigned to them: moved to done approves, a comment starting with “changes:” asks for changes. GD stays in Jig."
+            >
+              <span className="w-28 shrink-0 truncate text-muted">Their cards on</span>
+              <Select
+                value={picked ? picked.id : ""}
+                onChange={(e) => setApprovals(e.target.value)}
+                disabled={!anyPerson}
+                className="min-w-0 flex-1"
+                aria-label="Board for other people's approvals"
+                data-testid="factory-plan-approvals"
+              >
+                <option value="">
+                  {(boards?.targets ?? []).length ? "None: they decide in Jig" : "No board followed: in Jig"}
+                </option>
+                {(boards?.targets ?? []).map((t) => (
+                  <option key={t.id} value={t.id} disabled={!t.type || !!t.problem}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </Column>
         </div>
       </div>

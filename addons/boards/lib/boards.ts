@@ -543,6 +543,18 @@ export function stateForColumn(column: BoardColumn | undefined, type: string): s
   return column?.stateMappings[type];
 }
 
+/**
+ * Whether a card is done on its board (D-469): in the board's last column (`outgoing`), or in a state
+ * that column maps its type to, or in a state Azure DevOps' processes use for finished work.
+ */
+export function cardDone(columns: BoardColumn[], card: Pick<WorkItem, "type" | "state" | "column">): boolean {
+  const last = columns.find((c) => c.columnType === "outgoing");
+  if (last && card.column && card.column.toLowerCase() === last.name.toLowerCase()) return true;
+  const state = card.state.toLowerCase();
+  if (last && last.stateMappings[card.type]?.toLowerCase() === state) return true;
+  return ["done", "closed", "resolved", "completed"].includes(state);
+}
+
 /** The `az boards work-item update` arguments for a patch (no id/org; `columnField` from the board). */
 export function updateArgs(patch: WorkItemPatch, columnField?: string, columnState?: string): string[] {
   const args: string[] = [];

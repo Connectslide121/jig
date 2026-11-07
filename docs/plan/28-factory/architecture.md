@@ -264,7 +264,8 @@ Jig); **"<run> needs you"** (the question, Answer · Open); **"<run> is done"** 
 For a gate owned by a person: a card in the product's board (Boards add-on) titled
 "<run> · <gate>", assigned to them, with links to the outputs. The watcher reads its state:
 moved to the board's resolved column = approved; a comment starting "changes:" = ask for changes.
-The board's column roles come from the Boards add-on's data.
+The board's column roles come from the Boards add-on's data. The board is picked once per run on the Plan step
+(`RunPlan.approvals`, D-469), not per owner; GD stays in Jig.
 
 ## Settings (`settings.page`, `ConfigSchema`)
 
