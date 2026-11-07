@@ -74,7 +74,7 @@ import newIdea from "./tracks/new-idea.json";
 import tender from "./tracks/tender.json";
 
 /**
- * Jig factory (phase 28). Session 0: the Floor, a run's page, the inbox, the sidebar view and the top
+ * Factory (phase 28). Session 0: the Floor, a run's page, the inbox, the sidebar view and the top
  * bar button, showing the sample runs (D-442) until runs can be started.
  */
 
@@ -158,8 +158,8 @@ function NoRuns({ projectId, onStart }: { projectId: string; onStart: () => void
         </>
       }
     >
-      Jig factory turns an idea into an interview, a demo and a pack of documents. Start with a new idea or
-      from a brief you already have, or load the sample runs to see how it works.
+      Factory turns an idea into an interview, a demo and a pack of documents. Start with a new idea or from a
+      brief you already have, or load the sample runs to see how it works.
     </Empty>
   );
 }
@@ -177,8 +177,8 @@ export function FactoryButton({ ctx }: { ctx: AddonUiContext }) {
     <>
       <button
         type="button"
-        title={count ? `Jig factory · ${count} waiting for you` : "Jig factory"}
-        aria-label="Jig factory"
+        title={count ? `Factory · ${count} waiting for you` : "Factory"}
+        aria-label="Factory"
         data-testid="factory-topbar"
         className="no-drag relative inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg"
         onClick={(e) => {
@@ -900,7 +900,7 @@ export function InboxTab({ ctx }: AddonTabProps) {
     return (
       <>
         <Empty icon={Inbox} title="Nothing waits for a person" className="h-full">
-          Gates, drafts and questions from Jig factory's runs show here, from every project.
+          Gates, drafts and questions from Factory's runs show here, from every project.
         </Empty>
         {review}
       </>
@@ -1002,7 +1002,7 @@ function InboxRow({
 
 // ─── Sidebar view ───────────────────────────────────────────────────────────────────────────────
 
-/** The compact runs list of the active project (View → Views → Jig factory). */
+/** The compact runs list of the active project (View → Views → Factory). */
 export function FactoryView({ ctx }: { ctx: AddonUiContext }) {
   const project = useActiveProject();
   const { data, error } = useRuns(project?.id);

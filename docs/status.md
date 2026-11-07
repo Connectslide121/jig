@@ -1,4 +1,4 @@
-Jig factory measures itself (2026-11-15, phase 28 session 8, D-472): Floor ⋯ → **Factory report**
+Factory measures itself (2026-11-15, phase 28 session 8, D-472): Floor ⋯ → **Factory report**
 puts a page in **Pages** (one per project, made again in place): runs by track and state, how long
 each stage takes (median and 80%), the critic's scores and how many demo versions it took, how much of
 each output you approved as written, and which gates could be lighter on that evidence (suggestions
@@ -9,7 +9,7 @@ scout and picks the first direction) and shows the critic's score per recipe ver
 after you change a recipe. Needs a real machine: evals on real models (they use your plan) and a
 report over real runs.
 
-Jig factory's change requests and tenders (2026-11-14, phase 28 session 7, D-471): **New idea** has a
+Factory's change requests and tenders (2026-11-14, phase 28 session 7, D-471): **New idea** has a
 **Track**: *Change request* (paste the ticket; Jig asks two or three questions and writes the CR,
 builds a demo for the customer to confirm, then tests, release notes, a quote with estimates from
 your measured run times, "TO FILL IN" until three runs are measured, and the customer letter; write
@@ -21,7 +21,7 @@ writes the ready change requests' notes, tests and letters into `docs/factory/re
 gaps…** lists what you failed in two or more tenders. Needs a real machine: real tender documents
 (PDFs) through real models, a real release with the package.
 
-Publishing a Jig factory demo (2026-11-13, phase 28 session 6, D-470): once G1 approved a demo, a
+Publishing a Factory demo (2026-11-13, phase 28 session 6, D-470): once G1 approved a demo, a
 run's ⋯ → **Publish demo…** asks where (**This computer only**, or a site from **Settings → Jig
 factory → Publish targets**: an Azure Static Web Apps app you made), for how long (7/30/90 days: the
 page says it has ended after that) and whether the customer confirms it (a bar "Is this what you
@@ -31,11 +31,11 @@ a copy or takes it down. Gate cards also come to your phone (Settings → Phone)
 Azure DevOps board (the Plan step's "Their cards on"). Needs a real machine: a real Static Web Apps
 deploy (`npx @azure/static-web-apps-cli` with your az sign-in), a real board, a real phone.
 
-Jig factory's pack (2026-11-12, phase 28 session 5, D-466, D-467): once a demo is approved, the run
+Factory's pack (2026-11-12, phase 28 session 5, D-466, D-467): once a demo is approved, the run
 writes the pack you ticked in its plan: spec, user stories, test cases, release notes, a customer
 letter (also PDF), pitch, deck and one-pager (HTML from the demo kit printed to PDF, and an image
 version made on ChatGPT, skipped with a reason when ChatGPT isn't signed in), courses (through the
-e-learning server in **Settings → Jig factory → E-learning**, or as Markdown), marketing drafts and a
+e-learning server in **Settings → Factory → E-learning**, or as Markdown), marketing drafts and a
 teaser film rendered by Motion. Each output waits in the **Inbox** (factory button → Inbox): its row
 opens a review sheet with the other form beside it, its files, **Edit**, **Reject…** and
 **Approve**; user stories have **Add as board cards…** (Boards add-on). A gate approves itself once
@@ -49,7 +49,7 @@ in the chat (poster, name, kind, length, scenes, Render or Play, Open); "change 
 scene by scene and keeps your screenshots and voice. A reply's ⋯ → **Make a video from this** (kind,
 length, notes) asks that chat. In a video's tab, **Write with Jig** keeps what the video is for as
 its brief and asks a new chat to write it. Styles now also come from a product kit, a `DESIGN.md`
-in Jig factory's design sources and the bundled theme-factory themes. Gap: from a release (later,
+in Factory's design sources and the bundled theme-factory themes. Gap: from a release (later,
 with Releases).
 
 Motion's voice, captions, music and captures (2026-11-11, phase 28 session M2, D-464): in a video's
@@ -77,18 +77,18 @@ render on Windows (the install from the modal, then Render), and how long it tak
 
 # Status
 
-Jig factory's demo review (2026-11-09, phase 28 session 4, D-462): a run's demo opens in the
+Factory's demo review (2026-11-09, phase 28 session 4, D-462): a run's demo opens in the
 **Demo review** tab (Run tab → **Review demo**, the G1 sheet, or an inbox row): desktop, tablet and
 phone frames side by side, v1–v3 with what changed, the critic's score per axis and its fixes.
 **Pin**, then click on a frame to leave a note there; **Ask for changes** sends the pins with your
 note for the next version, **Approve** passes G1. ⋯ → Open in Preview, Open in browser, Show in
 Pages. At GD (a new brand) the director's three boards show as cards; pick one and Approve.
-**Settings → Jig factory → Design references** lists sites or `DESIGN.md` files the interview offers
+**Settings → Factory → Design references** lists sites or `DESIGN.md` files the interview offers
 as "Feels like?". **Check on your machine:** a real run's demo in the frames (scripts, fonts,
 images), pins at the right place after a resize, and the L2 path on a real product.
 
-Jig factory's New idea and interview (2026-11-08, phase 28 session 3, D-460, D-461): **New idea…**
-(factory button, the Floor, a chat reply's ⋯ → Start Jig factory from this, or a meeting's ⋯ in
+Factory's New idea and interview (2026-11-08, phase 28 session 3, D-460, D-461): **New idea…**
+(factory button, the Floor, a chat reply's ⋯ → Start a Factory run from this, or a meeting's ⋯ in
 the Meetings window) takes the idea typed, dictated (the mic) or pasted, files, or a meeting from
 your history. Jig interviews you on the **Interview** tab: a few question cards a round with
 suggested answers (one click, edit, or dictate), the brief filling in beside them with its coverage,
@@ -98,7 +98,7 @@ owns each gate, the level; **Start run**. **Check on your machine:** dictation i
 and the interview's cards, a real interview on a real model (are the questions good, does the brief
 read well), and starting from a recent meeting.
 
-Jig factory runs (2026-11-08, phase 28 session 2, D-449…D-452): a run now really runs. **Start from a
+Factory runs (2026-11-08, phase 28 session 2, D-449…D-452): a run now really runs. **Start from a
 brief…** (factory button, the Floor, or search) starts one from a sample brief or one you paste: each
 stage is a chat of its own ("Factory · <run> · <stage>") in a git worktree on branch
 `factory/<name>`, at most three at a time (`factory.concurrency`), following a recipe; its files are
@@ -112,20 +112,20 @@ stages take, whether chats report, how the worktree and commits look. Known gaps
 modal, the interview tab and the Plan step are session 3; demo review and the pack's inbox
 actions come later.
 
-Jig factory's demo kit (2026-11-07, phase 28 session 1, D-443): the kit demos are built with lives on
+Factory's demo kit (2026-11-07, phase 28 session 1, D-443): the kit demos are built with lives on
 branch `demo-kit` (to become its own `jig-demo-kit` repository); `npm run check -- <demo>` there is
 the quality gate (offline, four widths and dark, accessibility, layout shift, alignment, real-data
-scan). In Jig: **Settings → Jig factory → Demo kit folder** (protected: chats can't change it).
-Settings → Skills lists five new skills for Jig factory, off until you switch them on (the demo critic's rubric among them). **Check on your machine:** clone the kit beside
+scan). In Jig: **Settings → Factory → Demo kit folder** (protected: chats can't change it).
+Settings → Skills lists five new skills for Factory, off until you switch them on (the demo critic's rubric among them). **Check on your machine:** clone the kit beside
 Jig, `npm install && npm run setup && npm run check -- demos/sample`, open
-`demos/sample/dist/index.html`; set the folder in Settings → Jig factory.
+`demos/sample/dist/index.html`; set the folder in Settings → Factory.
 
-Jig factory, first look (2026-11-07, phase 28 session 0, D-426…D-442): a new built-in add-on with a
+Factory, first look (2026-11-07, phase 28 session 0, D-426…D-442): a new built-in add-on with a
 **factory** button in the top bar (its count is what waits for you across projects): Floor, Inbox,
 Runs, Load sample runs. The **Floor** tab shows the active project's runs as cards in six lanes
 (Interview, Demo, Review, Pack, Launch, Done) under four numbers; a card opens the run's page (its
 stages and gates in a row, output cards with a picture of the demo, the timeline). The **Inbox** lists
-what waits for a person, grouped by gate, with a **you** pill on yours. View → Views → Jig factory is
+what waits for a person, grouped by gate, with a **you** pill on yours. View → Views → Factory is
 the compact runs list. Starting runs comes in later sessions; until then only sample runs show
 (D-442). **Check on your machine:** factory button → Load sample runs, then Floor, a card, Inbox, in
 Jig Dark and Light, with the Floor as a wide tab and in a narrow split.

@@ -62,7 +62,7 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | [Meetings](../addons/meetings/README.md) | Teams meeting room, screen sharing, live named captions, project-aware questions and reviewed actions |
 | [Boards](../addons/boards/README.md) | Azure DevOps boards per project, laid out like Azure DevOps |
 | [Tests](../addons/tests/README.md) | The project's test suites, run with one click, with results and history; Jig runs them too |
-| [Jig factory](../addons/factory/README.md) | An idea → an interview → a demo → a pack of documents, approved at gates (phase 28; runs from a brief through stage chats and gates; reference: [factory.md](reference/factory.md)) |
+| [Factory](../addons/factory/README.md) | An idea → an interview → a demo → a pack of documents, approved at gates (phase 28; runs from a brief through stage chats and gates; reference: [factory.md](reference/factory.md)) |
 | [Chat time](../addons/chat-time/README.md) | Where chats' working time goes (model, tests & builds, browser checks…), per chat, project or all projects, with how many chats worked at once (D-419) |
 
 ## Guides (how-tos)
@@ -72,7 +72,7 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | [developing.md](guides/developing.md) | Setting up, running and debugging Jig |
 | [testing.md](guides/testing.md) | Unit and end-to-end tests, the fake engine and its trigger words, screenshots |
 | [writing-addons.md](guides/writing-addons.md) | Writing an add-on by hand |
-| [factory-recipes.md](guides/factory-recipes.md) | Writing and overriding Jig factory recipes |
+| [factory-recipes.md](guides/factory-recipes.md) | Writing and overriding Factory recipes |
 | [themes.md](guides/themes.md) | Jig and VS Code themes |
 | [teams-phone.md](guides/teams-phone.md) | Jig on your phone through Teams: setup in the Azure portal by hand, and what to ask an admin |
 | [packaging.md](guides/packaging.md) | The Windows installer, installing and updating |

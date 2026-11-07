@@ -170,7 +170,7 @@ function outputsOf(prompt: string): string[] {
 
 const running = (r: Run) => r.stages.filter((s) => s.status === "running").map((s) => s.id);
 
-describe("Jig factory's Conductor", () => {
+describe("Factory's Conductor", () => {
   it("starts a run from a brief in a worktree of its own and its scout's chat", async () => {
     const r = await host.startRun({ projectId: "shop", brief: "shift-swap" }, api);
     expect(r).toMatchObject({ title: "Shift swap", slug: "shift-swap", level: "L1", state: "running" });
@@ -207,7 +207,7 @@ describe("Jig factory's Conductor", () => {
     await play(r, "S2");
     r = await load(r.id);
     expect(r.gates.map((g) => `${g.id}:${g.status}`)).toEqual(["G0:waiting"]);
-    expect(api.notify).toHaveBeenCalledWith(expect.objectContaining({ title: "Jig factory: Go / no-go" }));
+    expect(api.notify).toHaveBeenCalledWith(expect.objectContaining({ title: "Factory: Go / no-go" }));
     r = await host.decide({ projectId: "shop", runId: r.id, gateId: "G0", kind: "approve" }, api);
     expect(readFileSync(join(folder(r), "scout.md"), "utf8")).toContain("status: approved");
     r = await load(r.id);
@@ -992,7 +992,7 @@ describe("Jig factory's Conductor", () => {
   });
 });
 
-describe("Jig factory's tracks: change requests and tenders (D-471)", () => {
+describe("Factory's tracks: change requests and tenders (D-471)", () => {
   const CR = (critical: boolean) =>
     `---\ntitle: Export to PDF\nlevel: L1\ncustomer: Contoso\nticket: SUP-12\ncritical: ${critical}\n---\n# Export to PDF\n\n## Change\nExport the plan to PDF.\n\n## Who\nPlanners\n\n## Why\nThey print it.\n\n## Today\nScreenshots.\n\n## Customer\nContoso\n\n## Done when\nOne click.\n\n## Rules\nNone.\n`;
 

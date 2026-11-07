@@ -524,7 +524,7 @@ function PrepareCard({
       setBusy(undefined);
     }
   };
-  // A release package from Jig factory (D-471): its combined notes become the changelog and the notes.
+  // A release package from Factory (D-471): its combined notes become the changelog and the notes.
   const [usedPackage, setUsedPackage] = useState(false);
   const usePackage = () => {
     const pkg = data.package;
@@ -718,7 +718,7 @@ function PrepareCard({
                 disabled={busy !== undefined}
                 onClick={usePackage}
                 data-testid="release-use-package"
-                title={`Use the notes of ${data.package.title}, handed over by Jig factory`}
+                title={`Use the notes of ${data.package.title}, handed over by Factory`}
               >
                 Use the release package
               </Button>

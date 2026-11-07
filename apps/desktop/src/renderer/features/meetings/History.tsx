@@ -64,7 +64,7 @@ export function MeetingHistory({
   projects: ProjectsState;
   /** The Boards add-on is on: actions offer Create card… (D-425). */
   boards: boolean;
-  /** Jig factory is on: a meeting's ⋯ offers Start Jig factory… (D-460). */
+  /** Factory is on: a meeting's ⋯ offers Start a Factory run… (D-460). */
   factory?: boolean;
   layout: MeetingLayout;
   onResize(key: MeetingSizeKey, size: number): void;
@@ -217,11 +217,11 @@ export function MeetingHistory({
     ...(factory
       ? [
           {
-            label: "Start Jig factory…",
+            label: "Start a Factory run…",
             icon: Factory,
             testId: "meeting-factory",
             onSelect: () =>
-              void run("Couldn't start Jig factory", () => call("meetings.startFactory", { id: r.id })),
+              void run("Couldn't start a Factory run", () => call("meetings.startFactory", { id: r.id })),
           },
         ]
       : []),

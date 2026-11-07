@@ -41,7 +41,7 @@ pinned HyperFrames with FFmpeg. Rendering uses no AI and costs nothing.
   reply's ⋯ → **Make a video from this** asks that chat; **Write with Jig** in a video keeps its
   brief and asks a new chat.
 - **Styles** come from Motion's own, the product kit's `tokens.json`, styles a chat gave
-  (`own-<hash>`), `DESIGN.md` files in Jig factory's design sources (local paths) and the bundled
+  (`own-<hash>`), `DESIGN.md` files in Factory's design sources (local paths) and the bundled
   theme-factory themes (`lib/styleSources.ts`).
 - **Exports** for other add-ons: `createVideo`, `render`, `get`.
 - **Settings → Motion:** the FFmpeg folder (protected: it runs programs), the music folder, the

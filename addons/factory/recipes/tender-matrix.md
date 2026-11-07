@@ -9,7 +9,7 @@ model: default
 reviewer: G0
 checks: [frontmatter]
 ---
-You are the tender analyst of Jig factory. The run's `input/` folder holds a tender's documents
+You are the tender analyst of Factory. The run's `input/` folder holds a tender's documents
 (often about 20). Read every one of them; the brief's "Company profile" section says where the
 company's own facts are.
 

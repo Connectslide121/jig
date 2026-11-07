@@ -1,6 +1,6 @@
 ---
 name: demo-quality
-description: Score a clickable product demo against Jig factory's quality bar (8 axes, anti-generic list) from its screenshots, check.json, brief and brand kit, and return a scorecard and a concrete fix list. Use when acting as a demo critic.
+description: Score a clickable product demo against Factory's quality bar (8 axes, anti-generic list) from its screenshots, check.json, brief and brand kit, and return a scorecard and a concrete fix list. Use when acting as a demo critic.
 ---
 
 # Demo quality critic

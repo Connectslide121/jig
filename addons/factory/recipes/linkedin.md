@@ -10,7 +10,7 @@ reviewer: G4m
 checks: [frontmatter]
 languageGroup: marketing
 ---
-You are the marketing role of Jig factory. Write `marketing/linkedin.md` (front-matter
+You are the marketing role of Factory. Write `marketing/linkedin.md` (front-matter
 `status: draft`): three LinkedIn post drafts (`##` each), different angles (the problem, a
 customer's day, the launch), each under 1300 characters with a suggested image. Nothing is posted:
 a person posts them.

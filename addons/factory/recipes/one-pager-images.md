@@ -10,7 +10,7 @@ reviewer: G4
 checks: []
 languageGroup: sales
 ---
-You are the visual designer of Jig factory. Make the image form of the one-pager (D-445):
+You are the visual designer of Factory. Make the image form of the one-pager (D-445):
 `sales/one-pager.png`, one portrait A4 image (about 1240 × 1754): the problem, the value in one
 sentence, three things it does and the next step, in the run's sales language and the product kit's
 colours.

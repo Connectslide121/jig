@@ -1,5 +1,5 @@
 /**
- * Jig factory's host code: the runs a project keeps (storage `runs` + `run:<id>`, D-116), the sample
+ * Factory's host code: the runs a project keeps (storage `runs` + `run:<id>`, D-116), the sample
  * runs (D-442), and the Conductor (architecture.md → The Conductor, The stage runner): it starts runs
  * in their own git worktree (D-451), moves them through their track, starts each stage's chat from its
  * recipe, follows the chats it started (`chatChanged`, and the `tick` watcher after a restart),
@@ -522,7 +522,7 @@ function announceGates(api: AddonHostApi, r: Run, gates: GateId[]): void {
   if (r.eval) return;
   for (const g of gates)
     api.notify({
-      title: `Jig factory: ${GATES[g].label}`,
+      title: `Factory: ${GATES[g].label}`,
       message: `"${r.title}" waits for you`,
       tone: "info",
       system: true,
@@ -1206,7 +1206,7 @@ export async function enough(a: RunArgs, api: AddonHostApi): Promise<Run> {
     );
     const list = open.filter((q) => q.suggestion).map((q) => ({ text: q.text, answer: q.suggestion ?? "" }));
     const text = answersText(r, s, round, list, true);
-    const sent = await api.chats.send({ sessionId: s.chatId, text, from: "Jig factory: good enough" });
+    const sent = await api.chats.send({ sessionId: s.chatId, text, from: "Factory: good enough" });
     r = { ...r, questions };
     if (s.status === "needs-you") r = resumeStage(r, s.id);
     r = patchStage(r, s.id, { sentAt: sent.sentAt, nudgedAt: undefined, question: undefined });
@@ -1608,7 +1608,7 @@ export async function phoneAction(
           );
         } else if (tap?.kind === "open")
           api.notify({
-            title: "Jig factory",
+            title: "Factory",
             message: `"${r.title}" from your phone`,
             system: true,
             actions: openRunAction(r),
@@ -1667,7 +1667,7 @@ async function follow(api: AddonHostApi, input: Run, catchingUp: boolean): Promi
         s.id,
       );
       api.notify({
-        title: "A Jig factory stage needs you",
+        title: "A Factory stage needs you",
         message: `${stageTitle(track, s)} · ${r.title}`,
         tone: "warning",
         system: true,
@@ -1679,7 +1679,7 @@ async function follow(api: AddonHostApi, input: Run, catchingUp: boolean): Promi
         .send({
           sessionId: s.chatId,
           text,
-          from: `Jig factory: ${next === "nudge" ? "asks for the report" : "carry on"}`,
+          from: `Factory: ${next === "nudge" ? "asks for the report" : "carry on"}`,
         })
         .catch(() => undefined);
       const atSent = sent?.sentAt ?? new Date().toISOString();
@@ -1731,7 +1731,7 @@ async function teaserStep(api: AddonHostApi, input: Run, s: StageRun): Promise<{
         projectId: r.projectId,
         kind: "teaser",
         title: typeof sb.title === "string" ? sb.title : `${r.title} teaser`,
-        brief: `The teaser of Jig factory's run "${r.title}"`,
+        brief: `The teaser of Factory's run "${r.title}"`,
         language: typeof sb.language === "string" ? sb.language : (r.languages.marketing ?? r.languages.all),
         scenes,
         ...(sb.style && typeof sb.style === "object" ? { ownStyle: sb.style } : {}),
@@ -2002,7 +2002,7 @@ async function startChat(api: AddonHostApi, input: Run, s: StageRun): Promise<Ru
     const sent = await api.chats.send({
       sessionId,
       text: prompt,
-      from: `Jig factory: ${stageTitle(track, s)} for "${r.title}"`,
+      from: `Factory: ${stageTitle(track, s)} for "${r.title}"`,
     });
     r = patchStage(r, s.id, { sentAt: sent.sentAt });
   } catch (e) {
@@ -2300,7 +2300,7 @@ export async function answer(
     const list = answered.map((q) => ({ text: q.text, answer: q.answer ?? "" }));
     if (reply && s.question) list.push({ text: s.question, answer: reply });
     const text = answersText(r, s, round, list);
-    const sent = await api.chats.send({ sessionId: s.chatId, text, from: "Jig factory: your answers" });
+    const sent = await api.chats.send({ sessionId: s.chatId, text, from: "Factory: your answers" });
     if (s.status === "needs-you") r = resumeStage(r, s.id);
     r = patchStage(r, s.id, { sentAt: sent.sentAt, nudgedAt: undefined, question: undefined });
     await save(api, r);
@@ -2347,7 +2347,7 @@ async function stageOfChat(
   return r && stage ? { run: r, stage } : undefined;
 }
 
-const NOT_A_STAGE = "This chat isn't a stage of a Jig factory run.";
+const NOT_A_STAGE = "This chat isn't a stage of a Factory run.";
 
 export async function context(args: ChatArgs, api: AddonHostApi): Promise<string> {
   const found = await stageOfChat(api, args);
@@ -2355,7 +2355,7 @@ export async function context(args: ChatArgs, api: AddonHostApi): Promise<string
   const { run: r, stage } = found;
   const track = await trackOf(api, r.track);
   return [
-    `This chat is the "${stageTitle(track, stage)}" stage (${stage.id}, version ${stage.version ?? 1}) of Jig factory's run "${r.title}".`,
+    `This chat is the "${stageTitle(track, stage)}" stage (${stage.id}, version ${stage.version ?? 1}) of Factory's run "${r.title}".`,
     `The run's folder is ${runFolder(r)} on branch ${branchOf(r.slug)}. Write only there, as drafts.`,
     "addon_factory_brief gives the run's brief, plan and inputs. When your work is done call addon_factory_report with the files you wrote; when you need a person call addon_factory_ask.",
   ].join("\n");
@@ -2396,7 +2396,7 @@ async function elearningLines(api: AddonHostApi): Promise<string[]> {
 
 /**
  * What the design stages build from (D-444, D-462): the product kit, a picked direction, the demo
- * kit's folder and the `DESIGN.md` references from Settings → Jig factory.
+ * kit's folder and the `DESIGN.md` references from Settings → Factory.
  */
 async function designLines(api: AddonHostApi, r: Run): Promise<string[]> {
   const c = await api.config<{ demoKitPath?: string; designSources?: string[] }>().catch(() => undefined);
@@ -2673,7 +2673,7 @@ function parseReportArgs(a: Record<string, unknown>): StageReport {
   };
 }
 
-/** `factory_report`: a stage says it is done (or couldn't); Jig factory collects the files when its turn ends. */
+/** `factory_report`: a stage says it is done (or couldn't); Factory collects the files when its turn ends. */
 export async function toolReport(
   args: ChatArgs & Record<string, unknown>,
   api: AddonHostApi,
@@ -2696,7 +2696,7 @@ export async function toolReport(
       stage: stage.id,
       text: `Report: ${report.summary}\nFiles: ${report.outputs.join(", ") || "none"}${report.notes.length ? `\nNotes:\n${report.notes.map((n) => `- ${n}`).join("\n")}` : ""}`,
     });
-    return `Reported stage ${stage.id}${report.failed ? " as failed" : ""}. Jig factory collects your files when your turn ends; end your turn now.`;
+    return `Reported stage ${stage.id}${report.failed ? " as failed" : ""}. Factory collects your files when your turn ends; end your turn now.`;
   });
 }
 
@@ -2710,7 +2710,7 @@ export async function toolAsk(args: ChatArgs & { question?: unknown }, api: Addo
     const next = patchStage(found.run, found.stage.id, { question });
     await save(api, next);
     await log(api, next, { kind: "tool", stage: found.stage.id, text: `Asked: ${question}` });
-    return "Jig factory shows your question on the run. End your turn now; the answer comes back in this chat.";
+    return "Factory shows your question on the run. End your turn now; the answer comes back in this chat.";
   });
 }
 
@@ -2725,7 +2725,7 @@ export async function toolRuns(args: ChatArgs & { project?: string }, api: Addon
   const list = (await load(api, p.id))
     .filter((r) => !isSample(r.id))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  if (!list.length) return `${p.name} has no Jig factory runs.`;
+  if (!list.length) return `${p.name} has no Factory runs.`;
   return list
     .map((r) => {
       const gates = r.gates.filter((g) => g.status === "waiting").map((g) => GATES[g.id].label);
@@ -2736,7 +2736,7 @@ export async function toolRuns(args: ChatArgs & { project?: string }, api: Addon
     .join("\n");
 }
 
-/** Shared with Motion (D-465): the `DESIGN.md` references from Settings → Jig factory (D-444). */
+/** Shared with Motion (D-465): the `DESIGN.md` references from Settings → Factory (D-444). */
 export async function designSources(_args: unknown, api: AddonHostApi): Promise<string[]> {
   const c = await api.config<{ designSources?: string[] }>().catch(() => undefined);
   return (c?.designSources ?? []).filter((x): x is string => typeof x === "string" && !!x.trim());

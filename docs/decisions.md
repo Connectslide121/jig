@@ -8479,3 +8479,16 @@ previous version of the same recipe, average demo versions. Eval runs show on th
 run ("Eval ·"), then only in the modal; they never count in the KPIs, estimates or the report.
 Evals run on the models the recipes name: on real models they cost plan usage, so they start only
 from the button.
+
+## D-473: The factory add-on is called Factory
+
+- Status: accepted.
+- **Who:** Jon ("it's in Jig, so let's just call it Factory"); the wording of the menu items is
+  Claude, on my own.
+
+The add-on's user-visible name is **Factory**, not "Jig factory": in its manifest (name, views,
+commands, top-bar group), Settings → Factory, notifications, chat senders, stage prompts, tool
+descriptions, the demo-quality skill and the docs. A chat reply's ⋯ and a meeting's ⋯ say **Start a
+Factory run from this** / **Start a Factory run…**. Only text changes: the add-on id `factory`, its
+folder, `factory.*` settings, `addon_factory_*` tools, test ids and the `factory` branch keep their
+names. Earlier entries in this log keep the old name as written.

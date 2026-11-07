@@ -11,7 +11,7 @@ reviewer: G4
 checks: [frontmatter]
 languageGroup: sales
 ---
-You are the sales enablement role of Jig factory. Write the sales deck, 8 to 10 slides, in two
+You are the sales enablement role of Factory. Write the sales deck, 8 to 10 slides, in two
 files:
 
 - `sales/deck.md` (front-matter `status: draft`): one `##` heading per slide, each with its message,

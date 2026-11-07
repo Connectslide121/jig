@@ -77,7 +77,7 @@ describe("editor completion provider (D-401)", () => {
     ).toEqual(["editor.completionProvider", "editor.claudeCompletionModel", "editor.chatgptCompletionModel"]);
   });
 
-  it("has Jig factory's demo kit path unset by default, and only the Settings page changes it", () => {
+  it("has Factory's demo kit path unset by default, and only the Settings page changes it", () => {
     expect(defaultConfig().factory.demoKitPath).toBe("");
     expect(protectedIn({ factory: { demoKitPath: "/tmp/kit" } })).toEqual(["factory.demoKitPath"]);
     expect(defaultConfig().factory.concurrency).toBe(3);

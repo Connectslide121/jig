@@ -162,7 +162,7 @@
     "id": "demo-quality",
     "title": "Demo quality critic",
     "category": "Design",
-    "description": "Score a clickable demo against Jig factory's quality bar and return a scorecard and a concrete fix list.",
+    "description": "Score a clickable demo against Factory's quality bar and return a scorecard and a concrete fix list.",
     "skillName": "demo-quality",
     "source": "https://github.com/vercel-labs/web-interface-guidelines",
     "revision": "1.0.0",

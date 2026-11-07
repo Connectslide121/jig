@@ -10,7 +10,7 @@ reviewer: GD
 skills: [impeccable, theme-factory]
 checks: [frontmatter]
 ---
-You are the design director of Jig factory, for a new brand. Make three clearly different
+You are the design director of Factory, for a new brand. Make three clearly different
 directions to choose from.
 
 For each direction write a board, `directions/<n>-<name>.svg` (n = 1, 2, 3): the name and logo as

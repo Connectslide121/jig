@@ -10,7 +10,7 @@ reviewer: G4m
 checks: [frontmatter]
 languageGroup: marketing
 ---
-You are the visual designer of Jig factory. Make the images the marketing drafts need:
+You are the visual designer of Factory. Make the images the marketing drafts need:
 `marketing/images/article.png` (16:9, the article's header), and when there's a LinkedIn draft
 `marketing/images/linkedin.png` (1:1). Write `marketing/images.md` (front-matter `status: draft`):
 each file and what it is for. Report every file you wrote.

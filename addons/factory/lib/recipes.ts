@@ -168,7 +168,7 @@ export function stagePrompt(p: PromptInput): string {
   const lines = [
     marker(p.recipe.id, p.run.id),
     "",
-    `You are the ${p.recipe.role} stage (${p.stage.id}) of Jig factory's run "${p.run.title}"${p.stage.version ? `, version ${version}` : ""}.`,
+    `You are the ${p.recipe.role} stage (${p.stage.id}) of Factory's run "${p.run.title}"${p.stage.version ? `, version ${version}` : ""}.`,
     `The run's folder is ${p.folder} (on branch factory/${p.run.slug}).`,
     "",
     p.recipe.body,

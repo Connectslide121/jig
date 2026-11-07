@@ -5,7 +5,7 @@ it finds the next session by itself. To force a session, add `SESSION = <n>` as 
 (a number, or `M1`, `M2`, `M3` for Motion).
 
 ```text
-You are working on Jig (this repository), building phase 28, "Jig factory": a built-in add-on
+You are working on Jig (this repository), building phase 28, "Factory": a built-in add-on
 that turns an idea into an interview, a polished demo, and a full pack of documents and material.
 
 0. Work on the git branch `factory` (`git fetch && git checkout factory && git pull`; create it
@@ -32,7 +32,7 @@ that turns an idea into an interview, a polished demo, and a full pack of docume
      for how screens look.
    - docs/reference/addon-api.md, docs/reference/slots.md, and addons/factory (the add-on so far;
      addons/tasks or addons/workflows for patterns it doesn't show yet).
-   - The decisions about phase 28 in docs/decisions.md (search "Jig factory" / "phase 28").
+   - The decisions about phase 28 in docs/decisions.md (search "Factory" / "phase 28").
 
 3. Do that one session, in checklist order. No work from later sessions.
    - Follow the data model, file layout, tool names and settings in architecture.md exactly. To

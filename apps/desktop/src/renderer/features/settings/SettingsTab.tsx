@@ -183,7 +183,7 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
     },
     factory: {
       id: "factory",
-      title: "Jig factory",
+      title: "Factory",
       icon: Factory,
       component: FactorySettings,
       order: 5.5,

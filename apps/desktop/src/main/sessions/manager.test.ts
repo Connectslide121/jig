@@ -85,7 +85,7 @@ describe("SessionManager", () => {
   it("keeps a new chat whose first message comes from Jig or an add-on", async () => {
     const m = manager();
     const draft = await create(m);
-    await m.notify(draft.id, "Write the scout's notes", "Jig factory: Scout");
+    await m.notify(draft.id, "Write the scout's notes", "Factory: Scout");
     await until(async () => (await metaOf(m, draft.id)).turns === 1);
     await m.shutdown();
     const saved = JSON.parse(await readFile(join(dir, `${draft.id}.json`), "utf8"));

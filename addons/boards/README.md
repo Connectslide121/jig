@@ -83,5 +83,5 @@ Storage (project scope): `boards`, the followed boards; `selected`, the open tab
 - **Shared with Jig (D-425):** `exports` `cardTargets` (the boards a project follows, their types and
   backlog type), `cardAssignee` (you, or the one person in the organisation with a name, else nobody)
   and `createCard` (a card on a followed board). Meetings' Create card… uses them through `callShared`.
-  Jig factory's approvals by others (D-469) also use `cardStatus` (state, column, done on its board,
+  Factory's approvals by others (D-469) also use `cardStatus` (state, column, done on its board,
   comments) and `commentCard`.

@@ -1,5 +1,5 @@
 /**
- * Jig factory's phone cards (D-434, D-468, architecture.md → Phone buttons): which cards a run should
+ * Factory's phone cards (D-434, D-468, architecture.md → Phone buttons): which cards a run should
  * have on your phone right now, what a card says once it's settled, and what a tap means. Pure: the
  * Conductor (host.ts) sends, updates and acts on them through `api.phone`.
  *

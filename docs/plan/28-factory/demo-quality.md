@@ -1,4 +1,4 @@
-# Jig factory — demo quality, demo kit, design system
+# Factory — demo quality, demo kit, design system
 
 Part of [phase 28](../28-factory.md). "The demos must look super polished, never like generic MVPs"
 (Jon), made checkable: every item below is an automated check, a template feature, or a scored
@@ -111,7 +111,7 @@ against the reference's do's and don'ts. A product kit always wins over a refere
 Vendored into `skills/` like the existing catalogue (pinned, licences kept, reviewed text only, no
 upstream scripts; D-432). Their scripts' jobs are done by the demo kit.
 
-| Resource | Use in Jig factory | How |
+| Resource | Use in Factory | How |
 |---|---|---|
 | Anthropic `frontend-design` | art direction, avoiding generic looks | already bundled |
 | Anthropic `web-artifacts-builder` | the React + Tailwind + shadcn build pattern and its anti-generic rules | vendor (text) |

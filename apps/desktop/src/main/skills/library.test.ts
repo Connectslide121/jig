@@ -52,7 +52,7 @@ describe("native skill library", () => {
         expect(await readFile(join(root, s.id, "LICENSE.txt"), "utf8")).toMatch(/Permission|Apache/);
       }
     }
-    // Jig factory's skills start off (D-443); the rest stay on.
+    // Factory's skills start off (D-443); the rest stay on.
     expect(catalog.filter((s) => s.defaultEnabled === false).map((s) => s.id)).toEqual([
       "web-artifacts",
       "theme-factory",

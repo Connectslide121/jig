@@ -103,7 +103,7 @@ export function packageFiles(day: string, items: PackageItem[]): Array<{ path: s
         "---",
         `# Release package ${day}`,
         "",
-        `${items.length} change request${items.length === 1 ? "" : "s"}, made by Jig factory from their approved runs. Check each part before the release; send the letters yourself.`,
+        `${items.length} change request${items.length === 1 ? "" : "s"}, made by Factory from their approved runs. Check each part before the release; send the letters yourself.`,
         "",
         "| Change | Customer | Ticket | Test cases | Letter |",
         "|---|---|---|---|---|",

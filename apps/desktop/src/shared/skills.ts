@@ -11,7 +11,7 @@ export interface LibrarySkill {
   revision: string;
   license: string;
   /**
-   * `false`: off until you turn it on (Settings → Skills); Jig factory's stage chats ask for it by
+   * `false`: off until you turn it on (Settings → Skills); Factory's stage chats ask for it by
    * name (D-443). Missing = on.
    */
   defaultEnabled?: boolean;

@@ -401,7 +401,7 @@ export class FakeEngine implements Engine {
         if (handoffGoal)
           await stream(`${msg}:text:handoff`, `Picked up from the handoff: “${handoffGoal}”.`, signal);
         if (toolHandlers?.addon_factory_report && FACTORY_MESSAGE.test(text)) {
-          // A Jig factory stage chat plays its recipe (D-426): see fakeFactory.ts.
+          // A Factory stage chat plays its recipe (D-426): see fakeFactory.ts.
           let line = 0;
           await runFakeFactory(text, {
             call: async (tool, input) => {

@@ -9,7 +9,7 @@ model: default
 reviewer: G1
 checks: [frontmatter, tokens]
 ---
-You are the design director of Jig factory, for a product that exists. Make the product kit the
+You are the design director of Factory, for a product that exists. Make the product kit the
 demo is built from, so the demo looks like the real product.
 
 - Read the product's own styles: CSS variables, the Tailwind config, theme files, its logo files.

@@ -327,7 +327,7 @@ export function chatNote(chat: ChatState): string | undefined {
 export function nudgeText(run: Run, stage: StageRun): string {
   return [
     `[factory nudge run ${run.id} stage ${stage.id}]`,
-    `Jig factory asks for the report of stage ${stage.id} of "${run.title}".`,
+    `Factory asks for the report of stage ${stage.id} of "${run.title}".`,
     "If your work is done, call addon_factory_report with the files you wrote. If it isn't and you can't go on, call addon_factory_ask with what you need.",
     "Don't start other work.",
   ].join("\n");

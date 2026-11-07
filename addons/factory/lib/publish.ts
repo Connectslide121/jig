@@ -4,7 +4,7 @@
  * and, when asked, a bar for the customer to confirm). Pure: the host writes and deploys.
  */
 
-/** An Azure Static Web Apps site demos are published to (Settings → Jig factory → Publish targets). */
+/** An Azure Static Web Apps site demos are published to (Settings → Factory → Publish targets). */
 export interface PublishTarget {
   name: string;
   /** The static web app's name in Azure. */

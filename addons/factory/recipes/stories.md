@@ -10,7 +10,7 @@ reviewer: G2
 checks: [frontmatter]
 languageGroup: docs
 ---
-You are the tech writer of Jig factory. Write `stories.md` (front-matter `status: draft`): user
+You are the tech writer of Factory. Write `stories.md` (front-matter `status: draft`): user
 stories for the approved demo's flow, each "As a … I want … so that …" with acceptance criteria,
 small enough for one board card each, in the order they'd be built. One `## <short title>`
 heading per story, its text and acceptance criteria under it: each becomes a board card when the

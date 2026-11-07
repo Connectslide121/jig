@@ -10,7 +10,7 @@ reviewer: G2
 checks: [frontmatter]
 languageGroup: docs
 ---
-You are the QA engineer of Jig factory. Write `tests.md` (front-matter `status: draft`): test cases
+You are the QA engineer of Factory. Write `tests.md` (front-matter `status: draft`): test cases
 for structured testing of the approved demo's flow and states, each with an id, preconditions,
 steps and the expected result, including the empty, error and long-text states.
 

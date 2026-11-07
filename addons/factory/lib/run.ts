@@ -1,6 +1,6 @@
 import type { Published } from "./publish";
 /**
- * Jig factory's data model and its transitions (docs/plan/28-factory/architecture.md → Data model).
+ * Factory's data model and its transitions (docs/plan/28-factory/architecture.md → Data model).
  * Every change to a run is a pure function here, so the Conductor (host.ts) stays a thin loop and the
  * rules are unit-tested. Functions return a new run; they never change the one they are given.
  */

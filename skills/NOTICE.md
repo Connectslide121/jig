@@ -13,7 +13,7 @@ Use `python scripts/vendor-skills.py` only for a deliberate reviewed refresh. Th
 Jig-authored catalog entries. Updating a pin requires reviewing instructions, references, licences
 and runtime compatibility; there is no network install/update at app startup.
 
-Jig factory's snapshots (D-432, D-443): Anthropic's web-artifacts-builder, theme-factory and
+Factory's snapshots (D-432, D-443): Anthropic's web-artifacts-builder, theme-factory and
 webapp-testing keep Apache-2.0; only their Markdown is bundled (their scripts, `.tar.gz` and PDF are
 not, so their instructions mention files that aren't here; the demo kit does those jobs). Vercel's
 web-design-guidelines is MIT by the agent-skills repository's README (no licence file upstream; the

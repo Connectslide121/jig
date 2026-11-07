@@ -520,15 +520,15 @@ export function TerminalSettings() {
   );
 }
 
-/** Jig factory's own settings (D-443); the rest of the factory's settings join here in later sessions. */
+/** Factory's own settings (D-443); the rest of the factory's settings join here in later sessions. */
 export function FactorySettings() {
   const config = useConfig((s) => s.config);
   if (!config) return <Spinner center />;
   return (
-    <SettingsSection title="Jig factory">
+    <SettingsSection title="Factory">
       <TextSetting
         label="Demo kit folder"
-        description="The jig-demo-kit folder Jig factory builds and checks demos with (it runs the kit's npm scripts there)."
+        description="The jig-demo-kit folder Factory builds and checks demos with (it runs the kit's npm scripts there)."
         value={config.factory.demoKitPath}
         placeholder="(not set)"
         onSave={(demoKitPath) => void updateConfig({ factory: { demoKitPath } })}

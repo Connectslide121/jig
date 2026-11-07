@@ -1,4 +1,4 @@
-# Jig factory
+# Factory
 
 Turns an idea into an interview, a polished demo and a full pack of documents and material (phase 28,
 [docs/plan/28-factory.md](../../docs/plan/28-factory.md); reference:
@@ -7,7 +7,7 @@ their stages in chats of their own, stopping at gates for you; **sample runs** s
 data (D-442).
 
 - **Open it:** the **factory** button in the top bar (its count is what waits for you, in every
-  project) → Floor, Inbox or Runs; or View → Views → **Jig factory** for the compact runs list.
+  project) → Floor, Inbox or Runs; or View → Views → **Factory** for the compact runs list.
 - **Floor** (tab): the active project's runs as cards in six lanes (Interview, Demo, Review, Pack,
   Launch, Done) under a strip of numbers: running, waiting for you, median time from idea to demo,
   and the share of drafts approved as is. A card shows the level, a progress ring with its count, the
@@ -32,7 +32,7 @@ data (D-442).
   reply) and **Open in Jig**; a stage's question with **Answer**; a stuck or finished run too. Once
   decided anywhere, the card says how and loses its buttons (D-468).
 - **Publish demo** (⋯ on a run, once G1 approved a demo): on this computer, or an Azure Static Web
-  Apps site from Settings → Jig factory → Publish targets; for 7, 30 or 90 days (the page ends itself
+  Apps site from Settings → Factory → Publish targets; for 7, 30 or 90 days (the page ends itself
   after); optionally with a bar where the customer confirms by e-mail. Real-looking e-mail addresses,
   phone numbers or listed real names block it. The run's **Published** list takes a copy down (D-470).
 - **Measure and tune** (D-472): Floor ⋯ → **Factory report** puts the project's runs, stage times,

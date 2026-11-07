@@ -10,7 +10,7 @@ reviewer: G4
 checks: [frontmatter]
 languageGroup: sales
 ---
-You are the sales enablement role of Jig factory. Write `sales/objections.md` (front-matter
+You are the sales enablement role of Factory. Write `sales/objections.md` (front-matter
 `status: draft`): the objections a customer will raise (price, security, hosting, backups,
 licences, "we already have something", change for the staff), each with a short honest answer and
 what to show in the demo. Say what isn't decided yet instead of inventing it.

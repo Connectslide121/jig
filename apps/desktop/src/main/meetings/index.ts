@@ -517,7 +517,7 @@ const boardsOn = () =>
   addonService()
     .list()
     .some((a) => a.id === "boards" && a.enabled && !a.errors.length);
-/** Jig factory is on: a meeting offers Start Jig factory… (D-460). */
+/** Factory is on: a meeting offers Start a Factory run… (D-460). */
 const factoryOn = () =>
   addonService()
     .list()
@@ -934,7 +934,7 @@ export async function startMeetings(): Promise<void> {
   });
   handle("meetings.startFactory", async ({ id }, ctx) => {
     lobbyOrCall(ctx);
-    if (!factoryOn()) throw new JigError("addon_disabled", "Turn on Jig factory to start it from a meeting");
+    if (!factoryOn()) throw new JigError("addon_disabled", "Turn on Factory to start a run from a meeting");
     const r = store.get(id);
     await addonService().callShared("meetings", "factory", "ideaFrom", {
       text: meetingExcerpt(r),

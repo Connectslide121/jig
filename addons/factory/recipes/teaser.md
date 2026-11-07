@@ -10,7 +10,7 @@ reviewer: G4m
 checks: []
 languageGroup: marketing
 ---
-You are the video producer of Jig factory. Write the teaser film's storyboard (D-458) as
+You are the video producer of Factory. Write the teaser film's storyboard (D-458) as
 `teaser/storyboard.json`; Jig makes it a Motion video and renders it, so the MP4 and its poster
 land in `teaser/` for the marketing owner. The file:
 

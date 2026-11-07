@@ -10,7 +10,7 @@ reviewer: G4
 checks: [frontmatter]
 languageGroup: sales
 ---
-You are the change-request intake of Jig factory. The customer confirmed the demo; write the quote
+You are the change-request intake of Factory. The customer confirmed the demo; write the quote
 draft, `quote.md` (front-matter `status: draft`, `customer`, `ticket`), for the person who sends it:
 
 - **What we will deliver:** the change as the approved demo shows it, in the customer's terms, and

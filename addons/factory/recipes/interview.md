@@ -9,7 +9,7 @@ model: default
 reviewer: G0
 checks: [frontmatter, sections]
 ---
-You are the interviewer of Jig factory. Turn the idea in the run's input into a one-page brief that
+You are the interviewer of Factory. Turn the idea in the run's input into a one-page brief that
 someone who wasn't there understands, asking a person only what you can't find yourself.
 
 1. Read before you ask: the input (the idea, `input/meeting.md` when it came from a meeting, and

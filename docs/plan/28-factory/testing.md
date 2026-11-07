@@ -1,7 +1,7 @@
-# Jig factory — testing the factory, and DevX
+# Factory — testing the factory, and DevX
 
 Part of [phase 28](../28-factory.md). Jig's testing rules (AGENTS.md → Testing rules,
-`docs/guides/testing.md`) apply; this file says what they mean for Jig factory.
+`docs/guides/testing.md`) apply; this file says what they mean for Factory.
 
 ## Test layers
 
@@ -12,10 +12,10 @@ Part of [phase 28](../28-factory.md). Jig's testing rules (AGENTS.md → Testing
 | E2E | a whole fixture run with the fake engine (below), New idea → done, in under a minute | `e2e/factory.spec.ts` (+ rule in `e2e/affected.json`) | `npm run e2e:changed` once per session |
 | UI states | every view at sidebar, bottom panel and tab widths, Jig Dark and Light, with fixture runs in each state | `shootView` (`e2e/shots.ts`) | per UI change, looked at |
 | Demo kit | the kit's own tests; `npm run check` on the sample demo; Storybook builds | the demo kit repo | in the kit |
-| Recipe evals | golden briefs on real models, scored by the critic; trend per recipe version | a button on Settings → Jig factory | Jon, on demand (uses his plan) |
+| Recipe evals | golden briefs on real models, scored by the critic; trend per recipe version | a button on Settings → Factory | Jon, on demand (uses his plan) |
 | Dogfood | run 1: a module in an existing product (L2); run 2: a new-product idea (L1); run 3: a change request (L3) | in Jig | after sessions 4, 5, 7 |
 
-## The fake engine for Jig factory
+## The fake engine for Factory
 
 Add rows to `apps/desktop/src/main/engine/fake.ts` and the table in `docs/guides/testing.md` so a
 stage chat plays its role without AI. A stage prompt carries a marker line
@@ -50,7 +50,7 @@ Keep each test short (the suite runs in parallel); split into several tests over
 
 - **Recipes are files** with front-matter; hot-reloaded while Jig runs; per-repo overrides; a
   linter (`lib/recipes.ts` → `validate`) run by the unit tests over every built-in recipe.
-- **"Try a recipe"** (Settings → Jig factory → Recipes): runs one recipe alone on a golden brief and
+- **"Try a recipe"** (Settings → Factory → Recipes): runs one recipe alone on a golden brief and
   shows its output next to the previous version's.
 - **Tracks are data:** a new track or a changed order needs no code.
 - **Inspector** (Run → ⋯): the run's state JSON, every prompt sent, every report, timings, retries.

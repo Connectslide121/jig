@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { builtinAddonsDir } from "../addons";
 
 /**
- * Jig factory's roles in the fake engine (tests, D-426): a stage chat's message starts with a marker
+ * Factory's roles in the fake engine (tests, D-426): a stage chat's message starts with a marker
  * line, and this plays the stage's recipe without AI — writes the files the prompt lists, posts
  * question cards for the interview, fails the critic's first version, and reports with
  * `addon_factory_report`. Markers in the run's brief steer it, once each per run and recipe:
@@ -60,7 +60,7 @@ export async function runFakeFactory(text: string, hooks: FakeFactoryHooks): Pro
         : (stageId.split(":")[1] ?? "");
   const outputs = kind === "stage" ? listAfter(text, "## Write") : listAfter(brief, "## You write");
   if (!folder) {
-    await hooks.say("This chat isn't a stage of a Jig factory run.");
+    await hooks.say("This chat isn't a stage of a Factory run.");
     return;
   }
 

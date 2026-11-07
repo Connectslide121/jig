@@ -1,4 +1,4 @@
-# Phase 28 — Jig factory
+# Phase 28 — Factory
 
 Status: **in progress** on branch `factory` (session 0 done 2026-11-06; see "Where we are"). Jon's decisions are below; development is planned as
 self-contained sessions so it can be done **without Jig**, from GitHub (for example GitHub Copilot's
@@ -7,7 +7,7 @@ on 2026-11-06: "I want the full factory built so we can test it end to end, as a
 UI, nice UX and nice DevX, all of it, over the top … the demos it produces must look super polished,
 never like generic MVPs."
 
-**Done when:** you press **New idea** in Jig, answer an interview, and Jig factory delivers a
+**Done when:** you press **New idea** in Jig, answer an interview, and Factory delivers a
 polished, clickable demo of the idea, then (once you approve it) everything needed to build, sell,
 teach and launch it: spec, user stories, test cases, release notes, customer letter, e-learning,
 pitch, presentation, one-pager, teaser, marketing plan, articles and newsletter. Each one is a draft
@@ -38,15 +38,15 @@ draft of this plan, in the same order).
 
 | # | Decision |
 |---|---|
-| D-426 | **A built-in Jig add-on**, `addons/factory`, called **Jig factory** (working name). Not a skill, not a workflow: the full thing, built so it can be tested end to end. |
-| D-427 | **Jig factory runs its own stage chats**, in parallel (default 3 at a time), through the add-on host's `api.chats`. Not through the Tasks queue (sequential, one per project). This replaces option C of the first design. |
+| D-426 | **A built-in Jig add-on**, `addons/factory`, called **Factory** (working name). Not a skill, not a workflow: the full thing, built so it can be tested end to end. |
+| D-427 | **Factory runs its own stage chats**, in parallel (default 3 at a time), through the add-on host's `api.chats`. Not through the Tasks queue (sequential, one per project). This replaces option C of the first design. |
 | D-428 | **One demo stack for every concept demo (L1)**: React + TypeScript + Tailwind + shadcn/ui, built into a static folder, whatever the product's own stack is. Working prototypes (L2) and full builds (L3) use the product's own stack. |
 | D-429 | **A run's files live in the product's repository** under `docs/factory/<run>/`, on a branch per run (`factory/<slug>`), merged when the pack is approved. |
 | D-430 | **A new product with no repository:** the interview asks every time whether to create one, its name and where; Jon decides each time. |
 | D-431 | **The demo kit has its own repository** (beside Jig in the workspace); Jig only points to it (a setting). |
 | D-432 | **Vendor** Anthropic's `web-artifacts-builder`, `theme-factory`, `webapp-testing` and Vercel's `web-design-guidelines` into `skills/`, text only, after a licence check; their scripts are rebuilt inside the demo kit. |
 | D-433 | **Gate owners are set by hand per run** (on the Plan step), not as global roles. |
-| D-434 | **Phone buttons for add-ons:** yes. A core phone API so Jig factory can send "Demo v2 is ready · Approve · Ask for changes · Open in Jig" and receive the tap. |
+| D-434 | **Phone buttons for add-ons:** yes. A core phone API so Factory can send "Demo v2 is ready · Approve · Ask for changes · Open in Jig" and receive the tap. |
 | D-435 | **Approvals by other people** go through the product's own Azure DevOps board (a card per gate, polled). |
 | D-436 | **An independent design critic** runs on ChatGPT (Codex) when it is signed in, else on Claude. |
 | D-437 | **New brands:** the interview asks for the name and logo; the factory invents them only when told to. |
@@ -62,7 +62,7 @@ Later decisions (Jon, 2026-11-06, after going through the plan):
 | D-444 | **`DESIGN.md` libraries as inspiration** for new brands' directions and the critic; only their addresses are kept (`factory.designSources`). |
 | D-445 | **Deck and one-pager in two forms:** HTML from the demo kit (→ PDF) and made with ChatGPT's image model; you pick which to share, or both. |
 | D-446 | **Images are generated with ChatGPT** (Codex's image generation on the signed-in plan); demo screenshots first. |
-| D-447 | **E-learning through the user's own MCP server:** Jig factory builds the connector (setting + recipes); courses are created as unpublished drafts. |
+| D-447 | **E-learning through the user's own MCP server:** Factory builds the connector (setting + recipes); courses are created as unpublished drafts. |
 | D-448 | **Teasers are HTML rendered to MP4 with HyperFrames**, in the demo kit; not html-video (a second agent runtime). |
 | D-459 | **Impeccable's design playbooks** (pbakaus/impeccable) are bundled, text only and off by default; the design director, demo builders and critic name them in their recipes' `skills` (Jon asked, 2026-11-07). |
 
@@ -75,7 +75,7 @@ Motion, the video add-on (Jon, 2026-11-06; [28-factory/motion.md](28-factory/mot
 | D-455 | **Voiceover with the natural voice** per scene, scene length follows the speech; burned-in captions and `.srt`/`.vtt`; core `api.speech.say`. |
 | D-456 | **Music from your own music folder**; Find music opens Pixabay Music; Jig never bundles or fetches tracks itself. |
 | D-457 | **Live captures** of an app or demo as scenes, recorded in a hidden window; core `api.capture.record`. |
-| D-458 | **Jig factory's teasers are made with Motion** (replaces D-448's demo-kit teaser; HyperFrames stays the engine). |
+| D-458 | **Factory's teasers are made with Motion** (replaces D-448's demo-kit teaser; HyperFrames stays the engine). |
 
 **Open: sharing a demo for review with people who don't have Jig.** A demo is one self-contained
 HTML file, so it can simply be sent (for example in Teams) and opened in a browser. A private
@@ -164,9 +164,9 @@ Sessions run in order. Each ends with something Jon can try (in Jig, after pulli
 ### 0. Foundations: decisions, skeleton, mockup in code — done
 
 - [x] Reserve D-numbers for J-1 … J-16 (`npm run decision`): D-426 … D-441, filled, used here.
-- [x] `addons/factory/` skeleton: `addon.json` (id `factory`, name "Jig factory", icon `factory`,
+- [x] `addons/factory/` skeleton: `addon.json` (id `factory`, name "Factory", icon `factory`,
       `storage.scope: "project"`, permissions `chat`, `ai`, `exec`, `fs:read`, `fs:write`), empty
-      `host.ts`, `ui.tsx`, `README.md`; the view "Jig factory" listed in View → Views (hard rule: no
+      `host.ts`, `ui.tsx`, `README.md`; the view "Factory" listed in View → Views (hard rule: no
       hidden features) and a top-bar item.
 - [x] `lib/run.ts`, `lib/graph.ts`, `lib/gates.ts` types and pure functions from
       [architecture.md](28-factory/architecture.md) → Data model, with unit tests.
@@ -176,7 +176,7 @@ Sessions run in order. Each ends with something Jon can try (in Jig, after pulli
 - [x] `e2e/factory.spec.ts` (fixture runs render, whole card clickable, no layout shift on load) and
       its rule in `e2e/affected.json`.
 
-**Done when:** Jig factory shows fixture runs on the floor, a run's page and the inbox, looking like
+**Done when:** Factory shows fixture runs on the floor, a run's page and the inbox, looking like
 the mockup.
 
 Session 0 notes: the fixture runs are **sample runs** the user loads and removes (⋯ → Load sample
@@ -214,7 +214,7 @@ Session 1 notes: the kit is on branch `demo-kit` (see "Where we are"); commands 
 dispatcher at 07:40) passes `npm run check` in ~25 s: one offline HTML file of 1.2 MB, 4 widths plus
 dark, axe, layout shift, alignment, story targets, real-data scan; `check.json` and screenshots in
 `<demo>/check/`. A new demo from the template passes too, inside or outside the kit folder. The
-setting shows on Settings → Jig factory (core page, D-443: add-ons can't read core settings yet).
+setting shows on Settings → Factory (core page, D-443: add-ons can't read core settings yet).
 Skills: `web-artifacts`, `theme-factory`, `webapp-testing`, `web-design-guidelines` (with a pinned
 copy of the guidelines) and the Jig-authored critic `demo-quality` (`references/rubric.md`), all off
 by default (`defaultEnabled: false`).
@@ -225,7 +225,7 @@ by default (`defaultEnabled: false`).
       stage), caps (3 revisions per gate), resume after restart, a watcher tick (1 min).
 - [x] Stage runner on `api.chats.create/send/get` with `factory.concurrency` (default 3); one chat
       per stage, named "Factory · <run> · <stage>", in the run's project.
-- [x] Unattended runs (D-440): widen D-363 so Jig factory may start stage chats in "Don't ask" when
+- [x] Unattended runs (D-440): widen D-363 so Factory may start stage chats in "Don't ask" when
       **you** picked it on the Plan step (user-only, like Add tasks); new decision entry
       ([architecture.md](28-factory/architecture.md) → The stage runner).
 - [x] Recipes loader (`lib/recipes.ts`): built-in `addons/factory/recipes/*.md`, overrides in
@@ -270,12 +270,12 @@ the Pause button of the mockup (Stop covers it for now).
       languages (D-439).
 - [x] Plan step: the run's stages, outputs (pre-ticked per track, untick), gate owners picked by
       hand (D-433), level, languages; Start.
-- [x] "Start Jig factory" from a meeting (Meetings' actions) and from a message (`context.message`).
+- [x] "Start a Factory run" from a meeting (Meetings' actions) and from a message (`context.message`).
 
 **Done when:** from a voice note or a meeting you reach a one-page brief you would sign, and a plan.
 
 Session 3 notes: core gained `api.meetings.recent` (permission `meetings:read`), `Dictate` in
-`@jig/sdk/ui`, and "Start Jig factory…" in a meeting's ⋯ (main calls the factory's export
+`@jig/sdk/ui`, and "Start a Factory run…" in a meeting's ⋯ (main calls the factory's export
 `ideaFrom`, D-460). The interview's coverage is the brief's nine sections (`lib/brief.ts`,
 `parseBrief`); the interviewer rewrites `brief.md` every round, **Good enough** sends `[round n
 enough]` and the brief lists its gaps as open points (D-461). The Plan step is the person stage S3:
@@ -283,7 +283,7 @@ after G0 the run waits in `planning` until **Start run** in the Plan dialog; a r
 brief sets `plan.confirmed`, so the Conductor passes S3 by itself after G0 (`lib/conductor.ts`,
 tested). The fake interviewer plays two rounds, a partial brief after round 1, and honours Good
 enough (`docs/guides/testing.md`). e2e: the new-idea → interview → Good enough → Plan test, and
-Start Jig factory from a chat reply's ⋯ and from a meeting. Add-on CSS: pair container variants
+Start a Factory run from a chat reply's ⋯ and from a meeting. Add-on CSS: pair container variants
 (`@max-3xl:grid-cols-1 @3xl:grid-cols-2`), or the plain one wins (D-297). Not done here: the
 "Feels like?" design-source question belongs to session 4 (D-444).
 
@@ -310,7 +310,7 @@ sheet and inbox rows) shows `demo/` in three scaled frames through `ctx.frameUrl
 a `files.preview` grant, `sandbox="allow-scripts"`), versions from `CHANGES.md`, the critic's axes
 and fixes (`lib/review.ts`, tested), pins (Pin, click on a frame, a note) kept per run until **Ask
 for changes** sends them with G1's note (D-462). GD shows the director's boards as cards; Approve
-takes the picked one (`Run.direction`). `factory.designSources` (Settings → Jig factory → Design
+takes the picked one (`Run.direction`). `factory.designSources` (Settings → Factory → Design
 references) feeds a "Design" section of `factory_brief` for the interview and design stages. Pages
 exports `publish`, so ⋯ → Show in Pages keeps a version there. e2e: "pick a direction at GD …
 (D-462)". The fake critic writes axes and fixes; the fake director's boards are coloured SVGs.
@@ -391,11 +391,11 @@ then record a capture…" (a local `file://` page, the email warning, the zoom m
       brief and sources), and "New video…" from a chat's ⋯ ("Make a video from this"). From a
       release: later, with the Releases add-on (D-465).
 - [x] Styles from a product kit, a `DESIGN.md` reference (D-444) or a `theme-factory` theme.
-- [x] Export `createVideo` / `render` (D-215) for Jig factory (D-458).
+- [x] Export `createVideo` / `render` (D-215) for Factory (D-458).
 - [x] "What Jig can do" line, README line, screenshots, `docs/status.md`.
 
 **Done when:** "make a 40 s teaser for this release" in a chat gives a video you only tweak, and
-Jig factory can call Motion.
+Factory can call Motion.
 
 **Session M3 notes (2026-11-11).** Tools `addon_motion_create/update/render/list` (D-465): a chat
 writes scenes; update merges by scene id and keeps media, marks and spoken voice; `list` with an id
@@ -447,7 +447,7 @@ demo kit's print templates are on `demo-kit` (08e73fa6).
       buttons): `phone` permission, `api.phone.send/update`, `phone.action` events, Telegram and
       Teams channels, a reply-with-text button; docs in `addon-api.md`, `26-phone.md`; e2e with the
       fake Telegram server (`e2e/telegram.ts`, shared by `phone.spec.ts` and `factory.spec.ts`).
-- [x] Jig factory's phone cards: gate waiting (screenshot + Approve / Ask for changes / Open),
+- [x] Factory's phone cards: gate waiting (screenshot + Approve / Ask for changes / Open),
       run finished, run stuck; also a stage's question (Answer). `lib/phone.ts`, `phoneAction`;
       cards settle ("✅ Approved") when decided anywhere.
 - [x] Approvals by others (D-435, D-469): a card per gate in the run's approvals board (Boards
@@ -470,7 +470,7 @@ question, stuck and done cards (`lib/phone.ts`), settled when decided anywhere. 
 Publish demo…, local copy or Static Web Apps site through the pinned SWA CLI and the user's az, an
 end date in the page, a customer confirm bar, blocked by the real-data scan; Take down in the Run
 tab's Published list. e2e: `factory.spec.ts` → "approve a gate and ask for changes from the phone",
-"pick a direction at GD…" (publishes v3 locally and takes it down), "Settings → Jig factory: add a
+"pick a direction at GD…" (publishes v3 locally and takes it down), "Settings → Factory: add a
 publish target…". Needs a real machine: Telegram/Teams cards on a phone, a real Azure DevOps board,
 a real Static Web Apps deploy.
 

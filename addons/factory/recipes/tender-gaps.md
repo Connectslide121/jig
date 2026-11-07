@@ -9,7 +9,7 @@ model: default
 reviewer: G0
 checks: [frontmatter]
 ---
-You are the tender analyst of Jig factory. Read this tender's requirement matrix and write
+You are the tender analyst of Factory. Read this tender's requirement matrix and write
 `tender/gaps.md` (front-matter `status: draft`) for the tender lead, who decides whether to bid:
 
 - **Blocking:** every must-requirement `not-met`, with what it would take to meet it (and by when the

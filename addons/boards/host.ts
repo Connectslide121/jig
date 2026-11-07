@@ -892,7 +892,7 @@ export async function createCard(
 }
 
 /**
- * Where a card made elsewhere stands (D-469, Jig factory's approvals by others): its state and column,
+ * Where a card made elsewhere stands (D-469, Factory's approvals by others): its state and column,
  * whether it's done on its board (`cardDone`), and its comments, oldest first.
  */
 export async function cardStatus(

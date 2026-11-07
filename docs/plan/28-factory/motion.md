@@ -1,7 +1,7 @@
 # Motion — videos made from HTML
 
 Part of [phase 28](../28-factory.md): sessions M1–M3, decisions D-453 … D-458. A built-in add-on,
-`addons/motion`, useful on its own; Jig factory's teasers are made with it (D-458). Jig's UI rules
+`addons/motion`, useful on its own; Factory's teasers are made with it (D-458). Jig's UI rules
 apply to every screen (AGENTS.md).
 
 ## How it works
@@ -124,7 +124,7 @@ addons/motion/
   storyboard), `motion_update` (scene edits), `motion_render`, `motion_list` (read-only). A tool
   renderer shows the video card in the chat. `jigContext` says when to use them.
 - **Exports** (D-215): `createVideo({ projectId, kind, storyboard?, brief?, style, output })` and
-  `render(id)` for Jig factory (D-458) and, later, Releases.
+  `render(id)` for Factory (D-458) and, later, Releases.
 - **Core additions:** `api.speech.say` (D-455) and `api.capture.record` (D-457), both documented in
   `addon-api.md`, with schemas in `main/ipc/validate.ts` where they take paths or URLs. Add-ons
   can't speak or record today, so these come first in M2.

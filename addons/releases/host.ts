@@ -267,7 +267,7 @@ export interface RepoDetail {
   headVersion?: string;
   detection?: Detection;
   dirty: boolean;
-  /** A release package another add-on handed over (Jig factory, D-471): its notes for the next release. */
+  /** A release package another add-on handed over (Factory, D-471): its notes for the next release. */
   package?: StagedPackage;
 }
 
@@ -333,7 +333,7 @@ export async function detail({ path }: { path: string }, api: AddonHostApi): Pro
 }
 
 /**
- * Shared (D-471): Jig factory hands over a release package's notes; the Release section offers them for
+ * Shared (D-471): Factory hands over a release package's notes; the Release section offers them for
  * the next release of that repository until it is released or dropped.
  */
 export async function stagePackage(

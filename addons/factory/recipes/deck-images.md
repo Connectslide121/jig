@@ -10,7 +10,7 @@ reviewer: G4
 checks: [frontmatter]
 languageGroup: sales
 ---
-You are the visual designer of Jig factory. Make the image form of the sales deck (D-445): one
+You are the visual designer of Factory. Make the image form of the sales deck (D-445): one
 16:9 PNG per slide, 6 to 8 slides, `sales/deck-images/slide-01.png`, `slide-02.png`…, each a
 designed slide with its headline in the run's sales language and the product kit's colours. Write
 `sales/deck-images.md` (front-matter `status: draft`): one line per slide, its file and its message.

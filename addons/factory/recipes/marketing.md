@@ -10,7 +10,7 @@ reviewer: G4m
 checks: [frontmatter]
 languageGroup: marketing
 ---
-You are the marketing role of Jig factory. Write `marketing/plan.md` (front-matter
+You are the marketing role of Factory. Write `marketing/plan.md` (front-matter
 `status: draft`): the audience, the message in one sentence, the channels and a four-week
 calendar (what goes out where, which of the pack's drafts: article, LinkedIn posts, newsletter,
 teaser). Nothing is posted or sent: the drafts are for a person.

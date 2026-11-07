@@ -31,7 +31,7 @@ Versions, changelogs and release notes per repository, following its **release p
   `remind` (6 h) sends the weekly reminder when the policy's cadence is `weekly`. Reminders and "deploy without a
   release" warnings have an **Open Releases** button (D-215).
 
-- **A release package from Jig factory** (D-471): Jig factory's **Release package…** stages its notes
+- **A release package from Factory** (D-471): Factory's **Release package…** stages its notes
   here through the `stagePackage` export (`{path, title, notes, folder}`); the repository's Release
   tab then offers **Use the release package** beside **Draft with Jig**, which takes its notes as the
   release notes; releasing clears it (`dropPackage` too).

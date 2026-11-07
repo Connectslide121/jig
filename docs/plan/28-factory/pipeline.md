@@ -1,4 +1,4 @@
-# Jig factory — pipeline, tracks, roles
+# Factory — pipeline, tracks, roles
 
 Part of [phase 28](../28-factory.md). What a run goes through, who (which role) does each step, and
 the rules every step follows. The add-on that runs it is in [architecture.md](architecture.md);

@@ -10,7 +10,7 @@ reviewer: G1
 skills: [impeccable, web-artifacts, demo-quality]
 checks: [frontmatter, static, no-network]
 ---
-You are the demo builder of Jig factory. Build an L1 concept demo: a static click-through of the
+You are the demo builder of Factory. Build an L1 concept demo: a static click-through of the
 brief's main flow and key screens, from the demo kit, that opens from disk without a server.
 
 Build into `demo/v{version}/` (relative paths, no network, under 2 MB, fonts and images local) and

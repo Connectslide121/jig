@@ -2,9 +2,9 @@
 
 Open **Chats → Skills library** or search for Skills library. The single page lists fourteen bundled
 skills with a clickable name (instructions/source/version/licence in a modal), category, Projects
-picker and global switch. All are enabled by default except Jig factory's five (below), which a
+picker and global switch. All are enabled by default except Factory's five (below), which a
 catalog entry marks `"defaultEnabled": false` (D-443): they start off until you switch them on, and
-Jig factory's stage chats ask for them by name. An override's `enabled` missing = the catalog's
+Factory's stage chats ask for them by name. An override's `enabled` missing = the catalog's
 default. The searchable project picker uses checkboxes
 and Apply/Cancel; new projects are included automatically. Global off wins while preserving project
 choices. Personal and repository Claude Code skills are independent.
@@ -19,7 +19,7 @@ factory (D-432, off by default) Anthropic web-artifacts-builder, theme-factory a
 web-design-guidelines with a pinned copy of the Web Interface Guidelines as a reference file, and
 pbakaus's Impeccable (D-459, off by default; its playbooks only, without its launcher). Six
 Jig-authored skills cover UI/UX review, backend architecture, application security, browser
-verification, AI feature UX and Jig factory's demo critic (`demo-quality`, its rubric in
+verification, AI feature UX and Factory's demo critic (`demo-quality`, its rubric in
 `references/rubric.md`, off by default). Source links, author, revision and licence appear in the details modal. See
 `skills/NOTICE.md` and `scripts/vendor-skills.py` for provenance and deliberate refreshes.
 

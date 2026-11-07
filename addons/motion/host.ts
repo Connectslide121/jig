@@ -183,7 +183,7 @@ async function kitStyle(api: AddonHostApi, project: string | undefined): Promise
 }
 
 /**
- * `DESIGN.md` references (D-444) from Settings → Jig factory, through the factory's `designSources`
+ * `DESIGN.md` references (D-444) from Settings → Factory, through the factory's `designSources`
  * export: local files and folders only (a folder's DESIGN.md files, two levels down); repository
  * addresses are for chats to read (D-465).
  */
@@ -1455,7 +1455,7 @@ export async function toolList(args: ToolChat & { id?: string }, api: AddonHostA
 }
 
 /**
- * Shared with other add-ons (D-215, D-458): Jig factory's teaser makes its video here. Takes the
+ * Shared with other add-ons (D-215, D-458): Factory's teaser makes its video here. Takes the
  * tool's shape with `projectId` (media as absolute paths) and returns the video; `render` and `get`
  * are shared as they are.
  */

@@ -1,4 +1,4 @@
-# Jig factory demo rubric
+# Factory demo rubric
 
 From Jig's `docs/plan/28-factory/demo-quality.md`. Each axis scores 1–5:
 5 = a shipped product you would pay for, 4 = polished with small slips, 3 = acceptable but plain,

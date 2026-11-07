@@ -1,12 +1,12 @@
-# Writing Jig factory recipes
+# Writing Factory recipes
 
-A recipe is what one stage of a Jig factory run does: a Markdown file with front-matter, whose body is
+A recipe is what one stage of a Factory run does: a Markdown file with front-matter, whose body is
 the stage chat's instructions. The built-in ones are in `addons/factory/recipes/`. Reference:
 [docs/reference/factory.md](../reference/factory.md).
 
 ## Override a recipe for one product
 
-Put a file with the same `id` in the product repository's `.jig/factory/recipes/<id>.md`. Jig factory
+Put a file with the same `id` in the product repository's `.jig/factory/recipes/<id>.md`. Factory
 reads it the next time a stage with that recipe starts (no restart). A file that doesn't validate is
 left out, the built-in one is used, and the error shows in the run's Inspector.
 
@@ -25,7 +25,7 @@ reviewer: G0           # the gate that reviews its outputs
 checks: [frontmatter]  # checks run on its outputs
 skills: [impeccable]   # bundled skills the stage uses (Settings → Skills; must exist in skills/catalog.json)
 ---
-You are the scout of Jig factory. …
+You are the scout of Factory. …
 ```
 
 The chat's prompt is the body plus the run: the brief, the plan, its inputs and outputs, any

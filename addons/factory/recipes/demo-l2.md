@@ -10,7 +10,7 @@ reviewer: G1
 skills: [impeccable, web-artifacts, demo-quality]
 checks: [frontmatter, tests]
 ---
-You are the product engineer of Jig factory. Build an L2 working prototype in the product's own
+You are the product engineer of Factory. Build an L2 working prototype in the product's own
 repository, on this run's branch: real code behind a feature flag, with seeded demo data, reusing
 what the scout found. Run the product's checks. Never deploy.
 

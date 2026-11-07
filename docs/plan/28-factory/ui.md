@@ -1,4 +1,4 @@
-# Jig factory — how you use it, and every screen
+# Factory — how you use it, and every screen
 
 Part of [phase 28](../28-factory.md). The visual mockup is [mockup.html](mockup.html) (open it in a
 browser); this file is the spec the code follows. Jig's UI rules apply to every screen (AGENTS.md:
@@ -8,7 +8,7 @@ for forms, no layout shift, laid out for a sidebar, the bottom panel and a tab, 
 ## A run, as you live it
 
 1. **Monday 08:05, on the train.** An idea comes up in a meeting. In Jig's meeting window you press
-   **Start Jig factory** on the meeting (or, at your desk, the top bar's **factory** button → **New
+   **Start a Factory run** on the meeting (or, at your desk, the top bar's **factory** button → **New
    idea**). The New idea modal has the meeting excerpt in it; you add one sentence by voice, pick
    the product (or **New product**), press **Start interview**.
 2. **The interview tab opens.** On the left, question cards appear three to five at a time, each with
@@ -28,7 +28,7 @@ for forms, no layout shift, laid out for a sidebar, the bottom panel and a tab, 
    evening the top bar says **4 waiting for you**: the **Inbox** lists spec, stories, tests and
    release notes, each a card you open, read, edit if needed, **Approve**. Your colleague approves the
    pitch and the sales course from their board.
-6. **Tuesday.** Run → **Publish demo**: Jig factory asks where (the demo site) and for how long
+6. **Tuesday.** Run → **Publish demo**: Factory asks where (the demo site) and for how long
    (30 days), scans for real data, you confirm. The salespeople get the course link.
 
 ## Where things are
@@ -36,7 +36,7 @@ for forms, no layout shift, laid out for a sidebar, the bottom panel and a tab, 
 | Place | What | Opens with |
 |---|---|---|
 | Top bar | **factory** button with a count of what waits for you; its menu: New idea…, Floor, Inbox | always there |
-| View → Views → **Jig factory** | the compact runs list (sidebar or bottom panel) | View menu |
+| View → Views → **Factory** | the compact runs list (sidebar or bottom panel) | View menu |
 | Tab **Floor** | every run of the project as cards in lanes | top bar, view header |
 | Tab **Run** | one run: stages, outputs, timeline | a run card |
 | Tab **Interview** | questions + live brief | New idea, a run in Interview |
@@ -44,7 +44,7 @@ for forms, no layout shift, laid out for a sidebar, the bottom panel and a tab, 
 | Tab **Inbox** | everything waiting for a person, all runs | top bar count |
 | Modal **New idea** | capture | top bar, a meeting, a message's ⋯ |
 | Modal **Plan** | stages, outputs, owners, level, languages, permissions | after G0 |
-| Settings → **Jig factory** | demo kit path, concurrency, critic, publish targets, default language, design sources, e-learning MCP | Settings |
+| Settings → **Factory** | demo kit path, concurrency, critic, publish targets, default language, design sources, e-learning MCP | Settings |
 | Phone | gate cards with buttons | by itself |
 
 ## Screens
@@ -52,7 +52,7 @@ for forms, no layout shift, laid out for a sidebar, the bottom panel and a tab, 
 ### Floor (tab)
 
 ```
-┌ Jig factory · Floor ───────────────────────────────────────────── [＋ New idea] ┐
+┌ Factory · Floor ───────────────────────────────────────────── [＋ New idea] ┐
 │  3 running    2 waiting for you    4 h 10 m idea → demo    82 % approved as is │  ← KPI strip, fixed height
 ├──────────────┬──────────────┬──────────────┬──────────────┬──────────────┬──────┤
 │ Interview    │ Demo         │ Review       │ Pack         │ Launch       │ Done │  ← lanes (scroll horizontally narrow)

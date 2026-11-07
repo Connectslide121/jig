@@ -7,7 +7,7 @@ import { expect, hostCall, launchJig, test } from "./fixtures";
 import { SHOTS_DIR, shootView } from "./shots";
 import { fakeTelegram, TOKEN } from "./telegram";
 
-/** A project ("shop") made active, as Jig factory works on the active project. */
+/** A project ("shop") made active, as Factory works on the active project. */
 async function shop(page: Page, jigHome: string): Promise<string> {
   await mkdir(join(jigHome, "shop"), { recursive: true });
   await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
@@ -43,13 +43,13 @@ async function shots(app: ElectronApplication, page: Page, name: string, what: (
 const factory = (page: Page, method: string, args: Record<string, unknown>) =>
   hostCall(page, "addons.call", { id: "factory", method, args });
 
-test("Jig factory: sample runs on the floor, a run's page and the inbox", async ({ page, jigHome }) => {
+test("Factory: sample runs on the floor, a run's page and the inbox", async ({ page, jigHome }) => {
   await shop(page, jigHome);
 
   // Listed in View → Views; empty until the sample runs are loaded.
   await page.getByTestId("tools-group-View").click();
   await page.getByRole("menuitem", { name: "Views" }).hover();
-  await page.getByRole("menuitem", { name: "Jig factory" }).click();
+  await page.getByRole("menuitem", { name: "Factory" }).click();
   const view = page.getByTestId("factory-view");
   await expect(view).toBeVisible({ timeout: 15000 });
   await view.getByTestId("factory-load-samples").click();
@@ -93,7 +93,7 @@ test("Jig factory: sample runs on the floor, a run's page and the inbox", async 
   );
 });
 
-test("Jig factory: removing the sample runs empties the views", async ({ page, jigHome }) => {
+test("Factory: removing the sample runs empties the views", async ({ page, jigHome }) => {
   const projectId = await shop(page, jigHome);
   expect((await factory(page, "loadSamples", { projectId })) as { value: number }).toMatchObject({
     value: 6,
@@ -138,7 +138,7 @@ async function gitShop(page: Page, jigHome: string): Promise<string> {
 const runOf = async (page: Page, projectId: string, runId: string) =>
   ((await factory(page, "run", { projectId, runId })) as { value: RunLike }).value;
 
-test("Jig factory: a golden brief's run goes through every stage and gate with the fake roles", async ({
+test("Factory: a golden brief's run goes through every stage and gate with the fake roles", async ({
   page,
   jigHome,
 }) => {
@@ -180,7 +180,7 @@ test("Jig factory: a golden brief's run goes through every stage and gate with t
   ).toBe("main");
 });
 
-test("Jig factory: the pack in the inbox: two forms side by side, a PDF, approve and reject per output (D-467)", async ({
+test("Factory: the pack in the inbox: two forms side by side, a PDF, approve and reject per output (D-467)", async ({
   page,
   jigHome,
 }) => {
@@ -258,7 +258,7 @@ test("Jig factory: the pack in the inbox: two forms side by side, a PDF, approve
   await expect(trust.filter({ hasText: "User stories" })).toContainText("100%");
 });
 
-test("Jig factory: pick a direction at GD, then review the demo in its frames, pin a change and approve (D-462)", async ({
+test("Factory: pick a direction at GD, then review the demo in its frames, pin a change and approve (D-462)", async ({
   page,
   jigHome,
 }) => {
@@ -377,7 +377,7 @@ test("Jig factory: pick a direction at GD, then review the demo in its frames, p
   await expect(published).toBeHidden();
 });
 
-test("Jig factory: a stage Jig closed in the middle of carries on after the restart", async ({
+test("Factory: a stage Jig closed in the middle of carries on after the restart", async ({
   app,
   page,
   jigHome,
@@ -425,7 +425,7 @@ test("Jig factory: a stage Jig closed in the middle of carries on after the rest
   }
 });
 
-test("Jig factory: the interview asks two rounds of questions, then writes the brief", async ({
+test("Factory: the interview asks two rounds of questions, then writes the brief", async ({
   page,
   jigHome,
 }) => {
@@ -462,7 +462,7 @@ test("Jig factory: the interview asks two rounds of questions, then writes the b
   expect(r.outputs.map((o) => o.id)).toContain("brief-v1");
 });
 
-test("Jig factory: Start Jig factory from a chat reply's menu and from a meeting (D-460)", async ({
+test("Factory: Start a Factory run from a chat reply's menu and from a meeting (D-460)", async ({
   jigHome,
 }) => {
   test.setTimeout(90_000);
@@ -493,7 +493,7 @@ test("Jig factory: Start Jig factory from a chat reply's menu and from a meeting
     await page.waitForSelector("[data-testid=app-root]");
     await shop(page, jigHome);
 
-    // A chat reply's ⋯ → Start Jig factory from this: New idea opens with the reply's text.
+    // A chat reply's ⋯ → Start a Factory run from this: New idea opens with the reply's text.
     await page.keyboard.press("Control+N");
     await page.getByTestId("composer-input").fill("Gift cards for Shop");
     await page.keyboard.press("Enter");
@@ -501,7 +501,7 @@ test("Jig factory: Start Jig factory from a chat reply's menu and from a meeting
     await expect(reply).toContainText("You said: Gift cards for Shop", { timeout: 20000 });
     await reply.hover();
     await reply.getByRole("button", { name: "Message options" }).click();
-    await page.getByRole("menuitem", { name: "Start Jig factory from this" }).click();
+    await page.getByRole("menuitem", { name: "Start a Factory run from this" }).click();
     const dialog = page.getByTestId("factory-new-idea");
     await expect(dialog).toBeVisible();
     await expect(dialog.getByTestId("factory-idea-text")).toHaveValue(/Gift cards for Shop/);
@@ -510,7 +510,7 @@ test("Jig factory: Start Jig factory from a chat reply's menu and from a meeting
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toBeHidden();
 
-    // A meeting's ⋯ → Start Jig factory…: the workbench's New idea opens with the meeting's notes.
+    // A meeting's ⋯ → Start a Factory run…: the workbench's New idea opens with the meeting's notes.
     await hostCall(page, "meetings.open", { tab: "meetings" });
     const find = () => app.windows().find((w) => w.url().includes("meetingLobby=1"));
     await expect.poll(() => Boolean(find()), { timeout: 30_000 }).toBe(true);
@@ -524,10 +524,7 @@ test("Jig factory: Start Jig factory from a chat reply's menu and from a meeting
   }
 });
 
-test("Jig factory: a new idea, its interview with Good enough, and the Plan step", async ({
-  page,
-  jigHome,
-}) => {
+test("Factory: a new idea, its interview with Good enough, and the Plan step", async ({ page, jigHome }) => {
   test.setTimeout(90_000);
   const projectId = await shop(page, jigHome);
 
@@ -606,7 +603,7 @@ test("Jig factory: a new idea, its interview with Good enough, and the Plan step
   expect(r.stages.find((s) => s.id === "S3")?.status).toBe("done");
 });
 
-test("Jig factory: a change request from its ticket to the release package (D-471)", async ({
+test("Factory: a change request from its ticket to the release package (D-471)", async ({
   app,
   page,
   jigHome,
@@ -683,7 +680,7 @@ test("Jig factory: a change request from its ticket to the release package (D-47
   expect(((await runOf(page, projectId, id)) as RunLike & { packaged?: unknown }).packaged).toBeTruthy();
 });
 
-test("Jig factory: two tenders, their requirement matrix and the recurring gaps (D-471)", async ({
+test("Factory: two tenders, their requirement matrix and the recurring gaps (D-471)", async ({
   app,
   page,
   jigHome,
@@ -739,7 +736,7 @@ test("Jig factory: two tenders, their requirement matrix and the recurring gaps 
   await shots(app, page, "gaps", () => gaps);
 });
 
-test("Jig factory: recipe evals run golden briefs to their quality gate, and the factory report goes to Pages (D-472)", async ({
+test("Factory: recipe evals run golden briefs to their quality gate, and the factory report goes to Pages (D-472)", async ({
   app,
   page,
   jigHome,
@@ -786,7 +783,7 @@ test("Jig factory: recipe evals run golden briefs to their quality gate, and the
   expect(pages.value.filter((p) => p.title === "Factory report · shop")).toHaveLength(1);
 });
 
-test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({
+test("Factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({
   page,
   app,
   jigHome,
@@ -869,7 +866,7 @@ test("Jig factory at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS
   }
 });
 
-test("Jig factory: a stage that asks waits for your reply, then carries on", async ({ page, jigHome }) => {
+test("Factory: a stage that asks waits for your reply, then carries on", async ({ page, jigHome }) => {
   test.setTimeout(60_000);
   const projectId = await shop(page, jigHome);
   const brief =
@@ -887,7 +884,7 @@ test("Jig factory: a stage that asks waits for your reply, then carries on", asy
   expect((await stage())?.question).toBeUndefined();
 });
 
-test("Jig factory: start from a brief, answer a stage, approve a gate and inspect, all by clicking", async ({
+test("Factory: start from a brief, answer a stage, approve a gate and inspect, all by clicking", async ({
   page,
   jigHome,
 }) => {
@@ -951,7 +948,7 @@ test("Jig factory: start from a brief, answer a stage, approve a gate and inspec
     .toBe("stopped");
 });
 
-test("Jig factory: approve a gate and ask for changes from the phone (D-468)", async ({ jigHome }) => {
+test("Factory: approve a gate and ask for changes from the phone (D-468)", async ({ jigHome }) => {
   test.setTimeout(90_000);
   const telegram = await fakeTelegram();
   const app = await launchJig(jigHome, { JIG_TELEGRAM_API: telegram.url });
@@ -1019,7 +1016,7 @@ test("Jig factory: approve a gate and ask for changes from the phone (D-468)", a
   }
 });
 
-test("Settings → Jig factory: add a publish target in its dialog, remove it from its row (D-470)", async ({
+test("Settings → Factory: add a publish target in its dialog, remove it from its row (D-470)", async ({
   page,
 }) => {
   await page.keyboard.press("Control+Comma");

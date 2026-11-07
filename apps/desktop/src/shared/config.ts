@@ -345,15 +345,15 @@ export const ConfigSchema = z.object({
       pageSessions: z.enum(["shared", "separate"]).default("shared"),
     })
     .prefault({}),
-  /** Jig factory (phase 28). */
+  /** Factory (phase 28). */
   factory: z
     .object({
       /**
        * The demo kit's folder (D-431, D-443): demos are built and checked with its `npm run` scripts.
-       * Empty = not set: Jig factory asks for it before its first demo.
+       * Empty = not set: Factory asks for it before its first demo.
        */
       demoKitPath: z.string().default(""),
-      /** How many stage chats Jig factory runs at once, across all runs (D-450). */
+      /** How many stage chats Factory runs at once, across all runs (D-450). */
       concurrency: z.number().int().min(1).max(6).default(3),
       /**
        * Libraries of `DESIGN.md` references (repository addresses or folders) new brands' directions
@@ -482,7 +482,7 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
  * program runs as Claude Code, the credentials programs run with (the Azure tenant, D-282), shell
  * commands Jig runs (updates), where add-on code comes from (the gallery's sources), and what leaves
  * this computer for your phone (D-350),
- * the demo kit Jig factory runs npm in (D-443) and the sites it deploys demos to (D-470), and the FFmpeg
+ * the demo kit Factory runs npm in (D-443) and the sites it deploys demos to (D-470), and the FFmpeg
  * Motion runs (D-454). D-077.
  */
 export const PROTECTED_SETTINGS = [

@@ -1,4 +1,4 @@
-# Jig factory (reference)
+# Factory (reference)
 
 The built-in add-on `addons/factory` (phase 28, [plan](../plan/28-factory.md)). It runs an idea through
 a **track** of stages and gates: each stage is a chat of its own that follows a **recipe**, writes its
@@ -193,20 +193,20 @@ chat that runs a stage (the Conductor knows its chat id).
   changed, the scorecard's axes and fixes, and the pins. Opens from the Run tab's **Review demo**,
   G1's gate sheet and G1 rows in the inbox.
 - **GD's gate sheet** shows the three direction boards as cards; the whole card picks it.
-- **Inbox** (tab), the **Jig factory** view (View → Views) and the top bar's **factory** button:
+- **Inbox** (tab), the **Factory** view (View → Views) and the top bar's **factory** button:
   what waits for a person across projects, grouped by gate. A pack output's row opens its **review
   sheet** (modal, D-467): the output beside its other form where it has one (two columns when wide),
   a preview (Markdown, the HTML page, the image), its files (each opens in Preview), **Edit** (opens
   it in Preview), **Reject…** (with a reason), **Approve**, and for user stories **Add as board
   cards…**. **Trust per output** under the groups: per kind, how many were reviewed, the share
   approved as written and the median review time.
-- Actions **Jig factory: new idea…** and **start from a brief…** (search and menus); a chat reply's
-  ⋯ → **Start Jig factory from this**; a meeting's ⋯ → **Start Jig factory…**.
+- Actions **Factory: new idea…** and **start from a brief…** (search and menus); a chat reply's
+  ⋯ → **Start a Factory run from this**; a meeting's ⋯ → **Start a Factory run…**.
 
 ## Settings
 
 `factory.demoKitPath` (protected, D-443), `factory.concurrency` (D-450) and `factory.designSources`
 (D-462: the `DESIGN.md` references; the design stages' brief lists them with the product kit and the
 picked direction) and `factory.elearning` (D-447: the MCP server and the tools that create a course,
-add pages and publish; without it courses are Markdown in `learning/`), on Settings → Jig factory.
+add pages and publish; without it courses are Markdown in `learning/`), on Settings → Factory.
 Built-in add-ons read their own namespace with `api.config()` (D-450).

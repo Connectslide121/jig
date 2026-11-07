@@ -1,8 +1,8 @@
-# Jig factory — architecture
+# Factory — architecture
 
 Part of [phase 28](../28-factory.md). How the add-on is built. Read `docs/reference/addon-api.md`,
 `docs/reference/slots.md` and an existing built-in add-on (`addons/tasks/`, `addons/workflows/`)
-first: Jig factory follows the same patterns.
+first: Factory follows the same patterns.
 
 ## Shape
 
@@ -37,18 +37,18 @@ each engine drives an official CLI).
 ```jsonc
 {
   "id": "factory",
-  "name": "Jig factory",
+  "name": "Factory",
   "icon": "factory",
   "storage": { "scope": "project" },
   "permissions": ["chat", "chat:read", "ai", "exec", "fs:read", "fs:write", "phone"],
   "exports": ["startRun", "runs"],
   "contributes": {
-    "views":    [{ "id": "factory", "title": "Jig factory", "region": "left", "startHidden": true }],
+    "views":    [{ "id": "factory", "title": "Factory", "region": "left", "startHidden": true }],
     "tabs":     [{ "id": "floor" }, { "id": "run" }, { "id": "interview" }, { "id": "review" }, { "id": "inbox" }],
-    "topbar":   [{ "id": "factory", "icon": "factory", "title": "Jig factory" }],      // count of what waits for you
+    "topbar":   [{ "id": "factory", "icon": "factory", "title": "Factory" }],      // count of what waits for you
     "dashboard":[{ "id": "waiting" }],
-    "actions":  [{ "id": "new-idea", "title": "New idea…" }, { "id": "open-floor", "title": "Jig factory" }],
-    "menus":    [{ "slot": "context.message", "id": "from-message", "title": "Start Jig factory from this" }],
+    "actions":  [{ "id": "new-idea", "title": "New idea…" }, { "id": "open-floor", "title": "Factory" }],
+    "menus":    [{ "slot": "context.message", "id": "from-message", "title": "Start a Factory run from this" }],
     "tools":    [ /* factory_brief, factory_report, factory_ask, factory_questions, factory_runs */ ],
     "context":  [{ "id": "stage" }],          // tells a stage chat its role, run, inputs, how to report
     "watchers": [{ "id": "tick", "every": "1m" }],
@@ -170,7 +170,7 @@ checks: [frontmatter, words<=600, glossary]
 languageGroup: sales
 skills: [impeccable]      # bundled skills the stage uses when they are on (D-459)
 ---
-You are the sales enablement role of Jig factory… (the reviewed prompt)
+You are the sales enablement role of Factory… (the reviewed prompt)
 ```
 
 Built-ins live in `addons/factory/recipes/`; a product repo overrides one by putting a file with the
@@ -194,7 +194,7 @@ text + the run's inputs (paths) + the skills it names (a "Skills" section, D-459
   or "needs you" on the run.
 - **Unattended runs (D-440) need a core change.** `chats.create` allows `bypassPermissions` only from
   the Tasks add-on (D-363), and stage chats run commands (`npm run check`, `git commit`) that
-  `acceptEdits` would stop at. Session 2 widens D-363 to Jig factory, for a run where **you** chose
+  `acceptEdits` would stop at. Session 2 widens D-363 to Factory, for a run where **you** chose
   "Don't ask" on the Plan step (a user-only choice, like in Add tasks), with a new decision entry.
   Without it, stage chats run in `acceptEdits` and stop at each command for you.
 
@@ -235,7 +235,7 @@ Every Markdown output starts with front-matter: `status`, `recipe`, `version`, `
 approved: a button on the Run tab that shows the git commands it will run first.
 
 A **new product** with no repository: the interview asks whether to create one (D-430), the name and
-the folder; Jig factory runs `git init` there (and nothing remote) only after you say yes.
+the folder; Factory runs `git init` there (and nothing remote) only after you say yes.
 
 ## Viewing demos
 
@@ -265,7 +265,7 @@ Rules: masked and cut like every phone text; only the paired account; buttons ma
 own ids (never commands); answered elsewhere updates the card. Docs: `addon-api.md`, `26-phone.md`,
 `slots.md` if a manifest key is needed; e2e on the fake Telegram server (`e2e/phone.spec.ts`).
 
-Jig factory's cards: **"<run> · Demo v2 is ready"** (screenshot, Approve · Ask for changes · Open in
+Factory's cards: **"<run> · Demo v2 is ready"** (screenshot, Approve · Ask for changes · Open in
 Jig); **"<run> needs you"** (the question, Answer · Open); **"<run> is done"** (summary, Open).
 
 ## Approvals by other people (D-435)
@@ -297,5 +297,5 @@ spending go into `PROTECTED_SETTINGS` (D-077).
 
 ## Exports (other add-ons, D-215)
 
-`startRun({ projectId, text, source })` (Meetings' "Start Jig factory", the Tasks report's
+`startRun({ projectId, text, source })` (Meetings' "Start a Factory run", the Tasks report's
 follow-ups) and `runs({ projectId? })` (dashboards).

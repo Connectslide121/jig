@@ -71,9 +71,9 @@ export function cardDescription(run: Run, gate: GateId, board: { done: string })
     .filter((o) => !o.kind.endsWith("-file") && o.status !== "approved" && o.status !== "published")
     .map((o) => `- ${o.path}`);
   return [
-    `Jig factory asks you to review ${GATES[gate].label} for "${run.title}".`,
+    `Factory asks you to review ${GATES[gate].label} for "${run.title}".`,
     "",
-    ...(files.length ? ["To review (on the run's branch, factory/" + run.id + "):", ...files, ""] : []),
+    ...(files.length ? [`To review (on the run's branch, factory/${run.id}):`, ...files, ""] : []),
     `To approve, move this card to ${board.done}.`,
     'To ask for changes, add a comment starting with "changes:" and say what to change.',
   ].join("\n");

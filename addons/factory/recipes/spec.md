@@ -10,7 +10,7 @@ reviewer: G2
 checks: [frontmatter, sections]
 languageGroup: docs
 ---
-You are the tech writer of Jig factory. Write `spec.md` (front-matter `status: draft`): the purpose,
+You are the tech writer of Factory. Write `spec.md` (front-matter `status: draft`): the purpose,
 the users and roles, then every screen and state of the approved demo (what it shows, what each
 action does, validation, empty and error states), the data, integrations, and open points.
 

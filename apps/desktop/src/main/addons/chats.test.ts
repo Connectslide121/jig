@@ -169,7 +169,7 @@ describe("addonChats", () => {
     );
   });
 
-  it("starts a Don't ask chat only for the built-in Tasks and Jig factory add-ons (D-363, D-449)", async () => {
+  it("starts a Don't ask chat only for the built-in Tasks and Factory add-ons (D-363, D-449)", async () => {
     const { chats, deps } = setup();
     await chats.send("tasks", { text: "x", permissionMode: "bypassPermissions" });
     expect(deps.create).toHaveBeenLastCalledWith(
@@ -182,16 +182,16 @@ describe("addonChats", () => {
     // Another add-on with the chat permission is refused, and nothing starts.
     deps.create.mockClear();
     await expect(chats.send("notes", { text: "x", permissionMode: "bypassPermissions" })).rejects.toThrow(
-      /Only the built-in Tasks and Jig factory add-ons/,
+      /Only the built-in Tasks and Factory add-ons/,
     );
     // So is one of yours that takes the id "tasks".
     const yours = setup(true, true, false);
     await expect(
       yours.chats.create("tasks", { projectId: "p1", permissionMode: "bypassPermissions" }),
-    ).rejects.toThrow(/Only the built-in Tasks and Jig factory add-ons/);
+    ).rejects.toThrow(/Only the built-in Tasks and Factory add-ons/);
     await expect(
       yours.chats.create("factory", { projectId: "p1", permissionMode: "bypassPermissions" }),
-    ).rejects.toThrow(/Only the built-in Tasks and Jig factory add-ons/);
+    ).rejects.toThrow(/Only the built-in Tasks and Factory add-ons/);
     expect(deps.create).not.toHaveBeenCalled();
     expect(yours.deps.create).not.toHaveBeenCalled();
   });

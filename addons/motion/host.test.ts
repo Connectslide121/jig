@@ -441,7 +441,7 @@ describe("chat tools and style sources (M3)", () => {
     expect(all.find((s) => s.id === "kit")).toMatchObject({ name: "Shop kit", colors: { bg: "#101010" } });
   });
 
-  it("shares createVideo with Jig factory", async () => {
+  it("shares createVideo with Factory", async () => {
     await writeFile(join(root, "a.png"), "png");
     const v = await createVideo(
       {
