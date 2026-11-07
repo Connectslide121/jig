@@ -55,6 +55,10 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `track` | `{projectId, runId}` | the run's track and plan for the Plan dialog |
 | `plan` | `{projectId, runId, outputs, languages, owners, level, build, productExists, permissionMode}` | confirms the Plan step (`plan.confirmed`), the run goes on |
 | `decide` | `{projectId, runId, gateId, kind: "approve" \| "changes" \| "reject", note?, pins?, direction?}` | a gate decision; on G1 Ask for changes the Demo review's pins join the note as numbered lines (at most 30), on GD Approve `direction` picks a board (D-462) |
+| `decideOutput` | `{projectId, runId, outputId, kind: "approve" \| "reject", note?}` | one pack output and its files (a reason is needed to reject); an edit since Jig wrote it is noticed by its hash and counts against trust; the gate is approved by itself once nothing of it waits and something was approved (D-467) |
+| `reviewOf` | `{projectId, runId, outputId}` | the review sheet: the output and the newest version of its other form (deck ↔ deck images, one-pager ↔ its images), each with its file, its Markdown text and its files (PDF, HTML, images) |
+| `boardTargets` | `{projectId}` | the Boards add-on's boards that can take cards for the project (`cardTargets`), or a `problem` |
+| `storyCards` | `{projectId, runId, outputId, boardId, type?}` | one card per `## ` story of a stories output, through the Boards add-on's `createCard`; only on your click |
 | `review` | `{projectId, runId}` | the demo's versions for Demo review: entry file (absolute), change log, scorecard (`pass`, `score`, eight axes, fixes) |
 | `directions` | `{projectId, runId}` | GD's direction boards: `{id, name, file}` |
 | `showInPages` | `{projectId, runId, version}` | publishes that demo version through the Pages add-on's `publish` export; the run keeps one page (`demoPage`) and each version updates it |
@@ -110,7 +114,13 @@ chat that runs a stage (the Conductor knows its chat id).
   changed, the scorecard's axes and fixes, and the pins. Opens from the Run tab's **Review demo**,
   G1's gate sheet and G1 rows in the inbox.
 - **GD's gate sheet** shows the three direction boards as cards; the whole card picks it.
-- **Inbox** (tab), the **Jig factory** view (View → Views) and the top bar's **factory** button.
+- **Inbox** (tab), the **Jig factory** view (View → Views) and the top bar's **factory** button:
+  what waits for a person across projects, grouped by gate. A pack output's row opens its **review
+  sheet** (modal, D-467): the output beside its other form where it has one (two columns when wide),
+  a preview (Markdown, the HTML page, the image), its files (each opens in Preview), **Edit** (opens
+  it in Preview), **Reject…** (with a reason), **Approve**, and for user stories **Add as board
+  cards…**. **Trust per output** under the groups: per kind, how many were reviewed, the share
+  approved as written and the median review time.
 - Actions **Jig factory: new idea…** and **start from a brief…** (search and menus); a chat reply's
   ⋯ → **Start Jig factory from this**; a meeting's ⋯ → **Start Jig factory…**.
 
@@ -118,5 +128,6 @@ chat that runs a stage (the Conductor knows its chat id).
 
 `factory.demoKitPath` (protected, D-443), `factory.concurrency` (D-450) and `factory.designSources`
 (D-462: the `DESIGN.md` references; the design stages' brief lists them with the product kit and the
-picked direction), on Settings → Jig factory.
+picked direction) and `factory.elearning` (D-447: the MCP server and the tools that create a course,
+add pages and publish; without it courses are Markdown in `learning/`), on Settings → Jig factory.
 Built-in add-ons read their own namespace with `api.config()` (D-450).

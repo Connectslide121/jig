@@ -504,9 +504,14 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 /** An output's name as cards and the inbox show it: "Demo v2", "Spec v1". */
+/** An output kind's name ("Spec", "Deck as images"); a stage's other files read "Deck (file)". */
+export function kindLabel(kind: string): string {
+  if (kind.endsWith("-file")) return `${kindLabel(kind.slice(0, -5))} (file)`;
+  return KIND_LABEL[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1).replace(/-/g, " ");
+}
+
 export function outputName(output: { kind: string; version: number }): string {
-  const name = KIND_LABEL[output.kind] ?? output.kind.charAt(0).toUpperCase() + output.kind.slice(1);
-  return `${name} v${output.version}`;
+  return `${kindLabel(output.kind)} v${output.version}`;
 }
 
 /** An idea from elsewhere (a meeting's ⋯ menu) waiting for the New idea dialog (global storage). */

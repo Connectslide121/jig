@@ -1,3 +1,15 @@
+Jig factory's pack (2026-11-12, phase 28 session 5, D-466, D-467): once a demo is approved, the run
+writes the pack you ticked in its plan: spec, user stories, test cases, release notes, a customer
+letter (also PDF), pitch, deck and one-pager (HTML from the demo kit printed to PDF, and an image
+version made on ChatGPT, skipped with a reason when ChatGPT isn't signed in), courses (through the
+e-learning server in **Settings → Jig factory → E-learning**, or as Markdown), marketing drafts and a
+teaser film rendered by Motion. Each output waits in the **Inbox** (factory button → Inbox): its row
+opens a review sheet with the other form beside it, its files, **Edit**, **Reject…** and
+**Approve**; user stories have **Add as board cards…** (Boards add-on). A gate approves itself once
+all of its outputs are decided. **Trust per output** shows, per kind, how often you approved as
+written. Needs a real machine: the image version and the teaser on real models, courses with a real
+e-learning server.
+
 Motion from chats (2026-11-11, phase 28 session M3, D-465): ask a chat for a video ("make a 40 s
 teaser of this release"): Jig writes the storyboard with Motion's tools and a **video card** shows
 in the chat (poster, name, kind, length, scenes, Render or Play, Open); "change the video" edits it

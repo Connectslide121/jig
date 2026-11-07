@@ -110,7 +110,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 5, The pack — in progress (D-466, D-467).
+- **Current session:** 6, Reach — not started.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
@@ -119,7 +119,7 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Demo review tab, GD direction cards, design sources, Show in Pages (D-462). Session M1: the Motion
   add-on, storyboard to MP4 through a pinned HyperFrames (D-463). Session M2: voice, captions, music,
   captures with marks (D-464). Session M3: chat tools, Write with Jig, style sources,
-  exports (D-465).
+  exports (D-465). Session 5: the pack, its formats, review per output, trust (D-466, D-467).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -132,10 +132,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 5: recipes, formats (PDF through `capture.pdf`), ChatGPT
-  images with the skip, the e-learning setting, the teaser through Motion and `decideOutput` are
-  built and unit-tested (host). Next: the inbox review sheet (per output, side-by-side pairs,
-  Approve / Edit / Reject, stories as board cards), trust per kind, the pack e2e, docs. Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session 6: the core phone API for add-ons first, then the factory's
+  phone cards, approvals by others through Boards, Publish. Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -402,7 +400,7 @@ product kit tokens, own styles from a chat, `DESIGN.md` from the factory's local
 guarantees contrast. Exports `createVideo`, `render`, `get`. e2e: `motion.spec.ts` → "a chat makes
 and changes a video…". Not done: "from a release" (waits for Releases).
 
-### 5. The pack — in progress
+### 5. The pack — done
 
 - [x] Recipes: spec, user stories (as board cards), test cases, release notes, customer letter,
       glossary delta; pitch, presentation, one-pager, objection handling; e-learning for sales and
@@ -420,11 +418,21 @@ and changes a video…". Not done: "from a release" (waits for Releases).
 - [x] Teaser (D-458): the `teaser` recipe calls Motion's `createVideo` with the approved demo's
       screens or captures, the product kit's style, voice and captions in the run's language;
       Motion renders; MP4 + poster in `teaser/` as a draft. Needs sessions M1–M3.
-- [ ] Inbox: everything waiting for a person, grouped by gate; approve / edit / reject; statuses
+- [x] Inbox: everything waiting for a person, grouped by gate; approve / edit / reject; statuses
       `draft → reviewed → approved → published` (and `rejected`, `superseded`) with history.
-- [ ] Trust numbers per output kind: approved without edits, review time.
+- [x] Trust numbers per output kind: approved without edits, review time.
 
 **Done when:** an approved demo produces a full pack, each output reviewable in the inbox.
+
+**Session 5 notes (2026-11-12).** Recipes for every pack output (`recipes/*.md`), the deck and
+one-pager in two forms (HTML from the kit printed to PDF through core `capture.pdf`, and an image
+version on ChatGPT, skipped with a reason when ChatGPT isn't signed in, D-466), courses through
+`factory.elearning` or as Markdown, the teaser through Motion's `createVideo` and `render` (polled on
+`tick`). Pack outputs are decided one by one (`decideOutput`, D-467): edits are noticed by hash, a
+gate approves itself once nothing of it waits. The inbox's review sheet shows a pair side by side,
+files, Edit / Reject… / Approve; stories become board cards only on **Add as board cards…**. Trust
+per kind under the inbox. e2e: `factory.spec.ts` → "the pack in the inbox…". Not done: none; the
+demo kit's print templates are on `demo-kit` (08e73fa6).
 
 ### 6. Reach: phone buttons, other people, publishing — not started
 

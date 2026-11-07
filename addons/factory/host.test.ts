@@ -274,6 +274,10 @@ describe("Jig factory's Conductor", () => {
     expect(pdf).toMatchObject({ status: "draft", path: expect.stringMatching(/\.pdf$/) });
     expect(api.capture.pdf).toHaveBeenCalledWith(expect.objectContaining({ page: "a4" }));
     const page = r.outputs.find((o) => o.kind === "one-pager");
+    const review = await host.reviewOf({ projectId: "shop", runId: r.id, outputId: page?.id ?? "" }, api);
+    expect(review).toHaveLength(1);
+    expect(review[0]?.files.map((f) => f.output.id)).toEqual([pdf?.id]);
+    expect(review[0]?.files[0]?.file).toMatch(/\.pdf$/);
     expect(page?.hash).toMatch(/^[0-9a-f]{40}$/);
     await expect(
       host.decideOutput({ projectId: "shop", runId: r.id, outputId: page?.id ?? "", kind: "reject" }, api),
@@ -289,6 +293,42 @@ describe("Jig factory's Conductor", () => {
     expect(approved?.history.at(-1)).toMatchObject({ status: "approved", edited: true });
     expect(r.outputs.find((o) => o.id === pdf?.id)?.status).toBe("approved");
     expect(r.gates.find((g) => g.id === "G4")?.status).toBe("approved");
+  });
+
+  it("adds the stories as board cards through the Boards add-on, only when asked", async () => {
+    const call = vi.fn(async (_addon: string, method: string, args: Record<string, string>) =>
+      method === "cardTargets"
+        ? [{ id: "b1", name: "Shop board", types: ["User Story"], type: "User Story" }]
+        : { id: 1, url: "https://example.test/1", board: "Shop board", title: args.title },
+    );
+    api.addons.call = call as unknown as AddonHostApi["addons"]["call"];
+    let r = await toPack(["stories"]);
+    const c = chatOf(r, "S7:stories");
+    await writeFile(
+      join(folder(r), "stories.md"),
+      "---\nstatus: draft\n---\n# Stories\n\n## Offer a shift\nAs staff…\n\n## Take a shift\nAs a colleague…\n",
+    );
+    await host.toolReport(
+      { chat: { sessionId: c.id, projectId: "shop" }, summary: "stories", outputs: ["stories.md"] },
+      api,
+    );
+    await endTurn(c);
+    r = await load(r.id);
+    expect(call).not.toHaveBeenCalledWith("boards", "createCard", expect.anything());
+    expect((await host.boardTargets({ projectId: "shop" }, api)).targets).toEqual([
+      { id: "b1", name: "Shop board", type: "User Story" },
+    ]);
+    const stories = r.outputs.find((o) => o.kind === "stories");
+    const made = await host.storyCards(
+      { projectId: "shop", runId: r.id, outputId: stories?.id ?? "", boardId: "b1", type: "User Story" },
+      api,
+    );
+    expect(made).toEqual({ made: 2, board: "Shop board" });
+    expect(call).toHaveBeenCalledWith(
+      "boards",
+      "createCard",
+      expect.objectContaining({ boardId: "b1", title: "Take a shift", description: "As a colleague…" }),
+    );
   });
 
   it("skips a ChatGPT output when ChatGPT isn't signed in, saying why", async () => {

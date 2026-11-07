@@ -42,12 +42,14 @@ import {
   mineCount,
   outputName,
   ownerName,
+  trustByKind,
   waitsForMe,
 } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
 import { demoVersions } from "./lib/review";
 import { type GateId, type Output, PENDING_IDEA, type PendingIdea, type Run, timeline } from "./lib/run";
 import { isSample } from "./lib/samples";
+import { OutputReview, type ReviewTarget, TrustTable } from "./outputs";
 import {
   clock,
   InboxPill,
@@ -787,13 +789,21 @@ export function InboxTab({ ctx }: AddonTabProps) {
   const { data, error } = useAllRuns();
   const projects = useProjectList();
   const now = useNow();
+  const [reviewing, setReviewing] = useState<ReviewTarget>();
   if (!data) return error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
   const items = inbox(data);
-  if (!items.length)
+  const trusted = trustByKind(data.flatMap((r) => r.outputs));
+  const review = reviewing && (
+    <OutputReview ctx={ctx} target={reviewing} onClose={() => setReviewing(undefined)} />
+  );
+  if (!items.length && !trusted.length)
     return (
-      <Empty icon={Inbox} title="Nothing waits for a person" className="h-full">
-        Gates, drafts and questions from Jig factory's runs show here, from every project.
-      </Empty>
+      <>
+        <Empty icon={Inbox} title="Nothing waits for a person" className="h-full">
+          Gates, drafts and questions from Jig factory's runs show here, from every project.
+        </Empty>
+        {review}
+      </>
     );
   const groups: Array<{ group: InboxGroup; items: InboxItem[] }> = [];
   for (const item of items) {
@@ -804,6 +814,13 @@ export function InboxTab({ ctx }: AddonTabProps) {
   const open = async (item: InboxItem) => {
     if (item.group === "G1")
       return openReview(ctx, { id: item.runId, projectId: item.projectId, title: item.runTitle });
+    if (item.outputId && item.kind === "output" && item.group !== "GD")
+      return setReviewing({
+        projectId: item.projectId,
+        runId: item.runId,
+        runTitle: item.runTitle,
+        outputId: item.outputId,
+      });
     if (item.outputId) {
       const path = await ctx.host.call<string | null>("outputFile", {
         projectId: item.projectId,
@@ -838,7 +855,12 @@ export function InboxTab({ ctx }: AddonTabProps) {
             </div>
           </section>
         ))}
+        {!items.length && (
+          <div className="flex h-9 items-center px-2 text-xs text-hint">Nothing waits for a person</div>
+        )}
+        <TrustTable rows={trusted} />
       </div>
+      {review}
     </div>
   );
 }

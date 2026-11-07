@@ -23,8 +23,10 @@ data (D-442).
   sheet (Approve, Ask for changes with a note, Reject…). ⋯: Inspector, Re-run a stage…, Fork from a
   stage…, Stop the run.
 - **Inbox** (tab): everything waiting for a person across runs and projects, grouped by gate:
-  project, run, what waits, how long, its owner and a pill (**you** when it's yours). A row opens the
-  output in Preview, or the run.
+  project, run, what waits, how long, its owner and a pill (**you** when it's yours). A pack output's
+  row opens its review sheet (the output beside its other form, its files, Edit, Reject…, Approve;
+  stories: Add as board cards…), a gate's row the run. **Trust per output** under it: reviewed,
+  approved as written, review time per kind (D-467).
 - **Sample runs:** ⋯ → Load sample runs (on the Floor, the Runs view or the top bar's menu) adds six
   sample runs to the active project, one or more in every lane; ⋯ → Remove sample runs takes them
   away. Their files live in the add-on's data folder, never in a repository.

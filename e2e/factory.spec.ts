@@ -156,6 +156,84 @@ test("Jig factory: a golden brief's run goes through every stage and gate with t
   ).toBe("main");
 });
 
+test("Jig factory: the pack in the inbox: two forms side by side, a PDF, approve and reject per output (D-467)", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const projectId = await gitShop(page, jigHome);
+  const started = (await factory(page, "startRun", {
+    projectId,
+    brief: "shift-swap",
+    outputs: ["stories", "deck", "deck-images"],
+  })) as { value: RunLike };
+  const id = started.value.id;
+  // Approve the gates up to the demo; the pack's gates wait for the inbox.
+  await expect
+    .poll(
+      async () => {
+        const r = await runOf(page, projectId, id);
+        for (const g of r.gates.filter((g) => g.status === "waiting" && ["G0", "GD", "G1"].includes(g.id)))
+          await factory(page, "decide", { projectId, runId: id, gateId: g.id, kind: "approve" });
+        return r.gates
+          .filter((g) => g.status === "waiting")
+          .map((g) => g.id)
+          .sort()
+          .join(",");
+      },
+      { timeout: 75_000, intervals: [300] },
+    )
+    .toBe("G2,G4");
+
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-inbox").click();
+  const inbox = page.getByTestId("factory-inbox");
+  await inbox.getByTestId("factory-inbox-row").filter({ hasText: "Deck v1" }).click();
+  const review = page.getByTestId("factory-output-review");
+  const columns = review.getByTestId("factory-review-column");
+  await expect(columns).toHaveCount(2);
+  // The deck's page was printed to PDF with it; the image form sits beside it.
+  await expect(
+    columns.nth(0).getByTestId("factory-review-file").filter({ hasText: "deck.pdf" }),
+  ).toBeVisible();
+  await expect(columns.nth(1)).toContainText("Deck images v1");
+  if (process.env.JIG_UI_SHOTS) {
+    await page.waitForTimeout(1000);
+    await page.screenshot({ path: join(SHOTS_DIR, "factory-pack-review.png") });
+  }
+  await columns.nth(0).getByTestId("factory-review-approve").click();
+  await expect(columns.nth(0)).toContainText("Approved");
+  await columns.nth(1).getByTestId("factory-review-reject").click();
+  await page.getByTestId("factory-reject-note").fill("Too much text on the slides");
+  await page.getByTestId("factory-reject-confirm").click();
+  await expect(columns.nth(1)).toContainText("Rejected");
+  // Nothing of G4 waits and the deck was approved: G4 is approved by itself.
+  await expect
+    .poll(async () => (await runOf(page, projectId, id)).gates.find((g) => g.id === "G4")?.status)
+    .toBe("approved");
+  const r = await runOf(page, projectId, id);
+  expect(r.outputs.find((o) => o.path.endsWith("deck.pdf"))?.status).toBe("approved");
+  await review.getByRole("button", { name: "Close", exact: true }).last().click();
+
+  // Stories go to a board only when you ask; without a followed board, it says so.
+  await inbox.getByTestId("factory-inbox-row").filter({ hasText: "User stories v1" }).click();
+  await review.getByTestId("factory-review-cards").click();
+  await expect(page.getByTestId("factory-cards-dialog")).toContainText("Follow the product's board");
+  await page.getByTestId("factory-cards-dialog").getByRole("button", { name: "Cancel" }).click();
+  await review.getByTestId("factory-review-approve").click();
+  await expect
+    .poll(async () => (await runOf(page, projectId, id)).gates.find((g) => g.id === "G2")?.status)
+    .toBe("approved");
+  await review.getByRole("button", { name: "Close", exact: true }).last().click();
+  // Trust per output kind, from what was reviewed.
+  const trust = inbox.getByTestId("factory-trust-row");
+  if (process.env.JIG_UI_SHOTS) {
+    await page.screenshot({ path: join(SHOTS_DIR, "factory-trust.png") });
+  }
+  await expect(trust.filter({ hasText: "Deck images" })).toContainText("0%");
+  await expect(trust.filter({ hasText: "User stories" })).toContainText("100%");
+});
+
 test("Jig factory: pick a direction at GD, then review the demo in its frames, pin a change and approve (D-462)", async ({
   page,
   jigHome,

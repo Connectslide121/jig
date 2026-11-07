@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { AddonChatInfo, AddonHostApi, AddonProject } from "@jig/sdk";
-import { type BriefDoc, parseBrief } from "./lib/brief";
+import { type BriefDoc, PLAN_OUTPUTS, parseBrief } from "./lib/brief";
 import {
   advance,
   afterTurn,
@@ -36,7 +36,9 @@ import {
   demoVersions,
   directionsOf,
   parseScorecard,
+  reviewSet,
   type Scorecard,
+  storiesOf,
 } from "./lib/review";
 import {
   addOutput,
@@ -138,6 +140,100 @@ export async function outputFile(
   const r = await run(args, api);
   const o = r?.outputs.find((x) => x.id === args.outputId);
   return (r && o && outputPath(api, r, o.path)) || null;
+}
+
+export interface ReviewItem {
+  output: Output;
+  /** Its file (absolute), or null when it isn't there. */
+  file: string | null;
+  /** A Markdown output's text, for the review sheet. */
+  text?: string;
+  /** The files that go with it (its PDF, e-mail HTML, images, the teaser's film). */
+  files: Array<{ output: Output; file: string | null }>;
+}
+
+const PAIRS: Record<string, string> = Object.fromEntries(
+  PLAN_OUTPUTS.flatMap((p) => (p.pair ? [[p.id, p.pair]] : [])),
+);
+
+/** What the inbox's review sheet shows for an output (D-467): it, its other form beside it, their files. */
+export async function reviewOf(
+  args: { projectId: string; runId: string; outputId: string },
+  api: AddonHostApi,
+): Promise<ReviewItem[]> {
+  const r = await run(args, api);
+  if (!r) return [];
+  const file = async (o: Output) => {
+    const p = outputPath(api, r, o.path);
+    return p && (await exists(p)) ? p : null;
+  };
+  const items: ReviewItem[] = [];
+  for (const o of reviewSet(r, args.outputId, PAIRS)) {
+    const f = await file(o);
+    const text =
+      f && o.path.endsWith(".md") ? (await readFile(f, "utf8").catch(() => "")).slice(0, 200_000) : undefined;
+    const files = [];
+    for (const x of filesOf(r, o)) files.push({ output: x, file: await file(x) });
+    items.push({ output: o, file: f, ...(text !== undefined ? { text } : {}), files });
+  }
+  return items;
+}
+
+/** The boards stories can go to (the Boards add-on's followed boards), or why there are none. */
+export async function boardTargets(
+  args: { projectId: string },
+  api: AddonHostApi,
+): Promise<{
+  targets: Array<{ id: string; name: string; type?: string; problem?: string }>;
+  problem?: string;
+}> {
+  try {
+    const targets = await api.addons.call<
+      Array<{ id: string; name: string; types: string[]; type?: string; problem?: string }>
+    >("boards", "cardTargets", { projectId: args.projectId });
+    return {
+      targets: targets.map((t) => ({
+        id: t.id,
+        name: t.name,
+        ...(t.type ? { type: t.type } : {}),
+        ...(t.problem ? { problem: t.problem } : !t.type ? { problem: "It has no backlog card type" } : {}),
+      })),
+    };
+  } catch (e) {
+    return {
+      targets: [],
+      problem: `The Boards add-on isn't available (${e instanceof Error ? e.message : String(e)})`,
+    };
+  }
+}
+
+/** You add a stories output's stories as cards on a board (D-467): one card per `## ` story. */
+export async function storyCards(
+  args: RunArgs & { outputId: string; boardId: string; type: string },
+  api: AddonHostApi,
+): Promise<{ made: number; board?: string }> {
+  const r = await loadRun(api, args.projectId, args.runId);
+  const o = r.outputs.find((x) => x.id === args.outputId);
+  if (!o || o.kind !== "stories") throw new Error("That isn't a stories output");
+  const file = outputPath(api, r, o.path);
+  const stories = file ? storiesOf(await readFile(file, "utf8")) : [];
+  if (!stories.length) throw new Error("It has no stories (a ## heading each)");
+  let board: string | undefined;
+  for (const s of stories) {
+    const made = await api.addons.call<{ board: string }>("boards", "createCard", {
+      projectId: r.projectId,
+      boardId: args.boardId,
+      type: args.type,
+      title: s.title,
+      description: s.description,
+    });
+    board = made.board;
+  }
+  await log(api, r, {
+    kind: "decision",
+    text: `${stories.length} stor${stories.length === 1 ? "y" : "ies"} added as cards on ${board ?? "the board"}`,
+  });
+  return { made: stories.length, board };
 }
 
 /** Every output's file of a run (output id → absolute path), for the run page's thumbnails. */

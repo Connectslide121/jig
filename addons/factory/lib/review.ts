@@ -178,3 +178,47 @@ export function directionsOf(run: Pick<Run, "outputs">): Direction[] {
     })
     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 }
+
+/**
+ * The outputs a review shows (D-445, D-467): the output, and its other form (the deck's image
+ * version…) beside it when the run made that too: its newest version that isn't superseded.
+ */
+export function reviewSet(
+  run: Pick<Run, "outputs">,
+  outputId: string,
+  pairs: Record<string, string>,
+): Output[] {
+  const o = run.outputs.find((x) => x.id === outputId);
+  if (!o) return [];
+  const other = pairs[o.kind];
+  const pair = other
+    ? run.outputs
+        .filter((x) => x.kind === other && x.status !== "superseded")
+        .sort((a, b) => b.version - a.version)[0]
+    : undefined;
+  return pair ? [o, pair] : [o];
+}
+
+export interface Story {
+  title: string;
+  description: string;
+}
+
+/**
+ * The user stories of a `stories.md` (D-467): one per `## ` heading, its text up to the next heading
+ * the card's description. Front-matter and the `# ` title are left out.
+ */
+export function storiesOf(markdown: string): Story[] {
+  const body = markdown.replace(/^---\n[\s\S]*?\n---\n?/, "");
+  const stories: Story[] = [];
+  let cur: Story | undefined;
+  for (const line of body.split("\n")) {
+    const h = /^##\s+(.+?)\s*#*\s*$/.exec(line);
+    if (h?.[1]) {
+      if (cur) stories.push(cur);
+      cur = { title: h[1].replace(/^\d+[.)]\s*/, "").slice(0, 250), description: "" };
+    } else if (cur && !/^#\s/.test(line)) cur.description += `${line}\n`;
+  }
+  if (cur) stories.push(cur);
+  return stories.map((s) => ({ ...s, description: s.description.trim() })).filter((s) => s.title);
+}

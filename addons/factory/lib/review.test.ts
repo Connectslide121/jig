@@ -6,7 +6,9 @@ import {
   parseScorecard,
   pinAt,
   pinsNote,
+  reviewSet,
   scoreOutOf5,
+  storiesOf,
 } from "./review";
 import type { Output } from "./run";
 
@@ -124,5 +126,52 @@ describe("directionsOf", () => {
       { id: "2-bold_type", name: "Bold type", path: "directions/2-bold_type.png" },
       { id: "3-warm", name: "Warm", path: "directions/3-warm.svg" },
     ]);
+  });
+});
+
+describe("reviewSet", () => {
+  const pairs = { deck: "deck-images", "deck-images": "deck" };
+  it("shows the other form's newest version beside the output", () => {
+    const run = {
+      outputs: [
+        out("deck-v1", "deck", "sales/deck.md"),
+        out("deck-images-v1", "deck-images", "sales/deck-images.md", 1, "superseded"),
+        out("deck-images-v2", "deck-images", "sales/deck-images.md", 2),
+        out("spec-v1", "spec", "spec.md"),
+      ],
+    };
+    expect(reviewSet(run, "deck-v1", pairs).map((o) => o.id)).toEqual(["deck-v1", "deck-images-v2"]);
+    expect(reviewSet(run, "deck-images-v2", pairs).map((o) => o.id)).toEqual(["deck-images-v2", "deck-v1"]);
+    expect(reviewSet(run, "spec-v1", pairs).map((o) => o.id)).toEqual(["spec-v1"]);
+    expect(reviewSet(run, "nope", pairs)).toEqual([]);
+  });
+});
+
+describe("storiesOf", () => {
+  it("makes a story of each second-level heading, with its text", () => {
+    const md = `---
+status: draft
+---
+# User stories
+
+Intro that isn't a story.
+
+## 1. Offer a shift
+As staff I want to offer a shift so that I can swap it.
+
+- Given my shifts, the offer button shows
+
+## Take a shift ##
+As a colleague I want to take an open shift.
+`;
+    expect(storiesOf(md)).toEqual([
+      {
+        title: "Offer a shift",
+        description:
+          "As staff I want to offer a shift so that I can swap it.\n\n- Given my shifts, the offer button shows",
+      },
+      { title: "Take a shift", description: "As a colleague I want to take an open shift." },
+    ]);
+    expect(storiesOf("# Nothing\n\nNo stories.")).toEqual([]);
   });
 });
