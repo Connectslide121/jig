@@ -40,6 +40,12 @@
         "component": "InterviewTab"
       },
       {
+        "type": "review",
+        "title": "Demo review",
+        "icon": "monitor-play",
+        "component": "ReviewTab"
+      },
+      {
         "type": "inbox",
         "title": "Jig factory inbox",
         "icon": "inbox",

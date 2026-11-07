@@ -50,6 +50,10 @@ export interface Run {
   questions?: Question[];
   /** The run and stage it was forked from. */
   forkOf?: { runId: string; stage: string };
+  /** A new brand's direction picked at GD (`2-bold`, its board in `directions/`, D-462). */
+  direction?: string;
+  /** The Pages page the demo is shown as (Show in Pages, D-462): each version updates it. */
+  demoPage?: string;
 }
 
 export interface RunPlan {

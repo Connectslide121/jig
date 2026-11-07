@@ -276,6 +276,68 @@ describe("Jig factory's Conductor", () => {
     expect(r.gates.find((g) => g.id === "G1")).toMatchObject({ status: "closed", revisions: 1 });
   });
 
+  it("picks a direction at GD, lists the demo's versions with scorecards, and sends pins as changes (D-462)", async () => {
+    api.config = (async () => ({ designSources: ["/refs/calm-saas"] })) as AddonHostApi["config"];
+    let r = await host.startRun({ projectId: "shop", brief: "shift-swap" }, api);
+    await play(r, "S2");
+    await host.decide({ projectId: "shop", runId: r.id, gateId: "G0", kind: "approve" }, api);
+    r = await load(r.id);
+    const brief = (id: string) => host.toolBrief({ chat: { sessionId: chatOf(r, id).id } }, api);
+    expect(await brief("S4b")).toContain("Design references (DESIGN.md libraries");
+    expect(await brief("S4b")).toContain("/refs/calm-saas");
+    await play(r, "S4b", {}, ["directions/README.md", "directions/1-calm.svg", "directions/2-bold.svg"]);
+    r = await load(r.id);
+    expect((await host.directions({ projectId: "shop", runId: r.id }, api)).map((d) => d.name)).toEqual([
+      "Calm",
+      "Bold",
+    ]);
+    await expect(
+      host.decide({ projectId: "shop", runId: r.id, gateId: "GD", kind: "approve", direction: "9-x" }, api),
+    ).rejects.toThrow(/no direction/);
+    r = await host.decide(
+      { projectId: "shop", runId: r.id, gateId: "GD", kind: "approve", direction: "2-bold" },
+      api,
+    );
+    expect(r.direction).toBe("2-bold");
+    r = await load(r.id);
+    expect(await brief("S5")).toContain("Picked direction: Bold (directions/2-bold.svg)");
+    await play(r, "S5");
+    r = await load(r.id);
+    await play(r, "S6", {
+      quality: { pass: false, score: 60, axes: { hierarchy: 3, spacing: 2.5 }, fixes: ["Bigger button"] },
+    });
+    r = await load(r.id);
+    await play(r, "S5");
+    r = await load(r.id);
+    await play(r, "S6", { quality: { pass: true, score: 86, axes: { hierarchy: 4.5 } } });
+    const { versions } = await host.review({ projectId: "shop", runId: r.id }, api);
+    expect(versions.map((v) => [v.version, v.quality?.pass, v.quality?.axes[0]?.value])).toEqual([
+      [1, false, 3],
+      [2, true, 4.5],
+    ]);
+    expect(versions[0]?.quality?.fixes).toEqual([{ change: "Bigger button" }]);
+    expect(versions[1]?.file).toBe(join(folder(r), "demo", "v2", "index.html"));
+    r = await host.decide(
+      {
+        projectId: "shop",
+        runId: r.id,
+        gateId: "G1",
+        kind: "changes",
+        pins: [
+          { device: "phone", screen: "", x: 10, y: 20, text: "Bigger title" },
+          { device: "fridge", x: 1, y: 1, text: "dropped" },
+        ] as never,
+      },
+      api,
+    );
+    r = await load(r.id);
+    expect(stage(r, "S5")).toMatchObject({ status: "running", version: 3 });
+    expect(chatOf(r, "S5").sent[0]).toContain(
+      "Pins on the demo:\n1. phone (10% across, 20% down): Bigger title",
+    );
+    expect(chatOf(r, "S5").sent[0]).not.toContain("dropped");
+  });
+
   it("asks once for a missing report, then waits for you", async () => {
     let r = await host.startRun({ projectId: "shop", brief: "shift-swap" }, api);
     const c = chatOf(r, "S2");

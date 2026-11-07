@@ -54,7 +54,10 @@ Called from the add-on's UI (`ctx.host.call`); `runs` and `ideaFrom` are exporte
 | `enough` | `{projectId, runId}` | Good enough: the interviewer writes the brief from what there is and ends |
 | `track` | `{projectId, runId}` | the run's track and plan for the Plan dialog |
 | `plan` | `{projectId, runId, outputs, languages, owners, level, build, productExists, permissionMode}` | confirms the Plan step (`plan.confirmed`), the run goes on |
-| `decide` | `{projectId, runId, gateId, kind: "approve" \| "changes" \| "reject", note?}` | a gate decision |
+| `decide` | `{projectId, runId, gateId, kind: "approve" \| "changes" \| "reject", note?, pins?, direction?}` | a gate decision; on G1 Ask for changes the Demo review's pins join the note as numbered lines (at most 30), on GD Approve `direction` picks a board (D-462) |
+| `review` | `{projectId, runId}` | the demo's versions for Demo review: entry file (absolute), change log, scorecard (`pass`, `score`, eight axes, fixes) |
+| `directions` | `{projectId, runId}` | GD's direction boards: `{id, name, file}` |
+| `showInPages` | `{projectId, runId, version}` | publishes that demo version through the Pages add-on's `publish` export; the run keeps one page (`demoPage`) and each version updates it |
 | `answer` | `{projectId, runId, stageId, answers? \| reply?}` | answers the interview's question cards, or a stage's `factory_ask` |
 | `rerun` | `{projectId, runId, stageId, note?}` | the stage again as its next version; what follows waits again |
 | `fork` | `{projectId, runId, stageId, note?}` | a new run from that stage on a branch of its own |
@@ -98,11 +101,22 @@ chat that runs a stage (the Conductor knows its chat id).
   shows its owner, revisions left and what it reviews, with **Approve**, **Ask for changes** (with a
   note) and **Reject…**. ⋯ has **Inspector**, **Re-run a stage…**, **Fork from a stage…** and **Stop
   the run**.
+- **Demo review** (tab, D-462): the demo in three device frames (desktop 1440, tablet 834, phone
+  390; one frame with device tabs where it is narrow), scaled to fit, through `ctx.frameUrl` in a
+  sandboxed frame (scripts on, no network, never same-origin). Version chips, the score out of 5,
+  **Pin** (click a frame to drop a numbered pin with a comment; pins are kept per run until sent),
+  **Ask for changes** (a modal with the pins and a note: G1's changes), **Approve** while G1 waits,
+  and ⋯ **Open in Preview**, **Open in browser**, **Show in Pages**. The side panel shows what
+  changed, the scorecard's axes and fixes, and the pins. Opens from the Run tab's **Review demo**,
+  G1's gate sheet and G1 rows in the inbox.
+- **GD's gate sheet** shows the three direction boards as cards; the whole card picks it.
 - **Inbox** (tab), the **Jig factory** view (View → Views) and the top bar's **factory** button.
 - Actions **Jig factory: new idea…** and **start from a brief…** (search and menus); a chat reply's
   ⋯ → **Start Jig factory from this**; a meeting's ⋯ → **Start Jig factory…**.
 
 ## Settings
 
-`factory.demoKitPath` (protected, D-443) and `factory.concurrency` (D-450), on Settings → Jig factory.
+`factory.demoKitPath` (protected, D-443), `factory.concurrency` (D-450) and `factory.designSources`
+(D-462: the `DESIGN.md` references; the design stages' brief lists them with the product kit and the
+picked direction), on Settings → Jig factory.
 Built-in add-ons read their own namespace with `api.config()` (D-450).

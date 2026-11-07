@@ -298,6 +298,12 @@ export interface AddonUiContext {
    * CSV/Excel tables, JSON, notebooks, images, audio, video, Word/PowerPoint text, or highlighted code.
    */
   openPreview(path: string): void;
+  /**
+   * A `jig-file:` address for a local file (absolute path) to show in a sandboxed `<iframe>` or `<img>`:
+   * the file's project (or its folder) is granted, so a static page loads its own scripts, styles and
+   * images and nothing else on disk; it never reaches the network or Jig. Needs `fs:read` (D-462).
+   */
+  frameUrl(path: string): Promise<string>;
   /** Shows one of this add-on's views (short id), or any view by its full id (`addon.git.git`, `jig.terminals`). */
   showView(viewId: string): void;
   /** Scripts of a project (the same discovery as the dashboard), and running them in terminals. */

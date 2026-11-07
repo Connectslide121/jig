@@ -233,6 +233,10 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
     saveCopy: (from, options) => call("addons.saveCopy", { id, from, ...options }),
     openImage: (path) => void workbench.openTab("jig.image", { path }),
     openPreview: (path) => void workbench.openTab("jig.preview", { path }),
+    async frameUrl(path) {
+      if (!has(addon, "fs:read")) throw new Error(`${addon.name} needs the "fs:read" permission`);
+      return (await call("files.preview", { path })).url;
+    },
     // A full id ("addon.git.git", "jig.terminals") shows another view; a short id one of this add-on's.
     showView: (viewId) =>
       workbench.showView(/^(addon|jig)\./.test(viewId) ? viewId : addonViewId(id, viewId)),

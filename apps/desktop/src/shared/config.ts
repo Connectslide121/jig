@@ -355,6 +355,11 @@ export const ConfigSchema = z.object({
       demoKitPath: z.string().default(""),
       /** How many stage chats Jig factory runs at once, across all runs (D-450). */
       concurrency: z.number().int().min(1).max(6).default(3),
+      /**
+       * Libraries of `DESIGN.md` references (repository addresses or folders) new brands' directions
+       * are made "in the spirit of" (D-444); only the addresses are kept, read when a stage runs.
+       */
+      designSources: z.array(z.string()).default([]),
     })
     .prefault({}),
   updates: z

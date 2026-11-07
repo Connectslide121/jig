@@ -18,4 +18,7 @@ demo is built from, so the demo looks like the real product.
 - Write `kit/brand.md` (front-matter `status: draft`): name, logo files, voice and tone, do and
   don't, and the product's own terms for things.
 
-When the repository already has `.jig/factory/kit/`, start from it and note what drifted.
+When the repository already has `.jig/factory/kit/`, start from it and note what drifted. Then copy
+both files into the repository's `.jig/factory/kit/` (`brand.md`, `tokens.json`), with a few
+reference screenshots of the real product in `.jig/factory/kit/screens/` when you can take them:
+later runs and the critic start from that kit.

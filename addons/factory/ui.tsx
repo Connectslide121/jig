@@ -45,6 +45,7 @@ import {
   waitsForMe,
 } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
+import { demoVersions } from "./lib/review";
 import { type GateId, type Output, PENDING_IDEA, type PendingIdea, type Run, timeline } from "./lib/run";
 import { isSample } from "./lib/samples";
 import {
@@ -53,6 +54,7 @@ import {
   LevelBadge,
   OutputPill,
   openInterview,
+  openReview,
   openRun,
   Ring,
   RunMark,
@@ -492,6 +494,11 @@ export function RunTab({ ctx, params }: AddonTabProps) {
             </Button>
           )
         )}
+        {demoVersions(run).length > 0 && (
+          <Button size="sm" data-testid="factory-run-review" onClick={() => openReview(ctx, run)}>
+            Review demo
+          </Button>
+        )}
         <IconButton
           icon={MoreHorizontal}
           size="sm"
@@ -795,6 +802,8 @@ export function InboxTab({ ctx }: AddonTabProps) {
     else groups.push({ group: item.group, items: [item] });
   }
   const open = async (item: InboxItem) => {
+    if (item.group === "G1")
+      return openReview(ctx, { id: item.runId, projectId: item.projectId, title: item.runTitle });
     if (item.outputId) {
       const path = await ctx.host.call<string | null>("outputFile", {
         projectId: item.projectId,
@@ -977,3 +986,4 @@ function ViewRow({
 
 export { fromMessage, newIdea } from "./idea";
 export { InterviewTab } from "./interview";
+export { ReviewTab } from "./review";

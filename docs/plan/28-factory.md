@@ -110,12 +110,13 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   before the renumbering show the old numbers (old D-n is now D-(n+2)). Before
   `npm run decision` here, fetch main and compare its last `## D-` heading with this branch's; if main
   has moved past the factory's last number, say so and merge main first instead of reserving.
-- **Current session:** 4, the demo end to end — not started.
+- **Current session:** M1, Motion: storyboard, composition and render — not started.
 - **Done:** session 0 (decisions D-426…D-442, `addons/factory` with the Floor, Run and Inbox on
   sample runs). Session 1: the demo kit (all of it, passing its own gate), the
   `factory.demoKitPath` setting, skills that can start off (D-443). Session 2: the Conductor, stage
   runner, tools, Run tab sheets and Inspector (D-449…D-452, D-459). Session 3: New idea, the
-  Interview tab, the Plan step, meetings and dictation for add-ons (D-460, D-461).
+  Interview tab, the Plan step, meetings and dictation for add-ons (D-460, D-461). Session 4: the
+  Demo review tab, GD direction cards, design sources, Show in Pages (D-462).
 - **Plan changed after session 1** (Jon, 2026-11-06): D-444…D-448 (design sources, two-form deck
   and one-pager, ChatGPT images, e-learning connector, HyperFrames teasers). They change sessions 4
   and 5 (their checklists say how), nothing already built. Their settings join the Settings → Jig
@@ -128,8 +129,8 @@ Updated by every agent when it stops or finishes a piece of work; a new agent st
   Get it beside `jig/`: `git clone -b demo-kit <this repo's URL> ../jig-demo-kit`, then
   `npm install && npm run setup` in it. Its README and AGENTS.md say how to use it. Push kit
   commits back with `git push origin HEAD:demo-kit`; push `factory` after every commit too.
-- **Half done / next step:** session 3 is done (see its notes). Next: session 4, from its first
-  item (the design director). Built-in add-ons read core settings with `api.config()` (D-450).
+- **Half done / next step:** session 4 is done (see its notes; the L2 path is a recipe not yet
+  tried on a real product). Next: session M1, from its first item (`addons/motion` skeleton). Built-in add-ons read core settings with `api.config()` (D-450).
 
 ## Working on this phase from GitHub (without Jig)
 
@@ -277,21 +278,32 @@ Start Jig factory from a chat reply's ⋯ and from a meeting. Add-on CSS: pair c
 "Feels like?" design-source question belongs to session 4 (D-444).
 
 
-### 4. The demo, end to end — not started
+### 4. The demo, end to end — done
 
-- [ ] Design director: product kit from the product repo (tokens + reference screenshots,
+- [x] Design director: product kit from the product repo (tokens + reference screenshots,
       `.jig/factory/kit/`); for a new brand, 3 directions (GD gate, direction cards), each with a
       reference from `factory.designSources` (D-444; setting, "Feels like?" in the interview,
       the critic reads the reference's do's and don'ts).
-- [ ] Demo builder (L1) on the demo kit; critic loop (score → fix list → rebuild, max 3 rounds,
+- [x] Demo builder (L1) on the demo kit; critic loop (score → fix list → rebuild, max 3 rounds,
       D-436); the quality gate's results on the run.
-- [ ] Demo review tab: device frames (desktop, tablet, phone) side by side, v1–v3 switcher with
+- [x] Demo review tab: device frames (desktop, tablet, phone) side by side, v1–v3 switcher with
       change log, comment pins on screens, critic scorecard, Approve / Ask for changes (modal) = G1.
-- [ ] L2 path: product engineer recipe on `factory/<slug>`, feature flag, demo data; the demo is the
-      running product (you start it; deploys stay manual).
-- [ ] Preview through the Pages add-on (scripts on for demos), "Open in browser".
+- [~] L2 path: product engineer recipe on `factory/<slug>`, feature flag, demo data; the demo is the
+      running product (you start it; deploys stay manual). Recipe written, not tried on a real product.
+- [x] Preview through the Pages add-on (scripts on for demos), "Open in browser". Changed by D-462:
+      the review shows the live folder in frames of its own; **Show in Pages** keeps a version.
 
 **Done when:** idea → interview → a polished demo in Jig, reviewed and approved.
+
+Session 4 notes: the Demo review tab (`review.tsx`, opened from the Run tab's **Review demo**, G1's
+sheet and inbox rows) shows `demo/` in three scaled frames through `ctx.frameUrl` (new in the SDK,
+a `files.preview` grant, `sandbox="allow-scripts"`), versions from `CHANGES.md`, the critic's axes
+and fixes (`lib/review.ts`, tested), pins (Pin, click on a frame, a note) kept per run until **Ask
+for changes** sends them with G1's note (D-462). GD shows the director's boards as cards; Approve
+takes the picked one (`Run.direction`). `factory.designSources` (Settings → Jig factory → Design
+references) feeds a "Design" section of `factory_brief` for the interview and design stages. Pages
+exports `publish`, so ⋯ → Show in Pages keeps a version there. e2e: "pick a direction at GD …
+(D-462)". The fake critic writes axes and fixes; the fake director's boards are coloured SVGs.
 
 ### M1. Motion: storyboard, composition and render — not started
 

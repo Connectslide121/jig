@@ -1,5 +1,15 @@
 # Status
 
+Jig factory's demo review (2026-11-09, phase 28 session 4, D-462): a run's demo opens in the
+**Demo review** tab (Run tab → **Review demo**, the G1 sheet, or an inbox row): desktop, tablet and
+phone frames side by side, v1–v3 with what changed, the critic's score per axis and its fixes.
+**Pin**, then click on a frame to leave a note there; **Ask for changes** sends the pins with your
+note for the next version, **Approve** passes G1. ⋯ → Open in Preview, Open in browser, Show in
+Pages. At GD (a new brand) the director's three boards show as cards; pick one and Approve.
+**Settings → Jig factory → Design references** lists sites or `DESIGN.md` files the interview offers
+as "Feels like?". **Check on your machine:** a real run's demo in the frames (scripts, fonts,
+images), pins at the right place after a resize, and the L2 path on a real product.
+
 Jig factory's New idea and interview (2026-11-08, phase 28 session 3, D-460, D-461): **New idea…**
 (factory button, the Floor, a chat reply's ⋯ → Start Jig factory from this, or a meeting's ⋯ in
 the Meetings window) takes the idea typed, dictated (the mic) or pasted, files, or a meeting from

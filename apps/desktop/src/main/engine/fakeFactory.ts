@@ -126,7 +126,7 @@ export async function runFakeFactory(text: string, hooks: FakeFactoryHooks): Pro
       await write(
         folder,
         path,
-        `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><text x="16" y="32">${n}</text></svg>`,
+        `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="${BOARD[n]}"/><text x="16" y="40" font-family="sans-serif" font-size="20" fill="#fff">${n}</text></svg>`,
       );
       written.push(path);
     }
@@ -141,6 +141,37 @@ export async function runFakeFactory(text: string, hooks: FakeFactoryHooks): Pro
       `${recipe || "The stage"} done: ${written.join(", ") || "nothing to write"}.`,
       written,
     );
+}
+
+const BOARD: Record<string, string> = { "1-calm": "#4b6584", "2-bold": "#c0392b", "3-warm": "#d68910" };
+
+/** The fake critic's `quality/v<N>.json`: the rubric's axes, and two fixes while it fails (D-462). */
+function fakeScorecard(fails: boolean) {
+  const v = fails ? 3 : 4.3;
+  return {
+    pass: !fails,
+    score: fails ? 62 : 86,
+    axes: {
+      hierarchy: v,
+      spacing: fails ? 2.5 : 4,
+      typography: v,
+      colour: v,
+      density: v,
+      consistency: v,
+      polish: fails ? 3 : 4.5,
+      story: v,
+    },
+    fixes: fails
+      ? [
+          {
+            screen: "My shifts",
+            element: "Offer button",
+            change: "Make the offer button the primary action",
+          },
+          { screen: "Open shifts", element: "Empty state", change: "Give the empty state a next step" },
+        ]
+      : [],
+  };
 }
 
 async function report(
@@ -169,7 +200,7 @@ async function contentOf(recipe: string, path: string, version: number, fails: b
   }
   if (path.endsWith(".json"))
     return recipe === "critique"
-      ? JSON.stringify({ pass: !fails, score: fails ? 62 : 86 }, null, 2)
+      ? JSON.stringify(fakeScorecard(fails), null, 2)
       : JSON.stringify({ color: { accent: { $type: "color", $value: "#4f46e5" } } }, null, 2);
   if (path.endsWith("CHANGES.md"))
     return `# Changes in v${version}\n\n- ${version === 1 ? "First version" : "Fixed what the critic found"}\n`;

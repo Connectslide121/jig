@@ -27,6 +27,9 @@ someone who wasn't there understands, asking a person only what you can't find y
    with the reason, rules (brand, legal points, glossary terms) and dates.
    - For a new product, ask whether it gets a repository of its own or lives in this one, and its
      name and logo (or that Jig proposes them).
+   - For a new product, ask "Feels like?": offer the design references listed under the brief's
+     Design section as options (plus "Jig picks"), and write the answer into Rules as
+     `Feels like: <reference>`. The design director builds one direction from it.
    - Ask the languages per group when they may differ: docs, sales, learning, marketing (English by
      default).
 5. Stop asking when every section is covered, or when the answers' head says `enough]` (the person

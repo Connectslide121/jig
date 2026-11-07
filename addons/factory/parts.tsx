@@ -48,6 +48,11 @@ export function openInterview(ctx: AddonUiContext, run: Pick<Run, "id" | "projec
   ctx.openTab("interview", { projectId: run.projectId, runId: run.id, title: `${run.title} · Interview` });
 }
 
+/** Opens the run's Demo review tab (D-462). */
+export function openReview(ctx: AddonUiContext, run: Pick<Run, "id" | "projectId" | "title">) {
+  ctx.openTab("review", { projectId: run.projectId, runId: run.id, title: `${run.title} · Demo review` });
+}
+
 /** The level's badge in a fixed slot (empty while the interview hasn't picked one). */
 export function LevelBadge({ level }: { level?: Level }) {
   return (

@@ -30,6 +30,14 @@ import { GATES } from "./lib/gates";
 import { itemId, type Track } from "./lib/graph";
 import { outputPaths, parseRecipe, type Recipe, resolveRecipes, stagePrompt } from "./lib/recipes";
 import {
+  changesNote,
+  type DemoVersion,
+  demoVersions,
+  directionsOf,
+  parseScorecard,
+  type Scorecard,
+} from "./lib/review";
+import {
   addOutput,
   addStage,
   decideGate,
@@ -42,6 +50,7 @@ import {
   type Owner,
   PENDING_IDEA,
   type PendingIdea,
+  type Pin,
   patchStage,
   type Question,
   type Run,
@@ -578,6 +587,104 @@ export async function ideaFrom(
   api.emit("new-idea", idea);
 }
 
+const DEVICE_IDS = new Set(["desktop", "tablet", "phone"]);
+
+/** Pins from the Demo review tab, checked: at most 30, text cut to 500 characters. */
+function cleanPins(v: unknown): Pin[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .flatMap((p): Pin[] => {
+      const o = p as Record<string, unknown>;
+      const text = typeof o?.text === "string" ? o.text.trim().slice(0, 500) : "";
+      if (!text || !DEVICE_IDS.has(String(o.device))) return [];
+      const at = (n: unknown) => Math.min(100, Math.max(0, Number(n) || 0));
+      return [
+        {
+          device: o.device as Pin["device"],
+          screen: typeof o.screen === "string" ? o.screen.slice(0, 120) : "",
+          x: at(o.x),
+          y: at(o.y),
+          text,
+        },
+      ];
+    })
+    .slice(0, 30);
+}
+
+export interface ReviewVersion extends Omit<DemoVersion, "changes" | "quality"> {
+  /** The demo's entry file, absolute (for `ctx.frameUrl`). */
+  file: string;
+  changes?: string;
+  quality?: Scorecard;
+}
+
+/** The Demo review tab (D-462): the demo's versions with their change logs and scorecards. */
+export async function review(a: RunArgs, api: AddonHostApi): Promise<{ versions: ReviewVersion[] }> {
+  const r = await loadRun(api, a.projectId, a.runId);
+  const read = async (path?: string) => {
+    const file = path ? outputPath(api, r, path) : undefined;
+    return file ? await readFile(file, "utf8").catch(() => undefined) : undefined;
+  };
+  const versions: ReviewVersion[] = [];
+  for (const v of demoVersions(r)) {
+    const file = outputPath(api, r, v.path);
+    if (!file) continue;
+    const changes = await read(v.changes);
+    const q = await read(v.quality);
+    versions.push({
+      version: v.version,
+      path: v.path,
+      status: v.status,
+      file,
+      changes: changes
+        ? parseFrontMatter(changes)
+            .body.replace(/^\s*# .*\n/, "")
+            .trim()
+        : undefined,
+      quality: q ? parseScorecard(q) : undefined,
+    });
+  }
+  return { versions };
+}
+
+/**
+ * Show in Pages (D-462): a demo version as a page in the Pages add-on, which keeps its versions. The
+ * run remembers its page, so each version updates the same page.
+ */
+export async function showInPages(a: RunArgs & { version: number }, api: AddonHostApi): Promise<string> {
+  const r = await loadRun(api, a.projectId, a.runId);
+  const v = demoVersions(r).find((d) => d.version === a.version);
+  const file = v ? outputPath(api, r, v.path) : undefined;
+  if (!file) throw new Error(`There is no demo v${a.version}`);
+  const publish = (id?: string) =>
+    api.addons.call<string>("pages", "publish", {
+      file,
+      title: `${r.title} · demo v${a.version}`,
+      id,
+      chat: { projectId: r.projectId, cwd: dirname(file) },
+    });
+  const out = await publish(r.demoPage).catch((e) => (r.demoPage ? publish() : Promise.reject(e)));
+  const page = (JSON.parse(out) as { page?: string }).page;
+  if (page && page !== r.demoPage)
+    await serial(async () => {
+      const now = await loadRun(api, a.projectId, a.runId);
+      await save(api, { ...now, demoPage: page });
+    });
+  return page ?? "";
+}
+
+/** A new brand's direction boards for GD (D-462), with their files. */
+export async function directions(
+  a: RunArgs,
+  api: AddonHostApi,
+): Promise<Array<{ id: string; name: string; file: string }>> {
+  const r = await loadRun(api, a.projectId, a.runId);
+  return directionsOf(r).flatMap((d) => {
+    const file = outputPath(api, r, d.path);
+    return file ? [{ id: d.id, name: d.name, file }] : [];
+  });
+}
+
 /** The run's brief as the Interview tab shows it (D-461): sections, coverage, gaps, level. */
 export async function briefDoc(a: RunArgs, api: AddonHostApi): Promise<BriefDoc | null> {
   const r = await loadRun(api, a.projectId, a.runId);
@@ -1020,16 +1127,41 @@ type RunArgs = { projectId: string; runId: string };
 
 /** A gate's decision (D-452): Approve approves its drafts, Ask for changes runs its stage again, Reject stops the run. */
 export async function decide(
-  a: RunArgs & { gateId: GateId; kind: "approve" | "changes" | "reject"; note?: string },
+  a: RunArgs & {
+    gateId: GateId;
+    kind: "approve" | "changes" | "reject";
+    note?: string;
+    /** Demo review's comment pins (Ask for changes on G1): they join the note as numbered lines. */
+    pins?: Pin[];
+    /** The direction picked at GD (`2-bold`). */
+    direction?: string;
+  },
   api: AddonHostApi,
 ): Promise<Run> {
   const r = await serial(async () => {
     let r = await loadRun(api, a.projectId, a.runId);
     const track = await trackOf(api, r.track);
-    const note = a.note?.trim() || undefined;
+    const pins = a.kind === "changes" ? cleanPins(a.pins) : [];
+    const note = (a.kind === "changes" ? changesNote(a.note ?? "", pins) : a.note?.trim()) || undefined;
     if (a.kind === "changes" && !note) throw new Error("Say what to change");
     const drafts = gateOutputs(r, a.gateId);
-    r = decideGate(r, a.gateId, { kind: a.kind, by: ME, note }, { cap: track.caps.revisionsPerGate });
+    if (a.gateId === "GD" && a.kind === "approve") {
+      const picked = directionsOf(r).find((d) => d.id === a.direction);
+      if (a.direction && !picked) throw new Error(`There is no direction ${a.direction}`);
+      if (picked) r = { ...r, direction: picked.id };
+    }
+    r = decideGate(
+      r,
+      a.gateId,
+      a.kind === "changes"
+        ? { kind: "changes", by: ME, note, pins: pins.length ? pins : undefined }
+        : {
+            kind: a.kind,
+            by: ME,
+            note: note ?? (r.direction && a.gateId === "GD" ? `Picked ${r.direction}` : undefined),
+          },
+      { cap: track.caps.revisionsPerGate },
+    );
     if (a.kind === "approve")
       for (const o of drafts) {
         if (o.status === "approved" || o.status === "published") continue;
@@ -1239,6 +1371,31 @@ export async function context(args: ChatArgs, api: AddonHostApi): Promise<string
   ].join("\n");
 }
 
+const DESIGN_KINDS = new Set(["brief", "demo", "directions", "quality", "kit"]);
+
+/**
+ * What the design stages build from (D-444, D-462): the product kit, a picked direction, the demo
+ * kit's folder and the `DESIGN.md` references from Settings → Jig factory.
+ */
+async function designLines(api: AddonHostApi, r: Run): Promise<string[]> {
+  const c = await api.config<{ demoKitPath?: string; designSources?: string[] }>().catch(() => undefined);
+  const repo = workDir(r);
+  const picked = r.direction ? directionsOf(r).find((d) => d.id === r.direction) : undefined;
+  const sources = (c?.designSources ?? []).filter((x) => typeof x === "string" && x.trim());
+  return [
+    "",
+    "## Design",
+    `- Product kit: ${r.plan?.productExists && repo ? join(repo, ".jig", "factory", "kit") : "none (a new brand)"}`,
+    ...(picked
+      ? [`- Picked direction: ${picked.name} (${picked.path}); build from it, it is the run's kit`]
+      : []),
+    `- Demo kit: ${c?.demoKitPath?.trim() || "not set (build a self-contained static folder by hand)"}`,
+    sources.length
+      ? `- Design references (DESIGN.md libraries; borrow mood and rules, never another brand's colours, logo or name; a product kit always wins): ${sources.join(", ")}`
+      : "- Design references: none set",
+  ];
+}
+
 /** `factory_brief`: the run's brief, plan, the stage's inputs and earlier outputs. */
 export async function toolBrief(args: ChatArgs, api: AddonHostApi): Promise<string> {
   const found = await stageOfChat(api, args);
@@ -1264,6 +1421,7 @@ export async function toolBrief(args: ChatArgs, api: AddonHostApi): Promise<stri
       ? r.outputs.map((o) => `- ${o.path} (${o.kind} v${o.version}, ${o.status})`)
       : ["- none"]),
     ...(stage.feedback ? ["", "## Changes asked", stage.feedback] : []),
+    ...(recipe && DESIGN_KINDS.has(recipe.kind) ? await designLines(api, r) : []),
     "",
     "## The brief",
     briefText || "(not written yet)",

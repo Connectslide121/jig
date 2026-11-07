@@ -19,6 +19,10 @@ typefaces, the mood in three words, and a sample screen in the demo's shell. Say
 `DESIGN.md` reference each is "in the spirit of"; borrow mood and rhythm, never another brand's
 colours, logo or name.
 
+Start from the brief's Design section: when Rules say `Feels like: <reference>`, build direction 1
+from that reference; give the others references from the list (or your own pick when none is set).
+Read each reference's `DESIGN.md` do's and don'ts before you draw.
+
 Write `directions/README.md` (front-matter `status: draft`) comparing them, with the board files
 listed. Avoid generic looks: no default purple-blue gradients, no centred-everything hero, no emoji
 as icons.

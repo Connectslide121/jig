@@ -18,11 +18,12 @@ import {
   useHostCall,
 } from "@jig/sdk/ui";
 import { GitFork, MessageSquare, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { gateOutputs } from "./lib/conductor";
 import { GATE_STATUS, GATES, outputName, ownerName, ownerOf, revisionsLeft } from "./lib/gates";
+import { directionsOf } from "./lib/review";
 import type { GateId, Output, Run, StageRun, StageStatus } from "./lib/run";
-import { clock, OutputPill } from "./parts";
+import { clock, OutputPill, openReview } from "./parts";
 
 export const STAGE_STATUS: Record<
   StageStatus,
@@ -39,7 +40,7 @@ export const STAGE_STATUS: Record<
 
 type Call = (method: string, args: Record<string, unknown>) => Promise<unknown>;
 
-function useAct(ctx: AddonUiContext, run: Run, onDone: () => void) {
+export function useAct(ctx: AddonUiContext, run: Run, onDone: () => void) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const act: Call = async (method, args) => {
@@ -409,10 +410,33 @@ export function GateSheet({
           </Field>
           {gate?.note && <Field label="Last note">{gate.note}</Field>}
         </div>
-        <section className="flex flex-col gap-1">
-          <span className="text-2xs font-semibold tracking-wide text-hint uppercase">To review</span>
-          <OutputRows outputs={gateOutputs(run, gateId)} files={files} ctx={ctx} />
-        </section>
+        {gateId === "GD" && directionsOf(run).length > 0 ? (
+          <DirectionCards
+            ctx={ctx}
+            run={run}
+            open={open}
+            busy={busy}
+            onPick={(direction) => void act("decide", { gateId, kind: "approve", direction })}
+          />
+        ) : (
+          <section className="flex flex-col gap-1">
+            <span className="text-2xs font-semibold tracking-wide text-hint uppercase">To review</span>
+            <OutputRows outputs={gateOutputs(run, gateId)} files={files} ctx={ctx} />
+          </section>
+        )}
+        {gateId === "G1" && (
+          <Button
+            size="sm"
+            className="self-start"
+            data-testid="factory-gate-open-review"
+            onClick={() => {
+              onClose();
+              openReview(ctx, run);
+            }}
+          >
+            Open Demo review
+          </Button>
+        )}
         {open && (
           <Textarea
             rows={3}
@@ -425,6 +449,75 @@ export function GateSheet({
       </div>
     </Dialog>
   );
+}
+
+/**
+ * GD's direction boards (D-444, D-462): one card each, the whole card picks it (Approve with that
+ * direction). Boards are SVG or PNG files the directions stage wrote, shown through file grants.
+ */
+function DirectionCards({
+  ctx,
+  run,
+  open,
+  busy,
+  onPick,
+}: {
+  ctx: AddonUiContext;
+  run: Run;
+  open: boolean;
+  busy: boolean;
+  onPick: (id: string) => void;
+}) {
+  const boards = useHostCall<Array<{ id: string; name: string; file: string }>>("directions", {
+    projectId: run.projectId,
+    runId: run.id,
+  });
+  return (
+    <section className="@container flex flex-col gap-1">
+      <span className="text-2xs font-semibold tracking-wide text-hint uppercase">
+        {open ? "Pick a direction" : "Directions"}
+      </span>
+      <div className="grid @max-lg:grid-cols-1 @lg:grid-cols-3 gap-3" data-testid="factory-directions">
+        {(boards.data ?? directionsOf(run).map((d) => ({ ...d, file: "" }))).map((d) => (
+          <button
+            key={d.id}
+            type="button"
+            disabled={!open || busy}
+            onClick={() => onPick(d.id)}
+            data-testid="factory-direction"
+            className={cn(
+              "flex flex-col overflow-hidden rounded-lg border bg-raised text-left",
+              run.direction === d.id ? "border-accent" : "border-line",
+              open && "hover:border-accent focus-visible:outline-2 focus-visible:outline-focus",
+            )}
+          >
+            <span className="flex aspect-video w-full items-center justify-center overflow-hidden border-b border-line bg-surface">
+              {d.file ? <Board ctx={ctx} file={d.file} name={d.name} /> : <Spinner />}
+            </span>
+            <span className="flex h-8 items-center gap-2 px-2 text-xs">
+              <span className="min-w-0 flex-1 truncate font-medium text-fg">{d.name}</span>
+              {run.direction === d.id && <Badge tone="accent">Picked</Badge>}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Board({ ctx, file, name }: { ctx: AddonUiContext; file: string; name: string }) {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    let live = true;
+    ctx.frameUrl(file).then(
+      (u) => live && setUrl(u),
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [ctx, file]);
+  return url ? <img src={url} alt={name} className="size-full object-cover" /> : <Spinner />;
 }
 
 /** Re-run a stage as its next version, or fork the run from it, with a note for the new version. */

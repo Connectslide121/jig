@@ -156,6 +156,101 @@ test("Jig factory: a golden brief's run goes through every stage and gate with t
   ).toBe("main");
 });
 
+test("Jig factory: pick a direction at GD, then review the demo in its frames, pin a change and approve (D-462)", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const projectId = await shop(page, jigHome);
+  const started = (await factory(page, "startRun", { projectId, brief: "shift-swap" })) as { value: RunLike };
+  const id = started.value.id;
+  const waitGate = (gate: string) =>
+    expect
+      .poll(
+        async () => {
+          const r = await runOf(page, projectId, id);
+          if (r.gates.find((g) => g.id === "G0")?.status === "waiting")
+            await factory(page, "decide", { projectId, runId: id, gateId: "G0", kind: "approve" });
+          return r.gates.find((g) => g.id === gate)?.status;
+        },
+        { timeout: 30_000, intervals: [300] },
+      )
+      .toBe("waiting");
+
+  // GD: the three direction boards; the whole card picks one.
+  await waitGate("GD");
+  await page.getByTestId("factory-topbar").click();
+  await page.getByTestId("factory-menu-floor").click();
+  await page.locator(`[data-testid=factory-card][data-run="${id}"]:visible`).click();
+  const run = page.getByTestId("factory-run");
+  await run.getByTestId("factory-node-GD").click();
+  const sheet = page.getByTestId("factory-gate-sheet");
+  const cards = sheet.getByTestId("factory-direction");
+  await expect(cards).toHaveCount(3);
+  await expect(cards.nth(1).locator("img")).toHaveAttribute("src", /^jig-file:/);
+  if (process.env.JIG_UI_SHOTS) {
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: join(SHOTS_DIR, "factory-gd.png") });
+  }
+  await cards.filter({ hasText: "Bold" }).click();
+  await expect(sheet).toBeHidden();
+  expect(((await runOf(page, projectId, id)) as RunLike & { direction?: string }).direction).toBe("2-bold");
+
+  // G1: Review demo shows v1 and v2 (the critic failed v1), three frames and v2's scorecard.
+  await waitGate("G1");
+  await run.getByTestId("factory-run-review").click();
+  const review = page.getByTestId("factory-review");
+  await expect(review.getByTestId("factory-review-versions").getByRole("button")).toHaveCount(2);
+  await expect(review.getByTestId("factory-review-score")).toContainText("4.3");
+  await expect(review.getByTestId("factory-review-scorecard")).toContainText("Hierarchy", {
+    ignoreCase: true,
+  });
+  await expect(review.getByTestId("factory-frame-desktop").locator("iframe")).toHaveAttribute(
+    "src",
+    /^jig-file:/,
+  );
+  await review.getByRole("button", { name: "v1" }).click();
+  await expect(review.getByTestId("factory-review-scorecard")).toContainText("offer button");
+
+  // A pin on the desktop frame, then Ask for changes sends it: S5 builds v3.
+  await review.getByTestId("factory-review-pin").click();
+  await review.getByTestId("factory-frame-desktop-overlay").click({ position: { x: 40, y: 30 } });
+  await page.getByRole("dialog").getByRole("textbox").fill("Bigger title");
+  await page.getByRole("dialog").getByRole("button", { name: "Add pin" }).click();
+  await expect(review.getByTestId("factory-pins")).toContainText("Bigger title");
+  if (process.env.JIG_UI_SHOTS) {
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: join(SHOTS_DIR, "factory-review-wide.png") });
+    await page.setViewportSize({ width: 900, height: 800 }).catch(() => undefined);
+  }
+  await review.getByTestId("factory-review-changes").click();
+  const ask = page.getByTestId("factory-review-ask");
+  await expect(ask.getByTestId("factory-pins")).toContainText("Bigger title");
+  await ask.getByTestId("factory-review-send").click();
+  await expect(ask).toBeHidden();
+  await expect
+    .poll(async () => (await runOf(page, projectId, id)).stages.find((s) => s.id === "S5")?.version, {
+      timeout: 20000,
+    })
+    .toBe(3);
+  await waitGate("G1");
+  await expect(review.getByTestId("factory-review-versions").getByRole("button")).toHaveCount(3);
+  // ⋯ → Show in Pages keeps the version picked (v3) as a page.
+  await review.getByRole("button", { name: "v3" }).click();
+  console.log(
+    "DBG",
+    JSON.stringify(await factory(page, "showInPages", { projectId, runId: id, version: 3 })),
+  );
+  await review.getByTestId("factory-review-open").click();
+  await page.getByTestId("factory-review-pages").click();
+  await expect(page.getByText("Demo v3 is in Pages")).toBeVisible({ timeout: 10000 });
+  expect(((await runOf(page, projectId, id)) as RunLike & { demoPage?: string }).demoPage).toMatch(/^p_/);
+  await review.getByTestId("factory-review-approve").click();
+  await expect
+    .poll(async () => (await runOf(page, projectId, id)).gates.find((g) => g.id === "G1")?.status)
+    .toBe("approved");
+});
+
 test("Jig factory: a stage Jig closed in the middle of carries on after the restart", async ({
   app,
   page,

@@ -148,6 +148,7 @@ are add-ons':
 | `ai.answer(prompt, options)` → `{ text, provider, model }` | like `ai.ask`, with the provider and model that answered, to show beside an AI-made result (the Tasks run report, D-355) |
 | `ai.tour(cwd, { focus? })` | opens a guided tour of the uncommitted changes of the repository `cwd` is in (Jig orders them and explains each step); needs `ai` |
 | `openPreview(path)` | opens a file in Jig's Preview tab (Markdown, HTML, PDF, tables, notebooks…; `docs/reference/preview.md`) |
+| `frameUrl(path)` → `Promise<string>` | a `jig-file:` address for a local file, for a sandboxed `<iframe>` (`sandbox="allow-scripts"`, never same-origin) or `<img>`: its project (or folder) is granted, so a static page loads its own files and nothing else; no network. Needs `fs:read` (D-462). Jig factory's Demo review shows demos with it |
 | `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |
 | `updateTab(tabId, params)` | changes an open tab of this add-on: params merged, `title` renames it, `undefined` drops one |
 | `openImage(path)` | opens an image file (absolute path) in Jig's image tab |

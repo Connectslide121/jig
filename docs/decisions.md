@@ -8081,3 +8081,28 @@ pending until the fan-out is reached, so the Floor and the inbox never show them
   interviewer to stop asking, write the brief with what it has (gaps under Open points) and report.
 - **Looks right** on the Interview tab is G0's Approve; it is there once the scout has reported.
 
+## D-462: Jig factory's demo review: frames through file grants, pins as feedback, picked directions, design sources
+
+- Status: accepted.
+- **Who:** Claude, on my own (2026-11-09), phase 28 session 4.
+- **Frames:** an add-on gets a frame for a local file with a new SDK helper, `ctx.frameUrl(path)`
+  (needs `fs:read`), on top of the existing `files.preview` grant (`jig-file://<grant>/…`: the
+  file's project or folder, scripts allowed, `connect-src 'none'`). The Demo review tab puts it in
+  `<iframe sandbox="allow-scripts">`, never same-origin. Not through the Pages add-on: Pages copies
+  every version and starts with scripts off, and the review needs the live folder at three sizes.
+  **Show in Pages** is still there for keeping a version (Pages now exports `publish`).
+- **Pins** are stored per run in the add-on's storage (`pins:<runId>`, global scope) until sent;
+  Ask for changes on G1 sends them with the note, the host checks them (device, 0–100 %, 500
+  characters, at most 30) and writes them as numbered lines under "Pins on the demo", so the next
+  version's prompt reads them like any gate note. They are also kept on the gate decision.
+- **Directions:** GD's Approve takes the picked board's id; the run keeps it (`Run.direction`) and
+  the design stages' brief names it as the run's kit. Approve without a pick still works (the
+  director's first one).
+- **Design sources:** `factory.designSources` is a plain list of addresses (not protected: nothing
+  runs from it). The brief of the interview and the design stages gets a "Design" section: the
+  product kit (`.jig/factory/kit/`), the picked direction, the demo kit's folder and the references,
+  with "a product kit always wins". The interviewer offers the references as "Feels like?".
+- **Scorecard:** the critic writes the eight axes by the rubric's names; the tab reads names
+  loosely ("spacing rhythm", "color") and shows the axes it finds.
+- **L2:** the product engineer's flag is named `factory-<slug>`, off by default, with seeded
+  invented data; it never starts servers it leaves running and never deploys.

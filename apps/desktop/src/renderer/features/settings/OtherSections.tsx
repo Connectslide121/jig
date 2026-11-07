@@ -531,6 +531,22 @@ export function FactorySettings() {
         placeholder="(not set)"
         onSave={(demoKitPath) => void updateConfig({ factory: { demoKitPath } })}
       />
+      <TextSetting
+        label="Design references"
+        description="DESIGN.md libraries (repository addresses or folders, separated by commas) a new brand's directions are made in the spirit of, and the critic checks against."
+        value={config.factory.designSources.join(", ")}
+        placeholder="github.com/VoltAgent/awesome-design-md"
+        onSave={(v) =>
+          void updateConfig({
+            factory: {
+              designSources: v
+                .split(/[,\n]/)
+                .map((s) => s.trim())
+                .filter(Boolean),
+            },
+          })
+        }
+      />
       <SettingRow
         label="Stage chats at once"
         description="How many stage chats run at the same time, across all runs. More stages wait until one finishes."
