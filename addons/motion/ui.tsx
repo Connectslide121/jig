@@ -907,23 +907,27 @@ function FromMessageDialog({ ctx }: { ctx: AddonUiContext }) {
         </>
       }
     >
-      <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 text-sm">
-        <span className="text-muted">Kind</span>
-        <Select value={kind} onChange={(e) => setKind(e.target.value as VideoKind)}>
-          {(Object.keys(KIND_LABEL) as VideoKind[]).map((k) => (
-            <option key={k} value={k}>
-              {KIND_LABEL[k]}
-            </option>
-          ))}
-        </Select>
-        <span className="text-muted">Length</span>
-        <Select value={String(seconds)} onChange={(e) => setSeconds(Number(e.target.value))}>
-          {LENGTHS.map((n) => (
-            <option key={n} value={n}>
-              About {n} s
-            </option>
-          ))}
-        </Select>
+      <div className="flex flex-col gap-2 text-sm">
+        <div className="flex items-center gap-3">
+          <span className="w-14 shrink-0 text-muted">Kind</span>
+          <Select value={kind} onChange={(e) => setKind(e.target.value as VideoKind)}>
+            {(Object.keys(KIND_LABEL) as VideoKind[]).map((k) => (
+              <option key={k} value={k}>
+                {KIND_LABEL[k]}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="w-14 shrink-0 text-muted">Length</span>
+          <Select value={String(seconds)} onChange={(e) => setSeconds(Number(e.target.value))}>
+            {LENGTHS.map((n) => (
+              <option key={n} value={n}>
+                About {n} s
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
       <Textarea
         className="mt-3"

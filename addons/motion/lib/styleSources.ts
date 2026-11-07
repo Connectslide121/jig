@@ -88,12 +88,12 @@ export function finishStyle(
     .map((s) => ({ ...s, hex: normalizeHex(s.hex) as string, role: roleOf(s.label) }))
     .filter((s) => s.hex);
   const named = (role: Role) => all.find((s) => s.role === role)?.hex;
-  const bg = named("bg") ?? all[0]?.hex ?? "#0e1015";
+  const bg = named("bg") ?? all[0]?.hex ?? "#0e1015"; // jig-tokens-ignore-line: a video's colours, not Jig's UI
   const others = all.filter((s) => s.hex !== bg);
   let fg = named("fg");
   if (!fg || contrast(fg, bg) < 4.5)
     fg = [...others].sort((a, b) => contrast(b.hex, bg) - contrast(a.hex, bg))[0]?.hex;
-  if (!fg || contrast(fg, bg) < 4.5) fg = luminance(bg) > 0.4 ? "#111111" : "#ffffff";
+  if (!fg || contrast(fg, bg) < 4.5) fg = luminance(bg) > 0.4 ? "#111111" : "#ffffff"; // jig-tokens-ignore-line: a video's colours, not Jig's UI
   const candidates = others.filter((s) => s.hex !== fg && contrast(s.hex, bg) >= 1.4);
   const accent =
     candidates.find((s) => s.role === "accent")?.hex ??
@@ -104,7 +104,7 @@ export function finishStyle(
     const m = named("muted");
     return m && contrast(m, bg) >= 3 ? m : mix(fg, bg, 0.35);
   })();
-  const onAccent = contrast("#ffffff", accent) >= contrast("#111111", accent) ? "#ffffff" : "#111111";
+  const onAccent = contrast("#ffffff", accent) >= contrast("#111111", accent) ? "#ffffff" : "#111111"; // jig-tokens-ignore-line: a video's colours, not Jig's UI
   return {
     id,
     name: name.trim().slice(0, 60) || id,
