@@ -9,7 +9,7 @@ exports[`compose > makes the teaser template's composition 1`] = `
 <title>Shift swap</title>
 <style>
 @font-face{font-family:"Inter Variable";src:url("fonts/inter.woff2") format("woff2");font-weight:100 900;font-display:block}
-:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
+:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--font-headline:"Inter Variable", sans-serif;--font-body:"Inter Variable", sans-serif;--radius:22px;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);overflow:hidden}
 #root{position:relative;width:1920px;height:1080px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:"Inter Variable", sans-serif;-webkit-font-smoothing:antialiased}
@@ -53,9 +53,10 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 .arrow.flip svg{transform:scaleX(-1)}
 .arrow svg{display:block;width:100%;height:100%}
 .tag{position:absolute;left:50%;top:100%;transform:translate(-50%,10px);white-space:nowrap;font-size:30px;font-weight:600;background:var(--accent);color:var(--on-accent);padding:8px 18px;border-radius:999px}
-.cap{display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
+.cap{position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
 .cap.top{align-items:flex-start;padding-top:70px;padding-bottom:0}
-.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
+.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);font-family:var(--font-body);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
 </style>
 </head>
 <body>
@@ -85,7 +86,7 @@ exports[`compose > makes the walkthrough template's composition 1`] = `
 <title>Booking suite</title>
 <style>
 @font-face{font-family:"Inter Variable";src:url("fonts/inter.woff2") format("woff2");font-weight:100 900;font-display:block}
-:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
+:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--font-headline:"Inter Variable", sans-serif;--font-body:"Inter Variable", sans-serif;--radius:22px;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);overflow:hidden}
 #root{position:relative;width:1920px;height:1080px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:"Inter Variable", sans-serif;-webkit-font-smoothing:antialiased}
@@ -129,9 +130,10 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 .arrow.flip svg{transform:scaleX(-1)}
 .arrow svg{display:block;width:100%;height:100%}
 .tag{position:absolute;left:50%;top:100%;transform:translate(-50%,10px);white-space:nowrap;font-size:30px;font-weight:600;background:var(--accent);color:var(--on-accent);padding:8px 18px;border-radius:999px}
-.cap{display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
+.cap{position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
 .cap.top{align-items:flex-start;padding-top:70px;padding-bottom:0}
-.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
+.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);font-family:var(--font-body);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
 </style>
 </head>
 <body>
@@ -160,7 +162,7 @@ exports[`compose > makes the whats-new template's composition 1`] = `
 <title>Shop 2.4</title>
 <style>
 @font-face{font-family:"Inter Variable";src:url("fonts/inter.woff2") format("woff2");font-weight:100 900;font-display:block}
-:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
+:root{--bg:#0e1015;--surface:#1b1f27;--fg:#f3f4f6;--muted:#a4abb8;--accent:#6d8dff;--on-accent:#ffffff;--font-headline:"Inter Variable", sans-serif;--font-body:"Inter Variable", sans-serif;--radius:22px;--ease:cubic-bezier(.2,.9,.25,1);--rise:36px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);overflow:hidden}
 #root{position:relative;width:1920px;height:1080px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:"Inter Variable", sans-serif;-webkit-font-smoothing:antialiased}
@@ -204,9 +206,10 @@ h1,h2,.statement{font-family:"Inter Variable", sans-serif;font-weight:700;letter
 .arrow.flip svg{transform:scaleX(-1)}
 .arrow svg{display:block;width:100%;height:100%}
 .tag{position:absolute;left:50%;top:100%;transform:translate(-50%,10px);white-space:nowrap;font-size:30px;font-weight:600;background:var(--accent);color:var(--on-accent);padding:8px 18px;border-radius:999px}
-.cap{display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
+.cap{position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-end;padding:0 120px 70px;z-index:3;pointer-events:none}
 .cap.top{align-items:flex-start;padding-top:70px;padding-bottom:0}
-.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
+.cap span{max-width:1500px;text-align:center;font-size:42px;font-weight:600;line-height:1.3;color:var(--fg);font-family:var(--font-body);text-wrap:balance;background:color-mix(in oklab,var(--bg) 80%,transparent);padding:10px 24px;border-radius:12px}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
 </style>
 </head>
 <body>

@@ -40,6 +40,12 @@ pinned HyperFrames with FFmpeg. Rendering uses no AI and costs nothing.
   `addon_motion_list` (with an `id`, a storyboard as JSON); a video card draws them in the chat. A
   reply's ⋯ → **Make a video from this** asks that chat; **Write with Jig** in a video keeps its
   brief and asks a new chat.
+- **Free compositions (D-474):** `addon_motion_compose` keeps a chat's own CSS and HTML clips as the
+  video's picture (`composition.json`): any layout and motion, checked first (`lib/custom.ts`: no
+  scripts, frames, handlers or network; files from the chat's folder copied into `media/`). Scenes
+  stay the narration: `data-scene` on a clip places a scene's voice and captions. New video → Start
+  from **Free composition** opens Write with Jig, whose **Picture** picks free composition or scene
+  layouts; ⋯ → **Use scene layouts again** drops it.
 - **Styles** come from Motion's own, the product kit's `tokens.json`, styles a chat gave
   (`own-<hash>`), `DESIGN.md` files in Factory's design sources (local paths) and the bundled
   theme-factory themes (`lib/styleSources.ts`).

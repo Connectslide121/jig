@@ -8492,3 +8492,41 @@ descriptions, the demo-quality skill and the docs. A chat reply's ⋯ and a meet
 Factory run from this** / **Start a Factory run…**. Only text changes: the add-on id `factory`, its
 folder, `factory.*` settings, `addon_factory_*` tools, test ids and the `factory` branch keep their
 names. Earlier entries in this log keep the old name as written.
+
+## D-474: Motion: free compositions written by a chat
+
+- Status: accepted.
+- **Who:** Jon (after watching a rendered teaser: no templates, "each teaser as custom as I want":
+  a chat writes each video's own animation); the contract, the checks and the UI are Claude, on my
+  own.
+
+A video's picture can be a **free composition**: a chat writes its own CSS and HTML clips with
+`addon_motion_compose`, any layout and any motion, instead of Motion's six scene layouts. Everything
+else stays Motion's: the live preview, the render (HyperFrames + FFmpeg, no AI), the voice, the
+captions, the music, versions and the video card. Kept as `composition.json` (`{ css, html,
+seconds? }`) in the video's folder; `addon_motion_compose` with `layouts: true` (or the video's ⋯ →
+**Use scene layouts again**) drops it.
+
+- **Contract:** `html` goes inside Motion's `#root` (the video's size); every part of the picture is
+  an element with `class="clip"`, `data-start`, `data-duration`, `data-track-index` (HyperFrames'
+  clips; captions use track 9). Motion is CSS animations whose delays count from the clip's start.
+  Motion adds Inter, the style's variables (`--bg`, `--fg`, `--accent`, `--font-headline`…), a
+  default `.clip{position:absolute;inset:0}`, the captions and, in the preview, the runtime and audio.
+- **Scenes become narration beats:** the storyboard keeps the title and each scene's voice; a clip
+  with `data-scene="<id>"` places that scene (from its first clip's start to its last clip's end), so
+  the voice (0.3 s in), its captions and the mix follow (`videoTimeline`, `lib/custom.ts`). A scene
+  no clip links to has no voice in the video; the tool says which. The video's length is `seconds`
+  or where the last clip ends (≤ 600 s).
+- **Checked before it is kept** (`checkComposition`, pure, tested): no `<script>`, `<style>`,
+  frames, forms, `<audio>`, document tags, `on…` handlers, `javascript:`, `@import`,
+  `expression()`; no http(s), `//` or `file:` URLs; `data:` only for images, videos and fonts; other
+  references are relative paths. Files the chat names from its folder are copied into `media/`
+  (same bytes reused) and renamed in the markup. At most 400 000 characters. Problems go back to
+  the chat as one error to fix. The preview frame stays `sandbox="allow-scripts"` with only Motion's
+  runtime; the rendered page has no scripts.
+- **UI:** New video → Start from **Free composition** makes a one-scene video and opens **Write with
+  Jig**, whose new **Picture** choice (free composition or scene layouts) picks the prompt; it starts
+  on free composition unless the video already has renders on layouts. The tab says "Free
+  composition" in its header, and its storyboard is titled **Narration** with a fixed note.
+- Templates stay for videos without AI; they are one option, not the way Motion makes videos.
+

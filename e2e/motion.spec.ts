@@ -211,6 +211,53 @@ test("Motion: a chat makes and changes a video with the tools, Write with Jig an
   });
 });
 
+test("Motion: a free composition starts at Write with Jig, a chat composes it, unsafe markup is refused", async ({
+  page,
+  jigHome,
+}) => {
+  const projectId = await shop(page, jigHome);
+  await hostCall(page, "config.update", { chat: { view: "compact" } });
+
+  // New video → Start from: Free composition → the tab opens with Write with Jig, on a free composition.
+  await page.getByTestId("motion-topbar").click();
+  await page.getByTestId("motion-menu-new").click();
+  const dialog = page.getByTestId("motion-new");
+  await dialog.getByTestId("motion-new-template").selectOption("free");
+  await dialog.getByTestId("motion-new-title").fill("Shop 2.0");
+  await dialog.getByTestId("motion-new-create").click();
+  const write = page.getByTestId("motion-write-dialog");
+  await expect(write).toBeVisible({ timeout: 15000 });
+  await expect(write.getByTestId("motion-write-picture")).toHaveValue("free");
+  await write.getByRole("button", { name: "Cancel" }).click();
+
+  // A chat composes it: the tab shows the free composition, its clips play in the preview.
+  const visible = page.locator("[data-tab-id]:not(.hidden)");
+  await page.keyboard.press("Control+N");
+  await visible.getByTestId("composer-input").fill("compose the video");
+  await page.keyboard.press("Enter");
+  const chat = visible.getByTestId("chat");
+  await expect(chat).toContainText("Composed the video.", { timeout: 20000 });
+  await chat.getByTestId("motion-card").getByTestId("motion-card-open").click();
+  const tab = visible.getByTestId("motion-video-tab");
+  await expect(tab.getByTestId("motion-custom-note")).toBeVisible({ timeout: 15000 });
+  await expect(tab).toContainText("Free composition");
+  const inner = tab.getByTestId("motion-preview-frame").contentFrame();
+  await expect(inner.locator("h1.big").first()).toHaveText("Shop 2.0");
+  await expect(tab.getByTestId("motion-time")).toContainText("/ 0:07", { timeout: 15000 });
+
+  // Scripts and network loads never get in.
+  const videos = (await motion(page, "list", { projectId })).value as Array<{ id: string }>;
+  const refused = await motion(page, "setComposition", {
+    projectId,
+    id: videos[0]!.id,
+    composition: {
+      css: "",
+      html: '<div class="clip" data-start="0" data-duration="1" data-track-index="0"><script>x()</script><img src="https://x.test/a.png"></div>',
+    },
+  });
+  expect(JSON.stringify(refused)).toContain("<script> isn't allowed");
+});
+
 test("Motion at sidebar, panel and tab widths, Dark and Light (JIG_UI_SHOTS=1)", async ({
   page,
   app,

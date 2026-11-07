@@ -21,6 +21,13 @@ chat or you ─► storyboard.json + settings ─► composition (HTML + GSAP, s
 AI only writes: a chat (Claude or ChatGPT, whichever it runs on) creates or changes a video's
 storyboard and settings through Motion's tools. You can also make a video from a template without AI.
 
+**Free compositions (D-474).** A video's picture doesn't have to use the scene layouts: a chat can
+write its own CSS and HTML clips (`addon_motion_compose`), any layout and any motion, checked by
+Motion (no scripts, no network, media from the video's folder) and wrapped with the style, Inter,
+captions and sound. The storyboard's scenes then are the narration beats: a clip with
+`data-scene="s1"` places that scene's voice and captions. New video → **Free composition** starts
+there, through Write with Jig.
+
 ## What it makes (first version)
 
 | Kind | Scenes it starts with | Typical length |
@@ -112,16 +119,19 @@ addons/motion/
   ui.tsx              Videos view, Video tab, modals, tool renderers
   lib/storyboard.ts   types + validation + timing (voice length, min reading time)
   lib/compose.ts      storyboard + style + template → composition HTML (pure, tested)
+  lib/custom.ts       free compositions: check, timing, wrap (pure, tested, D-474)
   lib/captions.ts     scenes → SRT / VTT (pure, tested)
   lib/install.ts      pinned renderer and FFmpeg sources, checksums
   templates/          teaser, whats-new, walkthrough (+ adapted HyperFrames blocks, licences kept)
   styles/             neutral, plus styles from a product kit at run time
 ```
 
-- **Data** (project scope): `videos/<id>/storyboard.json`, `settings.json`, `media/` (screenshots,
+- **Data** (project scope): `videos/<id>/storyboard.json`, `settings.json`, `composition.json` (a
+  free composition, D-474), `media/` (screenshots,
   captures, voice WAVs), `renders/<n>/video.mp4`, `poster.png`, `captions.srt`, `captions.vtt`.
 - **Tools for chats** (engine-neutral, `ChatTool`): `motion_create` (kind, brief, sources →
-  storyboard), `motion_update` (scene edits), `motion_render`, `motion_list` (read-only). A tool
+  storyboard), `motion_update` (scene edits), `motion_compose` (a free composition, D-474), `motion_render`,
+  `motion_list` (read-only). A tool
   renderer shows the video card in the chat. `jigContext` says when to use them.
 - **Exports** (D-215): `createVideo({ projectId, kind, storyboard?, brief?, style, output })` and
   `render(id)` for Factory (D-458) and, later, Releases.

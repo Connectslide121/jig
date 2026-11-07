@@ -141,6 +141,34 @@
         "run": "toolUpdate"
       },
       {
+        "id": "compose",
+        "description": "Write a Motion video's own picture as a free composition: your CSS and HTML clips, any layout, any motion, instead of Motion's scene layouts. Use it when the user wants a custom look or motion, or Write with Jig asks for a free composition. Make the video first (addon_motion_create; its scenes are the narration beats: title and voice), then call this with its id; call it again with the whole css and html to change it. Contract: html is what goes inside a frame of the video's size (1920×1080 at 16:9 1080p; addon_motion_list shows the settings). Every part of the picture is a clip: an element with class=\"clip\", data-start and data-duration (seconds in the video) and data-track-index (0, 1, 2…; clips on one track don't overlap; captions use 9). Clips are position:absolute; inset:0 unless your css says otherwise. Put data-scene=\"s1\" on a clip to place that scene's voice and captions there (the voice starts 0.3 s into it; leave the bottom 15% clear for captions). Motion is CSS only: @keyframes with animation-delay counted from the clip's own start, animation-fill-mode both; no transitions on hover, no JavaScript. Use the style's variables: --bg, --surface, --fg, --muted, --accent, --on-accent, --font-headline, --font-body (Inter), --radius, --ease. Images and clips: name files in the chat's folder (src=\"shots/home.png\", copied into the video) or media/… already in it; a <video> needs muted plus its own data-start and data-duration. Not allowed: <script>, <style> (use css), <iframe>, <audio>, forms, on… handlers, http(s) or // URLs, @import. Problems come back as an error to fix. Write for the frame's real pixel size, big type, few words.",
+        "params": {
+          "id": {
+            "description": "The video's id (v_…)"
+          },
+          "css": {
+            "description": "The stylesheet: layout and @keyframes",
+            "optional": true
+          },
+          "html": {
+            "description": "The clips, as described above",
+            "optional": true
+          },
+          "seconds": {
+            "type": "number",
+            "description": "The video's length; default where the last clip ends",
+            "optional": true
+          },
+          "layouts": {
+            "type": "boolean",
+            "description": "true to drop the composition and use Motion's scene layouts again",
+            "optional": true
+          }
+        },
+        "run": "toolCompose"
+      },
+      {
         "id": "render",
         "description": "Render a Motion video to MP4 (and a poster) on the user's computer: no AI, no cost, a minute or two. Only when the user wants the file; the card in the chat shows progress.",
         "params": {
@@ -171,6 +199,11 @@
       },
       {
         "tool": "mcp__jig__addon_motion_update",
+        "component": "VideoCard",
+        "promote": true
+      },
+      {
+        "tool": "mcp__jig__addon_motion_compose",
         "component": "VideoCard",
         "promote": true
       },

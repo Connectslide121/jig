@@ -1,4 +1,11 @@
-import { type Storyboard, timeline, type VideoSettings, VOICE_LEAD, voiceLength } from "./storyboard";
+import {
+  type Slot,
+  type Storyboard,
+  timeline,
+  type VideoSettings,
+  VOICE_LEAD,
+  voiceLength,
+} from "./storyboard";
 
 /**
  * Captions from the voice scripts (M2): each scene's script in short lines, timed across its voice
@@ -40,10 +47,14 @@ export function chunks(text: string, max = CUE_CHARS): string[] {
 
 const ms = (n: number) => Math.round(n * 1000) / 1000;
 
-/** Every caption with its time in the video. */
-export function cues(board: Pick<Storyboard, "scenes">, s: Pick<VideoSettings, "motion" | "type">): Cue[] {
+/** Every caption with its time in the video; `slots` when the scenes aren't back to back (a free composition). */
+export function cues(
+  board: Pick<Storyboard, "scenes">,
+  s: Pick<VideoSettings, "motion" | "type">,
+  slots: Slot[] = timeline(board, s).slots,
+): Cue[] {
   const out: Cue[] = [];
-  for (const slot of timeline(board, s).slots) {
+  for (const slot of slots) {
     const length = voiceLength(slot.scene);
     if (!length) continue;
     const pieces = chunks(slot.scene.voice ?? "");

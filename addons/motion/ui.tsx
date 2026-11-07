@@ -56,6 +56,7 @@ import type {
   VideoSummary,
 } from "./host";
 import { musicFile } from "./lib/audio";
+import { videoTimeline } from "./lib/custom";
 import { captureScene } from "./lib/marks";
 import { STEP_DO, STEP_HINT, type StepDo, type StepRow, stepNames, toSteps } from "./lib/steps";
 import {
@@ -72,7 +73,6 @@ import {
   type SceneType,
   type Storyboard,
   sceneId,
-  timeline,
   type VideoKind,
   type VideoSettings,
 } from "./lib/storyboard";
@@ -217,6 +217,13 @@ function openVideo(ctx: AddonUiContext, projectId: string, video: { id: string; 
   ctx.openTab("video", { projectId, id: video.id, title: video.title });
 }
 
+/** "Start from" a free composition (D-474): no layout, Jig writes the picture from the brief. */
+const FREE_START = {
+  id: "free",
+  name: "Free composition",
+  description: "No layouts: Jig writes this video's own look and motion from your brief, in a new chat.",
+};
+
 function NewVideoDialog({ ctx }: { ctx: AddonUiContext }) {
   const open = useNewOpen();
   const project = useActiveProject();
@@ -232,7 +239,11 @@ function NewVideoDialog({ ctx }: { ctx: AddonUiContext }) {
   const [style, setStyle] = useState("neutral");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const chosen = list?.find((t) => t.id === template);
+  const options: Array<Pick<Template, "id" | "name" | "description">> = [
+    ...(list ?? [{ id: "teaser", name: "Teaser", description: "" } as Template]),
+    FREE_START,
+  ];
+  const chosen = options.find((t) => t.id === template);
   const close = () => {
     setNewOpen(false);
     setError(undefined);
@@ -243,14 +254,31 @@ function NewVideoDialog({ ctx }: { ctx: AddonUiContext }) {
     setBusy(true);
     setError(undefined);
     try {
+      const free = template === FREE_START.id;
+      const named = title.trim() || "Untitled video";
       const video = await ctx.host.call<VideoDetail>("create", {
         projectId: project.id,
-        template,
-        ...(title.trim() ? { title: title.trim() } : {}),
+        ...(free
+          ? {
+              storyboard: {
+                version: 1,
+                kind: "teaser",
+                title: named,
+                language: "en",
+                scenes: [{ id: "s1", type: "title", title: named }],
+              },
+            }
+          : { template, ...(title.trim() ? { title: title.trim() } : {}) }),
         settings: { aspect, style },
       });
       close();
-      openVideo(ctx, project.id, video);
+      // A free composition starts at Write with Jig: the brief is what the chat composes from.
+      ctx.openTab("video", {
+        projectId: project.id,
+        id: video.id,
+        title: video.title,
+        ...(free ? { write: true } : {}),
+      });
     } catch (e) {
       setError(message(e));
     } finally {
@@ -287,7 +315,7 @@ function NewVideoDialog({ ctx }: { ctx: AddonUiContext }) {
           onChange={(e) => setTemplate(e.target.value)}
           data-testid="motion-new-template"
         >
-          {(list ?? [{ id: "teaser", name: "Teaser" } as Template]).map((t) => (
+          {options.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>
@@ -508,6 +536,10 @@ export function VideoTab({ ctx, params, tabId }: AddonTabProps) {
   const [editing, setEditing] = useState<number>();
   const [capturing, setCapturing] = useState(false);
   const [pane, setPane] = useState<"storyboard" | "settings">("storyboard");
+  const [writing, setWriting] = useState(params.write === true);
+  useEffect(() => {
+    if (params.write === true) ctx.updateTab(tabId, { write: false });
+  }, [ctx, tabId, params.write]);
   const [failure, setFailure] = useState<string>();
   const frame = useRef<{ seek: (t: number) => void } | null>(null);
   const [root, width] = useWidth();
@@ -550,14 +582,15 @@ export function VideoTab({ ctx, params, tabId }: AddonTabProps) {
       </Empty>
     );
   if (!video) return <Spinner center />;
-  const slots = timeline(video.storyboard, video.settings).slots;
+  const slots = videoTimeline(video.storyboard, video.settings, video.composition).slots;
 
   const storyboard = (
     <StoryboardList
       video={video}
       onOpen={(i) => {
         setEditing(i);
-        frame.current?.seek((slots[i]?.start ?? 0) + 0.8);
+        const slot = slots.find((s) => s.index === i);
+        if (slot) frame.current?.seek(slot.start + 0.8);
       }}
       onCapture={() => setCapturing(true)}
       onChange={(storyboard) => void save({ storyboard })}
@@ -573,7 +606,8 @@ export function VideoTab({ ctx, params, tabId }: AddonTabProps) {
 
   return (
     <div ref={root} className="flex h-full min-h-0 flex-col" data-testid="motion-video-tab">
-      <Header ctx={ctx} video={video} onRender={render} />
+      <Header ctx={ctx} video={video} onRender={render} onWrite={() => setWriting(true)} />
+      <WriteDialog ctx={ctx} video={video} open={writing} onClose={() => setWriting(false)} />
       <div className="h-5 px-3 text-xs text-danger" data-testid="motion-error">
         <span className="truncate">{failure ?? (video.status === "failed" ? video.error : "")}</span>
       </div>
@@ -643,22 +677,30 @@ export function VideoTab({ ctx, params, tabId }: AddonTabProps) {
   );
 }
 
-function Header({ ctx, video, onRender }: { ctx: AddonUiContext; video: VideoDetail; onRender: () => void }) {
+function Header({
+  ctx,
+  video,
+  onRender,
+  onWrite,
+}: {
+  ctx: AddonUiContext;
+  video: VideoDetail;
+  onRender: () => void;
+  onWrite: () => void;
+}) {
   const p = useProgress(video.id);
   const busy = video.status === "rendering" || video.status === "queued";
   const projectId = video.projectId;
   const latest = video.renders.at(-1);
-  const [writing, setWriting] = useState(false);
   return (
     <div className="@container flex flex-col">
-      <WriteDialog ctx={ctx} video={video} open={writing} onClose={() => setWriting(false)} />
       <div className="flex h-11 items-center gap-2 px-3">
         <Clapperboard className="size-4 shrink-0 text-muted" />
         <div className="min-w-0 flex-1 truncate text-sm">
           <span className="text-fg">{video.title}</span>
           <span className="text-muted">
             {" "}
-            · {KIND_LABEL[video.kind]} · {video.settings.aspect} ·{" "}
+            · {video.custom ? "Free composition" : KIND_LABEL[video.kind]} · {video.settings.aspect} ·{" "}
             <span className="tabular-nums">{clock(video.seconds)}</span>
           </span>
         </div>
@@ -666,7 +708,7 @@ function Header({ ctx, video, onRender }: { ctx: AddonUiContext; video: VideoDet
           variant="ghost"
           icon={Sparkles}
           className="@max-md:hidden"
-          onClick={() => setWriting(true)}
+          onClick={onWrite}
           data-testid="motion-write"
         >
           Write with Jig
@@ -718,7 +760,16 @@ function Header({ ctx, video, onRender }: { ctx: AddonUiContext; video: VideoDet
                       { separator: true as const },
                     ]
                   : []),
-                { label: "Write with Jig…", icon: "sparkles", onSelect: () => setWriting(true) },
+                { label: "Write with Jig…", icon: "sparkles", onSelect: onWrite },
+                ...(video.custom
+                  ? [
+                      {
+                        label: "Use scene layouts again",
+                        icon: "layout-template",
+                        onSelect: () => void dropComposition(ctx, video),
+                      },
+                    ]
+                  : []),
                 { separator: true as const },
                 {
                   label: "Delete video…",
@@ -743,13 +794,26 @@ function Header({ ctx, video, onRender }: { ctx: AddonUiContext; video: VideoDet
   );
 }
 
-/** The prompt a chat gets to write or change a video (M3): the request, then how to reach the video. */
-function writePrompt(video: VideoDetail, request: string): string {
-  return [
-    request.trim(),
-    "",
-    `This is the Motion video ${video.id}, "${video.title}" (${KIND_LABEL[video.kind].toLowerCase()}, ${video.storyboard.scenes.length} scenes, ${clock(video.seconds)}, language ${video.storyboard.language}). Read it with addon_motion_list (id ${video.id}), then write its scenes with addon_motion_update: few words on screen, the rest in the voice. Don't render it unless I ask.`,
-  ].join("\n");
+async function dropComposition(ctx: AddonUiContext, video: VideoDetail) {
+  const ok = await ctx.confirm({
+    title: "Use scene layouts again?",
+    message: "The free composition Jig wrote is dropped; the scenes are shown with Motion's layouts.",
+    confirmLabel: "Use layouts",
+  });
+  if (ok)
+    await ctx.host.call("setComposition", { projectId: video.projectId, id: video.id, composition: null });
+}
+
+export type Picture = "free" | "layouts";
+
+/** The prompt a chat gets to write or change a video (M3, D-474): the request, then how to reach the video. */
+export function writePrompt(video: VideoDetail, request: string, picture: Picture): string {
+  const about = `This is the Motion video ${video.id}, "${video.title}" (${KIND_LABEL[video.kind].toLowerCase()}, ${video.storyboard.scenes.length} scenes, ${clock(video.seconds)}, ${video.settings.aspect}, language ${video.storyboard.language}). Read it with addon_motion_list (id ${video.id}).`;
+  const how =
+    picture === "free"
+      ? "Then write it as a free composition: its scenes are the narration beats (titles and what the voice says), set with addon_motion_update; the picture is your own CSS and HTML clips with any layout and motion, set with addon_motion_compose (link each clip to its scene with data-scene). Make it look designed: strong type, real motion, few words on screen."
+      : "Then write its scenes with addon_motion_update, on Motion's scene layouts: few words on screen, the rest in the voice.";
+  return [request.trim(), "", `${about} ${how} Don't render it unless I ask.`].join("\n");
 }
 
 /**
@@ -768,21 +832,23 @@ function WriteDialog({
   onClose: () => void;
 }) {
   const [text, setText] = useState("");
+  const [picture, setPicture] = useState<Picture>("free");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   useEffect(() => {
     if (open) {
       setText(video.brief ?? "");
+      setPicture(video.custom || !video.renders.length ? "free" : "layouts");
       setError(undefined);
     }
-  }, [open, video.brief]);
+  }, [open, video.brief, video.custom, video.renders.length]);
   const send = async () => {
     if (!text.trim()) return;
     setBusy(true);
     try {
       if (text.trim() !== (video.brief ?? ""))
         await ctx.host.call("update", { projectId: video.projectId, id: video.id, brief: text });
-      await ctx.sendToChat(writePrompt(video, text), { send: true });
+      await ctx.sendToChat(writePrompt(video, text, picture), { send: true });
       onClose();
     } catch (e) {
       setError(message(e));
@@ -816,8 +882,20 @@ function WriteDialog({
       }
     >
       <p className="mb-2 text-sm text-muted">
-        What the video is for and what to change. Jig writes the scenes in a new chat; you keep editing here.
+        What the video is for and what to change. Jig writes it in a new chat; you keep editing here.
       </p>
+      <div className="mb-2 flex h-8 items-center gap-3 text-sm">
+        <span className="w-16 shrink-0 text-muted">Picture</span>
+        <Select
+          className="min-w-0 flex-1"
+          value={picture}
+          onChange={(e) => setPicture(e.target.value as Picture)}
+          data-testid="motion-write-picture"
+        >
+          <option value="free">Free composition: Jig designs the layout and motion</option>
+          <option value="layouts">Scene layouts: Motion's title, feature, bullets…</option>
+        </Select>
+      </div>
       <Textarea
         rows={6}
         value={text}
@@ -959,7 +1037,7 @@ function StoryboardList({
   onChange: (storyboard: Storyboard) => void;
 }) {
   const ctx = useAddon();
-  const { slots } = timeline(video.storyboard, video.settings);
+  const { slots } = videoTimeline(video.storyboard, video.settings, video.composition);
   const scenes = video.storyboard.scenes;
   const move = (from: number, to: number) => {
     if (to < 0 || to >= scenes.length) return;
@@ -981,7 +1059,12 @@ function StoryboardList({
   };
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2" data-testid="motion-storyboard">
-      <SectionTitle>Storyboard</SectionTitle>
+      <SectionTitle>{video.custom ? "Narration" : "Storyboard"}</SectionTitle>
+      {video.custom && (
+        <p className="mb-2 text-xs text-muted" data-testid="motion-custom-note">
+          A free composition: Jig drew the picture. These scenes are what the voice says and when.
+        </p>
+      )}
       <div className="flex flex-col gap-1 overflow-y-auto">
         {scenes.map((scene, i) => {
           const Icon = SCENE_ICON[scene.type];
@@ -1024,7 +1107,10 @@ function StoryboardList({
                 {scene.title || SCENE_LABEL[scene.type]}
               </span>
               <span className="w-9 shrink-0 text-right text-xs text-muted tabular-nums">
-                {clock(slots[i]?.duration ?? 0)}
+                {(() => {
+                  const slot = slots.find((s) => s.index === i);
+                  return slot ? clock(slot.duration) : "–";
+                })()}
               </span>
             </button>
           );

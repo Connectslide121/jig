@@ -43,6 +43,13 @@ all of its outputs are decided. **Trust per output** shows, per kind, how often 
 written. Needs a real machine: the image version and the teaser on real models, courses with a real
 e-learning server.
 
+Motion's free compositions (D-474): a video no longer has to use Motion's scene layouts. **New
+video → Start from: Free composition**, or **Write with Jig → Picture: Free composition**: Jig
+writes the video's own layout and motion (CSS and HTML) from your brief, and the preview, voice,
+captions, music and render work as before; the scenes become the narration. The video's ⋯ → **Use
+scene layouts again** goes back. Try it: `JIG_ENGINE=fake`, a chat "compose the video". **Check on
+your machine:** a real chat's composition rendered to MP4.
+
 Motion from chats (2026-11-11, phase 28 session M3, D-465): ask a chat for a video ("make a 40 s
 teaser of this release"): Jig writes the storyboard with Motion's tools and a **video card** shows
 in the chat (poster, name, kind, length, scenes, Render or Play, Open); "change the video" edits it

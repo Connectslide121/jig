@@ -1100,7 +1100,7 @@ ${output.slice(0, 600)}`,
           }
         } else if (
           toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|close my phone room|my usage limits|any pipelines running|publish a page|update the page|make a teaser video|change the video|render the video)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|close my phone room|my usage limits|any pipelines running|publish a page|update the page|make a teaser video|change the video|render the video|compose the video)\b/.test(
             lower,
           )
         ) {
@@ -1170,7 +1170,7 @@ ${output.slice(0, 600)}`,
             for (let i = 0; runId && i < 5 && /still running/.test(result); i++)
               result = await call("addon_tests_wait", { id: runId, wait: 10 });
             await stream(`${msg}:text:0`, `The unit tests ran. ${result.split("\n")[0]}`, signal);
-          } else if (/make a teaser video|change the video|render the video/.test(lower)) {
+          } else if (/make a teaser video|change the video|render the video|compose the video/.test(lower)) {
             // Motion's tools (M3, D-465): a teaser with a screenshot scene, a change by scene id, a render.
             const listed = await call("addon_motion_list", {});
             const id = /v_[a-f0-9]{8}/.exec(listed)?.[0];
@@ -1211,6 +1211,18 @@ ${output.slice(0, 600)}`,
                 ],
               });
               await stream(`${msg}:text:0`, "Changed the video.", signal);
+            } else if (/compose the video/.test(lower) && id) {
+              // A free composition (D-474): the chat's own CSS and clips, the title scene linked for its voice.
+              const r = await call("addon_motion_compose", {
+                id,
+                css: "@keyframes up{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:none}} .big{position:absolute;left:120px;top:380px;font:800 180px var(--font-headline);color:var(--accent);animation:up .7s var(--ease) .2s both}",
+                html: '<section class="clip" data-start="0" data-duration="4" data-track-index="0" data-scene="s1"><h1 class="big">Shop 2.0</h1></section><section class="clip" data-start="4" data-duration="3" data-track-index="0"><h1 class="big">Out now</h1></section>',
+              });
+              await stream(
+                `${msg}:text:0`,
+                /Kept the composition/.test(r) ? "Composed the video." : r,
+                signal,
+              );
             } else if (id) {
               const r = await call("addon_motion_render", { id });
               await stream(`${msg}:text:0`, /Rendering/.test(r) ? "Rendering the video." : r, signal);

@@ -6,6 +6,15 @@ import type { AddonCaptureStep, AddonHostApi } from "@jig/sdk";
 import { mixArgs, musicFile } from "./lib/audio";
 import { cues, srt, vtt } from "./lib/captions";
 import { compose, FONT_FILE, type MotionStyle } from "./lib/compose";
+import {
+  type Composition,
+  checkComposition,
+  composeCustom,
+  compositionRefs,
+  renameRefs,
+  unlinkedScenes,
+  videoTimeline,
+} from "./lib/custom";
 import { TINY_MP4, TINY_PNG } from "./lib/fake";
 import {
   candidates,
@@ -24,7 +33,6 @@ import {
   KINDS,
   normalizeSettings,
   type Storyboard,
-  timeline,
   type VideoKind,
   type VideoSettings,
   VOICE_LEAD,
@@ -77,6 +85,8 @@ export interface VideoMeta {
 
 export interface VideoSummary extends VideoMeta {
   projectId: string;
+  /** The picture is a free composition (D-474), not the scene layouts. */
+  custom: boolean;
   status: VideoStatus;
   seconds: number;
   aspect: string;
@@ -87,6 +97,8 @@ export interface VideoSummary extends VideoMeta {
 export interface VideoDetail extends VideoSummary {
   storyboard: Storyboard;
   settings: VideoSettings;
+  /** A free composition a chat wrote (D-474), shown instead of the scene layouts. */
+  composition?: Composition;
 }
 
 export interface MotionStatus {
@@ -327,18 +339,21 @@ async function readVideo(api: AddonHostApi, project: string, id: string): Promis
     await writeJson(join(dir, "meta.json"), meta);
   }
   const settings = normalizeSettings(await readJson(join(dir, "settings.json")));
+  const composition = await readJson<Composition>(join(dir, "composition.json"));
   const latest = meta.renders.at(-1);
   const poster = latest ? join(dir, "renders", String(latest.n), "poster.png") : undefined;
   return {
     ...meta,
     projectId: project,
     status: statusOf(meta),
-    seconds: timeline(storyboard, settings).total,
+    custom: !!composition,
+    seconds: videoTimeline(storyboard, settings, composition).total,
     aspect: settings.aspect,
     ...(poster && (await exists(poster)) ? { poster } : {}),
     dir,
     storyboard,
     settings,
+    ...(composition ? { composition } : {}),
   };
 }
 
@@ -349,7 +364,12 @@ export async function list(args: { projectId: string }, api: AddonHostApi): Prom
     for (const id of await readdir(dir).catch(() => [] as string[])) {
       if (!ID.test(id)) continue;
       try {
-        const { storyboard: _s, settings: _t, ...summary } = await readVideo(api, args.projectId, id);
+        const {
+          storyboard: _s,
+          settings: _t,
+          composition: _c,
+          ...summary
+        } = await readVideo(api, args.projectId, id);
         out.push(summary);
       } catch {
         // A half-written folder: skipped.
@@ -518,6 +538,71 @@ export async function addMedia(
   return `media/${name}`;
 }
 
+/** A file already in the video's `media/` with the same bytes as `path`, so a chat's repeated writes don't copy it twice. */
+async function sameMedia(dir: string, path: string): Promise<string | undefined> {
+  const bytes = await readFile(path);
+  for (const name of await readdir(join(dir, "media")).catch(() => [] as string[])) {
+    const file = join(dir, "media", name);
+    const info = await stat(file).catch(() => undefined);
+    if (info?.isFile() && info.size === bytes.length && (await readFile(file)).equals(bytes))
+      return `media/${name}`;
+  }
+  return undefined;
+}
+
+/**
+ * Keeps a chat's free composition for the video (D-474), or with `composition: null` goes back to
+ * the scene layouts. Files it names outside `media/` are copied in from `cwd` (the chat's folder)
+ * and renamed in it. Throws the problems, as sentences, when it can't be kept.
+ */
+export async function setComposition(
+  args: { projectId: string; id: string; composition: Composition | null; cwd?: string },
+  api: AddonHostApi,
+): Promise<VideoDetail> {
+  return serial(async () => {
+    const current = await readVideo(api, args.projectId, args.id);
+    if (current.job?.state === "rendering") throw new Error("Wait for the render to finish, or cancel it");
+    const dir = current.dir;
+    if (args.composition === null) await rm(join(dir, "composition.json"), { force: true });
+    else {
+      let c: Composition = {
+        css: String(args.composition.css ?? ""),
+        html: String(args.composition.html ?? ""),
+        ...(args.composition.seconds !== undefined ? { seconds: Number(args.composition.seconds) } : {}),
+      };
+      const errors = checkComposition(c, current.settings);
+      const map: Record<string, string> = {};
+      for (const ref of compositionRefs(c)) {
+        if (ref.startsWith("media/")) {
+          if (!(await exists(join(dir, ref))))
+            errors.push(`${ref} isn't in the video; name the file in your folder instead`);
+          continue;
+        }
+        const from = args.cwd ? resolve(args.cwd, ref) : undefined;
+        if (!from || !(await stat(from).catch(() => undefined))?.isFile()) {
+          errors.push(`No file ${ref}${args.cwd ? " in the chat's folder" : ""}`);
+          continue;
+        }
+        if (!MEDIA_EXT.has(extname(from).toLowerCase())) {
+          errors.push(`${ref}: Motion takes images (PNG, JPEG, WebP, GIF, SVG) and clips (MP4, WebM)`);
+          continue;
+        }
+        map[ref] =
+          (await sameMedia(dir, from)) ??
+          (await addMedia({ projectId: args.projectId, id: args.id, path: from }, api));
+      }
+      if (errors.length) throw new Error(errors.join("; "));
+      c = renameRefs(c, map);
+      await writeJson(join(dir, "composition.json"), c);
+    }
+    const meta = (await readJson<VideoMeta>(join(dir, "meta.json"))) as VideoMeta;
+    meta.updatedAt = new Date().toISOString();
+    await writeJson(join(dir, "meta.json"), meta);
+    api.emit("changed", { projectId: args.projectId, id: args.id });
+    return readVideo(api, args.projectId, args.id);
+  });
+}
+
 /** Writes the live preview page (the composition plus the scrubber's runtime) and returns its path. */
 let fontUrl: Promise<string> | undefined;
 /** The bundled Inter as a `data:` URL (read once). */
@@ -528,15 +613,21 @@ function font(api: AddonHostApi): Promise<string> {
   return fontUrl;
 }
 
-export async function preview(args: { projectId: string; id: string }, api: AddonHostApi): Promise<string> {
-  const video = await get(args, api);
-  const html = compose({
+/** The video's page: its free composition, else the scene layouts. */
+async function page(api: AddonHostApi, video: VideoDetail, preview: boolean): Promise<string> {
+  const input = {
     board: video.storyboard,
     settings: video.settings,
     style: await style(api, video.settings.style, video.projectId),
-    preview: true,
     font: await font(api),
-  });
+    ...(preview ? { preview } : {}),
+  };
+  return video.composition ? composeCustom({ ...input, composition: video.composition }) : compose(input);
+}
+
+export async function preview(args: { projectId: string; id: string }, api: AddonHostApi): Promise<string> {
+  const video = await get(args, api);
+  const html = await page(api, video, true);
   const path = join(video.dir, "preview.html");
   await writeFile(path, html, "utf8");
   return path;
@@ -1115,12 +1206,7 @@ async function renderOne(api: AddonHostApi, project: string, id: string): Promis
   const n = (video.renders.at(-1)?.n ?? 0) + 1;
   const out = join(video.dir, "renders", String(n));
   await mkdir(out, { recursive: true });
-  const html = compose({
-    board: video.storyboard,
-    settings: video.settings,
-    style: await style(api, video.settings.style, video.projectId),
-    font: await font(api),
-  });
+  const html = await page(api, video, false);
   await writeFile(join(video.dir, "index.html"), html, "utf8");
   const run = (renderer ?? (fake() ? fakeRenderer : hyperframesRenderer))(
     {
@@ -1144,7 +1230,11 @@ async function renderOne(api: AddonHostApi, project: string, id: string): Promis
   api.emit("changed", { projectId: project, id });
   try {
     await run.done;
-    const list = cues(video.storyboard, video.settings);
+    const list = cues(
+      video.storyboard,
+      video.settings,
+      videoTimeline(video.storyboard, video.settings, video.composition).slots,
+    );
     if (list.length) {
       await writeFile(join(out, "captions.srt"), srt(list), "utf8");
       await writeFile(join(out, "captions.vtt"), vtt(list), "utf8");
@@ -1184,7 +1274,7 @@ async function renderOne(api: AddonHostApi, project: string, id: string): Promis
 /** Lays the voices and the music under the rendered picture (lib/audio.ts), in place. */
 async function mixSound(api: AddonHostApi, video: VideoDetail, file: string): Promise<void> {
   const s = video.settings;
-  const voices = timeline(video.storyboard, s).slots.flatMap(({ scene, start }) => {
+  const voices = videoTimeline(video.storyboard, s, video.composition).slots.flatMap(({ scene, start }) => {
     const f = freshVoice(scene, s);
     return f ? [{ path: join(video.dir, f), at: start + VOICE_LEAD }] : [];
   });
@@ -1307,6 +1397,7 @@ function toolResult(v: VideoDetail, message: string): string {
     title: v.title,
     kind: v.kind,
     seconds: Math.round(v.seconds),
+    picture: v.custom ? "free composition" : "scene layouts",
     scenes: v.storyboard.scenes.map((s) => s.id),
     status: v.status,
     message,
@@ -1403,6 +1494,36 @@ export async function toolUpdate(args: ToolVideoArgs & { id: string }, api: Addo
   return toolResult(video, `Updated "${video.title}" (${Math.round(video.seconds)} s).`);
 }
 
+/** `addon_motion_compose`: the video's own picture, CSS and timed HTML clips (D-474); `layouts: true` goes back to the scene layouts. */
+export async function toolCompose(
+  args: ToolChat & { id: string; css?: string; html?: string; seconds?: number; layouts?: boolean },
+  api: AddonHostApi,
+): Promise<string> {
+  const project = toolProject(args);
+  if (args.layouts) {
+    const video = await setComposition({ projectId: project, id: args.id, composition: null }, api);
+    return toolResult(video, `"${video.title}" uses Motion's scene layouts again.`);
+  }
+  const video = await setComposition(
+    {
+      projectId: project,
+      id: args.id,
+      composition: {
+        css: args.css ?? "",
+        html: args.html ?? "",
+        ...(args.seconds !== undefined ? { seconds: args.seconds } : {}),
+      },
+      ...(args.chat?.cwd ? { cwd: args.chat.cwd } : {}),
+    },
+    api,
+  );
+  const lost = video.composition ? unlinkedScenes(video.storyboard, video.composition) : [];
+  return toolResult(
+    video,
+    `Kept the composition of "${video.title}" (${Math.round(video.seconds)} s); the user sees it in the preview.${lost.length ? ` No clip has data-scene for ${lost.join(", ")}: their voice and captions aren't in the video.` : ""}`,
+  );
+}
+
 /** `addon_motion_render`: queues the MP4 (Motion's own renderer on this computer, no AI). */
 export async function toolRender(args: ToolChat & { id: string }, api: AddonHostApi): Promise<string> {
   const project = toolProject(args);
@@ -1429,6 +1550,9 @@ export async function toolList(args: ToolChat & { id?: string }, api: AddonHostA
       videoLine(v),
       v.brief ? `Brief: ${v.brief}` : "Brief: (none)",
       `Settings: ${JSON.stringify(settings)}`,
+      v.composition
+        ? `Picture: a free composition (change it with addon_motion_compose; scenes are its narration beats, linked by data-scene):\n<style>\n${v.composition.css}\n</style>\n${v.composition.html}`
+        : "Picture: Motion's scene layouts (or write a free composition with addon_motion_compose)",
       `Storyboard (${SCENE_HELP}):`,
       JSON.stringify(
         {

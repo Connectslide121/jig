@@ -197,7 +197,6 @@ function sceneHtml(slot: Slot, input: ComposeInput, last: boolean, extra: string
 
 function css(input: ComposeInput, width: number, height: number): string {
   const { style, settings } = input;
-  const c = style.colors;
   const short = Math.min(width, height);
   const portrait = height > width;
   const u = short / 1080;
@@ -208,12 +207,7 @@ function css(input: ComposeInput, width: number, height: number): string {
       ? CAPTION_SIZE[settings.captions.size] * 2.6 + (portrait ? 90 : 20)
       : 0;
   const head = Math.round(short * HEADLINE[settings.type.headline]);
-  return `
-@font-face{font-family:"Inter Variable";src:url("${fontUrl(input.font)}") format("woff2");font-weight:100 900;font-display:block}
-:root{--bg:${cssValue(c.bg)};--surface:${cssValue(c.surface)};--fg:${cssValue(c.fg)};--muted:${cssValue(c.muted)};--accent:${cssValue(c.accent)};--on-accent:${cssValue(c.onAccent)};--ease:${PACE[settings.motion].ease};--rise:${px(36)}}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--bg);overflow:hidden}
-#root{position:relative;width:${width}px;height:${height}px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:${cssValue(style.fonts.body)};-webkit-font-smoothing:antialiased}
+  return `${baseCss(input, width, height)}
 #root::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 85% 10%,color-mix(in oklab,var(--accent) 18%,transparent),transparent 70%);z-index:0}
 .clip{position:absolute;inset:0;z-index:1}
 .scene{display:flex;align-items:center;justify-content:center;padding:${px(portrait ? 90 : 110)}${capRoom ? `;padding-${settings.captions.position}:${px((portrait ? 90 : 110) + capRoom)}` : ""}}
@@ -254,10 +248,35 @@ h1,h2,.statement{font-family:${cssValue(style.fonts.headline)};font-weight:${sty
 .arrow.flip svg{transform:scaleX(-1)}
 .arrow svg{display:block;width:100%;height:100%}
 .tag{position:absolute;left:50%;top:100%;transform:translate(-50%,${px(10)});white-space:nowrap;font-size:${px(30)};font-weight:600;background:var(--accent);color:var(--on-accent);padding:${px(8)} ${px(18)};border-radius:${px(999)}}
-.cap{display:flex;justify-content:center;align-items:flex-end;padding:0 ${px(120)} ${px(portrait ? 160 : 70)};z-index:3;pointer-events:none}
-.cap.top{align-items:flex-start;padding-top:${px(portrait ? 160 : 70)};padding-bottom:0}
-.cap span{max-width:${px(1500)};text-align:center;font-size:${px(CAPTION_SIZE[settings.captions.size])};font-weight:600;line-height:1.3;color:var(--fg);text-wrap:balance;${settings.captions.background ? `background:color-mix(in oklab,var(--bg) 80%,transparent);padding:${px(10)} ${px(24)};border-radius:${px(12)}` : `text-shadow:0 ${px(2)} ${px(12)} var(--bg),0 0 ${px(4)} var(--bg)`}}
+${captionCss(settings, width, height)}
 `;
+}
+
+/** The style's font, colours and pace as CSS variables, and the frame (`#root`) at the video's size. */
+export function baseCss(
+  input: Pick<ComposeInput, "style" | "settings" | "font">,
+  width: number,
+  height: number,
+): string {
+  const { style, settings } = input;
+  const c = style.colors;
+  const px = (n: number) => `${Math.round((n * Math.min(width, height)) / 1080)}px`;
+  return `
+@font-face{font-family:"Inter Variable";src:url("${fontUrl(input.font)}") format("woff2");font-weight:100 900;font-display:block}
+:root{--bg:${cssValue(c.bg)};--surface:${cssValue(c.surface)};--fg:${cssValue(c.fg)};--muted:${cssValue(c.muted)};--accent:${cssValue(c.accent)};--on-accent:${cssValue(c.onAccent)};--font-headline:${cssValue(style.fonts.headline)};--font-body:${cssValue(style.fonts.body)};--radius:${px(style.radius)};--ease:${PACE[settings.motion].ease};--rise:${px(36)}}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);overflow:hidden}
+#root{position:relative;width:${width}px;height:${height}px;overflow:hidden;isolation:isolate;background:var(--bg);color:var(--fg);font-family:${cssValue(style.fonts.body)};-webkit-font-smoothing:antialiased}`;
+}
+
+/** Burned-in captions: a band at the bottom (or top), above everything else. */
+export function captionCss(settings: VideoSettings, width: number, height: number): string {
+  const portrait = height > width;
+  const px = (n: number) => `${Math.round((n * Math.min(width, height)) / 1080)}px`;
+  return `.cap{position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-end;padding:0 ${px(120)} ${px(portrait ? 160 : 70)};z-index:3;pointer-events:none}
+.cap.top{align-items:flex-start;padding-top:${px(portrait ? 160 : 70)};padding-bottom:0}
+.cap span{max-width:${px(1500)};text-align:center;font-size:${px(CAPTION_SIZE[settings.captions.size])};font-weight:600;line-height:1.3;color:var(--fg);font-family:var(--font-body);text-wrap:balance;${settings.captions.background ? `background:color-mix(in oklab,var(--bg) 80%,transparent);padding:${px(10)} ${px(24)};border-radius:${px(12)}` : `text-shadow:0 ${px(2)} ${px(12)} var(--bg),0 0 ${px(4)} var(--bg)`}}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}`;
 }
 
 /**
@@ -280,6 +299,69 @@ addEventListener("message",function(e){var m=e.data||{};if(m.motion==="seek"){re
 addEventListener("resize",fitFrame);fitFrame();seek(Math.min(1.5,T/2));function hold(){if(!playing&&document.getAnimations().some(function(a){return a.playState!=="paused"}))seek(t,true);requestAnimationFrame(hold)}requestAnimationFrame(hold);
 })();`;
 
+/** The captions as clips on their own track, from cues timed by `slots`. */
+export function captionsHtml(
+  board: Pick<Storyboard, "scenes">,
+  settings: VideoSettings,
+  slots: Slot[],
+): string {
+  if (!settings.captions.on) return "";
+  return cues(board, settings, slots)
+    .map(
+      (c) =>
+        `<div class="clip cap ${settings.captions.position}" data-start="${c.start}" data-duration="${Math.round((c.end - c.start) * 1000) / 1000}" data-track-index="9"><span style="${anim("m-fade", 0, 0.15, "ease-out")}">${esc(c.text)}</span></div>`,
+    )
+    .join("\n");
+}
+
+/** The voices and music as `<audio>`: the preview plays them; a render gets them from FFmpeg (lib/audio.ts). */
+export function soundHtml(settings: VideoSettings, slots: Slot[]): string {
+  return [
+    ...slots.flatMap(({ scene, start }) => {
+      const file = freshVoice(scene, settings);
+      return file
+        ? [
+            `<audio class="voice" src="${esc(encodeURI(file))}" preload="auto" data-start="${Math.round((start + VOICE_LEAD) * 1000) / 1000}" data-duration="${voiceLength(scene)}"></audio>`,
+          ]
+        : [];
+    }),
+    settings.music.track
+      ? `<audio class="music" src="${esc(encodeURI(settings.music.track))}" preload="auto" loop data-volume="${settings.music.volume}"></audio>`
+      : "",
+  ].join("");
+}
+
+/** The page around a composition: `#root` at the video's size and length, and the preview runtime. */
+export function page(input: {
+  language: string;
+  title: string;
+  settings: VideoSettings;
+  total: number;
+  css: string;
+  body: string;
+  sound?: string;
+  preview?: boolean;
+}): string {
+  const { width, height } = dimensions(input.settings);
+  return `<!doctype html>
+<html lang="${esc(input.language || "en")}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=${width}, height=${height}">
+<title>${esc(input.title)}</title>
+<style>${input.css}</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-no-timeline data-start="0" data-duration="${input.total}" data-width="${width}" data-height="${height}" data-fps="${input.settings.fps}">
+${input.body}
+</div>
+${input.preview ? (input.sound ?? "") : ""}
+${input.preview ? `<script>${RUNTIME}</script>` : ""}
+</body>
+</html>
+`;
+}
+
 /** The composition's HTML. */
 export function compose(input: ComposeInput): string {
   const { board, settings, preview } = input;
@@ -287,51 +369,17 @@ export function compose(input: ComposeInput): string {
   const { slots, total } = timeline(board, settings);
   const extra: string[] = [];
   const scenes = slots.map((slot, i) => sceneHtml(slot, input, i === slots.length - 1, extra)).join("\n");
-  const captions = settings.captions.on
-    ? cues(board, settings)
-        .map(
-          (c) =>
-            `<div class="clip cap ${settings.captions.position}" data-start="${c.start}" data-duration="${Math.round((c.end - c.start) * 1000) / 1000}" data-track-index="1"><span style="${anim("m-fade", 0, 0.15, "ease-out")}">${esc(c.text)}</span></div>`,
-        )
-        .join("\n")
-    : "";
-  // Sound plays in the preview only; a render gets it from FFmpeg afterwards (lib/audio.ts).
-  const sound = preview
-    ? [
-        ...slots.flatMap(({ scene, start }) => {
-          const file = freshVoice(scene, settings);
-          return file
-            ? [
-                `<audio class="voice" src="${esc(encodeURI(file))}" preload="auto" data-start="${Math.round((start + VOICE_LEAD) * 1000) / 1000}" data-duration="${voiceLength(scene)}"></audio>`,
-              ]
-            : [];
-        }),
-        settings.music.track
-          ? `<audio class="music" src="${esc(encodeURI(settings.music.track))}" preload="auto" loop data-volume="${settings.music.volume}"></audio>`
-          : "",
-      ].join("")
-    : "";
   const mark =
     settings.brand.logo === "always"
       ? `<div class="mark">${esc(settings.brand.endText || board.title)}</div>`
       : "";
-  return `<!doctype html>
-<html lang="${esc(board.language || "en")}">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=${width}, height=${height}">
-<title>${esc(board.title)}</title>
-<style>${css(input, width, height)}${extra.join("\n")}</style>
-</head>
-<body>
-<div id="root" data-composition-id="main" data-no-timeline data-start="0" data-duration="${total}" data-width="${width}" data-height="${height}" data-fps="${settings.fps}">
-${scenes}
-${captions}
-${mark}
-</div>
-${sound}
-${preview ? `<script>${RUNTIME}</script>` : ""}
-</body>
-</html>
-`;
+  return page({
+    language: board.language,
+    title: board.title,
+    settings,
+    total,
+    css: `${css(input, width, height)}${extra.join("\n")}`,
+    body: [scenes, captionsHtml(board, settings, slots), mark].join("\n"),
+    ...(preview ? { sound: soundHtml(settings, slots), preview } : {}),
+  });
 }

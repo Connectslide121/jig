@@ -77,6 +77,7 @@ Motion, the video add-on (Jon, 2026-11-06; [28-factory/motion.md](28-factory/mot
 | D-456 | **Music from your own music folder**; Find music opens Pixabay Music; Jig never bundles or fetches tracks itself. |
 | D-457 | **Live captures** of an app or demo as scenes, recorded in a hidden window; core `api.capture.record`. |
 | D-458 | **Factory's teasers are made with Motion** (replaces D-448's demo-kit teaser; HyperFrames stays the engine). |
+| D-474 | **Motion's free compositions**: a chat writes a video's own CSS and HTML clips (any layout, any motion); scenes stay narration beats for voice and captions. |
 
 **Open: sharing a demo for review with people who don't have Jig.** A demo is one self-contained
 HTML file, so it can simply be sent (for example in Teams) and opened in a browser. A private
@@ -407,6 +408,19 @@ product kit tokens, own styles from a chat, `DESIGN.md` from the factory's local
 (exported, since Motion can't read factory settings), `theme-factory` themes; one finishing step
 guarantees contrast. Exports `createVideo`, `render`, `get`. e2e: `motion.spec.ts` → "a chat makes
 and changes a video…". Not done: "from a release" (waits for Releases).
+
+### M4. Motion: free compositions — done
+
+- [x] `lib/custom.ts`: check a chat's CSS and HTML clips, read their timing and scene links, wrap
+      them with the style, Inter, captions and the preview runtime (D-474); unit tests.
+- [x] Host: `composition.json`, `setComposition`, preview, render, captions and mix on the
+      composition's timing; tool `addon_motion_compose` (with its card) and `list` showing it.
+- [x] UI: New video → Free composition, Write with Jig's **Picture** choice, "Free composition" in
+      the header, Narration note, ⋯ → Use scene layouts again.
+- [x] Fake engine "compose the video"; e2e "a free composition starts at Write with Jig…".
+
+**Done when:** a chat can give a video any look and motion, and it previews and renders like any
+other video.
 
 ### 5. The pack — done
 
